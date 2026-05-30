@@ -504,7 +504,7 @@ function signOut() {
 
     <!-- KPI tiles — 3+3 row layout, no truncation -->
     <div class="metric-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="metric" style="cursor:pointer;" onclick="showScreen('analytics');setTimeout(()=>dbNav('cogs'),400);">
+      <div class="metric" style="cursor:pointer;" onclick="showScreen('analytics');">
         <p class="metric-label">Portfolio COGs</p>
         <p class="metric-value good">8.4%</p>
         <p class="metric-sub good">Target 8–10% · <span style="text-decoration:underline;">Deep dive →</span></p>
@@ -658,7 +658,7 @@ function signOut() {
       </div>
 
       <div style="display:flex;justify-content:flex-end;margin-top:2px;">
-        <button onclick="showScreen('analytics');" style="background:none;border:none;color:#1C2B4A;font-size:11px;cursor:pointer;text-decoration:underline;padding:0;">View all insights in analytics dashboard →</button>
+        <button onclick="showScreen('analytics');" style="background:none;border:none;color:#1C2B4A;font-size:11px;cursor:pointer;text-decoration:underline;padding:0;"><span onclick="showScreen('analytics')" style="cursor:pointer;">View all insights in analytics dashboard →</span></button>
       </div>
     </div>
 
@@ -1715,12 +1715,27 @@ const glInsightTag = {
 
 const glCatColor = {diag:'#2E4057', exp:'#1C2B4A', waste:'#8899AA', inhouse:'#3A5470', dmg:'#8899AA', donated:'#C8C4D8'};
 
+
+function deepDiveLoc(locCode) {
+  showScreen('analytics');
+  setTimeout(function() {
+    var iframe = document.querySelector('#ms-analytics iframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, '*');
+    }
+  }, 600);
+}
+
 function dbNav(panel) {
-  ['overview','cogs','goods','procurement','compliance','whitegood'].forEach(p => {
-    document.getElementById('dbnav-' + p).classList.toggle('active', p === panel);
-    document.getElementById('dbpanel-' + p).style.display = p === panel ? '' : 'none';
-  });
-  if (panel === 'goods') renderGlTop5(currentRange, currentLocation);
+  // Navigate to analytics screen and switch to the right panel
+  showScreen('analytics');
+  // Send message to analytics iframe after it loads
+  setTimeout(function() {
+    var iframe = document.querySelector('#ms-analytics iframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, '*');
+    }
+  }, 500);
 }
 
 function renderGlTop5(range, loc) {

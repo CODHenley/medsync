@@ -849,5 +849,32 @@ function refresh() { loadData(); }
 // ── Boot ─────────────────────────────────────────────────────
 loadData();
 </script>
+
+<script>
+// Listen for panel switch messages from parent app
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'switchPanel') {
+    var panel = e.data.panel;
+    var panelMap = {
+      'cogs': 'cogs', 'goods': 'gl', 
+      'procurement': 'proc', 'compliance': 'comp',
+      'whitegood': 'wg', 'overview': 'ov'
+    };
+    var mapped = panelMap[panel] || panel;
+    var tab = document.querySelector('.ptab[onclick*="' + mapped + '"]');
+    if (tab) tab.click();
+    window.scrollTo(0, 0);
+  }
+  if (e.data && e.data.type === 'setLocation') {
+    var locSel = document.getElementById('loc');
+    if (locSel) {
+      locSel.value = e.data.loc;
+      if (typeof refresh === 'function') refresh();
+    }
+    window.scrollTo(0, 0);
+  }
+});
+</script>
+
 </body>
 </html>
