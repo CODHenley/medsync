@@ -699,6 +699,9 @@ tr:last-child td{border-bottom:none;}
 </style>
 </head>
 <body>
+<script>
+// Core navigation — must run before any onclick handlers
+</script>
 <nav id="main-nav" style="background:#1C2B4A;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;position:sticky;top:0;z-index:100;">
   <div style="display:flex;align-items:center;gap:16px;">
     <div style="display:flex;align-items:center;gap:9px;">
@@ -2159,17 +2162,6 @@ function setTableLoading(on) {
   if (on) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">Loading lots…</td></tr>';
 }
 
-let toastTimer = null;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.opacity = '1';
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
-}
-
-// ── Boot ──────────────────────────────────────────────────────
-loadLots();
 </script></div></div>
 <div id="screen-actlog" class="app-screen" style="display:none;"><div class="outer" id="actlog-outer"><div class="outer">
   <aside class="sidebar">
@@ -2344,9 +2336,7 @@ loadLots();
 
 <script>
 // ── Supabase config ──────────────────────────────────────────
-const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+
 
 // All events in memory after load
 let ALL_EVENTS = [];
@@ -3243,35 +3233,6 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 
 let currentScreen = 'portfolio';
-const SCREENS = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods'];
-
-function showScreen(name) {
-  SCREENS.forEach(s => {
-    const el = document.getElementById('screen-' + s);
-    if (el) el.style.display = s === name ? 'block' : 'none';
-  });
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const nb = document.getElementById('nb-' + name);
-  if (nb) nb.classList.add('active');
-  currentScreen = name;
-  window.scrollTo(0, 0);
-
-  // Boot live screens when first shown
-  if (name === 'analytics' && typeof loadData === 'function') loadData();
-  if (name === 'lifecycle' && typeof loadLots === 'function') loadLots();
-  if (name === 'actlog' && typeof loadEvents === 'function') loadEvents();
-}
-
-function showOpsScreen(name) {
-  showScreen(name);
-}
-
-function signOut() {
-  localStorage.removeItem('medsync_session');
-  localStorage.removeItem('medsync_user');
-  window.location.href = 'medsync_login.html';
-}
-
 // Wire sidebar nav items
 function initApp() {
   // Show portfolio by default
@@ -3323,12 +3284,6 @@ function setLoading(ids) {
 }
 
 // ── Date range helpers ───────────────────────────────────────
-const RANGE_LABELS = {
-  mtd:'Month to date', wtd:'Week to date', prev:'Previous week',
-  t7:'Trailing 7 days', t30:'Trailing 30 days', t90:'Trailing 90 days',
-  tq:'This quarter', lq:'Last quarter', ytd:'Year to date',
-  py:'Previous year', today:'Today'
-};
 
 function getDateRange(dr) {
   const now = new Date('2026-05-29T00:00:00');
@@ -3355,18 +3310,6 @@ function getDateRange(dr) {
 }
 
 // ── Location ID map ──────────────────────────────────────────
-const LOC_IDS = {
-  lp: '11111111-0000-0000-0000-000000000001',
-  oo: '11111111-0000-0000-0000-000000000002',
-  wl: '11111111-0000-0000-0000-000000000003',
-  wh: '11111111-0000-0000-0000-000000000004'
-};
-const LOC_NAMES = {
-  '11111111-0000-0000-0000-000000000001': 'Lincoln Park',
-  '11111111-0000-0000-0000-000000000002': 'Old Orchard',
-  '11111111-0000-0000-0000-000000000003': 'West Loop',
-  '11111111-0000-0000-0000-000000000004': 'Wheaton'
-};
 
 // ── GL Category colors ───────────────────────────────────────
 const GL_COLORS = {
@@ -3581,12 +3524,6 @@ function sp(name,el){
 }
 
 // ── Export toast ─────────────────────────────────────────────
-let toastTimer = null;
-function exp(type){
-  showToast('✓ ' + type + ' exported — ' + (RANGE_LABELS[document.getElementById('dr').value] || 'Month to date'));
-}
-function showToast(msg) {
-  const t = document.getElementById('toast');
   t.textContent = msg;
   t.style.opacity = '1';
   if (toastTimer) clearTimeout(toastTimer);
@@ -3601,14 +3538,10 @@ loadData();
 
 
 // ── Supabase config ──────────────────────────────────────────
-const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
 
-const TODAY = new Date('2026-05-29T00:00:00');
+
 
 // All lots loaded from Supabase — kept in memory for filtering/search
-let ALL_LOTS = [];
 let statusFilter = 'all';
 
 // ── Fetch all lots with joined product + location + user data ─
@@ -3928,35 +3861,12 @@ function setTableLoading(on) {
   if (on) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">Loading lots…</td></tr>';
 }
 
-let toastTimer = null;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.opacity = '1';
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
-}
-
-// ── Boot ──────────────────────────────────────────────────────
-loadLots();
 
 
 // ── Supabase config ──────────────────────────────────────────
-const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+
 
 // All events in memory after load
-let ALL_EVENTS = [];
-let currentRole = 'admin';
-let typeFilter  = 'all';
-let sortCol     = 'ts';
-let sortDir     = 'desc';
-
-const USER_COLORS = {
-  'Megan Henley':'#1C2B4A','Jamie K.':'#0F6E56','Sam T.':'#534AB7',
-  'Alex M.':'#a0700a','Jordan P.':'#185FA5','System':'#8899AA'
-};
 function userColor(u){ return USER_COLORS[u] || '#4A5568'; }
 function initials(u){ return (u||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 
@@ -4176,17 +4086,6 @@ function setLoading(on) {
     ? '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--mist);">Loading events…</td></tr>' : '';
 }
 
-let toastT = null;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.style.opacity = '1';
-  if (toastT) clearTimeout(toastT);
-  toastT = setTimeout(()=>{ t.style.opacity='0'; }, 2800);
-}
-
-// ── Export ────────────────────────────────────────────────────
-function exportCSV() {
-  const filtered = getFiltered();
   const rows = [['Event ID','Type','Description','User','Location','Timestamp','Flag']];
   filtered.forEach(e => rows.push([e.id, typeLabel(e.type), e.desc, e.user, e.loc, e.ts, e.flag]));
   const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('
@@ -4519,7 +4418,22 @@ function triggerPrint() {
   const w = window.open('','_blank','width=800,height=900');
   w.document.write('<html><head><title>MedSync Report</title><style>body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}@media print{body{margin:0;}}</style></head><body>');
   w.document.write(doc.innerHTML);
-  w.document.write('</body></html>');
+  w.document.write('<script>
+// Initialize app after all scripts loaded
+(function init() {
+  showScreen('portfolio');
+  const user = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+  if (user.full_name) {
+    const av = document.getElementById('nav-avatar');
+    if (av) av.textContent = user.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  }
+  if (user.role) {
+    const rb = document.getElementById('nav-role-badge');
+    if (rb) rb.textContent = user.role === 'admin' ? 'Admin' : 'Manager';
+  }
+})();
+</script>
+</body></html>');
   w.document.close();
   w.focus();
   setTimeout(() => { w.print(); }, 400);
@@ -4823,6 +4737,21 @@ function initApp() {
 });
 
 
+</script>
+<script>
+// Initialize app after all scripts loaded
+(function init() {
+  showScreen('portfolio');
+  const user = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+  if (user.full_name) {
+    const av = document.getElementById('nav-avatar');
+    if (av) av.textContent = user.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  }
+  if (user.role) {
+    const rb = document.getElementById('nav-role-badge');
+    if (rb) rb.textContent = user.role === 'admin' ? 'Admin' : 'Manager';
+  }
+})();
 </script>
 </body>
 </html>
