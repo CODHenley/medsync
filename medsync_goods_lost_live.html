@@ -102,6 +102,77 @@ textarea{resize:vertical;min-height:72px;}
 
 /* Toast */
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+/* ── Mobile optimization ─────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Topbar — tighter on mobile */
+  .topbar { padding: 10px 16px; }
+  .tb-title { font-size: 14px; }
+  .tb-sub { font-size: 11px; }
+
+  /* Content area — less horizontal padding */
+  .content { padding: 16px 14px; gap: 12px; }
+
+  /* Step indicator — tighter */
+  .steps { gap: 0; }
+  .step { font-size: 10px; gap: 4px; }
+  .step-num { width: 18px; height: 18px; font-size: 9px; }
+  .step-line { margin: 0 4px; }
+
+  /* Cards */
+  .card { padding: 16px; gap: 12px; }
+  .card-title { font-size: 12px; }
+
+  /* Prevent iOS zoom on all inputs/selects */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Pill grid — pills wrap naturally, ensure touch-friendly */
+  .pill { padding: 8px 14px; font-size: 13px; min-height: 36px; display: flex; align-items: center; }
+
+  /* Sub-cards — larger tap target */
+  .sub-card { padding: 14px; }
+  .sub-card-title { font-size: 13px; }
+  .sub-card-desc { font-size: 12px; }
+
+  /* Qty row — comfortable spacing */
+  .qty-btn { width: 36px; height: 36px; font-size: 18px; }
+  .qty-val { font-size: 20px; }
+
+  /* Value row */
+  .value-row { padding: 10px 12px; }
+  .value-amt { font-size: 15px; }
+
+  /* Button row — stack vertically on mobile */
+  .btn-row { flex-direction: column; gap: 8px; }
+  .btn-row .btn-secondary { width: 100%; }
+  .btn-primary { padding: 14px; font-size: 14px; }
+  .btn-secondary { padding: 12px; font-size: 13px; }
+
+  /* History panel */
+  .history-head { padding: 10px 14px; }
+  .history-row { padding: 10px 14px; }
+  .hr-prod { font-size: 12px; }
+  .hr-meta { font-size: 10px; }
+  .hr-amt { font-size: 12px; }
+
+  /* Success screen */
+  .success { padding: 32px 16px; }
+  .success-icon { font-size: 42px; }
+  .success-title { font-size: 18px; }
+  .success-sub { font-size: 13px; }
+
+  /* Insight card */
+  .insight { padding: 12px; }
+  .insight-t { font-size: 12px; }
+
+  /* Toast — full width */
+  #toast {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    text-align: center;
+  }
+}
 </style>
 </head>
 <body>

@@ -80,6 +80,50 @@ select.loc-sel{padding:11px 14px;border:0.5px solid var(--border);border-radius:
 select.loc-sel:focus{border-color:var(--navy);}
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+/* ── Mobile optimization ─────────────────────────────────────── */
+@media (max-width: 480px) {
+  body { padding: 12px; }
+
+  .shell { gap: 12px; }
+
+  /* Larger tap targets for task buttons */
+  .task-btn { padding: 18px 14px; gap: 12px; }
+  .task-icon { width: 46px; height: 46px; font-size: 22px; }
+  .task-title { font-size: 14px; }
+  .task-sub { font-size: 12px; }
+
+  /* Prevent iOS zoom on inputs — must be 16px+ */
+  .name-input,
+  .loc-sel,
+  .scan-input { font-size: 16px !important; }
+
+  /* Stack scan row vertically on very small screens */
+  .scan-input-wrap { flex-direction: column; gap: 8px; }
+  .btn-scan { width: 100%; padding: 13px; font-size: 15px; }
+
+  /* Card padding tighter on mobile */
+  .card { padding: 16px; gap: 12px; }
+  .scan-body { padding: 14px; }
+  .scan-head { padding: 12px 16px; }
+
+  /* Primary/secondary buttons — comfortable thumb targets */
+  .btn-primary { padding: 15px; font-size: 15px; }
+  .btn-secondary { padding: 13px; font-size: 14px; }
+
+  /* Success card */
+  .success-card { padding: 24px 16px; }
+  .success-icon { font-size: 44px; }
+  .success-title { font-size: 18px; }
+
+  /* Toast — full width on mobile */
+  #toast {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    text-align: center;
+  }
+}
 </style>
 </head>
 <body>
