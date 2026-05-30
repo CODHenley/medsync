@@ -163,6 +163,27 @@ tr:last-child td{border-bottom:none;}
 /* TOAST */
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
 </style>
+
+<script>
+// Hide nav and internal sidebar when running inside an iframe
+if (window.self !== window.top) {
+  document.addEventListener('DOMContentLoaded', function() {
+    var nav = document.querySelector('nav');
+    if (nav) nav.style.display = 'none';
+    var outer = document.querySelector('.outer');
+    if (outer) {
+      outer.style.gridTemplateColumns = '1fr';
+      outer.style.minHeight = '100vh';
+    }
+    var sidebar = document.querySelector('.outer > .sidebar, .outer > aside');
+    if (sidebar) sidebar.style.display = 'none';
+    // Adjust height since nav is hidden
+    var mainArea = document.querySelector('.main-area, .right');
+    if (mainArea) mainArea.style.height = '100vh';
+  });
+}
+</script>
+
 </head>
 <body>
 
