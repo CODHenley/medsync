@@ -3273,12 +3273,10 @@ function signOut() {
 }
 
 // Wire sidebar nav items
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   // Show portfolio by default
   showScreen('portfolio');
   
-  // Check auth session
-  const sess = localStorage.getItem('medsync_session');
   const user = JSON.parse(localStorage.getItem('medsync_user') || '{}');
   if (user.full_name) {
     document.getElementById('nav-avatar').textContent = user.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -3286,7 +3284,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (user.role) {
     document.getElementById('nav-role-badge').textContent = user.role === 'admin' ? 'Admin' : 'Manager';
   }
-});
+}
+// Run immediately when script executes
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 
 // ── Supabase config ──────────────────────────────────────────
@@ -4803,7 +4807,7 @@ function buildSidebar(containerId, role, activeHref) {
 }
 
 // Build sidebars after DOM loads
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   buildSidebar('sb-admin-s1',  'admin',    '#screen1');
   buildSidebar('sb-admin-s2',  'admin',    '#screen2');
   buildSidebar('sb-admin-s3',  'admin',    '#screen3');
