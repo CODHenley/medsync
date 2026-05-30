@@ -40,6 +40,52 @@ function signOut() {
   localStorage.removeItem('medsync_user');
   window.location.href = 'medsync_login.html';
 }
+
+function dbNav(panel) {
+  showScreen('analytics');
+  var done = false;
+  function onConfirm(e) {
+    if (e.data && e.data.type === 'panelSwitched') {
+      done = true;
+      window.removeEventListener('message', onConfirm);
+    }
+  }
+  window.addEventListener('message', onConfirm);
+  var attempts = 0;
+  function tryPost() {
+    if (done) return;
+    attempts++;
+    var iframe = document.querySelector('#ms-analytics iframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, '*');
+    }
+    if (attempts < 15) setTimeout(tryPost, 200);
+  }
+  setTimeout(tryPost, 300);
+}
+
+function deepDiveLoc(locCode) {
+  showScreen('analytics');
+  var done = false;
+  function onConfirm(e) {
+    if (e.data && e.data.type === 'locationSet') {
+      done = true;
+      window.removeEventListener('message', onConfirm);
+    }
+  }
+  window.addEventListener('message', onConfirm);
+  var attempts = 0;
+  function tryPost() {
+    if (done) return;
+    attempts++;
+    var iframe = document.querySelector('#ms-analytics iframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, '*');
+    }
+    if (attempts < 15) setTimeout(tryPost, 200);
+  }
+  setTimeout(tryPost, 300);
+}
 </script>
 <style>
 
