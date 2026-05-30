@@ -290,6 +290,51 @@ function signOut() {
 #ms-receiver .section-desc,
 #ms-goods .section-desc { display: none !important; }
 
+
+/* Portfolio layout fix */
+#ms-portfolio .screen { width: 100% !important; }
+#ms-portfolio .section { 
+  max-width: 100% !important; 
+  padding: 24px 32px !important;
+}
+#ms-portfolio .db-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
+  margin-bottom: 20px !important;
+}
+#ms-portfolio .metric {
+  min-width: 0 !important;
+}
+#ms-portfolio .col-header,
+#ms-portfolio .loc-row {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.2fr 1.2fr !important;
+  gap: 8px !important;
+}
+#ms-portfolio [style*="min-width:700px"] {
+  min-width: 100% !important;
+  width: 100% !important;
+}
+#ms-portfolio .db-wrap {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+/* Fix KPI metric cards */
+#ms-portfolio .metric {
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+}
+#ms-portfolio .metric-value {
+  font-size: 28px !important;
+}
+/* Fix location row overflow */
+#ms-portfolio .loc-row span,
+#ms-portfolio .col-header span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 </style>
 </head>
 <body>
