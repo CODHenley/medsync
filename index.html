@@ -221,25 +221,74 @@ function signOut() {
 }
 
 
-/* Full-width dashboard mode for source screens */
-#ms-portfolio .section, #ms-order .section,
-#ms-receiving .section, #ms-receiver .section,
-#ms-goods .section {
-  max-width: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
+
+/* Centered max-width layout for operations screens */
+.ms-screen .section {
+  max-width: 860px !important;
+  margin: 0 auto !important;
+  padding: 32px 24px !important;
 }
-.mob-frame, .desk-frame { 
-  max-width: 100% !important; 
-  border-radius: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  margin: 0 !important;
-}
-.mob-nav, .mob-status { display: none !important; }
+/* Hide description text, section labels, screen numbers */
 .section-label { display: none !important; }
 .section-title { display: none !important; }
 .section-desc { display: none !important; }
+/* Remove mockup device frames — show inner content only */
+.mob-frame {
+  max-width: 100% !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 16px rgba(28,43,74,.10) !important;
+  overflow: hidden !important;
+  margin: 0 auto !important;
+}
+/* Hide phone chrome elements */
+.mob-status-bar, .mob-home-indicator { display: none !important; }
+/* Source screen background */
+#ms-portfolio, #ms-order, #ms-receiving, #ms-receiver, #ms-goods {
+  background: #F5F3FA;
+  min-height: calc(100vh - 48px);
+}
+/* Hide the inner nav bars inside source screen mocks */
+.mob-nav { display: none !important; }
+
+
+/* Remove mockup frame from source screens */
+#ms-portfolio .screen,
+#ms-order .screen,
+#ms-receiving .screen,
+#ms-receiver .screen,
+#ms-goods .screen {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+/* Remove inner nav bars (duplicate of main nav) */
+#ms-portfolio .vp-nav,
+#ms-order .vp-nav,
+#ms-receiving .vp-nav,
+#ms-receiver .vp-nav,
+#ms-goods .vp-nav { display: none !important; }
+/* Make content fill width with proper max-width */
+#ms-portfolio .section,
+#ms-order .section,
+#ms-receiving .section,
+#ms-receiver .section,
+#ms-goods .section {
+  max-width: 1100px !important;
+  margin: 0 auto !important;
+  padding: 20px 24px !important;
+}
+/* Fix location table to use full available width */
+#ms-portfolio [style*="min-width:700px"] {
+  min-width: 100% !important;
+}
+/* Remove the section description box */
+#ms-portfolio .section-desc,
+#ms-order .section-desc,
+#ms-receiving .section-desc,
+#ms-receiver .section-desc,
+#ms-goods .section-desc { display: none !important; }
 
 </style>
 </head>
@@ -252,7 +301,7 @@ function signOut() {
       <span style="font-size:15px;font-weight:300;color:#fff;letter-spacing:.5px;">Med<strong style="font-weight:600;color:#E8B84B;">Sync</strong></span>
     </div>
     <div style="display:flex;gap:2px;">
-      <button class="mnb" id="mnb-portfolio" onclick="showScreen('portfolio')">Portfolio</button>
+      <button class="mnb active" id="mnb-portfolio" onclick="showScreen('portfolio')">Portfolio</button>
       <button class="mnb" id="mnb-analytics" onclick="showScreen('analytics')">Analytics</button>
       <button class="mnb" id="mnb-lifecycle" onclick="showScreen('lifecycle')">Lot Lifecycle</button>
       <button class="mnb" id="mnb-actlog" onclick="showScreen('actlog')">Activity Log</button>
@@ -265,7 +314,7 @@ function signOut() {
   </div>
 </nav>
 
-<div id="ms-portfolio" class="ms-screen" style="background:var(--bg,#F5F3FA);"><div id="screen1">
+<div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;display:block;"><div id="screen1">
   <div class="screen">
 
     <!-- Nav bar -->
