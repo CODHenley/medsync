@@ -504,7 +504,7 @@ function signOut() {
 
     <!-- KPI tiles — 3+3 row layout, no truncation -->
     <div class="metric-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="metric" style="cursor:pointer;" onclick="showScreen('analytics');">
+      <div class="metric" style="cursor:pointer;" onclick="dbNav('cogs');">
         <p class="metric-label">Portfolio COGs</p>
         <p class="metric-value good">8.4%</p>
         <p class="metric-sub good">Target 8–10% · <span style="text-decoration:underline;">Deep dive →</span></p>
@@ -519,7 +519,7 @@ function signOut() {
         <p class="metric-value bad-t">4</p>
         <p class="metric-sub warn-t">Products at risk</p>
       </div>
-      <div class="metric" style="cursor:pointer;" onclick="showScreen('analytics');setTimeout(()=>dbNav('goods'),400);">
+      <div class="metric" style="cursor:pointer;" onclick="dbNav('gl');">
         <p class="metric-label">Goods lost</p>
         <p class="metric-value warn-t">$2,847</p>
         <p class="metric-sub warn-t">↑ $340 vs prior · <span style="text-decoration:underline;">Deep dive →</span></p>
@@ -529,7 +529,7 @@ function signOut() {
         <p class="metric-value" style="color:#1C2B4A;">1:00 PM</p>
         <p class="metric-sub warn-t">OO pending · 1h 58m left</p>
       </div>
-      <div class="metric" style="border-left:2px solid #c8902a;cursor:pointer;" onclick="showScreen('analytics');setTimeout(()=>dbNav('whitegood'),400);">
+      <div class="metric" style="border-left:2px solid #c8902a;cursor:pointer;" onclick="dbNav('wg');">
         <p class="metric-label" style="color:#a0700a;">White goods flags</p>
         <p class="metric-value warn-t">2</p>
         <p class="metric-sub warn-t">OO +38% · WL +21% · <span style="text-decoration:underline;">Deep dive →</span></p>
@@ -608,7 +608,7 @@ function signOut() {
         <p style="font-size:12px;font-weight:500;color:#7a5800;margin-bottom:3px;">White goods ordering divergence — 2 locations · est. ~$133/mo combined overspend</p>
         <p style="font-size:11px;color:#a0700a;line-height:1.6;"><strong>Old Orchard:</strong> Gauze 4×4 ordered 38% above expected rate vs. appointment volume (last 30d). <strong>West Loop:</strong> 3cc syringes ordered 21% above expected rate vs. appointment volume (last 30d).</p>
       </div>
-      <button onclick="showScreen('analytics');setTimeout(()=>dbNav('whitegood'),400);" style="background:none;border:0.5px solid #f0d070;border-radius:7px;padding:5px 12px;font-size:11px;color:#a0700a;cursor:pointer;white-space:nowrap;flex-shrink:0;">Review →</button>
+      <button onclick="dbNav('wg');" style="background:none;border:0.5px solid #f0d070;border-radius:7px;padding:5px 12px;font-size:11px;color:#a0700a;cursor:pointer;white-space:nowrap;flex-shrink:0;">Review →</button>
     </div>
 
     <!-- Ranked insight engine — top 3 -->
@@ -658,7 +658,7 @@ function signOut() {
       </div>
 
       <div style="display:flex;justify-content:flex-end;margin-top:2px;">
-        <button onclick="showScreen('analytics');" style="background:none;border:none;color:#1C2B4A;font-size:11px;cursor:pointer;text-decoration:underline;padding:0;"><span onclick="showScreen('analytics')" style="cursor:pointer;">View all insights in analytics dashboard →</span></button>
+        <button onclick="dbNav('ov');" style="background:none;border:none;color:#1C2B4A;font-size:11px;cursor:pointer;text-decoration:underline;padding:0;">View all insights in analytics dashboard →</span></button>
       </div>
     </div>
 

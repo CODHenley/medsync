@@ -850,46 +850,37 @@ function refresh() { loadData(); }
 loadData();
 </script>
 
+
+
 <script>
-// Listen for messages from parent app
 window.addEventListener('message', function(e) {
   if (!e.data) return;
-  
   if (e.data.type === 'switchPanel') {
-    var panelMap = {
-      'cogs': 'cogs', 'goods': 'gl',
-      'procurement': 'proc', 'compliance': 'comp',
-      'whitegood': 'wg', 'overview': 'ov'
-    };
-    var mapped = panelMap[e.data.panel] || e.data.panel;
-    // Find the tab and click it
+    var mapped = e.data.panel;
+    // Direct mapping to panel IDs
+    var map = { 'cogs':'cogs','goods':'gl','gl':'gl','procurement':'proc',
+                'proc':'proc','compliance':'comp','comp':'comp',
+                'whitegood':'wg','wg':'wg','overview':'ov','ov':'ov' };
+    var pid = map[mapped] || mapped;
+    // Find the matching tab and click it
     var tabs = document.querySelectorAll('.ptab');
-    tabs.forEach(function(tab) {
-      if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes("'" + mapped + "'")) {
-        tab.click();
+    for (var i=0; i<tabs.length; i++) {
+      var oc = tabs[i].getAttribute('onclick') || '';
+      if (oc.indexOf("'"+pid+"'") > -1) {
+        tabs[i].click();
+        break;
       }
-    });
-    // Also call sp() directly as backup
-    if (typeof sp === 'function') {
-      var tabEl = document.querySelector('.ptab[onclick*="' + mapped + '"]');
-      if (tabEl) sp(mapped, tabEl);
     }
-    window.scrollTo(0, 0);
-    // Confirm receipt to stop retries
-    if (e.source) e.source.postMessage({ type: 'panelSwitched', panel: mapped }, '*');
+    window.scrollTo(0,0);
+    if (e.source) e.source.postMessage({type:'panelSwitched'}, '*');
   }
-  
   if (e.data.type === 'setLocation') {
-    var locSel = document.getElementById('loc');
-    if (locSel) {
-      locSel.value = e.data.loc;
-      if (typeof refresh === 'function') refresh();
-    }
-    window.scrollTo(0, 0);
-    if (e.source) e.source.postMessage({ type: 'locationSet' }, '*');
+    var sel = document.getElementById('loc');
+    if (sel) { sel.value = e.data.loc; if(typeof refresh==='function') refresh(); }
+    window.scrollTo(0,0);
+    if (e.source) e.source.postMessage({type:'locationSet'}, '*');
   }
 });
 </script>
-
 </body>
 </html>
