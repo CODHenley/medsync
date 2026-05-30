@@ -656,7 +656,7 @@ function filterTable() {
     </tr>`;
   }).join('') || '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">No lots match your filters.</td></tr>';
 
-  (document.getElementByIddocument.getElementById('table-count').textContent =.split("')[0] || document.createElement("div")).textContent =
+  document.getElementById('table-count').textContent =
     `Showing ${filtered.length} of ${ALL_LOTS.length} lots`;
 }
 
