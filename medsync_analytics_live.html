@@ -162,6 +162,109 @@ tr:hover td{background:#FAFAF8;}
 
 /* TOAST */
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s;z-index:999;}
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Hide internal nav */
+  .nav { display: none !important; }
+
+  /* Collapse outer sidebar */
+  .outer {
+    grid-template-columns: 1fr !important;
+    min-height: 100vh !important;
+  }
+  .sidebar { display: none !important; }
+
+  /* Right content area */
+  .right {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Topbar */
+  .topbar {
+    flex-wrap: wrap !important;
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+  .tb-left { flex-wrap: wrap !important; gap: 6px !important; }
+  .tb-right {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  /* Export buttons scrollable row */
+  .tb-right button, .tb-right .exp-btn {
+    flex-shrink: 0 !important;
+    font-size: 12px !important;
+  }
+
+  /* Body split — stack vertically (main chart above, panel list below) */
+  .body-split {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Main col — full width, no fixed height */
+  .main-col {
+    overflow-y: visible !important;
+    padding: 14px !important;
+    height: auto !important;
+  }
+
+  /* KPI row — 2 cols */
+  .kpi-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Side panel — full width below charts */
+  .side-col {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 0.5px solid var(--border) !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Panel tabs — horizontal scroll */
+  .panel-tabs {
+    flex-direction: row !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-bottom: 0.5px solid var(--border) !important;
+    border-right: none !important;
+  }
+  .panel-tab {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    border-left: none !important;
+    border-bottom: 2px solid transparent !important;
+    padding: 10px 14px !important;
+  }
+  .panel-tab.active {
+    border-bottom-color: var(--navy) !important;
+    border-left-color: transparent !important;
+  }
+
+  /* Panel content */
+  .pcontent { padding: 14px !important; }
+
+  /* Revenue grid — 2 cols */
+  .rev-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Bar chart location label width */
+  .br-loc { width: 70px !important; font-size: 10px !important; }
+
+  /* Toast */
+  #toast { left: 14px !important; right: 14px !important; bottom: 14px !important; text-align: center !important; }
+}
 </style>
 
 <script>

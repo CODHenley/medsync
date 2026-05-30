@@ -162,6 +162,67 @@ tr:last-child td{border-bottom:none;}
 
 /* TOAST */
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Hide the internal nav — parent app nav handles it */
+  .nav { display: none !important; }
+
+  /* Collapse sidebar — full width layout */
+  .outer {
+    grid-template-columns: 1fr !important;
+    min-height: 100vh !important;
+  }
+  .sidebar { display: none !important; }
+
+  /* Main area fills screen */
+  .main-area {
+    height: 100vh !important;
+  }
+
+  /* Topbar — stack and scroll */
+  .topbar {
+    flex-wrap: wrap !important;
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+  .tb-left { flex-wrap: wrap !important; gap: 6px !important; }
+  .tb-right { flex-wrap: wrap !important; gap: 6px !important; }
+
+  /* Search input full width */
+  .search-wrap { width: 100% !important; }
+  .search-wrap input { width: 100% !important; font-size: 16px !important; }
+
+  /* Role toggle and export btn */
+  .role-toggle { width: 100% !important; }
+  .role-toggle button { flex: 1 !important; }
+
+  /* Summary row — 2 cols */
+  .summary-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Content padding */
+  .content { padding: 12px 14px !important; }
+
+  /* Table — horizontal scroll */
+  .tbl-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+
+  /* Type tabs — scroll horizontally */
+  .type-tabs { overflow-x: auto !important; flex-wrap: nowrap !important; }
+
+  /* Modal — full width on mobile */
+  .modal {
+    width: calc(100vw - 24px) !important;
+    max-height: 90vh !important;
+    margin: 0 12px !important;
+  }
+  .detail-grid { grid-template-columns: 1fr !important; }
+
+  /* Toast */
+  #toast { left: 14px !important; right: 14px !important; bottom: 14px !important; text-align: center !important; }
+}
 </style>
 
 <script>
