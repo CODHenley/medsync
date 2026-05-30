@@ -572,11 +572,11 @@ function updateKPIs() {
   const expired     = ALL_LOTS.filter(l => l.status === 'Expired').length;
   const cs          = ALL_LOTS.filter(l => l.cs).length;
 
-  (document.getElementByIddocument.getElementById('kpi-active').textContent  =.split("')[0] || document.createElement("div")).textContent = active;
-  (document.getElementByIddocument.getElementById('kpi-soon30').textContent  =.split("')[0] || document.createElement("div")).textContent = soon30;
-  (document.getElementByIddocument.getElementById('kpi-soon60').textContent  =.split("')[0] || document.createElement("div")).textContent = soon60;
-  (document.getElementByIddocument.getElementById('kpi-expired').textContent =.split("')[0] || document.createElement("div")).textContent = expired;
-  (document.getElementByIddocument.getElementById('kpi-cs').textContent      =.split("')[0] || document.createElement("div")).textContent = cs;
+    document.getElementById('kpi-active').textContent  = active;
+    document.getElementById('kpi-soon30').textContent  = soon30;
+    document.getElementById('kpi-soon60').textContent  = soon60;
+    document.getElementById('kpi-expired').textContent = expired;
+    document.getElementById('kpi-cs').textContent      = cs;
 }
 
 // ── Priority alert strip ─────────────────────────────────────

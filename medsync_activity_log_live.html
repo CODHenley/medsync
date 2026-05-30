@@ -626,8 +626,7 @@ function exportCSV() {
   const filtered = getFiltered();
   const rows = [['Event ID','Type','Description','User','Location','Timestamp','Flag']];
   filtered.forEach(e => rows.push([e.id, typeLabel(e.type), e.desc, e.user, e.loc, e.ts, e.flag]));
-  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('
-');
+  const csv = rows.map(r => r.map(c => '"' + c + '"').join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'medsync_activity_log.csv';
