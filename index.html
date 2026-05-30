@@ -205,6 +205,21 @@ function signOut() {
 .mnb:hover:not(.active){color:rgba(255,255,255,.8);}
 .section{display:block!important;padding:32px 20px;max-width:900px;margin:0 auto;}
 #ms-toast{position:fixed;bottom:20px;right:20px;background:#1C2B4A;color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+#ms-analytics .outer, #ms-lifecycle .outer, #ms-actlog .outer {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: calc(100vh - 48px);
+}
+#ms-analytics .outer .main-area,
+#ms-lifecycle .outer .main-area,  
+#ms-actlog .outer .main-area {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
 </style>
 </head>
 <body>
@@ -230,7 +245,6 @@ function signOut() {
 </nav>
 
 <div id="ms-portfolio" class="ms-screen"><div id="screen1" class="section">
-  <p class="section-label">Screen 2 of 13</p>
   <h2 class="section-title">Portfolio dashboard<br><strong>Admin view — all locations at once</strong></h2>
   <p class="section-desc">The Admin opens MedSync and sees every Scout location simultaneously — COGs, Min alerts, expiring products, goods lost, cycle count completion, order compliance, and white goods flags. Old Orchard's order is pending with under two hours until the 1pm Vetcove cutoff. Two locations show white goods divergence. Three ranked insights are surfaced automatically with dollar impact. Every tile links directly to the relevant analytics deep dive.</p>
 
@@ -258,7 +272,7 @@ function signOut() {
         <span class="vp-nav-sub">Portfolio dashboard — all locations</span>
       </div>
       <div class="vp-nav-r">
-        <a href="#screen10" style="font-size:11px;color:rgba(255,255,255,0.65);text-decoration:none;display:flex;align-items:center;gap:4px;"><i class="ti ti-list-details" style="font-size:13px;" aria-hidden="true"></i>Activity log</a>
+        <a href='#' onclick="showScreen('portfolio'); return false;" style="font-size:11px;color:rgba(255,255,255,0.65);text-decoration:none;display:flex;align-items:center;gap:4px;"><i class="ti ti-list-details" style="font-size:13px;" aria-hidden="true"></i>Activity log</a>
         <i class="ti ti-bell" style="color:rgba(255,255,255,0.7);font-size:18px" aria-hidden="true"></i>
         <div class="vp-avatar">MH</div>
       </div>
@@ -267,7 +281,7 @@ function signOut() {
 
     <!-- KPI tiles — 3+3 row layout, no truncation -->
     <div class="metric-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="metric" style="cursor:pointer;" onclick="document.getElementById('screen2').scrollIntoView({behavior:'smooth'});setTimeout(()=>dbNav('cogs'),400);">
+      <div class="metric" style="cursor:pointer;" onclick="showScreen('analytics');setTimeout(()=>dbNav('cogs'),400);">
         <p class="metric-label">Portfolio COGs</p>
         <p class="metric-value good">8.4%</p>
         <p class="metric-sub good">Target 8–10% · <span style="text-decoration:underline;">Deep dive →</span></p>
@@ -282,7 +296,7 @@ function signOut() {
         <p class="metric-value bad-t">4</p>
         <p class="metric-sub warn-t">Products at risk</p>
       </div>
-      <div class="metric" style="cursor:pointer;" onclick="document.getElementById('screen2').scrollIntoView({behavior:'smooth'});setTimeout(()=>dbNav('goods'),400);">
+      <div class="metric" style="cursor:pointer;" onclick="showScreen('analytics');setTimeout(()=>dbNav('goods'),400);">
         <p class="metric-label">Goods lost</p>
         <p class="metric-value warn-t">$2,847</p>
         <p class="metric-sub warn-t">↑ $340 vs prior · <span style="text-decoration:underline;">Deep dive →</span></p>
@@ -292,7 +306,7 @@ function signOut() {
         <p class="metric-value" style="color:#1C2B4A;">1:00 PM</p>
         <p class="metric-sub warn-t">OO pending · 1h 58m left</p>
       </div>
-      <div class="metric" style="border-left:2px solid #c8902a;cursor:pointer;" onclick="document.getElementById('screen2').scrollIntoView({behavior:'smooth'});setTimeout(()=>dbNav('whitegood'),400);">
+      <div class="metric" style="border-left:2px solid #c8902a;cursor:pointer;" onclick="showScreen('analytics');setTimeout(()=>dbNav('whitegood'),400);">
         <p class="metric-label" style="color:#a0700a;">White goods flags</p>
         <p class="metric-value warn-t">2</p>
         <p class="metric-sub warn-t">OO +38% · WL +21% · <span style="text-decoration:underline;">Deep dive →</span></p>
@@ -371,7 +385,7 @@ function signOut() {
         <p style="font-size:12px;font-weight:500;color:#7a5800;margin-bottom:3px;">White goods ordering divergence — 2 locations · est. ~$133/mo combined overspend</p>
         <p style="font-size:11px;color:#a0700a;line-height:1.6;"><strong>Old Orchard:</strong> Gauze 4×4 ordered 38% above expected rate vs. appointment volume (last 30d). <strong>West Loop:</strong> 3cc syringes ordered 21% above expected rate vs. appointment volume (last 30d).</p>
       </div>
-      <button onclick="document.getElementById('screen2').scrollIntoView({behavior:'smooth'});setTimeout(()=>dbNav('whitegood'),400);" style="background:none;border:0.5px solid #f0d070;border-radius:7px;padding:5px 12px;font-size:11px;color:#a0700a;cursor:pointer;white-space:nowrap;flex-shrink:0;">Review →</button>
+      <button onclick="showScreen('analytics');setTimeout(()=>dbNav('whitegood'),400);" style="background:none;border:0.5px solid #f0d070;border-radius:7px;padding:5px 12px;font-size:11px;color:#a0700a;cursor:pointer;white-space:nowrap;flex-shrink:0;">Review →</button>
     </div>
 
     <!-- Ranked insight engine — top 3 -->
@@ -421,7 +435,7 @@ function signOut() {
       </div>
 
       <div style="display:flex;justify-content:flex-end;margin-top:2px;">
-        <button onclick="document.getElementById('screen2').scrollIntoView({behavior:'smooth'});" style="background:none;border:none;color:#1C2B4A;font-size:11px;cursor:pointer;text-decoration:underline;padding:0;">View all insights in analytics dashboard →</button>
+        <button onclick="showScreen('analytics');" style="background:none;border:none;color:#1C2B4A;font-size:11px;cursor:pointer;text-decoration:underline;padding:0;">View all insights in analytics dashboard →</button>
       </div>
     </div>
 
@@ -441,15 +455,15 @@ function signOut() {
       <div class="sb-role-loc">Megan Henley · Scout</div>
     </div>
     <div class="sb-group">Admin Dashboard</div>
-    <div class="sb-item">⬛ Portfolio</div>
-    <div class="sb-item active">📊 MedSync Analytics</div>
-    <div class="sb-item">🔬 Lot Lifecycle</div>
-    <div class="sb-item">📋 Activity Log</div>
+    <div class="sb-item" onclick="showScreen(\'portfolio\')" style="cursor:pointer;">⬛ Portfolio</div>
+    <div class="sb-item" onclick="showScreen(\'analytics\')" style="cursor:pointer;">📊 MedSync Analytics</div>
+    <div class="sb-item" onclick="showScreen(\'lifecycle\')" style="cursor:pointer;">🔬 Lot Lifecycle</div>
+    <div class="sb-item" onclick="showScreen(\'actlog\')" style="cursor:pointer;">📋 Activity Log</div>
     <hr class="sb-div">
     <div class="sb-group">Operations</div>
-    <div class="sb-item">🛒 Weekly Order</div>
-    <div class="sb-item">📦 Receiving</div>
-    <div class="sb-item">⚠️ Goods Lost</div>
+    <div class="sb-item" onclick="showScreen(\'order\')" style="cursor:pointer;">🛒 Weekly Order</div>
+    <div class="sb-item" onclick="showScreen(\'receiving\')" style="cursor:pointer;">📦 Receiving</div>
+    <div class="sb-item" onclick="showScreen(\'goods\')" style="cursor:pointer;">⚠️ Goods Lost</div>
     <hr class="sb-div">
     <div class="sb-group">Settings</div>
     <div class="sb-item">⚙️ Admin Settings</div>
@@ -1038,15 +1052,15 @@ function signOut() {
       <div class="sb-role-loc" id="sb-role-loc">Megan Henley · Scout</div>
     </div>
     <div class="sb-group">Admin Dashboard</div>
-    <div class="sb-item">▪ Portfolio</div>
-    <div class="sb-item">📊 MedSync Analytics</div>
-    <div class="sb-item">🔬 Lot Lifecycle</div>
-    <div class="sb-item active">📋 Activity Log</div>
+    <div class="sb-item" onclick="showScreen(\'portfolio\')" style="cursor:pointer;">▪ Portfolio</div>
+    <div class="sb-item" onclick="showScreen(\'analytics\')" style="cursor:pointer;">📊 MedSync Analytics</div>
+    <div class="sb-item" onclick="showScreen(\'lifecycle\')" style="cursor:pointer;">🔬 Lot Lifecycle</div>
+    <div class="sb-item" onclick="showScreen(\'actlog\')" style="cursor:pointer;">📋 Activity Log</div>
     <hr class="sb-div">
     <div class="sb-group">Operations</div>
-    <div class="sb-item">🛒 Weekly Order</div>
-    <div class="sb-item">📦 Receiving</div>
-    <div class="sb-item">⚠️ Goods Lost</div>
+    <div class="sb-item" onclick="showScreen(\'order\')" style="cursor:pointer;">🛒 Weekly Order</div>
+    <div class="sb-item" onclick="showScreen(\'receiving\')" style="cursor:pointer;">📦 Receiving</div>
+    <div class="sb-item" onclick="showScreen(\'goods\')" style="cursor:pointer;">⚠️ Goods Lost</div>
     <hr class="sb-div">
     <div class="sb-group">Settings</div>
     <div class="sb-item">⚙️ Admin Settings</div>
@@ -1202,7 +1216,6 @@ function signOut() {
 
 <div id="toast"></div></div></div>
 <div id="ms-order" class="ms-screen"><div id="screen5" class="section">
-  <p class="section-label">Screen 7 of 13</p>
   <h2 class="section-title">Weekly order screen<br><strong>IL view — Old Orchard</strong></h2>
   <p class="section-desc">The 1pm Vetcove deadline is front and center. Every product below Min is pre-populated with the recommended SKU, best price after GPO discount, and on-hand count. Carprofen is held — the lot on shelf expires in 14 days and covers current need. Two items, $184.56, one button. For denovo practices, the weekly order screen is only as good as the formulary behind it. MedSync supports three formulary intake methods: direct upload via CSV or Excel (product names, NDC numbers, and SKUs mapped automatically to Vetcove and GPO pricing), PIMS integration pull (Vetspire product list imported directly — no spreadsheet needed), or the MedSync benchmark default (a curated starter formulary loaded based on practice type, provider count, patient volume, geographic market, and exam room count). Once the formulary is established, the weekly order screen works identically for a denovo practice and an established one.</p>
 
@@ -1275,7 +1288,6 @@ function signOut() {
 
 <!-- SCREEN 8: RECEIVING SCAN --></div>
 <div id="ms-receiving" class="ms-screen"><div id="screen6" class="section">
-  <p class="section-label">Screen 8 of 13</p>
   <h2 class="section-title">Receiving scan<br><strong>IL view · scan-to-PO matching · Lincoln Park</strong></h2>
   <p class="section-desc">A delivery arrives from MWI. The IL pairs the ScanAvenger Wireless Bluetooth Scanner to their phone and scans each product as it comes out of the box. The GS1 barcode scan matches against the open PO automatically — confirming lot numbers, expiration dates, and quantities in one pass. A discrepancy flag fires immediately when the wrong product is scanned, before it reaches the shelf. The PO stays open for partial deliveries until all line items are confirmed.</p>
 
@@ -1416,7 +1428,6 @@ function signOut() {
 
 <!-- SCREEN 8B: HOSPITAL RECEIVER --></div>
 <div id="ms-receiver" class="ms-screen"><div id="screen6b" class="section">
-  <p class="section-label">Screen 8B of 13</p>
   <h2 class="section-title">Hospital receiver<br><strong>Shared device · task selection · Lincoln Park</strong></h2>
   <p class="section-desc">Any staff member can use the shared hospital device without inventory training. They see one question: what would you like to do today? Two options. They choose, enter their name, and go directly to that workflow. If they're receiving a delivery and something arrives damaged, they tap that item and mark it damaged — inline, without leaving the scan screen. For standalone goods lost, all six loss categories are available. Everything else happens automatically. The IL and Admin get a full notification email when the session closes.</p>
 
@@ -1632,7 +1643,6 @@ function signOut() {
 
 <!-- SCREEN 9: VETSPIRE WRITE-BACK --></div>
 <div id="ms-goods" class="ms-screen"><div id="screen8" class="section">
-  <p class="section-label">Screen 10 of 13</p>
   <h2 class="section-title">Goods lost form<br><strong>Mobile · clinical team · Lincoln Park</strong></h2>
   <p class="section-desc">Submitted in under 30 seconds. Product scanned or selected, loss type tapped, quantity entered. When Diagnostic Duplicate is selected, a sub-category screen appears before proceeding — four structured options that route automatically to the insight engine without any free-text interpretation. On-hand updates the moment the form submits.</p>
 
