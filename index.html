@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync Analytics — Scout Veterinary</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1C2B4A;--navy-mid:#243459;
+  --gold:#C8922A;--gold-light:#E8B84B;--gold-pale:#FDF8EE;
+  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --bg:#F5F3FA;--surface:#fff;
+  --green:#0F6E56;--green-bg:#E1F5EE;--green-mid:#9FE1CB;
+  --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
+  --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
+  --purple:#534AB7;--purple-bg:#EEEDFE;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;line-height:1.5;min-height:100vh;}
+
+/* NAV */
+.nav{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;position:sticky;top:0;z-index:50;}
+.logo{display:flex;align-items:center;gap:8px;}
+.logo-mark{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#F5EDD8 50%,var(--gold) 50%);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--navy);}
+.logo-text{font-size:15px;font-weight:300;color:#fff;letter-spacing:.5px;}
+.logo-text strong{font-weight:600;color:var(--gold-light);}
+.nav-links{display:flex;gap:2px;margin-left:16px;}
+.nav-link{padding:6px 12px;border-radius:6px;font-size:12px;color:rgba(255,255,255,.55);cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;}
+.nav-link.active{color:#fff;background:rgba(255,255,255,.12);font-weight:500;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-badge{font-size:10px;padding:3px 10px;border-radius:20px;background:rgba(200,146,42,.25);color:var(--gold-light);font-weight:500;}
+.avatar{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;}
+
+/* LAYOUT */
+.outer{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 48px);}
+.sidebar{background:#F0EEF8;border-right:0.5px solid var(--border);}
+.sb-role{padding:10px 14px 8px;border-bottom:0.5px solid #E4E0F0;margin-bottom:4px;}
+.sb-role-name{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;}
+.sb-role-loc{font-size:10px;color:var(--slate);margin-top:1px;}
+.sb-group{padding:10px 14px 4px;font-size:9px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.1em;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:12px;color:var(--slate);cursor:pointer;border-left:2px solid transparent;transition:all .1s;}
+.sb-item.active{background:#EEE8F5;color:var(--navy);font-weight:600;border-left-color:var(--gold);}
+.sb-item:hover{background:#E8E4F5;color:var(--navy);}
+.sb-div{border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;}
+
+/* RIGHT SIDE */
+.right{display:flex;flex-direction:column;height:calc(100vh - 48px);overflow:hidden;}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.tb-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tb-title{font-size:15px;font-weight:500;}
+select{padding:6px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);cursor:pointer;outline:none;}
+select:focus{border-color:var(--navy);}
+.tb-right{display:flex;gap:6px;flex-shrink:0;}
+.btn{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .12s;}
+.btn:hover{background:#F0EEF8;}
+
+/* BODY SPLIT */
+.body-split{display:grid;grid-template-columns:1fr 272px;flex:1;min-height:0;overflow:hidden;}
+
+/* MAIN COLUMN */
+.main-col{overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:13px 15px;}
+.kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+.kpi-v{font-size:22px;font-weight:500;line-height:1;}
+.kpi-s{font-size:11px;margin-top:4px;}
+.cg{color:var(--green);} .ca{color:var(--amber);} .cr{color:var(--red);} .cm{color:var(--mist);}
+
+/* CARDS */
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.card-title{font-size:12px;font-weight:600;color:var(--navy);}
+.card-sub{font-size:11px;color:var(--mist);}
+
+/* BAR CHART */
+.bar-chart{display:flex;flex-direction:column;gap:8px;}
+.br{display:flex;align-items:center;gap:10px;}
+.br-loc{font-size:11px;font-weight:500;width:80px;flex-shrink:0;}
+.br-track{flex:1;height:20px;background:#F0EEF8;border-radius:4px;overflow:hidden;}
+.br-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:10px;font-weight:600;color:#fff;}
+.br-val{font-size:11px;font-weight:500;width:36px;text-align:right;flex-shrink:0;}
+
+/* REVENUE GRID */
+.rev-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;margin-top:12px;}
+.rv{background:var(--surface);padding:8px 10px;text-align:center;}
+.rv-l{font-size:10px;color:var(--mist);}
+.rv-v{font-size:13px;font-weight:500;margin-top:1px;}
+
+/* GOODS LOST BARS */
+.gl-rows{display:flex;flex-direction:column;gap:7px;}
+.gl-r{display:flex;align-items:center;gap:8px;}
+.gl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.gl-name{font-size:12px;flex:1;}
+.gl-bar{flex:1;height:5px;background:#F0EEF8;border-radius:3px;overflow:hidden;max-width:120px;}
+.gl-bfill{height:100%;border-radius:3px;}
+.gl-amt{font-size:12px;font-weight:500;color:var(--red);width:44px;text-align:right;}
+.gl-pct{font-size:10px;color:var(--mist);width:28px;text-align:right;}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--border);font-weight:500;}
+td{padding:9px 8px;border-bottom:0.5px solid #F5F3FA;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FAFAF8;}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;}
+.b-ok{background:var(--green-bg);color:var(--green);}
+.b-warn{background:var(--amber-bg);color:var(--amber);}
+
+/* SIDEBAR PANEL */
+.side-col{background:#F8F7FC;border-left:0.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.panel-tabs{display:flex;flex-direction:column;background:var(--surface);border-bottom:0.5px solid var(--border);overflow-y:auto;max-height:220px;}
+.ptab{padding:9px 13px;font-size:11px;font-weight:500;color:var(--mist);cursor:pointer;border-left:3px solid transparent;border-bottom:0.5px solid #F5F3FA;transition:all .1s;white-space:nowrap;}
+.ptab:last-child{border-bottom:none;}
+.ptab.active{color:var(--navy);border-left-color:var(--gold);background:#F0EEF8;}
+.ptab:hover:not(.active){background:#F5F3FA;color:var(--slate);}
+
+.pcontent{flex:1;overflow-y:auto;padding:14px 14px;display:flex;flex-direction:column;gap:10px;}
+.pc-title{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;}
+.pc-sub{font-size:10px;color:var(--mist);margin-top:1px;}
+
+.mrow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid #F0EEF8;font-size:11px;}
+.mrow:last-child{border-bottom:none;}
+.mk{color:var(--slate);}
+.mv{font-weight:500;color:var(--navy);}
+
+/* TREND BARS */
+.trend{display:flex;align-items:flex-end;gap:3px;height:38px;margin:4px 0 2px;}
+.tb{flex:1;border-radius:2px 2px 0 0;min-width:5px;}
+.tlabels{display:flex;gap:3px;}
+.tl{flex:1;font-size:9px;color:var(--mist);text-align:center;}
+
+/* INSIGHT CARD */
+.ins{background:var(--navy);border-radius:8px;padding:10px 12px;}
+.ins-l{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.ins-t{font-size:11px;color:rgba(255,255,255,.85);line-height:1.6;}
+.ins-t strong{color:#fff;}
+
+/* COMPLIANCE BARS */
+.oc-r{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #F0EEF8;font-size:11px;}
+.oc-r:last-child{border-bottom:none;}
+.oc-loc{flex:1;font-weight:500;}
+.oc-bar{width:48px;height:4px;background:#E4E0F0;border-radius:2px;overflow:hidden;}
+.oc-fill{height:100%;border-radius:2px;}
+
+/* WHITE GOODS */
+.wg-h{display:grid;grid-template-columns:1fr 38px 38px 40px;gap:4px;font-size:9px;color:var(--mist);font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:5px 0;border-bottom:0.5px solid var(--border);}
+.wg-r{display:grid;grid-template-columns:1fr 38px 38px 40px;gap:4px;padding:7px 0;border-bottom:0.5px solid #F0EEF8;font-size:11px;align-items:center;}
+.wg-r:last-child{border-bottom:none;}
+.wg-flag{font-size:10px;font-weight:600;padding:2px 5px;border-radius:20px;}
+.wg-over{background:var(--amber-bg);color:var(--amber);}
+.wg-ok{background:var(--green-bg);color:var(--green);}
+
+/* EXPORT GRID */
+.exp-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px;}
+.exp-btn{padding:8px;border:0.5px solid var(--border);border-radius:7px;background:var(--surface);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy);text-align:center;transition:all .12s;}
+.exp-btn:hover{background:#F0EEF8;}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s;z-index:999;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div style="display:flex;align-items:center;">
+    <div class="logo">
+      <div class="logo-mark">M</div>
+      <div class="logo-text">Med<strong>Sync</strong></div>
+    </div>
+    <div class="nav-links">
+      <button class="nav-link">Portfolio</button>
+      <button class="nav-link active">Analytics</button>
+      <button class="nav-link">Lot Lifecycle</button>
+      <button class="nav-link">Activity Log</button>
+    </div>
+  </div>
+  <div class="nav-right">
+    <span class="nav-badge">Admin</span>
+    <div class="avatar">MH</div>
+  </div>
+</nav>
+
+<div class="outer">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-role">
+      <div class="sb-role-name">Admin</div>
+      <div class="sb-role-loc">Megan Henley · Scout</div>
+    </div>
+    <div class="sb-group">Admin Dashboard</div>
+    <div class="sb-item">⬛ Portfolio</div>
+    <div class="sb-item active">📊 MedSync Analytics</div>
+    <div class="sb-item">🔬 Lot Lifecycle</div>
+    <div class="sb-item">📋 Activity Log</div>
+    <hr class="sb-div">
+    <div class="sb-group">Operations</div>
+    <div class="sb-item">🛒 Weekly Order</div>
+    <div class="sb-item">📦 Receiving</div>
+    <div class="sb-item">⚠️ Goods Lost</div>
+    <hr class="sb-div">
+    <div class="sb-group">Settings</div>
+    <div class="sb-item">⚙️ Admin Settings</div>
+  </aside>
+
+  <div class="right">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="tb-left">
+        <div class="tb-title">MedSync Analytics</div>
+        <select id="dr" onchange="refresh()">
+          <option value="mtd">Month to date</option>
+          <option value="wtd">Week to date</option>
+          <option value="prev">Previous week</option>
+          <option value="t7">Trailing 7 days</option>
+          <option value="t30">Trailing 30 days</option>
+          <option value="t90">Trailing 90 days</option>
+          <option value="tq">This quarter</option>
+          <option value="lq">Last quarter</option>
+          <option value="ytd">Year to date</option>
+          <option value="py">Previous year</option>
+          <option value="today">Today</option>
+        </select>
+        <select id="loc" onchange="refresh()">
+          <option value="all">All locations</option>
+          <option value="lp">Lincoln Park</option>
+          <option value="oo">Old Orchard</option>
+          <option value="wl">West Loop</option>
+          <option value="wh">Wheaton</option>
+        </select>
+      </div>
+      <div class="tb-right">
+        <button class="btn" onclick="exp('CSV')">↓ CSV</button>
+        <button class="btn" onclick="exp('PDF')">↓ PDF</button>
+        <button class="btn" onclick="exp('QuickBooks')">QuickBooks</button>
+        <button class="btn" onclick="exp('Power BI')">Power BI</button>
+      </div>
+    </div>
+
+    <div class="body-split">
+
+      <!-- MAIN COLUMN -->
+      <div class="main-col">
+
+        <!-- KPIs -->
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-l">Portfolio COGs</div>
+            <div class="kpi-v cg" id="k-cogs">8.4%</div>
+            <div class="kpi-s cg">↓ 0.3% vs prior month</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-l">Procurement savings</div>
+            <div class="kpi-v cg" id="k-sav">$18,420</div>
+            <div class="kpi-s cm" id="k-sav-s">YTD · pace $44K/yr</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-l">Goods lost</div>
+            <div class="kpi-v ca" id="k-gl">$2,847</div>
+            <div class="kpi-s ca">↑ $340 vs prior month</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-l">WG overspend est.</div>
+            <div class="kpi-v ca" id="k-wg">$133/mo</div>
+            <div class="kpi-s cm">OO + WL · 2 locations</div>
+          </div>
+        </div>
+
+        <!-- COGs by location -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" id="cogs-title">COGs by location — May 2026</div>
+            <div class="card-sub">Target: 8–10% · gross production denominator</div>
+          </div>
+          <div class="bar-chart">
+            <div class="br">
+              <div class="br-loc">Lincoln Park</div>
+              <div class="br-track"><div class="br-fill" style="width:76%;background:var(--green);">7.6%</div></div>
+              <div class="br-val cg">7.6%</div>
+            </div>
+            <div class="br">
+              <div class="br-loc">Old Orchard</div>
+              <div class="br-track"><div class="br-fill" style="width:98%;background:var(--amber);">9.8%</div></div>
+              <div class="br-val ca">9.8%</div>
+            </div>
+            <div class="br">
+              <div class="br-loc">West Loop</div>
+              <div class="br-track"><div class="br-fill" style="width:79%;background:var(--green);">7.9%</div></div>
+              <div class="br-val cg">7.9%</div>
+            </div>
+            <div class="br">
+              <div class="br-loc">Wheaton</div>
+              <div class="br-track"><div class="br-fill" style="width:81%;background:var(--green);">8.1%</div></div>
+              <div class="br-val cg">8.1%</div>
+            </div>
+          </div>
+          <div class="rev-grid">
+            <div class="rv"><div class="rv-l">LP Revenue</div><div class="rv-v">$312K</div></div>
+            <div class="rv"><div class="rv-l">OO Revenue</div><div class="rv-v">$287K</div></div>
+            <div class="rv"><div class="rv-l">WL Revenue</div><div class="rv-v">$301K</div></div>
+            <div class="rv"><div class="rv-l">WH Revenue</div><div class="rv-v">$268K</div></div>
+          </div>
+        </div>
+
+        <!-- Goods Lost -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" id="gl-title">Goods lost by category — May 2026</div>
+            <div class="card-sub">All locations · 47 submissions</div>
+          </div>
+          <div class="gl-rows">
+            <div class="gl-r"><div class="gl-dot" style="background:var(--gold);"></div><div class="gl-name">Diagnostic duplicate</div><div class="gl-bar"><div class="gl-bfill" style="width:73%;background:var(--gold);"></div></div><div class="gl-amt">$1,248</div><div class="gl-pct">44%</div></div>
+            <div class="gl-r"><div class="gl-dot" style="background:var(--red);"></div><div class="gl-name">Expired product</div><div class="gl-bar"><div class="gl-bfill" style="width:42%;background:var(--red);"></div></div><div class="gl-amt">$724</div><div class="gl-pct">25%</div></div>
+            <div class="gl-r"><div class="gl-dot" style="background:var(--green);"></div><div class="gl-name">In-house use</div><div class="gl-bar"><div class="gl-bfill" style="width:28%;background:var(--green);"></div></div><div class="gl-amt">$481</div><div class="gl-pct">17%</div></div>
+            <div class="gl-r"><div class="gl-dot" style="background:var(--purple);"></div><div class="gl-name">Medication waste</div><div class="gl-bar"><div class="gl-bfill" style="width:17%;background:var(--purple);"></div></div><div class="gl-amt">$294</div><div class="gl-pct">10%</div></div>
+            <div class="gl-r"><div class="gl-dot" style="background:var(--mist);"></div><div class="gl-name">Damaged / Spilled</div><div class="gl-bar"><div class="gl-bfill" style="width:7%;background:var(--mist);"></div></div><div class="gl-amt">$100</div><div class="gl-pct">4%</div></div>
+          </div>
+        </div>
+
+        <!-- Procurement savings -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Procurement savings — YTD</div>
+            <div class="card-sub">vs. list price baseline · all locations</div>
+          </div>
+          <table>
+            <thead><tr><th>Savings driver</th><th>Amount</th><th>Share</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>GPO discount capture</td><td style="font-weight:500;color:var(--green);">$9,840</td><td>53%</td><td><span class="badge b-ok">On track</span></td></tr>
+              <tr><td>Vetcove best-price routing</td><td style="font-weight:500;color:var(--green);">$5,120</td><td>28%</td><td><span class="badge b-ok">On track</span></td></tr>
+              <tr><td>SKU optimization</td><td style="font-weight:500;color:var(--green);">$2,460</td><td>13%</td><td><span class="badge b-ok">On track</span></td></tr>
+              <tr><td>Order consolidation</td><td style="font-weight:500;color:var(--green);">$1,000</td><td>6%</td><td><span class="badge b-ok">On track</span></td></tr>
+              <tr style="background:#F8F7FB;"><td style="font-weight:600;">Total YTD</td><td style="font-weight:700;color:var(--green);">$18,420</td><td style="color:var(--mist);">$44K pace</td><td><span class="badge b-ok">↑ 12% vs prior yr</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Order compliance -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Order compliance — May 2026</div>
+            <div class="card-sub">1pm Vetcove cutoff · rolling submission rate</div>
+          </div>
+          <table>
+            <thead><tr><th>Location</th><th>On time</th><th>Late</th><th>Rate</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:500;">Lincoln Park</td><td>4</td><td>0</td><td class="cg" style="font-weight:500;">100%</td><td><span class="badge b-ok">Perfect</span></td></tr>
+              <tr><td style="font-weight:500;">Old Orchard</td><td>3</td><td>1</td><td class="ca" style="font-weight:500;">75%</td><td><span class="badge b-warn">1 late</span></td></tr>
+              <tr><td style="font-weight:500;">West Loop</td><td>4</td><td>0</td><td class="cg" style="font-weight:500;">100%</td><td><span class="badge b-ok">Perfect</span></td></tr>
+              <tr><td style="font-weight:500;">Wheaton</td><td>4</td><td>0</td><td class="cg" style="font-weight:500;">100%</td><td><span class="badge b-ok">Perfect</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /main-col -->
+
+      <!-- SIDEBAR PANELS -->
+      <div class="side-col">
+        <div class="panel-tabs">
+          <div class="ptab active" onclick="sp('ov',this)">📋 Overview</div>
+          <div class="ptab" onclick="sp('cogs',this)">📈 COGs</div>
+          <div class="ptab" onclick="sp('gl',this)">⚠️ Goods Lost</div>
+          <div class="ptab" onclick="sp('proc',this)">💰 Procurement</div>
+          <div class="ptab" onclick="sp('comp',this)">✅ Order Compliance</div>
+          <div class="ptab" onclick="sp('wg',this)">📦 White Goods</div>
+        </div>
+
+        <!-- OVERVIEW -->
+        <div class="pcontent" id="p-ov">
+          <div><div class="pc-title">Period summary</div><div class="pc-sub" id="period-label">Month to date · All locations</div></div>
+          <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg">8.4%</span></div>
+          <div class="mrow"><span class="mk">Target range</span><span class="mv">8–10%</span></div>
+          <div class="mrow"><span class="mk">Total revenue</span><span class="mv">$1.168M</span></div>
+          <div class="mrow"><span class="mk">Drug spend</span><span class="mv">$98,112</span></div>
+          <div class="mrow"><span class="mk">Procurement savings</span><span class="mv cg">$18,420 YTD</span></div>
+          <div class="mrow"><span class="mk">Goods lost</span><span class="mv ca">$2,847</span></div>
+          <div class="mrow"><span class="mk">WG overspend est.</span><span class="mv ca">$133/mo</span></div>
+          <div class="mrow"><span class="mk">Cycle count compliance</span><span class="mv">3 of 4 ✓</span></div>
+          <div class="mrow"><span class="mk">Order compliance</span><span class="mv">94%</span></div>
+          <div class="mrow"><span class="mk">Min alerts active</span><span class="mv ca">7</span></div>
+          <div class="mrow"><span class="mk">Active insight flags</span><span class="mv cr">3</span></div>
+          <div class="exp-grid">
+            <button class="exp-btn" onclick="exp('PDF')">↓ PDF</button>
+            <button class="exp-btn" onclick="exp('CSV')">↓ CSV</button>
+            <button class="exp-btn" onclick="exp('QuickBooks')">QuickBooks</button>
+            <button class="exp-btn" onclick="exp('Power BI')">Power BI</button>
+          </div>
+        </div>
+
+        <!-- COGs -->
+        <div class="pcontent" id="p-cogs" style="display:none;">
+          <div><div class="pc-title">COGs trend</div><div class="pc-sub">Month-over-month · portfolio</div></div>
+          <div class="card" style="padding:10px 12px;">
+            <div style="font-size:10px;color:var(--mist);margin-bottom:6px;">Portfolio COGs % — last 6 months</div>
+            <div class="trend">
+              <div class="tb" style="height:80%;background:var(--green);opacity:.5;" title="Dec 8.9%"></div>
+              <div class="tb" style="height:85%;background:var(--green);opacity:.6;" title="Jan 8.5%"></div>
+              <div class="tb" style="height:90%;background:var(--amber);opacity:.7;" title="Feb 9.0%"></div>
+              <div class="tb" style="height:75%;background:var(--green);opacity:.7;" title="Mar 7.5%"></div>
+              <div class="tb" style="height:87%;background:var(--green);opacity:.85;" title="Apr 8.7%"></div>
+              <div class="tb" style="height:84%;background:var(--green);" title="May 8.4%"></div>
+            </div>
+            <div class="tlabels">
+              <div class="tl">Dec</div><div class="tl">Jan</div><div class="tl">Feb</div>
+              <div class="tl">Mar</div><div class="tl">Apr</div><div class="tl">May</div>
+            </div>
+          </div>
+          <div class="mrow"><span class="mk">Lincoln Park</span><span class="mv cg">7.6%</span></div>
+          <div class="mrow"><span class="mk">Old Orchard</span><span class="mv ca">9.8% ↑</span></div>
+          <div class="mrow"><span class="mk">West Loop</span><span class="mv cg">7.9%</span></div>
+          <div class="mrow"><span class="mk">Wheaton</span><span class="mv cg">8.1%</span></div>
+          <div class="mrow"><span class="mk">Portfolio avg</span><span class="mv cg">8.4%</span></div>
+          <div class="mrow"><span class="mk">Denominator</span><span class="mv">Gross production</span></div>
+          <div class="ins">
+            <div class="ins-l">⚡ COGs insight</div>
+            <div class="ins-t"><strong>Old Orchard</strong> trending above target. Gabapentin + Maropitant over-ordered. Reduce Max at OO to bring COGs back in range by next month.</div>
+          </div>
+        </div>
+
+        <!-- Goods Lost -->
+        <div class="pcontent" id="p-gl" style="display:none;">
+          <div><div class="pc-title">Goods lost deep dive</div><div class="pc-sub">May 2026 · all locations · 47 submissions</div></div>
+          <div class="mrow"><span class="mk">Total loss</span><span class="mv cr">$2,847</span></div>
+          <div class="mrow"><span class="mk">vs. prior month</span><span class="mv ca">↑ $340 (+14%)</span></div>
+          <div class="mrow"><span class="mk">Diagnostic duplicate</span><span class="mv ca">$1,248 · 44%</span></div>
+          <div class="mrow"><span class="mk">Expired product</span><span class="mv">$724 · 25%</span></div>
+          <div class="mrow"><span class="mk">In-house use</span><span class="mv cr">$481 · 17%</span></div>
+          <div class="mrow"><span class="mk">Medication waste</span><span class="mv">$294 · 10%</span></div>
+          <div class="mrow"><span class="mk">Damaged / Spilled</span><span class="mv">$100 · 4%</span></div>
+          <div style="border-top:0.5px solid var(--border);padding-top:8px;margin-top:2px;">
+            <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Top 5 by frequency</div>
+            <div class="mrow"><span class="mk">Catalyst Chem 10</span><span class="mv">11 entries</span></div>
+            <div class="mrow"><span class="mk">Gabapentin Solu</span><span class="mv">5 entries</span></div>
+            <div class="mrow"><span class="mk">TrizULTRA</span><span class="mv">4 entries</span></div>
+            <div class="mrow"><span class="mk">Vanguard DAPP</span><span class="mv">3 entries</span></div>
+            <div class="mrow"><span class="mk">Maropitant Inj</span><span class="mv">3 entries</span></div>
+          </div>
+          <div class="ins">
+            <div class="ins-l">⚡ Goods lost insight</div>
+            <div class="ins-t"><strong>In-house use</strong> on TrizULTRA, Epi-Otic, Optixcare across 4 locations — saleable items. Charging workflow audit recommended.</div>
+          </div>
+        </div>
+
+        <!-- Procurement -->
+        <div class="pcontent" id="p-proc" style="display:none;">
+          <div><div class="pc-title">Procurement savings</div><div class="pc-sub">YTD · all locations · vs. list price</div></div>
+          <div class="mrow"><span class="mk">Total YTD</span><span class="mv cg">$18,420</span></div>
+          <div class="mrow"><span class="mk">Annual pace</span><span class="mv cg">~$44,000</span></div>
+          <div class="mrow"><span class="mk">GPO discounts</span><span class="mv cg">$9,840</span></div>
+          <div class="mrow"><span class="mk">Best-price routing</span><span class="mv cg">$5,120</span></div>
+          <div class="mrow"><span class="mk">SKU optimization</span><span class="mv cg">$2,460</span></div>
+          <div class="mrow"><span class="mk">Order consolidation</span><span class="mv cg">$1,000</span></div>
+          <div class="mrow"><span class="mk">vs. prior year</span><span class="mv cg">↑ 12%</span></div>
+          <div class="mrow"><span class="mk">Top product saved</span><span class="mv">Gabapentin 100mg</span></div>
+          <div class="mrow"><span class="mk">Top vendor</span><span class="mv">MWI Animal Health</span></div>
+          <div class="ins">
+            <div class="ins-l">⚡ Procurement insight</div>
+            <div class="ins-t">Gabapentin 500ct MWI saves <strong>$8.44/order</strong> vs. Covetrus split packs. Apply same SKU logic to Maropitant for ~$220 additional annual savings.</div>
+          </div>
+        </div>
+
+        <!-- Order Compliance -->
+        <div class="pcontent" id="p-comp" style="display:none;">
+          <div><div class="pc-title">Order compliance</div><div class="pc-sub">May 2026 · 1pm Vetcove cutoff</div></div>
+          <div class="mrow"><span class="mk">Portfolio rate</span><span class="mv cg">94%</span></div>
+          <div class="mrow"><span class="mk">On-time submissions</span><span class="mv">15 of 16</span></div>
+          <div class="mrow"><span class="mk">Late</span><span class="mv ca">1 — Old Orchard</span></div>
+          <div style="margin-top:4px;">
+            <div class="oc-r"><span class="oc-loc">Lincoln Park</span><span class="cg" style="font-weight:500;font-size:11px;">100%</span><div class="oc-bar"><div class="oc-fill" style="width:100%;background:var(--green);"></div></div></div>
+            <div class="oc-r"><span class="oc-loc">Old Orchard</span><span class="ca" style="font-weight:500;font-size:11px;">75%</span><div class="oc-bar"><div class="oc-fill" style="width:75%;background:var(--amber);"></div></div></div>
+            <div class="oc-r"><span class="oc-loc">West Loop</span><span class="cg" style="font-weight:500;font-size:11px;">100%</span><div class="oc-bar"><div class="oc-fill" style="width:100%;background:var(--green);"></div></div></div>
+            <div class="oc-r"><span class="oc-loc">Wheaton</span><span class="cg" style="font-weight:500;font-size:11px;">100%</span><div class="oc-bar"><div class="oc-fill" style="width:100%;background:var(--green);"></div></div></div>
+          </div>
+          <div class="ins">
+            <div class="ins-l">⚡ Compliance insight</div>
+            <div class="ins-t"><strong>Old Orchard</strong> missed the 1pm cutoff once this month. One more miss triggers a check-in. Jamie K. has 1h 18m on today's order.</div>
+          </div>
+        </div>
+
+        <!-- White Goods -->
+        <div class="pcontent" id="p-wg" style="display:none;">
+          <div><div class="pc-title">White goods monitoring</div><div class="pc-sub">Ordering rate vs. appt volume · ±15% tolerance</div></div>
+          <div class="mrow"><span class="mk">Flagged locations</span><span class="mv ca">2 of 4</span></div>
+          <div class="mrow"><span class="mk">Est. monthly overspend</span><span class="mv ca">$133/mo</span></div>
+          <div class="mrow"><span class="mk">OO gauze overage</span><span class="mv ca">+38% · $84/mo</span></div>
+          <div class="mrow"><span class="mk">WL syringe overage</span><span class="mv ca">+21% · $49/mo</span></div>
+          <div style="margin-top:6px;">
+            <div class="wg-h"><span>Location · Item</span><span>Exp.</span><span>Act.</span><span>Flag</span></div>
+            <div class="wg-r">
+              <div><div style="font-weight:500;font-size:11px;">Old Orchard</div><div style="font-size:10px;color:var(--mist);">Gauze 4×4</div></div>
+              <span>1.3</span><span>1.8</span><span class="wg-flag wg-over">+38%</span>
+            </div>
+            <div class="wg-r">
+              <div><div style="font-weight:500;font-size:11px;">West Loop</div><div style="font-size:10px;color:var(--mist);">Syringes 3cc</div></div>
+              <span>2.6</span><span>3.2</span><span class="wg-flag wg-over">+21%</span>
+            </div>
+            <div class="wg-r">
+              <div><div style="font-weight:500;font-size:11px;">Lincoln Park</div><div style="font-size:10px;color:var(--mist);">Gauze 4×4</div></div>
+              <span>1.3</span><span>1.2</span><span class="wg-flag wg-ok">OK</span>
+            </div>
+            <div class="wg-r">
+              <div><div style="font-weight:500;font-size:11px;">Wheaton</div><div style="font-size:10px;color:var(--mist);">Syringes 3cc</div></div>
+              <span>2.6</span><span>2.5</span><span class="wg-flag wg-ok">OK</span>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--mist);font-style:italic;">Consumption rate assumptions · Admin only</div>
+          <div class="ins">
+            <div class="ins-l">⚡ White goods insight</div>
+            <div class="ins-t">OO gauze rate adjusted from 1.8 → 2.1 per 100 appts last week. Monitor 30 days before closing flag.</div>
+          </div>
+        </div>
+
+      </div><!-- /side-col -->
+    </div><!-- /body-split -->
+  </div><!-- /right -->
+</div><!-- /outer -->
+
+<div id="toast"></div>
+
+<script>
+const panels=['ov','cogs','gl','proc','comp','wg'];
+function sp(name,el){
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  panels.forEach(p=>{
+    document.getElementById('p-'+p).style.display=p===name?'flex':'none';
+  });
+}
+
+const rangeMap={
+  mtd:'Month to date',wtd:'Week to date',prev:'Previous week',t7:'Trailing 7 days',
+  t30:'Trailing 30 days',t90:'Trailing 90 days',tq:'This quarter',lq:'Last quarter',
+  ytd:'Year to date',py:'Previous year',today:'Today'
+};
+const dataMap={
+  mtd:{cogs:'8.4%',sav:'$18,420',gl:'$2,847',wg:'$133/mo'},
+  ytd:{cogs:'8.6%',sav:'$18,420',gl:'$14,230',wg:'$133/mo'},
+  t90:{cogs:'8.5%',sav:'$12,840',gl:'$8,910',wg:'$133/mo'},
+  tq:{cogs:'8.5%',sav:'$9,210',gl:'$7,240',wg:'$133/mo'},
+  t30:{cogs:'8.4%',sav:'$4,820',gl:'$2,847',wg:'$133/mo'},
+  lq:{cogs:'8.7%',sav:'$10,100',gl:'$8,100',wg:'$118/mo'},
+};
+
+function refresh(){
+  const dr=document.getElementById('dr').value;
+  const loc=document.getElementById('loc').value;
+  const d=dataMap[dr]||dataMap.mtd;
+  const locLabel=loc==='all'?'All locations':{lp:'Lincoln Park',oo:'Old Orchard',wl:'West Loop',wh:'Wheaton'}[loc];
+  document.getElementById('k-cogs').textContent=d.cogs;
+  document.getElementById('k-sav').textContent=d.sav;
+  document.getElementById('k-gl').textContent=d.gl;
+  document.getElementById('k-wg').textContent=d.wg;
+  document.getElementById('cogs-title').textContent='COGs by location — '+rangeMap[dr];
+  document.getElementById('gl-title').textContent='Goods lost by category — '+rangeMap[dr];
+  document.getElementById('period-label').textContent=rangeMap[dr]+' · '+locLabel;
+}
+
+function exp(type){
+  const dr=rangeMap[document.getElementById('dr').value]||'Month to date';
+  const t=document.getElementById('toast');
+  t.textContent='✓ '+type+' exported — '+dr;
+  t.style.opacity='1';
+  setTimeout(()=>t.style.opacity='0',2600);
+}
+</script>
+</body>
+</html>
