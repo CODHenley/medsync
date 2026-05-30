@@ -632,6 +632,26 @@ function deepDiveLoc(locCode) {
   }
 }
 
+
+/* ── Portfolio row labels on mobile ─────────────────────────── */
+@media (max-width: 700px) {
+  .tbl-row span[data-label] {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 13px !important;
+  }
+  .tbl-row span[data-label]::before {
+    content: attr(data-label);
+    font-size: 10px !important;
+    color: #4A5568 !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    width: 72px !important;
+    flex-shrink: 0 !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -785,12 +805,12 @@ function deepDiveLoc(locCode) {
         <!-- Lincoln Park -->
         <div class="tbl-row" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
           <div><p class="loc-name">Lincoln Park</p><p class="loc-sub">IL · Brianna L.</p></div>
-          <span class="good">8.1%</span>
-          <span class="warn-t">3</span>
-          <span class="bad-t">2 ⚠</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;">$580</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;">✓ Done · 14 min</span>
-          <span class="badge badge-ok" style="font-size:11px;"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span class="good" data-label="COGs">8.1%</span>
+          <span class="warn-t" data-label="Alerts">3</span>
+          <span class="bad-t" data-label="Expiring">2 ⚠</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$580</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 14 min</span>
+          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- Old Orchard -->
@@ -811,25 +831,25 @@ function deepDiveLoc(locCode) {
         <div class="tbl-row" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
           <div>
             <p class="loc-name">West Loop</p>
-            <p class="loc-sub">IL · Alex M. · <span style="color:#a0700a;">WG: +21% syringes</span></p>
+            <p class="loc-sub">IL · Alex M. · <span style="color:#a0700a;" data-label="COGs" data-label="COGs">WG: +21% syringes</span></p>
           </div>
-          <span class="good">7.9%</span>
-          <span class="bad-t">2</span>
-          <span style="color:#1C2B4A;font-size:12px;">0</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;">$490</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;">✓ Done · 11 min</span>
+          <span class="good" data-label="Alerts" data-label="Alerts">7.9%</span>
+          <span class="bad-t" data-label="Expiring" data-label="Expiring">2</span>
+          <span style="color:#1C2B4A;font-size:12px;" data-label="Goods lost" data-label="Goods lost">0</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Cycle count" data-label="Cycle count">$490</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Order status" data-label="Order status">✓ Done · 11 min</span>
           <span class="badge badge-ok" style="font-size:11px;"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- Wheaton -->
         <div class="tbl-row" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
           <div><p class="loc-name">Wheaton</p><p class="loc-sub">IL · Sam R.</p></div>
-          <span class="good">8.7%</span>
-          <span style="color:#1C2B4A;font-size:12px;">0</span>
-          <span class="warn-t">1</span>
-          <span style="color:#1C2B4A;font-size:12px;font-weight:500;">$437</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;">✓ Done · 18 min</span>
-          <span class="badge badge-ok" style="font-size:11px;"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span class="good" data-label="COGs">8.7%</span>
+          <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
+          <span class="warn-t" data-label="Expiring">1</span>
+          <span style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">$437</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 18 min</span>
+          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
       </div>
     </div>
