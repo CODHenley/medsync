@@ -223,6 +223,31 @@ tr:hover td{background:#FAFAF8;}
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
+  /* KPI cards — prevent text clipping */
+  .kpi {
+    padding: 11px 12px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  .kpi-l {
+    font-size: 9px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .kpi-v {
+    font-size: 18px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .kpi-s {
+    font-size: 10px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
   /* Side panel — full width below charts */
   .side-col {
     width: 100% !important;

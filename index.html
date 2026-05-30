@@ -538,11 +538,42 @@ function deepDiveLoc(locCode) {
   nav span { font-size: 13px !important; }
 }
 
-/* ── Portfolio table — mobile ────────────────────────────────── */
-@media (max-width: 700px) {
-  /* Hide the table header */
-  .tbl-head { display: none !important; }
 
+/* ── Portfolio table — mobile ────────────────────────────────── */
+.loc-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+@media (max-width: 700px) {
+  /* Metric grid — 2 cols on mobile */
+  .metric-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .metric { padding: 14px !important; }
+  .metric-value { font-size: 22px !important; }
+
+  /* Table — hide header, make each row a card */
+  .col-header { display: none !important; }
+
+  .tbl-row {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 14px 16px !important;
+    gap: 6px !important;
+  }
+
+  /* Location name — full width top */
+  .tbl-row > div:first-child {
+    border-bottom: 0.5px solid #E4E0F0 !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 4px !important;
+  }
+  .loc-name { font-size: 14px !important; }
+  .loc-sub { font-size: 12px !important; }
+
+  /* Stats row — flex wrap the remaining spans */
+  .tbl-row > span,
+  .tbl-row > div:not(:first-child) {
+    display: inline-flex !important;
+    font-size: 13px !important;
+  }
+}
   /* Location rows — card style */
   .tbl-row {
     grid-template-columns: 1fr 1fr !important;
@@ -740,8 +771,7 @@ function deepDiveLoc(locCode) {
     </div>
 
     <!-- Location table — 7 columns, compact badges -->
-    <div style="overflow-x:auto;">
-      <div style="min-width:700px;">
+    <div class="loc-table-wrap">
         <div class="col-header" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
           <span>Location</span>
           <span>COGs</span>
@@ -2467,16 +2497,6 @@ function buildSidebar(containerId, role, activeHref) {
 
   def.groups.forEach(g => {
     html += `<div class="ps-group">${g.label}</div>`;
-    g.items.forEach(item => {
-      const active = item.href === activeHref ? ' active' : '';
-      html += `<a class="ps-item${active}" href="${item.href}">
-        <i class="ti ${item.icon}" aria-hidden="true"></i>${item.label}
-      </a>`;
-    });
-    html += `<hr class="ps-divider">`;
-  });
-
-  html += `</div>`;
   container.insertAdjacentHTML('afterbegin', html);
 }
 
