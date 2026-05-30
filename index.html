@@ -349,20 +349,59 @@ function signOut() {
 #ms-actlog .sidebar,
 #ms-analytics .right > .sidebar,
 #ms-lifecycle .right > .sidebar { display:none !important; }
-/* Fix live screen layout when internal sidebar is hidden */
+
+
+
+/* Fix live screen layouts - remove internal sidebar, show content full width */
 #ms-analytics .outer,
 #ms-lifecycle .outer,
 #ms-actlog .outer {
-  display:block !important;
-  grid-template-columns:unset !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: calc(100vh - 48px) !important;
+  overflow: hidden !important;
 }
-#ms-analytics .right,
-#ms-lifecycle .right,
-#ms-actlog .right {
-  height:calc(100vh - 48px);
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
+/* Hide internal sidebars from live screens */
+#ms-analytics .outer > .sidebar,
+#ms-lifecycle .outer > .sidebar,
+#ms-actlog .outer > .sidebar {
+  display: none !important;
+}
+/* Make the right/main content area take full width */
+#ms-analytics .outer > .right,
+#ms-analytics .outer > .main-area,
+#ms-lifecycle .outer > .right,
+#ms-lifecycle .outer > .main-area,
+#ms-actlog .outer > .right,
+#ms-actlog .outer > .main-area {
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: calc(100vh - 48px) !important;
+  overflow: hidden !important;
+}
+/* Fix body-split for analytics */
+#ms-analytics .body-split {
+  display: grid !important;
+  grid-template-columns: 1fr 268px !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+/* Fix main-col scroll area */
+#ms-analytics .main-col,
+#ms-lifecycle .content,
+#ms-actlog .content {
+  overflow-y: auto !important;
+  flex: 1 !important;
+}
+/* Fix topbar */
+#ms-analytics .topbar,
+#ms-lifecycle .topbar,
+#ms-actlog .topbar {
+  flex-shrink: 0 !important;
 }
 
 </style>
