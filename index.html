@@ -163,8 +163,10 @@ function deepDiveLoc(locCode) {
   .metric-sub { font-size: 11px; color: #4A5568; margin-top: 3px; }
 
   /* Table rows */
-  .col-header { display: grid; padding: 8px 20px; background: #F0EEF8; border-bottom: 0.5px solid #C8C4D8; font-size: 10px; color: #4A5568; text-transform: uppercase; letter-spacing: 0.05em; }
-  .tbl-row { display: grid; padding: 13px 20px; border-bottom: 0.5px solid #E4E0F0; align-items: center; background: #fff; }
+  .col-header { display: grid; padding: 8px 20px; background: #F0EEF8; border-bottom: 0.5px solid #C8C4D8; font-size: 10px; color: #4A5568; text-transform: uppercase; letter-spacing: 0.05em;   grid-template-columns: 1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;
+}
+  .tbl-row { display: grid; padding: 13px 20px; border-bottom: 0.5px solid #E4E0F0; align-items: center; background: #fff;   grid-template-columns: 1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;
+}
   .tbl-row:last-child { border-bottom: none; }
   .tbl-row.warn { background: #fdf8ee; }
   .loc-name { font-size: 13px; font-weight: 500; color: #1C2B4A; }
@@ -792,7 +794,7 @@ function deepDiveLoc(locCode) {
 
     <!-- Location table — 7 columns, compact badges -->
     <div class="loc-table-wrap">
-        <div class="col-header" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
+        <div class="col-header">
           <span>Location</span>
           <span>COGs</span>
           <span>Alerts</span>
@@ -803,7 +805,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- Lincoln Park -->
-        <div class="tbl-row" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
+        <div class="tbl-row">
           <div><p class="loc-name">Lincoln Park</p><p class="loc-sub">IL · Brianna L.</p></div>
           <span class="good" data-label="COGs">8.1%</span>
           <span class="warn-t" data-label="Alerts">3</span>
@@ -814,7 +816,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- Old Orchard -->
-        <div class="tbl-row warn" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
+        <div class="tbl-row warn">
           <div>
             <p class="loc-name">Old Orchard</p>
             <p class="loc-sub warn-t">IL · Jamie K. · <span style="color:#a33030;">WG: +38% gauze</span></p>
@@ -828,7 +830,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- West Loop -->
-        <div class="tbl-row" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
+        <div class="tbl-row">
           <div>
             <p class="loc-name">West Loop</p>
             <p class="loc-sub">IL · Alex M. · <span style="color:#a0700a;" data-label="COGs" data-label="COGs">WG: +21% syringes</span></p>
@@ -842,7 +844,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- Wheaton -->
-        <div class="tbl-row" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
+        <div class="tbl-row">
           <div><p class="loc-name">Wheaton</p><p class="loc-sub">IL · Sam R.</p></div>
           <span class="good" data-label="COGs">8.7%</span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
