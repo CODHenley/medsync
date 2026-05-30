@@ -1403,7 +1403,7 @@ function setTableLoading(on) {
   if (on) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">Loading lots…</td></tr>';
 }
 
-let toastTimer = null;
+// toastTimer already declared
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;

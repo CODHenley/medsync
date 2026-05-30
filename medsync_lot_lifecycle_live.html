@@ -572,11 +572,11 @@ function updateKPIs() {
   const expired     = ALL_LOTS.filter(l => l.status === 'Expired').length;
   const cs          = ALL_LOTS.filter(l => l.cs).length;
 
-  document.getElementById('kpi-active').textContent  = active;
-  document.getElementById('kpi-soon30').textContent  = soon30;
-  document.getElementById('kpi-soon60').textContent  = soon60;
-  document.getElementById('kpi-expired').textContent = expired;
-  document.getElementById('kpi-cs').textContent      = cs;
+  (document.getElementByIddocument.getElementById('kpi-active').textContent  =.split("')[0] || document.createElement("div")).textContent = active;
+  (document.getElementByIddocument.getElementById('kpi-soon30').textContent  =.split("')[0] || document.createElement("div")).textContent = soon30;
+  (document.getElementByIddocument.getElementById('kpi-soon60').textContent  =.split("')[0] || document.createElement("div")).textContent = soon60;
+  (document.getElementByIddocument.getElementById('kpi-expired').textContent =.split("')[0] || document.createElement("div")).textContent = expired;
+  (document.getElementByIddocument.getElementById('kpi-cs').textContent      =.split("')[0] || document.createElement("div")).textContent = cs;
 }
 
 // ── Priority alert strip ─────────────────────────────────────
@@ -656,7 +656,7 @@ function filterTable() {
     </tr>`;
   }).join('') || '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">No lots match your filters.</td></tr>';
 
-  document.getElementById('table-count').textContent =
+  (document.getElementByIddocument.getElementById('table-count').textContent =.split("')[0] || document.createElement("div")).textContent =
     `Showing ${filtered.length} of ${ALL_LOTS.length} lots`;
 }
 
@@ -673,17 +673,17 @@ async function openLot(dbId) {
   const lot = ALL_LOTS.find(l => l.dbId === dbId);
   if (!lot) return;
 
-  document.getElementById('m-lot-num').textContent  = lot.id;
-  document.getElementById('m-prod-name').textContent = lot.name;
-  document.getElementById('m-mfr').textContent = lot.mfr + ' · NDC ' + lot.ndc;
-  document.getElementById('m-received').textContent  = lot.received ? formatDate(lot.received) : '—';
-  document.getElementById('m-exp').textContent       = lot.exp ? formatDate(lot.exp) : '—';
-  document.getElementById('m-qty-in').textContent    = lot.qtyIn + ' units';
-  document.getElementById('m-qty-rem').textContent   = lot.qtyRem + ' units';
-  document.getElementById('m-loc').textContent       = lot.loc;
-  document.getElementById('m-vendor').textContent    = lot.vendor;
-  document.getElementById('m-po').textContent        = lot.po;
-  document.getElementById('m-recv-by').textContent   = lot.recvBy;
+  (document.getElementByIddocument.getElementById('m-lot-num').textContent  =.split("')[0] || document.createElement("div")).textContent = lot.id;
+  (document.getElementByIddocument.getElementById('m-prod-name').textContent =.split("')[0] || document.createElement("div")).textContent = lot.name;
+  (document.getElementByIddocument.getElementById('m-mfr').textContent =.split("')[0] || document.createElement("div")).textContent = lot.mfr + ' · NDC ' + lot.ndc;
+  (document.getElementByIddocument.getElementById('m-received').textContent  =.split("')[0] || document.createElement("div")).textContent = lot.received ? formatDate(lot.received) : '—';
+  (document.getElementByIddocument.getElementById('m-exp').textContent       =.split("')[0] || document.createElement("div")).textContent = lot.exp ? formatDate(lot.exp) : '—';
+  (document.getElementByIddocument.getElementById('m-qty-in').textContent    =.split("')[0] || document.createElement("div")).textContent = lot.qtyIn + ' units';
+  (document.getElementByIddocument.getElementById('m-qty-rem').textContent   =.split("')[0] || document.createElement("div")).textContent = lot.qtyRem + ' units';
+  (document.getElementByIddocument.getElementById('m-loc').textContent       =.split("')[0] || document.createElement("div")).textContent = lot.loc;
+  (document.getElementByIddocument.getElementById('m-vendor').textContent    =.split("')[0] || document.createElement("div")).textContent = lot.vendor;
+  (document.getElementByIddocument.getElementById('m-po').textContent        =.split("')[0] || document.createElement("div")).textContent = lot.po;
+  (document.getElementByIddocument.getElementById('m-recv-by').textContent   =.split("')[0] || document.createElement("div")).textContent = lot.recvBy;
 
   // Badges
   const bd = document.getElementById('m-badges');
@@ -693,24 +693,24 @@ async function openLot(dbId) {
   // CS section
   document.getElementById('m-cs-section').style.display = lot.cs ? '' : 'none';
   if (lot.cs) {
-    document.getElementById('m-dea-sched').textContent    = lot.deaSched || '—';
-    document.getElementById('m-cs-open').textContent      = lot.qtyIn + ' units';
-    document.getElementById('m-cs-disp').textContent      = (lot.qtyIn - lot.qtyRem) + ' units';
-    document.getElementById('m-cs-bal').textContent       = lot.qtyRem + ' units';
-    document.getElementById('m-cs-bien').textContent      = 'Per DEA schedule';
-    document.getElementById('m-cs-disp-method').textContent = 'Witnessed waste / DEA Form 41';
+    (document.getElementByIddocument.getElementById('m-dea-sched').textContent    =.split("')[0] || document.createElement("div")).textContent = lot.deaSched || '—';
+    (document.getElementByIddocument.getElementById('m-cs-open').textContent      =.split("')[0] || document.createElement("div")).textContent = lot.qtyIn + ' units';
+    (document.getElementByIddocument.getElementById('m-cs-disp').textContent      =.split("')[0] || document.createElement("div")).textContent = (lot.qtyIn - lot.qtyRem) + ' units';
+    (document.getElementByIddocument.getElementById('m-cs-bal').textContent       =.split("')[0] || document.createElement("div")).textContent = lot.qtyRem + ' units';
+    (document.getElementByIddocument.getElementById('m-cs-bien').textContent      =.split("')[0] || document.createElement("div")).textContent = 'Per DEA schedule';
+    (document.getElementByIddocument.getElementById('m-cs-disp-method').textContent =.split("')[0] || document.createElement("div")).textContent = 'Witnessed waste / DEA Form 41';
   }
 
   // Disposal section
   const ds = document.getElementById('m-disposal-section');
   if (lot.status === 'Expired') {
     ds.style.display = '';
-    document.getElementById('m-disp-exp').textContent    = formatDate(lot.exp);
-    document.getElementById('m-disp-days').textContent   = Math.abs(daysUntil(lot.exp)) + ' days';
-    document.getElementById('m-disp-method').textContent = lot.cs
+    (document.getElementByIddocument.getElementById('m-disp-exp').textContent    =.split("')[0] || document.createElement("div")).textContent = formatDate(lot.exp);
+    (document.getElementByIddocument.getElementById('m-disp-days').textContent   =.split("')[0] || document.createElement("div")).textContent = Math.abs(daysUntil(lot.exp)) + ' days';
+    (document.getElementByIddocument.getElementById('m-disp-method').textContent =.split("')[0] || document.createElement("div")).textContent = lot.cs
       ? 'Reverse distributor or DEA Form 41'
       : 'Standard pharmaceutical disposal';
-    document.getElementById('m-disp-logged').textContent = 'No — action required';
+    (document.getElementByIddocument.getElementById('m-disp-logged').textContent =.split("')[0] || document.createElement("div")).textContent = 'No — action required';
   } else {
     ds.style.display = 'none';
   }
