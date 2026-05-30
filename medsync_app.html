@@ -1727,15 +1727,28 @@ function deepDiveLoc(locCode) {
 }
 
 function dbNav(panel) {
-  // Navigate to analytics screen and switch to the right panel
   showScreen('analytics');
-  // Send message to analytics iframe after it loads
-  setTimeout(function() {
+  var done = false;
+  // Listen for confirmation from iframe
+  function onConfirm(e) {
+    if (e.data && e.data.type === 'panelSwitched') {
+      done = true;
+      window.removeEventListener('message', onConfirm);
+    }
+  }
+  window.addEventListener('message', onConfirm);
+  // Send with retries until confirmed
+  var attempts = 0;
+  function tryPost() {
+    if (done) return;
+    attempts++;
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
       iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, '*');
     }
-  }, 500);
+    if (attempts < 15) setTimeout(tryPost, 200);
+  }
+  setTimeout(tryPost, 300);
 }
 
 function renderGlTop5(range, loc) {

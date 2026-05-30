@@ -851,27 +851,42 @@ loadData();
 </script>
 
 <script>
-// Listen for panel switch messages from parent app
+// Listen for messages from parent app
 window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'switchPanel') {
-    var panel = e.data.panel;
+  if (!e.data) return;
+  
+  if (e.data.type === 'switchPanel') {
     var panelMap = {
-      'cogs': 'cogs', 'goods': 'gl', 
+      'cogs': 'cogs', 'goods': 'gl',
       'procurement': 'proc', 'compliance': 'comp',
       'whitegood': 'wg', 'overview': 'ov'
     };
-    var mapped = panelMap[panel] || panel;
-    var tab = document.querySelector('.ptab[onclick*="' + mapped + '"]');
-    if (tab) tab.click();
+    var mapped = panelMap[e.data.panel] || e.data.panel;
+    // Find the tab and click it
+    var tabs = document.querySelectorAll('.ptab');
+    tabs.forEach(function(tab) {
+      if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes("'" + mapped + "'")) {
+        tab.click();
+      }
+    });
+    // Also call sp() directly as backup
+    if (typeof sp === 'function') {
+      var tabEl = document.querySelector('.ptab[onclick*="' + mapped + '"]');
+      if (tabEl) sp(mapped, tabEl);
+    }
     window.scrollTo(0, 0);
+    // Confirm receipt to stop retries
+    if (e.source) e.source.postMessage({ type: 'panelSwitched', panel: mapped }, '*');
   }
-  if (e.data && e.data.type === 'setLocation') {
+  
+  if (e.data.type === 'setLocation') {
     var locSel = document.getElementById('loc');
     if (locSel) {
       locSel.value = e.data.loc;
       if (typeof refresh === 'function') refresh();
     }
     window.scrollTo(0, 0);
+    if (e.source) e.source.postMessage({ type: 'locationSet' }, '*');
   }
 });
 </script>
