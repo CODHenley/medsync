@@ -389,9 +389,7 @@ function deepDiveLoc(locCode) {
   overflow-x: visible !important;
 }
 /* Fix metric grid to use full width */
-#ms-portfolio .metric-grid {
-  grid-template-columns: repeat(3, 1fr) !important;
-}
+#ms-portfolio .metric-grid { padding-top: 0 !important; }
 /* Fix col-header and tbl-row to use full width */
 #ms-portfolio .col-header,
 #ms-portfolio .tbl-row {
@@ -709,9 +707,7 @@ html { overflow-x: hidden; }
 /* ── Content clears fixed nav — no gap between nav and subheader ── */
 @media (max-width: 768px) {
   /* Portfolio: first visible element clears the nav */
-  #ms-portfolio .metric-grid {
-    padding-top: 48px !important;
-  }
+  #ms-portfolio .metric-grid { padding-top: 0 !important; }
   /* Iframes: topbar clears the nav */
   .ms-screen iframe {
     margin-top: 0 !important;
