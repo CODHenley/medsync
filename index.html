@@ -1089,6 +1089,7 @@ const GL_COLORS = {
 
 // ── Main data load ───────────────────────────────────────────
 async function loadData() {
+  if (!document.getElementById("dr")) return;
   const _dr = document.getElementById('dr'); if (!_dr) return;
   const dr  = _dr.value;
   const loc = document.getElementById('loc').value;
@@ -1320,6 +1321,7 @@ let statusFilter = 'all';
 
 // ── Fetch all lots with joined product + location + user data ─
 async function loadLots() {
+  if (!document.getElementById("lot-tbody")) return;
   setTableLoading(true);
   try {
     const res = await fetch(
@@ -1362,6 +1364,7 @@ async function loadLots() {
 
 // ── KPI cards ────────────────────────────────────────────────
 function updateKPIs() {
+  if (!document.getElementById("kpi-active")) return;
   const active      = ALL_LOTS.filter(l => l.status === 'Active').length;
   const soon30      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) <= 30).length;
   const soon60      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) > 30).length;
@@ -1668,6 +1671,7 @@ function initials(u){ return (u||'?').split(' ').map(w=>w[0]).join('').slice(0,2
 
 // ── Load all activity log rows from Supabase ─────────────────
 async function loadEvents() {
+  if (!document.getElementById("ev-tbody")) return;
   setLoading(true);
   try {
     const res = await fetch(
@@ -1704,6 +1708,7 @@ async function loadEvents() {
 
 // ── Summary cards ─────────────────────────────────────────────
 function updateSummaryCards() {
+  if (!document.getElementById("ev-tbody")) return;
   const scoped = currentRole === 'manager'
     ? ALL_EVENTS.filter(e => e.loc === 'Old Orchard' || e.loc === 'All locations')
     : ALL_EVENTS;
@@ -2034,10 +2039,12 @@ function dbNav(panel) {
 }
 
 function renderGlTop5(range, loc) {
+  if (!document.getElementById("gl-top5-tbody")) return;
   const locData = glTop5Data[loc];
   const rows = (locData && locData[range]) || glTop5Data.all[range] || glTop5Data.all['MTD'];
   const period = periodShortLabel[range] || range;
-  document.getElementById('gl-top5-period').textContent = period;
+  const _glp = document.getElementById('gl-top5-period'); if (!_glp) return;
+  _glp.textContent = period;
   const p2 = document.getElementById('gl-top5-period2');
   if (p2) p2.textContent = period;
   document.getElementById('gl-top5-tbody').innerHTML = rows.map((r,i) => {
