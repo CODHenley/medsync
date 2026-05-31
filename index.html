@@ -2525,14 +2525,12 @@ function buildSidebar(containerId, role, activeHref) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  let html = `<div class="platform-sidebar">
-    <div class="ps-role">
-      <div class="ps-role-name">${def.role}</div>
-      <div class="ps-role-loc">${def.loc}</div>
-    </div>`;
-
-  def.groups.forEach(g => {
-    html += `<div class="ps-group">${g.label}</div>`;
+  let html = '<div class="platform-sidebar">';
+  if (def.role) html += '<div class="ps-role"><div class="ps-role-name">' + def.role + '</div><div class="ps-role-loc">' + def.loc + '</div></div>';
+  if (def.groups) def.groups.forEach(function(g) {
+    html += '<div class="ps-group">' + g.label + '</div>';
+  });
+  html += '</div>';
   container.insertAdjacentHTML('afterbegin', html);
 }
 
