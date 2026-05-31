@@ -2247,24 +2247,17 @@ function closePdfModal() {
 function triggerPrint() {
   const doc = document.getElementById('pdf-doc');
   const w = window.open('','_blank','width=800,height=900');
-  w.document.write('<html><head><title>MedSync Report</title><style>body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}@media print{body{margin:0;}}</style></head><body>\n<scr'+'ipt>\n// Auth guard — redirect to login if no valid session
-(function authGuard() {
-  try {
-    var sess = JSON.parse(localStorage.getItem('medsync_session') || 'null');
-    if (!sess || !sess.access_token) {
-      window.location.replace('medsync_login.html');
-      return;
-    }
-    var exp = new Date(sess.expires_at * 1000);
-    if (exp <= new Date()) {
-      localStorage.removeItem('medsync_session');
-      localStorage.removeItem('medsync_user');
-      window.location.replace('medsync_login.html');
-    }
-  } catch(e) {
-    window.location.replace('medsync_login.html');
-  }
-})();\n</'+'script>');
+  const authScript = '<scr'+'ipt>'+
+    '(function(){'+
+    'try{var s=JSON.parse(localStorage.getItem("medsync_session")||"null");'+
+    'if(!s||!s.access_token){window.location.replace("medsync_login.html");return;}'+
+    'var e=new Date(s.expires_at*1000);'+
+    'if(e<=new Date()){localStorage.removeItem("medsync_session");window.location.replace("medsync_login.html");}'+
+    '}catch(e){window.location.replace("medsync_login.html");}'+
+    '})();'+'</'+'script>';
+  w.document.write('<html><head><title>MedSync Report</title>'+
+    '<style>body{margin:0;font-family:-apple-system,sans-serif;}@media print{body{margin:0;}}</style>'+
+    '</head><body>'+authScript);
   w.document.write(doc.innerHTML);
   w.document.write('</body></html>');
   w.document.close();
