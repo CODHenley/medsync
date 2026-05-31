@@ -615,7 +615,8 @@ html { overflow-x: hidden; }
     padding-right: 0 !important;
     padding-bottom: 0 !important;
     min-height: 100vh !important;
-    overflow-x: hidden !important;
+    overflow-x: hidden !important;    background: #fff !important;
+      background: #fff !important;
   }
 
   /* ── Sidebar: fixed drawer, zero layout impact ── */
@@ -728,7 +729,7 @@ html { overflow-x: hidden; }
 })();
 </script>
 
-<nav style="background:#1C2B4A;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;position:fixed;top:0;left:0;right:0;z-index:100;font-family:'DM Sans',sans-serif;">
+<nav style="background:#1C2B4A;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;position:fixed;top:0;left:0;right:0;z-index:100;border-bottom:1px solid rgba(255,255,255,0.1);font-family:'DM Sans',sans-serif;">
   <div style="display:flex;align-items:center;gap:8px;">
     <button id="mob-menu-btn" onclick="toggleMobileMenu()" style="display:none;background:none;border:none;cursor:pointer;padding:4px 6px;flex-direction:column;gap:4px;align-items:center;justify-content:center;margin-right:2px;">
       <span style="display:block;width:20px;height:2px;background:rgba(255,255,255,.8);border-radius:1px;"></span>

@@ -191,6 +191,23 @@ html, body {
   padding: 0 !important;
   background: #fff !important;
 }
+
+/* ── Compact subheader on mobile ──────────────────────────────── */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 8px 16px !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+  .tb-title {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--navy) !important;
+    display: block !important;
+  }
+  .tb-left { gap: 8px !important; flex-wrap: wrap !important; }
+  .tb-right { gap: 6px !important; flex-wrap: wrap !important; }
+}
 </style>
 </head>
 <body>
