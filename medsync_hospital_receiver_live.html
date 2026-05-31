@@ -15,7 +15,7 @@
   --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
   --red:#a33030;--red-bg:#fde0d0;
 }
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;margin:0!important;padding:0!important;}
 
 .shell{width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px;}
 
@@ -96,7 +96,7 @@ select.loc-sel:focus{border-color:var(--navy);}
    Hide internal nav and sidebar on ALL screen sizes.
    Content fills full iframe width, matching portfolio behavior.
 ══════════════════════════════════════════════════════════════ */
-.nav { display: none !important; }
+.nav { display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;position:absolute!important; }
 .sidebar { display: none !important; }
 .outer { grid-template-columns: 1fr !important; }
 .right, .main-area { height: calc(100vh - 0px) !important; }

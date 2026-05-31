@@ -56,7 +56,12 @@ document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
   iframe.addEventListener('load', function() {
     try {
       var style = iframe.contentDocument.createElement('style');
-      style.textContent = '.nav, nav.nav, header.nav { display:none!important; } body { margin:0!important; padding:0!important; } .outer { margin:0!important; } ';
+      style.textContent = [
+        '.nav, nav.nav { display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;position:absolute!important; }',
+        'body { margin:0!important;padding:0!important; }',
+        '.outer { margin:0!important; }',
+        '.right, .main-area { padding-top:0!important;margin-top:0!important; }'
+      ].join(' ');
       iframe.contentDocument.head.appendChild(style);
     } catch(e) {}
   });
