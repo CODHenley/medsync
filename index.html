@@ -50,6 +50,18 @@ function toggleMobileMenu() {
     ov.classList.add('active');
   }
 }
+
+// Hide internal nav in all iframes after they load
+document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
+  iframe.addEventListener('load', function() {
+    try {
+      var style = iframe.contentDocument.createElement('style');
+      style.textContent = '.nav, nav.nav, header.nav { display:none!important; } body { margin:0!important; padding:0!important; } .outer { margin:0!important; } ';
+      iframe.contentDocument.head.appendChild(style);
+    } catch(e) {}
+  });
+});
+
 function closeMobileMenu() {
   var sb = document.getElementById('app-sidebar');
   sb.style.display = 'none';
