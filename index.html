@@ -1089,7 +1089,8 @@ const GL_COLORS = {
 
 // ── Main data load ───────────────────────────────────────────
 async function loadData() {
-  const dr  = document.getElementById('dr').value;
+  const _dr = document.getElementById('dr'); if (!_dr) return;
+  const dr  = _dr.value;
   const loc = document.getElementById('loc').value;
   const { from, to } = getDateRange(dr);
   const label = RANGE_LABELS[dr] || 'Month to date';
@@ -1630,6 +1631,7 @@ function daysUntil(d) {
 }
 function setTableLoading(on) {
   const tbody = document.getElementById('lot-tbody');
+  if (!tbody) return;
   if (on) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">Loading lots…</td></tr>';
 }
 
@@ -1899,7 +1901,7 @@ function exportCSV() {
 }
 
 // ── Boot ──────────────────────────────────────────────────────
-document.querySelector('th[data-col="ts"]').classList.add('sort-desc');
+var _ts = document.querySelector('th[data-col="ts"]'); if (_ts) _ts.classList.add('sort-desc');
 // Wire export button
 document.querySelector('.btn[onclick*="CSV"]') && 
   document.querySelector('.btn[onclick*="CSV"]').setAttribute('onclick','exportCSV()');
