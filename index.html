@@ -646,12 +646,13 @@ function deepDiveLoc(locCode) {
   .tbl-row span[data-label]::before {
     content: attr(data-label);
     font-size: 10px !important;
-    color: #4A5568 !important;
+    color: #8A93A8 !important;
     font-weight: 500 !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
-    width: 72px !important;
+    letter-spacing: 0.03em !important;
+    width: 82px !important;
     flex-shrink: 0 !important;
+    white-space: nowrap !important;
   }
 }
 </style>
@@ -821,26 +822,26 @@ function deepDiveLoc(locCode) {
             <p class="loc-name">Old Orchard</p>
             <p class="loc-sub warn-t">IL · Jamie K. · <span style="color:#a33030;">WG: +38% gauze</span></p>
           </div>
-          <span class="warn-t">9.8%</span>
-          <span class="warn-t">2</span>
-          <span class="bad-t">1 ⚠</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;">$1,340</span>
-          <span style="font-size:11px;color:#a33030;font-weight:500;">✗ Not done</span>
-          <span class="badge badge-warn" style="font-size:11px;"><i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending</span>
+          <span class="warn-t" data-label="COGs">9.8%</span>
+          <span class="warn-t" data-label="Alerts">2</span>
+          <span class="bad-t" data-label="Expiring">1 ⚠</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$1,340</span>
+          <span style="font-size:11px;color:#a33030;font-weight:500;" data-label="Cycle count">✗ Not done</span>
+          <span class="badge badge-warn" style="font-size:11px;" data-label="Order status"><i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending</span>
         </div>
 
         <!-- West Loop -->
         <div class="tbl-row">
           <div>
             <p class="loc-name">West Loop</p>
-            <p class="loc-sub">IL · Alex M. · <span style="color:#a0700a;" data-label="COGs" data-label="COGs">WG: +21% syringes</span></p>
+            <p class="loc-sub">IL · Alex M. · <span style="color:#a0700a;">WG: +21% syringes</span></p>
           </div>
-          <span class="good" data-label="Alerts" data-label="Alerts">7.9%</span>
-          <span class="bad-t" data-label="Expiring" data-label="Expiring">2</span>
-          <span style="color:#1C2B4A;font-size:12px;" data-label="Goods lost" data-label="Goods lost">0</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Cycle count" data-label="Cycle count">$490</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Order status" data-label="Order status">✓ Done · 11 min</span>
-          <span class="badge badge-ok" style="font-size:11px;"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span class="good" data-label="COGs">7.9%</span>
+          <span class="bad-t" data-label="Alerts">2</span>
+          <span style="color:#1C2B4A;font-size:12px;" data-label="Expiring">0</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$490</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 11 min</span>
+          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- Wheaton -->
