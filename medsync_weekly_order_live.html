@@ -86,6 +86,17 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy);cursor:poin
 .btn-new{padding:11px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+/* ══ IFRAME LAYOUT — nav and sidebar handled by parent app ══════ */
+.nav { display: none !important; height: 0 !important; overflow: hidden !important; }
+body { margin: 0 !important; padding: 0 !important; }
+
+/* ══ MOBILE LAYOUT ══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden !important; }
+  .topbar { padding-top: 16px !important; padding-left: 16px !important; padding-right: 16px !important; padding-bottom: 8px !important; }
+  input, select { font-size: 16px !important; }
+}
 </style>
 </head>
 <body>
