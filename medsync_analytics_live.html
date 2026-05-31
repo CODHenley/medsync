@@ -290,6 +290,60 @@ tr:hover td{background:#FAFAF8;}
   /* Toast */
   #toast { left: 14px !important; right: 14px !important; bottom: 14px !important; text-align: center !important; }
 }
+
+/* ── Prevent horizontal overflow on mobile ──────────────────── */
+html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+@media (max-width: 768px) {
+  .outer, .right, .main-area, .content, .main-col, .body-split {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+  }
+  /* Tables scroll within their container, not the whole page */
+  table { max-width: 100%; }
+  .tbl-wrap, .table-wrap { overflow-x: auto !important; }
+}
+
+/* ── iframe mobile fix — match Portfolio sizing ─────────────── */
+@media (max-width: 768px) {
+  /* Full height — no nav subtraction needed inside iframe */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+  }
+  /* Collapse outer sidebar */.outer { grid-template-columns: 1fr !important; }.sidebar { display: none !important; }
+  /* Use full viewport height */
+  .outer, .main-area, .right, .main-col {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  /* Topbar — compact, no wasted space */
+  .topbar {
+    padding: 8px 14px !important;
+    flex-shrink: 0 !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .tb-left { flex-wrap: wrap !important; gap: 6px !important; }
+  .tb-right { flex-wrap: wrap !important; gap: 6px !important; }
+  /* Inputs — prevent iOS zoom */
+  input, select { font-size: 16px !important; }
+}
+
+@media (max-width: 768px) {
+  /* Fix height calcs — no internal nav to subtract */
+  [style*="calc(100vh - 48px)"],
+  .outer, .main-area, .right, .main-col {
+    height: 100vh !important;
+    min-height: 100vh !important;
+  }
+  .body-split {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+}
 </style>
 
 <script>
