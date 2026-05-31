@@ -1297,6 +1297,7 @@ function exp(type){
 }
 function showToast(msg) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.style.opacity = '1';
   if (toastTimer) clearTimeout(toastTimer);
@@ -1367,7 +1368,7 @@ function updateKPIs() {
   const expired     = ALL_LOTS.filter(l => l.status === 'Expired').length;
   const cs          = ALL_LOTS.filter(l => l.cs).length;
 
-  document.getElementById('kpi-active').textContent  = active;
+  const _kpia = document.getElementById('kpi-active'); if (_kpia) _kpia.textContent  = active;
   document.getElementById('kpi-soon30').textContent  = soon30;
   document.getElementById('kpi-soon60').textContent  = soon60;
   document.getElementById('kpi-expired').textContent = expired;
@@ -1429,6 +1430,7 @@ function filterTable() {
   });
 
   const tbody = document.getElementById('lot-tbody');
+  if (!tbody) return;
   tbody.innerHTML = filtered.map(lot => {
     const days = daysUntil(lot.exp);
     const expClass = lot.status === 'Expired' ? 'expired' : lot.status === 'Expiring soon' ? 'soon' : '';
@@ -1638,6 +1640,7 @@ function setTableLoading(on) {
 // toastTimer already declared
 function showToast(msg) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.style.opacity = '1';
   if (toastTimer) clearTimeout(toastTimer);
@@ -1875,13 +1878,15 @@ function fmtTs(ts) {
     + ' · ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 function setLoading(on) {
-  document.getElementById('ev-tbody').innerHTML = on
+  const _evt = document.getElementById('ev-tbody'); if (!_evt) return;
+  _evt.innerHTML = on
     ? '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--mist);">Loading events…</td></tr>' : '';
 }
 
 let toastT = null;
 function showToast(msg) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg; t.style.opacity = '1';
   if (toastT) clearTimeout(toastT);
   toastT = setTimeout(()=>{ t.style.opacity='0'; }, 2800);
@@ -2269,7 +2274,9 @@ function triggerPrint() {
 
 function showToast(html) {
   const t = document.getElementById('export-toast');
-  document.getElementById('export-toast-msg').innerHTML = html;
+  if (!t) return;
+  const _etm = document.getElementById('export-toast-msg'); if (!_etm) return;
+  _etm.innerHTML = html;
   t.style.display = 'flex';
   t.style.background = '#E8E4F8';
 }
@@ -2296,6 +2303,7 @@ const allLogs = [
 
 function renderLog(rows) {
   const tbody = document.getElementById('log-tbody');
+  if (!tbody) return;
   tbody.innerHTML = rows.map(r => `
     <tr class="log-row">
       <td>${r.ts}</td>
