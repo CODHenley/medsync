@@ -181,11 +181,8 @@ textarea{resize:vertical;min-height:72px;}
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   /* Hide internal nav — parent app nav handles navigation */
-  .nav { display: none !important; }
 
   /* Collapse sidebar — content goes full width */
-  .outer { grid-template-columns: 1fr !important; }
-  .sidebar { display: none !important; }
 
   /* Full height content */
   .right, .main-area { height: auto !important; overflow: visible !important; }
@@ -228,6 +225,15 @@ textarea{resize:vertical;min-height:72px;}
   /* Toast */
   #toast { left: 14px !important; right: 14px !important; bottom: 14px !important; text-align: center !important; }
 }
+
+/* ══ IFRAME LAYOUT — nav and sidebar handled by parent app ══════
+   Hide internal nav and sidebar on ALL screen sizes.
+   Content fills full iframe width, matching portfolio behavior.
+══════════════════════════════════════════════════════════════ */
+.nav { display: none !important; }
+.sidebar { display: none !important; }
+.outer { grid-template-columns: 1fr !important; }
+.right, .main-area { height: calc(100vh - 0px) !important; }
 </style>
 </head>
 <body>

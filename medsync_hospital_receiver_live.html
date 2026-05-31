@@ -91,6 +91,15 @@ select.loc-sel:focus{border-color:var(--navy);}
   .shell { max-width: 100% !important; }
   input, select { font-size: 16px !important; }
 }
+
+/* ══ IFRAME LAYOUT — nav and sidebar handled by parent app ══════
+   Hide internal nav and sidebar on ALL screen sizes.
+   Content fills full iframe width, matching portfolio behavior.
+══════════════════════════════════════════════════════════════ */
+.nav { display: none !important; }
+.sidebar { display: none !important; }
+.outer { grid-template-columns: 1fr !important; }
+.right, .main-area { height: calc(100vh - 0px) !important; }
 </style>
 </head>
 <body>
