@@ -268,7 +268,7 @@ function deepDiveLoc(locCode) {
   }
 
 *,*::before,*::after{box-sizing:border-box;}
-.ms-screen{display:none;min-height:calc(100vh - 48px);}
+.ms-screen{display:none;min-height:0;background:none;margin:0;padding:0;}
 .mnb{padding:6px 12px;border-radius:6px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;border:none;background:none;font-family:"DM Sans",sans-serif;transition:all .12s;}
 .mnb.active{color:#fff;background:rgba(255,255,255,.12);font-weight:500;}
 .mnb:hover:not(.active){color:rgba(255,255,255,.8);}
@@ -482,16 +482,8 @@ html { overflow-x: hidden; }
 
   /* Hide nav buttons on mobile — sidebar handles navigation */
   .mnb { display: none !important; }
-  /* Show only the active button as current screen indicator */
-  .mnb.active {
-    display: inline-block !important;
-    padding: 4px 10px !important;
-    font-size: 12px !important;
-    color: #fff !important;
-    background: rgba(255,255,255,.12) !important;
-    border-radius: 6px !important;
-    pointer-events: none !important;
-  }
+  /* No screen name pill in nav — title lives in content area below */
+  .mnb.active { display: none !important; }
 
   /* Nav spacing — tighter logo, more room for active tab + role */
   nav > div:first-child { gap: 4px !important; }
@@ -754,6 +746,23 @@ html { overflow-x: hidden; }
     vertical-align: top !important;
   }
 }
+
+@media (max-width: 768px) {
+  .ms-screen {
+    background: none !important;
+    min-height: 0 !important;
+    height: calc(100vh - 48px) !important;
+    overflow: hidden !important;
+  }
+  .ms-screen iframe {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    border: none !important;
+    vertical-align: top !important;
+    background: none !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -805,7 +814,7 @@ html { overflow-x: hidden; }
 <div id="mob-overlay" onclick="closeMobileMenu()"></div>
 
 <div id="app-body">
-<div id="app-sidebar" style="width:200px;background:#F0EEF8;border-right:0.5px solid #DDD9EC;flex-shrink:0;overflow-y:auto;min-height:calc(100vh - 48px);">
+<div id="app-sidebar" style="width:200px;background:#F0EEF8;border-right:0.5px solid #DDD9EC;flex-shrink:0;overflow-y:auto;">
   <div style="padding:10px 14px 8px;border-bottom:0.5px solid #E4E0F0;margin-bottom:4px;">
     <div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;" id="sb-role-name">Admin</div>
     <div style="font-size:10px;color:#4A5568;margin-top:1px;" id="sb-role-loc">Megan Henley · Scout</div>
@@ -1043,25 +1052,25 @@ html { overflow-x: hidden; }
     title="ms-actlog">
   </iframe>
 </div>
-<div id="ms-order" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+<div id="ms-order" class="ms-screen">
   <iframe src="medsync_weekly_order_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Weekly Order">
   </iframe>
 </div>
-<div id="ms-receiving" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+<div id="ms-receiving" class="ms-screen">
   <iframe src="medsync_receiving_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Receiving">
   </iframe>
 </div>
-<div id="ms-receiver" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+<div id="ms-receiver" class="ms-screen">
   <iframe src="medsync_hospital_receiver_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Hospital Receiver">
   </iframe>
 </div>
-<div id="ms-goods" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+<div id="ms-goods" class="ms-screen">
   <iframe src="medsync_goods_lost_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Goods Lost">
