@@ -368,27 +368,27 @@ if (window.self !== window.top) {
       <div class="kpi-row">
         <div class="kpi">
           <div class="kpi-l">Total active lots</div>
-          <div class="kpi-v" style="color:var(--navy);">142</div>
+          <div class="kpi-v" id="kpi-active" style="color:var(--navy);">142</div>
           <div class="kpi-s cm">across all locations</div>
         </div>
         <div class="kpi kpi-warn">
           <div class="kpi-l">Expiring ≤30 days</div>
-          <div class="kpi-v ca">8</div>
+          <div class="kpi-v ca" id="kpi-soon30">8</div>
           <div class="kpi-s ca">action required</div>
         </div>
         <div class="kpi kpi-warn">
           <div class="kpi-l">Expiring 31–60 days</div>
-          <div class="kpi-v ca">14</div>
+          <div class="kpi-v ca" id="kpi-soon60">14</div>
           <div class="kpi-s cm">monitor closely</div>
         </div>
         <div class="kpi kpi-alert">
           <div class="kpi-l">Expired · not disposed</div>
-          <div class="kpi-v cr">3</div>
+          <div class="kpi-v cr" id="kpi-expired">3</div>
           <div class="kpi-s cr">disposal needed</div>
         </div>
         <div class="kpi" style="border-color:rgba(83,74,183,.25);background:var(--purple-bg);">
           <div class="kpi-l">Controlled substance lots</div>
-          <div class="kpi-v cp">19</div>
+          <div class="kpi-v cp" id="kpi-cs">19</div>
           <div class="kpi-s" style="color:var(--purple);">1 biennial flag</div>
         </div>
       </div>
