@@ -233,6 +233,20 @@ textarea{resize:vertical;min-height:72px;}
   body { margin: 0 !important; padding: 0 !important; }
   .outer { margin: 0 !important; }
 }
+
+/* ── Topbar as subheader — title visible, compact ────────────── */
+@media (max-width: 768px) {
+  .tb-title { 
+    display: block !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--navy) !important;
+  }
+  .topbar {
+    padding: 10px 16px 8px !important;
+    border-bottom: 0.5px solid var(--border) !important;
+  }
+}
 </style>
 </head>
 <body>

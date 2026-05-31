@@ -851,26 +851,7 @@ html { overflow-x: hidden; }
 <div id="mob-overlay" onclick="closeMobileMenu()"></div>
 
 <div id="app-body">
-<div id="app-sidebar" style="width:200px;background:#F0EEF8;border-right:0.5px solid #DDD9EC;flex-shrink:0;overflow-y:auto;">
-  <div style="padding:10px 14px 8px;border-bottom:0.5px solid #E4E0F0;margin-bottom:4px;">
-    <div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;" id="sb-role-name">Admin</div>
-    <div style="font-size:10px;color:#4A5568;margin-top:1px;" id="sb-role-loc">Megan Henley · Scout</div>
-  </div>
-  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Admin Dashboard</div>
-  <div class="asb-item" id="asb-portfolio" onclick="closeMobileMenu();showScreen('portfolio')">▪ Portfolio</div>
-  <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 MedSync Analytics</div>
-  <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
-  <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">📋 Activity Log</div>
-  <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
-  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
-  <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
-  <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
-  <div class="asb-item" id="asb-receiver" onclick="closeMobileMenu();showScreen('receiver')">🏥 Hospital Receiver</div>
-  <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
-  <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
-  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Settings</div>
-  <div class="asb-item" onclick="closeMobileMenu();showScreen('portfolio')">⚙️ Admin Settings</div>
-</div>
+
 <div id="app-content">
 <div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;display:block;"><div id="screen1">
   <div class="screen">
@@ -1071,6 +1052,26 @@ html { overflow-x: hidden; }
 <div class="divider"></div>
 
 <!-- SCREEN 3: MEDSYNC ANALYTICS --></div>
+<div id="app-sidebar" style="width:200px;background:#F0EEF8;border-right:0.5px solid #DDD9EC;flex-shrink:0;overflow-y:auto;">
+  <div style="padding:10px 14px 8px;border-bottom:0.5px solid #E4E0F0;margin-bottom:4px;">
+    <div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;" id="sb-role-name">Admin</div>
+    <div style="font-size:10px;color:#4A5568;margin-top:1px;" id="sb-role-loc">Megan Henley · Scout</div>
+  </div>
+  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Admin Dashboard</div>
+  <div class="asb-item" id="asb-portfolio" onclick="closeMobileMenu();showScreen('portfolio')">▪ Portfolio</div>
+  <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 MedSync Analytics</div>
+  <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
+  <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">📋 Activity Log</div>
+  <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
+  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
+  <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
+  <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
+  <div class="asb-item" id="asb-receiver" onclick="closeMobileMenu();showScreen('receiver')">🏥 Hospital Receiver</div>
+  <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
+  <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
+  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Settings</div>
+  <div class="asb-item" onclick="closeMobileMenu();showScreen('portfolio')">⚙️ Admin Settings</div>
+</div>
 <div id="ms-analytics" class="ms-screen">
   <iframe src="medsync_analytics_live.html" 
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
