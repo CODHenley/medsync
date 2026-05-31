@@ -39,17 +39,21 @@ function showOpsScreen(n) { showScreen(n); }
 function toggleMobileMenu() {
   var sb = document.getElementById('app-sidebar');
   var ov = document.getElementById('mob-overlay');
-  var isOpen = sb.classList.contains('mobile-open');
+  var isOpen = sb.style.display === 'block';
   if (isOpen) {
-    sb.classList.remove('mobile-open');
+    sb.style.display = 'none';
+    sb.style.boxShadow = 'none';
     ov.classList.remove('active');
   } else {
-    sb.classList.add('mobile-open');
+    sb.style.display = 'block';
+    sb.style.boxShadow = '4px 0 20px rgba(0,0,0,.18)';
     ov.classList.add('active');
   }
 }
 function closeMobileMenu() {
-  document.getElementById('app-sidebar').classList.remove('mobile-open');
+  var sb = document.getElementById('app-sidebar');
+  sb.style.display = 'none';
+  sb.style.boxShadow = 'none';
   document.getElementById('mob-overlay').classList.remove('active');
 }
 
@@ -625,93 +629,7 @@ function deepDiveLoc(locCode) {
       background: #fff !important;
   }
 
-  /* ── Sidebar: fixed drawer, zero layout impact ── */
-  #app-sidebar {
-    position: fixed !important;
-    top: 48px !important;
-    left: -240px !important;
-    width: 220px !important;
-    height: calc(100vh - 48px) !important;
-    background: #fff !important;
-    border-right: 0.5px solid #DDD9EC !important;
-    z-index: 200 !important;
-    transition: left .25s ease !important;
-    overflow-y: auto !important;
-    visibility: hidden !important;
-  }
-  #app-sidebar.mobile-open {
-    left: 0 !important;
-    visibility: visible !important;
-    box-shadow: 4px 0 20px rgba(0,0,0,.18) !important;
-  }
-
-  /* ── Overlay ── */
-  #mob-overlay {
-    position: fixed !important;
-    inset: 48px 0 0 0 !important;
-    background: rgba(0,0,0,.35) !important;
-    z-index: 199 !important;
-    display: none !important;
-  }
-  #mob-overlay.active { display: block !important; }
-
-  /* ── app-content: full width, no gap ── */
-  #app-content {
-    display: block !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow-x: hidden !important;
-  }
-
-  /* ── Each screen ── */
-  .ms-screen {
-    background: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    min-height: 0 !important;
-    overflow-x: hidden !important;
-  }
-
-  /* ── Iframes: full width, fill viewport ── */
-  .ms-screen iframe {
-    display: block !important;
-    width: 100% !important;
-    height: calc(100vh - 48px) !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    vertical-align: top !important;
-  }
-
-  /* ── Portfolio metrics: 2 cols ── */
-  .metric-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .metric { padding: 14px !important; }
-  .metric-value { font-size: 22px !important; }
-
-  /* ── Portfolio table: card layout ── */
-  .col-header { display: none !important; }
-  .tbl-row {
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 14px 16px !important;
-    gap: 6px !important;
-  }
-  .tbl-row > div:first-child {
-    border-bottom: 0.5px solid #E4E0F0 !important;
-    padding-bottom: 8px !important;
-    margin-bottom: 2px !important;
-  }
-
-  /* ── Role badge + avatar ── */
-  #ms-role { font-size: 9px !important; padding: 2px 7px !important; }
-  #ms-avatar { width: 24px !important; height: 24px !important; font-size: 9px !important; }
-
-  /* ── Toast ── */
-  #toast { left: 14px !important; right: 14px !important; bottom: 14px !important; text-align: center !important; }
-}
-
+  
 /* ── Content clears fixed nav — no gap between nav and subheader ── */
 @media (max-width: 768px) {
   /* Portfolio: first visible element clears the nav */
@@ -725,39 +643,20 @@ function deepDiveLoc(locCode) {
   #ms-portfolio .metric-grid { padding-top: 54px !important; }
 }
 
-/* ── Desktop: full-width content with padding ────────────────── */
+
+/* ── Sidebar drawer ──────────────────────────────────────────── */
+#app-sidebar { display: none; }
+
+/* ── Content: full viewport width ───────────────────────────── */
 #app-content {
   width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
 }
-#ms-portfolio .sidebar-content,
-#ms-portfolio .with-sidebar {
-  max-width: 1100px !important;
-  margin: 0 auto !important;
-  padding: 24px 15% !important;
-}
-.ms-screen iframe {
+.ms-screen, .ms-screen iframe {
   width: 100% !important;
 }
-
-/* ── Sidebar: always a collapsible drawer ────────────────────── */
-#app-sidebar.mobile-open {
-  left: 0 !important;
-  box-shadow: 4px 0 20px rgba(0,0,0,.18) !important;
-}
-#app-sidebar:not(.mobile-open) {
-  visibility: hidden;
-}
-#app-sidebar.mobile-open {
-  visibility: visible;
-}
-#mob-overlay {
-  position: fixed;
-  inset: 48px 0 0 0;
-  background: rgba(0,0,0,.35);
-  z-index: 199;
-  display: none;
-}
-#mob-overlay.active { display: block; }
 </style>
 </head>
 <body>
@@ -810,7 +709,7 @@ function deepDiveLoc(locCode) {
 
 <div id="app-body">
 
-<div id="app-sidebar" style="width:260px;background:#fff;border-right:0.5px solid #DDD9EC;overflow-y:auto;position:fixed;top:48px;left:-280px;height:calc(100vh - 48px);z-index:200;transition:left .25s ease;box-shadow:none;">
+<div id="app-sidebar" style="display:none;width:260px;background:#fff;border-right:0.5px solid #DDD9EC;overflow-y:auto;position:fixed;top:48px;left:0;height:calc(100vh - 48px);z-index:200;transition:all .25s ease;box-shadow:none;">
   <div style="padding:10px 14px 8px;border-bottom:0.5px solid #E4E0F0;margin-bottom:4px;">
     <div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;" id="sb-role-name">Admin</div>
     <div style="font-size:10px;color:#4A5568;margin-top:1px;" id="sb-role-loc">Megan Henley · Scout</div>
