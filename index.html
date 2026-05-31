@@ -596,8 +596,12 @@ function deepDiveLoc(locCode) {
    Content starts immediately below nav, zero gap
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  #ms-portfolio .metric-grid { padding-top: 54px !important; }
 
-  /* ── Nav: fixed on mobile only ── */
+  /* Portfolio clears fixed nav */
+  
+
+    /* ── Nav: fixed on mobile only ── */
   nav {
     position: fixed !important;
     top: 0 !important;
@@ -633,14 +637,14 @@ function deepDiveLoc(locCode) {
 /* ── Content clears fixed nav — no gap between nav and subheader ── */
 @media (max-width: 768px) {
   /* Portfolio: first visible element clears the nav */
-  #ms-portfolio .metric-grid { padding-top: 54px !important; }
+  
   /* Iframes: topbar clears the nav */
   .ms-screen iframe {
     margin-top: 0 !important;
   }
 }
 @media (max-width: 768px) {
-  #ms-portfolio .metric-grid { padding-top: 54px !important; }
+  
 }
 
 
