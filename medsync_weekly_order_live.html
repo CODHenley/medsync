@@ -15,7 +15,7 @@
   --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
   --red:#a33030;--red-bg:#fde0d0;
 }
-body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;min-height:100vh;display:flex;flex-direction:column;}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;height:100%;overflow:hidden;display:flex;flex-direction:column;}
 
 /* Topbar */
 .topbar{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;flex-shrink:0;}
@@ -97,6 +97,10 @@ body { margin: 0 !important; padding: 0 !important; }
   .topbar { padding-top: 16px !important; padding-left: 16px !important; padding-right: 16px !important; padding-bottom: 8px !important; }
   input, select { font-size: 16px !important; }
 }
+
+/* ── Fit iframe exactly — no gap ────────────────────────────── */
+html { height: 100%; overflow: hidden; }
+body { height: 100%; overflow: hidden; min-height: 0 !important; }
 </style>
 </head>
 <body>

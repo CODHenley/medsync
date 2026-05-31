@@ -17,7 +17,7 @@
   --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
   --purple:#534AB7;--purple-bg:#EEEDFE;
 }
-body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;line-height:1.5;min-height:100vh;margin:0;padding:0;margin:0!important;padding:0!important;}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;line-height:1.5;height:100%;overflow:hidden;margin:0;padding:0;margin:0!important;padding:0!important;}
 
 /* NAV */
 .nav{background:var(--navy);display:none;align-items:center;justify-content:space-between;padding:0 20px;height:48px;position:sticky;top:0;z-index:50;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;}
@@ -225,6 +225,10 @@ tr:hover td{background:#FAFAF8;}
 .right, .main-area { height: calc(100vh - 0px) !important; }
 
 
+
+/* ── Fit iframe exactly — no gap ────────────────────────────── */
+html { height: 100%; overflow: hidden; }
+body { height: 100%; overflow: hidden; min-height: 0 !important; }
 </style>
 
 <script>
