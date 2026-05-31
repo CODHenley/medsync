@@ -215,6 +215,24 @@ textarea{resize:vertical;min-height:72px;}
     height: auto !important;
   }
 }
+
+/* ── Hide duplicate screen title on mobile (shown in parent nav) ─ */
+@media (max-width: 768px) {
+  .tb-title { display: none !important; }
+  /* Tighten topbar since title is gone */
+  .topbar {
+    padding: 6px 14px !important;
+    min-height: 0 !important;
+  }
+  .tb-left {
+    gap: 6px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  body { margin: 0 !important; padding: 0 !important; }
+  .outer { margin: 0 !important; }
+}
 </style>
 </head>
 <body>
