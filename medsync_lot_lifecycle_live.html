@@ -352,6 +352,17 @@ html, body {
   .tb-left { gap: 8px !important; flex-wrap: wrap !important; }
   .tb-right { gap: 6px !important; flex-wrap: wrap !important; }
 }
+
+/* ── Topbar clears parent fixed nav ─────────────────────────── */
+@media (max-width: 768px) {
+  .topbar:first-child,
+  .topbar {
+    padding-top: 48px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-bottom: 8px !important;
+  }
+}
 </style>
 
 <script>

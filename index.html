@@ -610,7 +610,7 @@ html { overflow-x: hidden; }
   #app-body {
     display: block !important;
     margin: 0 !important;
-    padding-top: 24px !important;
+    padding-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
     padding-bottom: 0 !important;
@@ -704,6 +704,18 @@ html { overflow-x: hidden; }
 
   /* ── Toast ── */
   #toast { left: 14px !important; right: 14px !important; bottom: 14px !important; text-align: center !important; }
+}
+
+/* ── Content clears fixed nav — no gap between nav and subheader ── */
+@media (max-width: 768px) {
+  /* Portfolio: first visible element clears the nav */
+  #ms-portfolio .metric-grid {
+    padding-top: 48px !important;
+  }
+  /* Iframes: topbar clears the nav */
+  .ms-screen iframe {
+    margin-top: 0 !important;
+  }
 }
 </style>
 </head>
