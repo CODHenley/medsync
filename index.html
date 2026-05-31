@@ -389,7 +389,7 @@ function deepDiveLoc(locCode) {
   overflow-x: visible !important;
 }
 /* Fix metric grid to use full width */
-#ms-portfolio .metric-grid { padding-top: 54px !important; }
+
 /* Fix col-header and tbl-row to use full width */
 #ms-portfolio .col-header,
 #ms-portfolio .tbl-row {
@@ -720,6 +720,9 @@ function deepDiveLoc(locCode) {
   .ms-screen iframe {
     margin-top: 0 !important;
   }
+}
+@media (max-width: 768px) {
+  #ms-portfolio .metric-grid { padding-top: 54px !important; }
 }
 </style>
 </head>
