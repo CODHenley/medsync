@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync — Receiving</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1C2B4A;--gold:#C8922A;--gold-light:#E8B84B;
+  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --bg:#F5F3FA;--surface:#fff;
+  --green:#0F6E56;--green-bg:#E1F5EE;
+  --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
+  --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;display:flex;flex-direction:column;}
+
+.topbar{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;flex-shrink:0;}
+.tb-left{display:flex;align-items:center;gap:12px;}
+.tb-title{font-size:14px;font-weight:500;color:#fff;}
+.tb-sub{font-size:11px;color:rgba(255,255,255,.5);}
+select.nav-sel{background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.2);color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 10px;border-radius:7px;outline:none;height:30px;}
+select.nav-sel option{background:var(--navy);}
+.btn-scan{padding:6px 14px;background:rgba(255,255,255,.15);color:#fff;border:0.5px solid rgba(255,255,255,.3);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-scan:hover{background:rgba(255,255,255,.25);}
+
+.content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;max-width:900px;margin:0 auto;width:100%;}
+
+/* PO selector */
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;}
+.card-title{font-size:12px;font-weight:600;margin-bottom:10px;}
+.po-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.po-card{padding:10px 12px;border:0.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .1s;}
+.po-card.active{border-color:var(--navy);background:#F0EEF8;}
+.po-card:hover:not(.active){background:#FAFAF8;}
+.po-ref{font-size:12px;font-weight:500;font-family:'DM Mono',monospace;}
+.po-meta{font-size:10px;color:var(--mist);margin-top:2px;}
+
+/* Scan area */
+.scan-area{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
+.scan-head{padding:10px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.scan-status{font-size:11px;}
+.scan-last{background:#F0EEF8;padding:8px 16px;font-size:11px;color:var(--slate);border-bottom:0.5px solid var(--border);}
+.scan-last.ok{background:var(--green-bg);color:var(--green);}
+.scan-last.warn{background:var(--amber-bg);color:var(--amber);}
+
+/* Items table */
+.items-head{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr;padding:7px 16px;background:#F8F7FC;border-bottom:0.5px solid var(--border);font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;font-weight:500;}
+.item-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr;padding:10px 16px;border-bottom:0.5px solid #F5F3FA;align-items:center;}
+.item-row:last-child{border-bottom:none;}
+.item-row.confirmed{background:#FAFFFE;}
+.item-row.discrepancy{background:#FFF9F9;}
+.item-row.pending{background:var(--surface);}
+.item-name{font-size:12px;font-weight:500;}
+.item-ndc{font-size:10px;color:var(--mist);font-family:'DM Mono',monospace;margin-top:1px;}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;display:inline-block;}
+.b-confirmed{background:var(--green-bg);color:var(--green);}
+.b-pending{background:#F0EEF8;color:var(--mist);}
+.b-disc{background:var(--red-bg);color:var(--red);}
+.b-awaiting{background:var(--amber-bg);color:var(--amber);}
+
+/* Discrepancy banner */
+.disc-banner{background:var(--amber-bg);border-top:0.5px solid var(--amber-border);padding:10px 16px;font-size:11px;color:var(--amber);display:flex;align-items:flex-start;gap:8px;}
+
+/* Simulate scan input */
+.sim-bar{background:#F8F7FC;border-top:0.5px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;}
+.sim-input{flex:1;padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none;}
+.sim-input:focus{border-color:var(--navy);}
+.btn-sim{padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-sim:hover{background:#243459;}
+.btn-auto{padding:7px 14px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-auto:hover{background:#F0EEF8;}
+
+/* PO status footer */
+.po-footer{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.pf-status{font-size:12px;color:var(--slate);}
+.pf-status strong{color:var(--navy);}
+.btn-complete{padding:9px 20px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-complete:hover{background:#0a5c47;}
+.btn-complete:disabled{opacity:.4;cursor:not-allowed;}
+
+/* Success */
+.success{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px;text-align:center;}
+.success-icon{font-size:48px;margin-bottom:16px;}
+.success-title{font-size:20px;font-weight:600;margin-bottom:8px;}
+.success-sub{font-size:13px;color:var(--mist);margin-bottom:24px;line-height:1.6;}
+.btn-new{padding:11px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+
+#toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-left">
+    <div>
+      <div class="tb-title">Receiving</div>
+      <div class="tb-sub" id="tb-sub">Select a location and PO</div>
+    </div>
+    <select class="nav-sel" id="loc-select" onchange="onLocChange()">
+      <option value="">Select location…</option>
+    </select>
+  </div>
+  <button class="btn-scan" onclick="simulateScan()">⊡ Simulate scan</button>
+</div>
+
+<div id="main-view" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+  <div class="content" id="main-content">
+
+    <!-- PO Selection -->
+    <div class="card" id="po-select-card">
+      <div class="card-title">Select a purchase order to receive</div>
+      <div class="po-grid" id="po-grid">
+        <div style="color:var(--mist);font-size:12px;">Loading orders…</div>
+      </div>
+    </div>
+
+    <!-- Receiving table (hidden until PO selected) -->
+    <div id="receiving-panel" style="display:none;">
+      <div class="scan-area">
+        <div class="scan-head">
+          <div>
+            <div style="font-size:12px;font-weight:600;" id="po-title">PO —</div>
+            <div style="font-size:11px;color:var(--mist);margin-top:1px;" id="po-meta">—</div>
+          </div>
+          <div class="scan-status" id="scan-status">0 of 0 scanned</div>
+        </div>
+        <div id="scan-last" class="scan-last" style="display:none;"></div>
+        <div class="items-head">
+          <span>Product</span><span>Ordered</span><span>Received</span><span>Lot / Exp</span><span>Status</span>
+        </div>
+        <div id="item-rows"></div>
+        <div id="disc-banner" class="disc-banner" style="display:none;">
+          ⚠ <span id="disc-text"></span>
+        </div>
+        <div class="sim-bar">
+          <input class="sim-input" id="scan-input" placeholder="Enter NDC or lot number…" onkeydown="if(event.key==='Enter')processScan()">
+          <button class="btn-auto" onclick="autoScanNext()">Auto-scan next</button>
+          <button class="btn-sim" onclick="processScan()">Scan →</button>
+        </div>
+      </div>
+
+      <div class="po-footer">
+        <div class="pf-status" id="pf-status">Select items to begin scanning</div>
+        <button class="btn-complete" id="complete-btn" onclick="completeSession()" disabled>Complete receiving →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="success" id="success-view">
+  <div class="success-icon">✓</div>
+  <div class="success-title">Receiving complete</div>
+  <div class="success-sub" id="success-detail">Session logged.</div>
+  <button class="btn-new" onclick="resetSession()">Receive another delivery</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+
+let state = {
+  locationId: null, locationName: null,
+  selectedOrder: null,
+  lines: [], // { productId, name, ndc, qtyOrdered, qtyReceived, lotNum, expDate, status }
+  sessionId: null, hasDiscrepancy: false,
+};
+
+async function boot() {
+  await loadLocations();
+}
+
+async function loadLocations() {
+  const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
+  const locs = await res.json();
+  const sel = document.getElementById('loc-select');
+  locs.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l.id; opt.textContent = l.name; sel.appendChild(opt);
+  });
+  if (locs.length) {
+    sel.value = locs[0].id;
+    state.locationId = locs[0].id;
+    state.locationName = locs[0].name;
+    await loadOrders();
+  }
+}
+
+async function onLocChange() {
+  const sel = document.getElementById('loc-select');
+  state.locationId = sel.value;
+  state.locationName = sel.options[sel.selectedIndex].text;
+  state.selectedOrder = null;
+  document.getElementById('receiving-panel').style.display = 'none';
+  await loadOrders();
+}
+
+async function loadOrders() {
+  document.getElementById('tb-sub').textContent = 'Receiving · ' + state.locationName;
+  const res = await fetch(
+    SUPA_URL + `/rest/v1/orders?select=id,order_ref,total_value,submitted_at,status&location_id=eq.${state.locationId}&status=in.(Submitted,Late)&order=submitted_at.desc&limit=6`,
+    { headers: H }
+  );
+  const orders = await res.json();
+  const grid = document.getElementById('po-grid');
+  if (!orders.length) {
+    grid.innerHTML = '<div style="color:var(--mist);font-size:12px;grid-column:1/-1;">No pending orders for this location.</div>';
+    return;
+  }
+  grid.innerHTML = orders.map(o => `
+    <div class="po-card" onclick="selectOrder('${o.id}','${o.order_ref}','${o.total_value}','${o.submitted_at}')">
+      <div class="po-ref">${o.order_ref}</div>
+      <div class="po-meta">$${Number(o.total_value||0).toFixed(2)} · ${o.status} · ${new Date(o.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+    </div>
+  `).join('');
+}
+
+async function selectOrder(id, ref, total, submittedAt) {
+  // Mark selected
+  document.querySelectorAll('.po-card').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  state.selectedOrder = { id, ref, total, submittedAt };
+  state.hasDiscrepancy = false;
+
+  // Load order lines
+  const res = await fetch(
+    SUPA_URL + `/rest/v1/order_lines?select=id,qty_ordered,products(id,name,ndc)&order_id=eq.${id}`,
+    { headers: H }
+  );
+  const lines = await res.json();
+
+  state.lines = lines.map(l => ({
+    lineId:    l.id,
+    productId: l.products?.id,
+    name:      l.products?.name || '—',
+    ndc:       l.products?.ndc || '—',
+    qtyOrdered: l.qty_ordered || 1,
+    qtyReceived: 0,
+    lotNum: null, expDate: null,
+    status: 'pending'
+  }));
+
+  document.getElementById('po-title').textContent = ref;
+  document.getElementById('po-meta').textContent =
+    lines.length + ' SKUs · $' + Number(total).toFixed(2) + ' · ' + new Date(submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('receiving-panel').style.display = 'block';
+  document.getElementById('scan-last').style.display = 'none';
+  document.getElementById('disc-banner').style.display = 'none';
+  renderItems();
+  updateStatus();
+}
+
+function renderItems() {
+  const tbody = document.getElementById('item-rows');
+  tbody.innerHTML = state.lines.map((l,i) => {
+    const statusBadge = l.status === 'confirmed'
+      ? '<span class="badge b-confirmed">✓ Confirmed</span>'
+      : l.status === 'discrepancy'
+      ? '<span class="badge b-disc">⚠ Discrepancy</span>'
+      : l.status === 'awaiting'
+      ? '<span class="badge b-awaiting">⏳ Pending</span>'
+      : '<span class="badge b-pending">Awaiting scan</span>';
+    return `<div class="item-row ${l.status}" id="item-row-${i}">
+      <div><div class="item-name">${l.name}</div><div class="item-ndc">${l.ndc}</div></div>
+      <div style="font-size:12px;">${l.qtyOrdered}</div>
+      <div style="font-size:12px;font-weight:${l.qtyReceived?'500':'400'};color:${l.qtyReceived?'var(--navy)':'var(--mist)'};">${l.qtyReceived || '—'}</div>
+      <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--mist);">${l.lotNum ? '#'+l.lotNum+'<br>Exp '+l.expDate : '—'}</div>
+      <div>${statusBadge}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateStatus() {
+  const confirmed = state.lines.filter(l => l.status === 'confirmed').length;
+  const total = state.lines.length;
+  const hasDisc = state.lines.some(l => l.status === 'discrepancy');
+  document.getElementById('scan-status').textContent = confirmed + ' of ' + total + ' confirmed';
+  document.getElementById('pf-status').innerHTML =
+    `<strong>${confirmed} of ${total} confirmed</strong>` +
+    (hasDisc ? ' · <span style="color:var(--red);">1 discrepancy</span>' : '');
+  const btn = document.getElementById('complete-btn');
+  btn.disabled = confirmed === 0;
+  if (confirmed === total) {
+    btn.style.background = 'var(--green)';
+    btn.textContent = 'Complete receiving →';
+  }
+}
+
+// ── Scan simulation ───────────────────────────────────────────
+function autoScanNext() {
+  const pending = state.lines.findIndex(l => l.status === 'pending');
+  if (pending === -1) { showToast('All items scanned'); return; }
+  const line = state.lines[pending];
+  // Generate a fake lot/exp
+  const lotNum = 'L' + String(Math.floor(Math.random()*9000)+1000);
+  const expYear = 2027 + Math.floor(Math.random()*2);
+  const expMon = String(Math.floor(Math.random()*12)+1).padStart(2,'0');
+  line.qtyReceived = line.qtyOrdered;
+  line.lotNum = lotNum;
+  line.expDate = expMon + '/' + expYear;
+  line.status = 'confirmed';
+  const scanEl = document.getElementById('scan-last');
+  scanEl.style.display = 'block';
+  scanEl.className = 'scan-last ok';
+  scanEl.textContent = '✓ Scanned: ' + line.name + ' · Lot #' + lotNum + ' · Exp ' + line.expDate + ' · ' + line.qtyOrdered + ' units confirmed';
+  renderItems();
+  updateStatus();
+}
+
+function processScan() {
+  const val = document.getElementById('scan-input').value.trim();
+  if (!val) { autoScanNext(); return; }
+  // Try to match by NDC
+  const idx = state.lines.findIndex(l => l.ndc === val || l.name.toLowerCase().includes(val.toLowerCase()));
+  if (idx === -1) {
+    // Discrepancy — unmatched item
+    state.hasDiscrepancy = true;
+    const scanEl = document.getElementById('scan-last');
+    scanEl.style.display = 'block';
+    scanEl.className = 'scan-last warn';
+    scanEl.textContent = '⚠ No match found for "' + val + '" — item not on this PO. Do not shelve.';
+    const disc = document.getElementById('disc-banner');
+    disc.style.display = 'flex';
+    document.getElementById('disc-text').textContent = val + ' scanned — not on PO. Contact vendor to confirm correct product.';
+    document.getElementById('scan-input').value = '';
+    return;
+  }
+  const line = state.lines[idx];
+  const lotNum = 'L' + String(Math.floor(Math.random()*9000)+1000);
+  const expYear = 2027;
+  const expMon = String(Math.floor(Math.random()*12)+1).padStart(2,'0');
+  line.qtyReceived = line.qtyOrdered;
+  line.lotNum = lotNum;
+  line.expDate = expMon + '/' + expYear;
+  line.status = 'confirmed';
+  const scanEl = document.getElementById('scan-last');
+  scanEl.style.display = 'block';
+  scanEl.className = 'scan-last ok';
+  scanEl.textContent = '✓ ' + line.name + ' · Lot #' + lotNum + ' · ' + line.qtyOrdered + ' confirmed';
+  document.getElementById('scan-input').value = '';
+  renderItems();
+  updateStatus();
+}
+
+function simulateScan() {
+  autoScanNext();
+}
+
+// ── Complete session ──────────────────────────────────────────
+async function completeSession() {
+  const btn = document.getElementById('complete-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const confirmed = state.lines.filter(l => l.status === 'confirmed');
+  const hasDisc = state.lines.some(l => l.status === 'discrepancy') || state.hasDiscrepancy;
+
+  try {
+    // Create receiving session
+    const sessRes = await fetch(SUPA_URL + '/rest/v1/receiving_sessions', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        location_id:     state.locationId,
+        order_id:        state.selectedOrder.id,
+        status:          hasDisc ? 'Flagged' : 'Completed',
+        skus_expected:   state.lines.length,
+        skus_scanned:    confirmed.length,
+        has_discrepancy: hasDisc,
+        completed_at:    new Date().toISOString(),
+      })
+    });
+    await sessRes.json();
+
+    // Create lot records for confirmed items
+    for (const line of confirmed) {
+      if (!line.lotNum) continue;
+      const expParts = line.expDate.split('/');
+      const expDate = expParts[1] + '-' + expParts[0].padStart(2,'0') + '-01';
+      await fetch(SUPA_URL + '/rest/v1/lots', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          product_id:     line.productId,
+          location_id:    state.locationId,
+          lot_number:     line.lotNum,
+          qty_received:   line.qtyOrdered,
+          qty_remaining:  line.qtyOrdered,
+          received_date:  new Date().toISOString().split('T')[0],
+          expiration_date: expDate,
+          status:         'Active',
+          po_reference:   state.selectedOrder.ref,
+        })
+      });
+    }
+
+    // Log activity
+    await fetch(SUPA_URL + '/rest/v1/activity_log', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        location_id:  state.locationId,
+        event_type:   'receive',
+        description:  hasDisc ? 'Receiving session completed — discrepancy flagged' : 'Receiving session completed',
+        reference_id: state.selectedOrder.ref,
+        flag:         hasDisc ? 'warn' : 'ok',
+        metadata: { skus: state.lines.length, confirmed: confirmed.length, discrepancy: hasDisc }
+      })
+    });
+
+    // Update order status to Received
+    await fetch(SUPA_URL + `/rest/v1/orders?id=eq.${state.selectedOrder.id}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: 'Received' })
+    });
+
+    document.getElementById('success-detail').textContent =
+      state.selectedOrder.ref + ' · ' + confirmed.length + ' of ' + state.lines.length + ' SKUs confirmed' +
+      (hasDisc ? ' · ⚠ 1 discrepancy flagged — vendor contacted' : ' · No discrepancies');
+    document.getElementById('main-view').style.display = 'none';
+    document.getElementById('success-view').style.display = 'flex';
+
+  } catch(err) {
+    showToast('⚠ Error saving — ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Complete receiving →';
+  }
+}
+
+function resetSession() {
+  state.selectedOrder = null;
+  state.lines = [];
+  state.hasDiscrepancy = false;
+  document.getElementById('receiving-panel').style.display = 'none';
+  document.getElementById('main-view').style.display = 'flex';
+  document.getElementById('success-view').style.display = 'none';
+  loadOrders();
+}
+
+let toastT = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  if (toastT) clearTimeout(toastT);
+  toastT = setTimeout(() => { t.style.opacity = '0'; }, 2800);
+}
+
+boot();
+</script>
+</body>
+</html>

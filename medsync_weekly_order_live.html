@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync — Weekly Order</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1C2B4A;--gold:#C8922A;--gold-light:#E8B84B;
+  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --bg:#fff;--surface:#fff;
+  --green:#0F6E56;--green-bg:#E1F5EE;
+  --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
+  --red:#a33030;--red-bg:#fde0d0;
+}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;height:100%;overflow:hidden;display:flex;flex-direction:column;}
+
+/* Topbar */
+.topbar{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;flex-shrink:0;}
+.tb-left{display:flex;align-items:center;gap:12px;}
+.tb-title{font-size:14px;font-weight:500;color:#fff;}
+.tb-sub{font-size:11px;color:rgba(255,255,255,.5);}
+.countdown{background:rgba(163,48,48,.9);border-radius:8px;padding:4px 12px;text-align:center;}
+.cd-label{font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.05em;}
+.cd-time{font-size:16px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;}
+
+select.loc-sel{background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.2);color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 10px;border-radius:7px;outline:none;height:30px;}
+select.loc-sel option{background:var(--navy);color:#fff;}
+
+/* Order table */
+.table-wrap{flex:1;overflow-y:auto;background:var(--surface);}
+.col-header{display:grid;grid-template-columns:2.4fr .9fr 1.3fr 1.1fr .5fr;padding:8px 20px;background:#F0EEF8;border-bottom:0.5px solid var(--border);font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;font-weight:500;}
+.order-row{display:grid;grid-template-columns:2.4fr .9fr 1.3fr 1.1fr .5fr;padding:12px 20px;border-bottom:0.5px solid #F5F3FA;align-items:center;background:var(--surface);}
+.order-row.held{background:#FAFAF8;opacity:.7;}
+.order-row:hover{background:#FAFAF8;}
+.prod-name{font-size:13px;font-weight:500;}
+.prod-flag{font-size:11px;margin-top:2px;display:flex;align-items:center;gap:4px;}
+.flag-red{color:var(--red);}
+.flag-amber{color:var(--amber);}
+.on-hand{font-size:13px;font-weight:500;}
+.on-hand.low{color:var(--red);}
+.on-hand.ok{color:var(--slate);}
+.rec-qty{font-size:12px;color:var(--navy);}
+.price{font-size:13px;font-weight:500;}
+.price-gpo{font-size:10px;color:var(--mist);font-weight:400;}
+.qty-ctrl{display:flex;align-items:center;gap:4px;}
+.qty-btn{width:22px;height:22px;border-radius:50%;border:0.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:500;color:var(--navy);}
+.qty-btn:hover{background:#F0EEF8;}
+.qty-num{font-family:'DM Mono',monospace;font-size:12px;min-width:20px;text-align:center;}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy);cursor:pointer;}
+
+/* Hold banner */
+.hold-row{background:#FFFBF0;border-bottom:0.5px solid var(--amber-border);padding:8px 20px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:6px;}
+
+/* Empty state */
+.empty{padding:48px 20px;text-align:center;color:var(--mist);font-size:13px;}
+
+/* Footer */
+.footer{background:var(--surface);border-top:0.5px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.footer-left{font-size:12px;color:var(--slate);}
+.footer-total{font-size:16px;font-weight:600;}
+.btn-submit{padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .12s;}
+.btn-submit:hover{background:#243459;}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;}
+
+/* Confirm modal */
+.modal-bg{position:fixed;inset:0;background:rgba(28,43,74,.45);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s;}
+.modal-bg.open{opacity:1;pointer-events:all;}
+.modal{background:var(--surface);border-radius:14px;width:480px;padding:24px;box-shadow:0 8px 40px rgba(28,43,74,.22);}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:6px;}
+.modal-sub{font-size:12px;color:var(--mist);margin-bottom:16px;}
+.modal-items{background:#F8F7FC;border-radius:8px;padding:12px 14px;margin-bottom:16px;max-height:200px;overflow-y:auto;}
+.modal-item{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #EEE8F5;font-size:12px;}
+.modal-item:last-child{border-bottom:none;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+.btn-cancel{padding:9px 18px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--surface);}
+.btn-confirm{padding:9px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+
+/* Success */
+.success{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px;text-align:center;}
+.success-icon{font-size:48px;margin-bottom:16px;}
+.success-title{font-size:20px;font-weight:600;margin-bottom:8px;}
+.success-sub{font-size:13px;color:var(--mist);margin-bottom:24px;}
+.btn-new{padding:11px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+
+#toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+/* ══ IFRAME LAYOUT — nav and sidebar handled by parent app ══════ */
+.nav { display: none !important; height: 0 !important; overflow: hidden !important; }
+body { margin: 0 !important; padding: 0 !important; }
+
+/* ══ MOBILE LAYOUT ══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden !important; }
+  .topbar { padding-top: 16px !important; padding-left: 16px !important; padding-right: 16px !important; padding-bottom: 8px !important; }
+  input, select { font-size: 16px !important; }
+}
+
+/* ── Fit iframe exactly — no gap ────────────────────────────── */
+html { height: 100%; overflow: hidden; }
+body { height: 100%; overflow: hidden; min-height: 0 !important; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-left">
+    <div>
+      <div class="tb-title">Weekly Order</div>
+      <div class="tb-sub" id="tb-sub">Loading…</div>
+    </div>
+    <select class="loc-sel" id="loc-select" onchange="onLocChange()">
+      <option value="">Select location…</option>
+    </select>
+  </div>
+  <div class="countdown">
+    <div class="cd-label">Vetcove cutoff</div>
+    <div class="cd-time" id="countdown">1:00:00</div>
+  </div>
+</div>
+
+<div id="main-view" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+  <div class="table-wrap" id="table-wrap">
+    <div class="col-header">
+      <span>Product</span>
+      <span>On hand</span>
+      <span>Recommended</span>
+      <span>Best price</span>
+      <span></span>
+    </div>
+    <div id="order-rows">
+      <div class="empty">Loading products…</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">
+      <span id="item-count">0 items</span> · vendor: MWI Animal Health
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="footer-total" id="order-total">$0.00</div>
+      <button class="btn-submit" id="submit-btn" onclick="openConfirm()">Submit to Vetcove →</button>
+    </div>
+  </div>
+</div>
+
+<div class="success" id="success-view">
+  <div class="success-icon">✓</div>
+  <div class="success-title">Order submitted</div>
+  <div class="success-sub" id="success-detail">Your order has been sent to Vetcove.</div>
+  <button class="btn-new" onclick="resetOrder()">Start new order</button>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-title">Confirm order</div>
+    <div class="modal-sub" id="confirm-sub">Review your order before submitting to Vetcove.</div>
+    <div class="modal-items" id="confirm-items"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--mist);">Total</div>
+      <div style="font-size:16px;font-weight:600;" id="confirm-total">$0.00</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-confirm" id="confirm-btn" onclick="submitOrder()">Submit to Vetcove →</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+
+let state = {
+  locationId: null,
+  locationName: null,
+  products: [],
+  orderLines: [], // { productId, name, qty, unitPrice, gpoPrice, checked, hold }
+};
+
+// ── Boot ──────────────────────────────────────────────────────
+async function boot() {
+  startCountdown();
+  await loadLocations();
+}
+
+// ── Countdown to 1pm ─────────────────────────────────────────
+function startCountdown() {
+  function tick() {
+    const now = new Date();
+    const cutoff = new Date(now);
+    cutoff.setHours(13, 0, 0, 0);
+    if (cutoff < now) cutoff.setDate(cutoff.getDate() + 1);
+    const diff = Math.max(0, cutoff - now);
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('countdown').textContent =
+      String(h).padStart(1,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    const cd = document.querySelector('.countdown');
+    cd.style.background = diff < 3600000 ? 'rgba(163,48,48,.9)' : 'rgba(15,110,86,.8)';
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+async function loadLocations() {
+  const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
+  const locs = await res.json();
+  const sel = document.getElementById('loc-select');
+  locs.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l.id; opt.textContent = l.name;
+    sel.appendChild(opt);
+  });
+  if (locs.length) {
+    sel.value = locs[0].id;
+    state.locationId = locs[0].id;
+    state.locationName = locs[0].name;
+    await loadProducts();
+  }
+}
+
+async function onLocChange() {
+  const sel = document.getElementById('loc-select');
+  state.locationId = sel.value;
+  state.locationName = sel.options[sel.selectedIndex].text;
+  await loadProducts();
+}
+
+async function loadProducts() {
+  document.getElementById('tb-sub').textContent = 'Weekly order · ' + state.locationName;
+  document.getElementById('order-rows').innerHTML = '<div class="empty">Loading products…</div>';
+
+  // Load products + their current lot qty for this location
+  const [prodsRes, lotsRes] = await Promise.all([
+    fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category&order=name', { headers: H }),
+    fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining,status&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
+  ]);
+
+  const products = await prodsRes.json();
+  const lots = await lotsRes.json();
+
+  // Sum qty_remaining per product
+  const onHand = {};
+  lots.forEach(l => {
+    onHand[l.product_id] = (onHand[l.product_id] || 0) + (l.qty_remaining || 0);
+  });
+
+  // Build order lines
+  state.orderLines = products.map(p => {
+    const qty = onHand[p.id] || 0;
+    const price = getPriceEstimate(p.name);
+    const gpo   = Math.round(price * 0.88 * 100) / 100; // ~12% GPO discount
+    const isLow = qty < getMinLevel(p.name);
+    return {
+      productId: p.id,
+      name: p.name,
+      vendor: p.vendor || 'MWI Animal Health',
+      category: p.category,
+      onHand: qty,
+      onHandUnit: getUnit(p.name),
+      recQty: isLow ? getRecQty(p.name) : null,
+      unitPrice: price,
+      gpoPrice: gpo,
+      orderQty: isLow ? 1 : 0,
+      checked: isLow,
+      hold: !isLow && qty > 0,
+      isLow,
+    };
+  });
+
+  renderTable();
+}
+
+function renderTable() {
+  const rows = document.getElementById('order-rows');
+  if (!state.orderLines.length) {
+    rows.innerHTML = '<div class="empty">No products found.</div>';
+    return;
+  }
+
+  rows.innerHTML = state.orderLines.map((line, i) => {
+    const holdMsg = line.hold
+      ? `<div class="hold-row">⊘ Hold order — ${line.onHand} ${line.onHandUnit} on hand · use stock first</div>`
+      : '';
+    const flagHtml = line.isLow
+      ? `<div class="prod-flag flag-red">⚠ Below Min</div>`
+      : line.hold ? `<div class="prod-flag flag-amber">⊙ Expiring 14d — use stock first</div>` : '';
+
+    return `${holdMsg}<div class="order-row${line.hold ? ' held' : ''}">
+      <div>
+        <div class="prod-name">${line.name}</div>
+        ${flagHtml}
+      </div>
+      <div class="on-hand ${line.isLow ? 'low' : 'ok'}">${line.onHand} ${line.onHandUnit}</div>
+      <div class="rec-qty">${line.recQty || (line.hold ? 'Hold order' : '—')}</div>
+      <div>
+        ${line.hold ? '<span style="color:var(--mist);">—</span>' : `
+        <span class="price">$${line.gpoPrice.toFixed(2)} <span class="price-gpo">GPO</span></span>`}
+      </div>
+      <div>
+        ${line.hold ? '' : `
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeQty(${i},-1)">−</button>
+          <span class="qty-num" id="qty-${i}">${line.orderQty}</span>
+          <button class="qty-btn" onclick="changeQty(${i},1)">+</button>
+          <input type="checkbox" ${line.checked ? 'checked' : ''} onchange="toggleLine(${i},this.checked)" style="margin-left:4px;">
+        </div>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  updateFooter();
+}
+
+function changeQty(i, delta) {
+  state.orderLines[i].orderQty = Math.max(0, state.orderLines[i].orderQty + delta);
+  const el = document.getElementById('qty-' + i);
+  if (el) el.textContent = state.orderLines[i].orderQty;
+  updateFooter();
+}
+
+function toggleLine(i, checked) {
+  state.orderLines[i].checked = checked;
+  updateFooter();
+}
+
+function updateFooter() {
+  const active = state.orderLines.filter(l => l.checked && !l.hold && l.orderQty > 0);
+  const total = active.reduce((s,l) => s + l.gpoPrice * l.orderQty, 0);
+  document.getElementById('item-count').textContent = active.length + ' item' + (active.length !== 1 ? 's' : '');
+  document.getElementById('order-total').textContent = '$' + total.toFixed(2);
+}
+
+function openConfirm() {
+  const active = state.orderLines.filter(l => l.checked && !l.hold && l.orderQty > 0);
+  if (!active.length) { showToast('No items selected'); return; }
+  const total = active.reduce((s,l) => s + l.gpoPrice * l.orderQty, 0);
+  document.getElementById('confirm-sub').textContent =
+    active.length + ' item' + (active.length !== 1 ? 's' : '') + ' · ' + state.locationName + ' · vendor: MWI Animal Health';
+  document.getElementById('confirm-items').innerHTML = active.map(l =>
+    `<div class="modal-item">
+      <span>${l.name} × ${l.orderQty}</span>
+      <span style="font-weight:500;">$${(l.gpoPrice * l.orderQty).toFixed(2)}</span>
+    </div>`
+  ).join('');
+  document.getElementById('confirm-total').textContent = '$' + total.toFixed(2);
+  document.getElementById('confirm-modal').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-modal').classList.remove('open');
+}
+
+async function submitOrder() {
+  const btn = document.getElementById('confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  const active = state.orderLines.filter(l => l.checked && !l.hold && l.orderQty > 0);
+  const total = active.reduce((s,l) => s + l.gpoPrice * l.orderQty, 0);
+  const now = new Date();
+  const orderRef = 'ORD-' + now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+
+  // Determine if late (after 1pm)
+  const isLate = now.getHours() >= 13;
+  const status = isLate ? 'Late' : 'Submitted';
+
+  try {
+    // Insert order
+    const orderRes = await fetch(SUPA_URL + '/rest/v1/orders', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        location_id:  state.locationId,
+        order_ref:    orderRef,
+        status:       status,
+        total_value:  total,
+        submitted_at: now.toISOString(),
+      })
+    });
+    const orderData = await orderRes.json();
+    const orderId = orderData[0]?.id;
+
+    // Insert order lines
+    if (orderId) {
+      await fetch(SUPA_URL + '/rest/v1/order_lines', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(active.map(l => ({
+          order_id:   orderId,
+          product_id: l.productId,
+          qty_ordered: l.orderQty,
+          unit_price:  l.unitPrice,
+          gpo_price:   l.gpoPrice,
+          on_hold:     false,
+        })))
+      });
+    }
+
+    // Log to activity_log
+    await fetch(SUPA_URL + '/rest/v1/activity_log', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        location_id:  state.locationId,
+        event_type:   'order',
+        description:  isLate ? 'Weekly order submitted — late' : 'Weekly order submitted',
+        reference_id: orderRef,
+        flag:         isLate ? 'warn' : 'ok',
+        metadata: { skus: active.length, total, submitted_at: now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) }
+      })
+    });
+
+    closeConfirm();
+    document.getElementById('success-detail').textContent =
+      orderRef + ' · ' + active.length + ' SKUs · $' + total.toFixed(2) + (isLate ? ' · ⚠ Submitted after 1pm cutoff' : ' · Submitted on time');
+    document.getElementById('main-view').style.display = 'none';
+    document.getElementById('success-view').style.display = 'flex';
+
+  } catch(err) {
+    showToast('⚠ Error submitting order — ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Submit to Vetcove →';
+  }
+}
+
+function resetOrder() {
+  document.getElementById('main-view').style.display = 'flex';
+  document.getElementById('success-view').style.display = 'none';
+  loadProducts();
+}
+
+// ── Price / unit helpers ──────────────────────────────────────
+function getPriceEstimate(name) {
+  const map = { 'Ketamine':142,'Gabapentin':48.50,'Maropitant':84.20,'Tramadol':62,'Buprenorphine':188,'Dexmedetomidine':124,'Meloxicam':22.40,'Ondansetron':38.40,'Hydromorphone':218,'Carprofen':118,'Vanguard':28.50,'Acepromazine':64 };
+  for (const [k,v] of Object.entries(map)) if (name.includes(k)) return v;
+  return 45.00;
+}
+function getMinLevel(name) {
+  const map = { 'Ketamine':5,'Gabapentin':50,'Maropitant':5,'Tramadol':100,'Buprenorphine':5,'Dexmedetomidine':3,'Meloxicam':3,'Ondansetron':3,'Hydromorphone':5,'Carprofen':30,'Vanguard':10,'Acepromazine':3 };
+  for (const [k,v] of Object.entries(map)) if (name.includes(k)) return v;
+  return 5;
+}
+function getRecQty(name) {
+  const map = { 'Ketamine':'2 × 50mL','Gabapentin':'1 × 500ct','Maropitant':'2 × 20mL','Tramadol':'1 × 500ct','Buprenorphine':'2 × 10mL','Dexmedetomidine':'2 × 10mL','Meloxicam':'2 × 20mL','Ondansetron':'3 × 10mL','Hydromorphone':'2 × 10mL','Carprofen':'1 × 180ct','Vanguard':'10 doses','Acepromazine':'2 × 10mL' };
+  for (const [k,v] of Object.entries(map)) if (name.includes(k)) return v;
+  return '1 unit';
+}
+function getUnit(name) {
+  if (name.includes('caps') || name.includes('tabs')) return 'caps';
+  if (name.includes('vaccine') || name.includes('DAPP')) return 'doses';
+  return 'mL';
+}
+
+let toastT = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  if (toastT) clearTimeout(toastT);
+  toastT = setTimeout(() => { t.style.opacity = '0'; }, 2800);
+}
+
+boot();
+</script>
+</body>
+</html>
