@@ -2602,6 +2602,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Array.isArray(user.locations) && user.locations[0]) userLocName = user.locations[0].name;
     else if (user.locations.name) userLocName = user.locations.name;
   }
+  // Fallback: some setups store location_name as a flat field
+  if (!userLocName && user.location_name) userLocName = user.location_name;
   var isManager = user.role === 'manager';
 
   // Set role badge
@@ -2614,15 +2616,16 @@ document.addEventListener('DOMContentLoaded', () => {
   var sbName = document.getElementById('sb-role-name');
   if (sbName) sbName.textContent = isManager ? 'Location Manager' : 'Admin';
   var sbLoc = document.getElementById('sb-role-loc');
-  if (sbLoc) sbLoc.textContent = user.full_name + (userLocName ? ' · ' + userLocName : ' · Scout');
+  if (sbLoc) sbLoc.textContent = (user.full_name || '') + (userLocName ? ' · ' + userLocName : ' · Scout');
 
   // Store on window for other functions to use
   window.currentUser = user;
   window.currentUserLoc = userLocName;
   window.currentRole = isManager ? 'manager' : 'admin';
 
-  // Apply location scoping for managers
-  if (isManager && userLocName) {
+  // Apply location scoping and nav for managers
+  // Note: apply scoping even if userLocName is null so nav hiding always works
+  if (isManager) {
     applyManagerScoping(userLocName);
     showScreen('order');
   } else {
@@ -2631,35 +2634,36 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 function applyManagerScoping(locName) {
-  // Portfolio filter — lock to manager location
-  var locSel = document.getElementById('loc-filter');
-  if (locSel) {
-    locSel.value = locName;
-    locSel.disabled = true;
+  // Portfolio filter — lock to manager location (only if locName known)
+  if (locName) {
+    var locSel = document.getElementById('loc-filter');
+    if (locSel) { locSel.value = locName; locSel.disabled = true; }
   }
 
   // Receiving iframe — lock location
-  var recIframe = document.querySelector('#ms-receiving iframe');
-  if (recIframe) {
-    recIframe.addEventListener('load', function() {
-      recIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
-    });
-  }
+  if (locName) {
+    var recIframe = document.querySelector('#ms-receiving iframe');
+    if (recIframe) {
+      recIframe.addEventListener('load', function() {
+        recIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
+      });
+    }
 
-  // Weekly Order iframe — lock location
-  var ordIframe = document.querySelector('#ms-order iframe');
-  if (ordIframe) {
-    ordIframe.addEventListener('load', function() {
-      ordIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
-    });
-  }
+    // Weekly Order iframe — lock location
+    var ordIframe = document.querySelector('#ms-order iframe');
+    if (ordIframe) {
+      ordIframe.addEventListener('load', function() {
+        ordIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
+      });
+    }
 
-  // Goods Lost iframe — set default but allow toggle
-  var glIframe = document.querySelector('#ms-goods iframe');
-  if (glIframe) {
-    glIframe.addEventListener('load', function() {
-      glIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: false }, '*');
-    });
+    // Goods Lost iframe — set default but allow toggle
+    var glIframe = document.querySelector('#ms-goods iframe');
+    if (glIframe) {
+      glIframe.addEventListener('load', function() {
+        glIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: false }, '*');
+      });
+    }
   }
 
   // Hide role toggle buttons (managers can't switch roles)
