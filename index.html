@@ -12,7 +12,7 @@ var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
-    if (el) el.style.display = (s === name) ? 'block' : 'none';
+    if (el) { el.style.display = (s === name) ? 'block' : 'none'; el.style.height = (s === name) ? 'calc(100vh - 48px)' : '0'; }
   });
   document.querySelectorAll('.mnb').forEach(function(b) { b.classList.remove('active'); });
   var nb = document.getElementById('mnb-' + name);
@@ -298,7 +298,7 @@ function deepDiveLoc(locCode) {
   }
 
 *,*::before,*::after{box-sizing:border-box;}
-.ms-screen{display:none;min-height:0;background:#fff;margin:0;padding:0;height:calc(100vh - 48px);}
+.ms-screen{display:none;min-height:0;background:#fff;margin:0;padding:0;height:0;overflow:hidden;}
 .mnb{padding:6px 12px;border-radius:6px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;border:none;background:none;font-family:"DM Sans",sans-serif;transition:all .12s;}
 .mnb.active{color:#fff;background:rgba(255,255,255,.12);font-weight:500;}
 .mnb:hover:not(.active){color:rgba(255,255,255,.8);}
