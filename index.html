@@ -39,18 +39,15 @@ function showOpsScreen(n) { showScreen(n); }
 function toggleMobileMenu() {
   var sb = document.getElementById('app-sidebar');
   var ov = document.getElementById('mob-overlay');
-  var ab = document.getElementById('app-body');
   var isOpen = sb.style.display === 'block';
   if (isOpen) {
     sb.style.display = 'none';
     sb.style.boxShadow = 'none';
     ov.classList.remove('active');
-    ab.style.transform = '';
   } else {
     sb.style.display = 'block';
     sb.style.boxShadow = '4px 0 20px rgba(0,0,0,.18)';
     ov.classList.add('active');
-    ab.style.transform = '';
   }
 }
 
@@ -67,11 +64,9 @@ document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
 
 function closeMobileMenu() {
   var sb = document.getElementById('app-sidebar');
-  var ab = document.getElementById('app-body');
   sb.style.display = 'none';
   sb.style.boxShadow = 'none';
   document.getElementById('mob-overlay').classList.remove('active');
-  ab.style.transform = '';
 }
 
 function signOut() {
@@ -129,7 +124,7 @@ function deepDiveLoc(locCode) {
 <style>
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1C2B4A; overflow-x: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1C2B4A; }
 
   /* Cover page */
   .cover { background: linear-gradient(135deg, #1C2B4A 0%, #0F1A2E 100%); min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 4rem 2rem; }
@@ -149,7 +144,6 @@ function deepDiveLoc(locCode) {
   .section-title strong { font-weight: 600; }
   .section-desc { font-size: 15px; color: #4a6a65; line-height: 1.7; margin-bottom: 2rem; max-width: 640px; }
   .divider { height: 0.5px; background: #C8C4D8; margin: 4rem 0; }
-#app-content .divider { display: none; }
 
   /* Nav bar shared */
   .vp-nav { background: #1C2B4A; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-radius: 12px 12px 0 0; }
@@ -704,7 +698,6 @@ function deepDiveLoc(locCode) {
 })();
 </script>
 
-<div id="page-wrapper" style="transition:transform 0.25s ease;">
 <nav style="background:#1C2B4A;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,0.1);font-family:'DM Sans',sans-serif;">
   <div style="display:flex;align-items:center;gap:8px;">
     <button id="mob-menu-btn" onclick="toggleMobileMenu()" style="display:flex;background:none;border:none;cursor:pointer;padding:4px 6px;flex-direction:column;gap:4px;align-items:center;justify-content:center;margin-right:2px;">
@@ -2591,7 +2584,5 @@ document.addEventListener('DOMContentLoaded', () => {
   showScreen('portfolio');
 })();
 </script>
-
-</div>
 </body>
 </html>
