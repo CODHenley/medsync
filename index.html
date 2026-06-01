@@ -12,7 +12,7 @@ var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
-    if (el) { el.style.display = (s === name) ? 'block' : 'none'; el.style.height = (s === name) ? 'calc(100vh - 48px)' : '0px'; }
+    if (el) el.style.display = (s === name) ? 'block' : 'none';
   });
   document.querySelectorAll('.mnb').forEach(function(b) { b.classList.remove('active'); });
   var nb = document.getElementById('mnb-' + name);
@@ -39,44 +39,34 @@ function showOpsScreen(n) { showScreen(n); }
 function toggleMobileMenu() {
   var sb = document.getElementById('app-sidebar');
   var ov = document.getElementById('mob-overlay');
-  var ab = document.getElementById('app-body');
   var isOpen = sb.style.display === 'block';
   if (isOpen) {
     sb.style.display = 'none';
     sb.style.boxShadow = 'none';
     ov.classList.remove('active');
-    ab.style.transform = 'translateX(0)';
-    ab.style.transition = 'transform 0.25s ease';
   } else {
     sb.style.display = 'block';
     sb.style.boxShadow = '4px 0 20px rgba(0,0,0,.18)';
     ov.classList.add('active');
-    ab.style.transform = 'translateX(260px)';
-    ab.style.transition = 'transform 0.25s ease';
   }
 }
 
 // Hide internal nav in all iframes after they load
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
-    iframe.addEventListener('load', function() {
-      try {
-        var s = iframe.contentDocument.createElement('style');
-        s.textContent = '.nav{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;} body{margin:0!important;padding:0!important;} .outer{margin:0!important;}';
-        iframe.contentDocument.head.appendChild(s);
-      } catch(e) {}
-    });
+document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
+  iframe.addEventListener('load', function() {
+    try {
+      var s = iframe.contentDocument.createElement('style');
+      s.textContent = '.nav{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;} body{margin:0!important;padding:0!important;} .outer{margin:0!important;}';
+      iframe.contentDocument.head.appendChild(s);
+    } catch(e) {}
   });
 });
 
 function closeMobileMenu() {
   var sb = document.getElementById('app-sidebar');
-  var ab = document.getElementById('app-body');
   sb.style.display = 'none';
   sb.style.boxShadow = 'none';
   document.getElementById('mob-overlay').classList.remove('active');
-  ab.style.transform = 'translateX(0)';
-  ab.style.transition = 'transform 0.25s ease';
 }
 
 function signOut() {
@@ -133,7 +123,7 @@ function deepDiveLoc(locCode) {
 </script>
 <style>
 
-  html,body{margin:0;padding:0;}*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1C2B4A; }
 
   /* Cover page */
@@ -154,10 +144,6 @@ function deepDiveLoc(locCode) {
   .section-title strong { font-weight: 600; }
   .section-desc { font-size: 15px; color: #4a6a65; line-height: 1.7; margin-bottom: 2rem; max-width: 640px; }
   .divider { height: 0.5px; background: #C8C4D8; margin: 4rem 0; }
-#app-content .divider { display: none; }
-#app-content .divider { display: none; }
-/* Hide dividers inside app-content */
-#app-content .divider { display: none !important; }
 
   /* Nav bar shared */
   .vp-nav { background: #1C2B4A; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-radius: 12px 12px 0 0; }
@@ -298,7 +284,7 @@ function deepDiveLoc(locCode) {
   }
 
 *,*::before,*::after{box-sizing:border-box;}
-.ms-screen{display:none;min-height:0;background:#fff;margin:0;padding:0;height:calc(100vh - 48px);}
+.ms-screen{display:none;min-height:0;background:#fff;margin:0;padding:0;}
 .mnb{padding:6px 12px;border-radius:6px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;border:none;background:none;font-family:"DM Sans",sans-serif;transition:all .12s;}
 .mnb.active{color:#fff;background:rgba(255,255,255,.12);font-weight:500;}
 .mnb:hover:not(.active){color:rgba(255,255,255,.8);}
@@ -435,8 +421,8 @@ function deepDiveLoc(locCode) {
 }
 .asb-item:hover { background:#E8E4F5;color:#1C2B4A; }
 .asb-item.active { background:#EEE8F5;color:#1C2B4A;font-weight:600;border-left-color:#C8922A; }
-#app-body { display:block;min-height:calc(100vh - 48px);padding-top:0; }
-#app-content { width:100%;overflow-y:auto;min-width:0;height:calc(100vh - 48px);overflow:hidden; }
+#app-body { display:block;min-height:calc(100vh - 48px); }
+#app-content { width:100%;overflow-y:auto;min-width:0; }
 /* Hide internal sidebars from source/live screens */
 #ms-analytics .sidebar,
 #ms-lifecycle .sidebar,
@@ -636,8 +622,8 @@ function deepDiveLoc(locCode) {
     padding: 0 12px !important;
   }
   nav img { height: 24px !important; }
-  /* Mobile: nav is fixed, so app-body needs top padding to clear it */
-  #app-body { padding-top: 48px !important; }
+  /* app-body needs padding-top on desktop to clear sticky nav */
+  #app-body { padding-top: 0; }
 
   /* ── Hamburger: visible on mobile ── */
   #mob-menu-btn { display: flex !important; }
@@ -650,7 +636,7 @@ function deepDiveLoc(locCode) {
   #app-body {
     display: block !important;
     margin: 0 !important;
-    padding-top: 48px !important;
+    padding-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
     padding-bottom: 0 !important;
@@ -658,7 +644,21 @@ function deepDiveLoc(locCode) {
     overflow-x: hidden !important;
     background: #fff !important;
   }
+
+  
+/* ── Content clears fixed nav — no gap between nav and subheader ── */
+@media (max-width: 768px) {
+  /* Portfolio: first visible element clears the nav */
+  
+  /* Iframes: topbar clears the nav */
+  .ms-screen iframe {
+    margin-top: 0 !important;
+  }
 }
+@media (max-width: 768px) {
+  
+}
+
 
 /* ── Sidebar drawer ──────────────────────────────────────────── */
 #app-sidebar { display: none; }
@@ -670,16 +670,10 @@ function deepDiveLoc(locCode) {
   margin: 0 !important;
   box-sizing: border-box !important;
   background: #fff;
-  height: calc(100vh - 48px);
-  overflow: hidden;
 }
 .ms-screen, .ms-screen iframe {
   width: 100% !important;
 }
-
-/* Mob overlay — invisible tap target to close menu */
-#mob-overlay { display:none; position:fixed; inset:0; z-index:150; }
-#mob-overlay.active { display:block; }
 </style>
 </head>
 <body>
@@ -753,7 +747,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" onclick="closeMobileMenu();showScreen('portfolio')">⚙️ Admin Settings</div>
 </div>
 <div id="app-content">
-<div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;"><div id="screen1">
+<div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;display:block;"><div id="screen1">
   <div class="screen">
 
     <!-- Nav bar -->
@@ -1727,21 +1721,16 @@ function updateSummaryCards() {
 
 // ── Role toggle ───────────────────────────────────────────────
 function setRole(r) {
-  window.currentRole = r;
+  currentRole = r;
   document.getElementById('rt-admin').classList.toggle('active', r==='admin');
   document.getElementById('rt-mgr').classList.toggle('active',   r==='manager');
   document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Manager';
   document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Location Manager';
-  var user = window.currentUser || {};
-  var locName = window.currentUserLoc || 'Old Orchard';
-  var fullName = user.full_name || 'Scout';
-  document.getElementById('sb-role-loc').textContent = r==='admin' ? fullName + ' · Scout' : fullName + ' · ' + locName;
-  var initials = fullName.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-  document.getElementById('nav-avatar').textContent = initials;
+  document.getElementById('sb-role-loc').textContent    = r==='admin' ? 'Megan Henley · Scout' : 'Jamie K. · Old Orchard';
+  document.getElementById('nav-avatar').textContent     = r==='admin' ? 'MH' : 'JK';
   const locSel = document.getElementById('loc-filter');
-  locSel.value    = r==='manager' ? locName : 'all';
+  locSel.value    = r==='manager' ? 'Old Orchard' : 'all';
   locSel.disabled = r==='manager';
-  if (r==='manager') applyManagerScoping(locName);
   updateSummaryCards();
   renderTable();
 }
@@ -2584,88 +2573,16 @@ document.addEventListener('DOMContentLoaded', () => {
 (function boot() {
   var user = {};
   try { user = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
-
-  // Set avatar initials
   if (user.full_name) {
     var av = document.getElementById('ms-avatar');
     if (av) av.textContent = user.full_name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    var navAv = document.getElementById('nav-avatar');
-    if (navAv) navAv.textContent = user.full_name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
   }
-
-  // Get user location name from Supabase join (locations.name)
-  // locations can be array [{name}] or object {name} depending on PostgREST response
-  var userLocName = null;
-  if (user.locations) {
-    if (Array.isArray(user.locations) && user.locations[0]) userLocName = user.locations[0].name;
-    else if (user.locations.name) userLocName = user.locations.name;
+  if (user.role) {
+    var rb = document.getElementById('ms-role');
+    if (rb) rb.textContent = user.role === 'admin' ? 'Admin' : 'Manager';
   }
-  var isManager = user.role === 'manager';
-
-  // Set role badge
-  var rb = document.getElementById('ms-role');
-  if (rb) rb.textContent = isManager ? 'Manager' : 'Admin';
-  var navBadge = document.getElementById('nav-role-badge');
-  if (navBadge) navBadge.textContent = isManager ? 'Manager' : 'Admin';
-
-  // Set sidebar identity
-  var sbName = document.getElementById('sb-role-name');
-  if (sbName) sbName.textContent = isManager ? 'Location Manager' : 'Admin';
-  var sbLoc = document.getElementById('sb-role-loc');
-  if (sbLoc) sbLoc.textContent = user.full_name + (userLocName ? ' · ' + userLocName : ' · Scout');
-
-  // Store on window for other functions to use
-  window.currentUser = user;
-  window.currentUserLoc = userLocName;
-  window.currentRole = isManager ? 'manager' : 'admin';
-
-  // Apply location scoping for managers
-  if (isManager && userLocName) {
-    applyManagerScoping(userLocName);
-  }
-
   showScreen('portfolio');
 })();
-
-function applyManagerScoping(locName) {
-  // Portfolio filter — lock to manager location
-  var locSel = document.getElementById('loc-filter');
-  if (locSel) {
-    locSel.value = locName;
-    locSel.disabled = true;
-  }
-
-  // Receiving iframe — lock location
-  var recIframe = document.querySelector('#ms-receiving iframe');
-  if (recIframe) {
-    recIframe.addEventListener('load', function() {
-      recIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
-    });
-  }
-
-  // Weekly Order iframe — lock location
-  var ordIframe = document.querySelector('#ms-order iframe');
-  if (ordIframe) {
-    ordIframe.addEventListener('load', function() {
-      ordIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
-    });
-  }
-
-  // Goods Lost iframe — set default but allow toggle
-  var glIframe = document.querySelector('#ms-goods iframe');
-  if (glIframe) {
-    glIframe.addEventListener('load', function() {
-      glIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: false }, '*');
-    });
-  }
-
-  // Hide role toggle buttons (managers can't switch roles)
-  var rtAdmin = document.getElementById('rt-admin');
-  var rtMgr = document.getElementById('rt-mgr');
-  if (rtAdmin) rtAdmin.style.display = 'none';
-  if (rtMgr) rtMgr.style.display = 'none';
-}
 </script>
-
 </body>
 </html>
