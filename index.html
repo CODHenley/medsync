@@ -45,14 +45,12 @@ function toggleMobileMenu() {
     sb.style.display = 'none';
     sb.style.boxShadow = 'none';
     ov.classList.remove('active');
-    ab.style.transform = 'translateX(0)';
-    ab.style.transition = 'transform 0.25s ease';
+    ab.style.transform = '';
   } else {
     sb.style.display = 'block';
     sb.style.boxShadow = '4px 0 20px rgba(0,0,0,.18)';
     ov.classList.add('active');
-    ab.style.transform = 'translateX(260px)';
-    ab.style.transition = 'transform 0.25s ease';
+    ab.style.transform = '';
   }
 }
 
@@ -73,8 +71,7 @@ function closeMobileMenu() {
   sb.style.display = 'none';
   sb.style.boxShadow = 'none';
   document.getElementById('mob-overlay').classList.remove('active');
-  ab.style.transform = 'translateX(0)';
-  ab.style.transition = 'transform 0.25s ease';
+  ab.style.transform = '';
 }
 
 function signOut() {
