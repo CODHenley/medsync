@@ -295,7 +295,7 @@ function deepDiveLoc(locCode) {
   }
 
 *,*::before,*::after{box-sizing:border-box;}
-.ms-screen{display:none;min-height:0;background:#fff;margin:0;padding:0;height:calc(100vh - 48px);}
+.ms-screen{display:none;min-height:0;background:#fff;margin:0;padding:0;}
 .mnb{padding:6px 12px;border-radius:6px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;border:none;background:none;font-family:"DM Sans",sans-serif;transition:all .12s;}
 .mnb.active{color:#fff;background:rgba(255,255,255,.12);font-weight:500;}
 .mnb:hover:not(.active){color:rgba(255,255,255,.8);}
@@ -655,7 +655,21 @@ function deepDiveLoc(locCode) {
     overflow-x: hidden !important;
     background: #fff !important;
   }
+
+  
+/* ── Content clears fixed nav — no gap between nav and subheader ── */
+@media (max-width: 768px) {
+  /* Portfolio: first visible element clears the nav */
+  
+  /* Iframes: topbar clears the nav */
+  .ms-screen iframe {
+    margin-top: 0 !important;
+  }
 }
+@media (max-width: 768px) {
+  
+}
+
 
 /* ── Sidebar drawer ──────────────────────────────────────────── */
 #app-sidebar { display: none; }
@@ -2665,4 +2679,4 @@ function applyManagerScoping(locName) {
 </script>
 
 </body>
-</html>/* cache bust */
+</html>
