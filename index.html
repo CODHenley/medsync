@@ -656,18 +656,22 @@ function deepDiveLoc(locCode) {
     background: #fff !important;
   }
 
+  
+/* ── Content clears fixed nav — no gap between nav and subheader ── */
+@media (max-width: 768px) {
+  /* Portfolio: first visible element clears the nav */
+  
   /* Iframes: topbar clears the nav */
   .ms-screen iframe {
     margin-top: 0 !important;
   }
 }
-
-/* Iframe screen wrappers need explicit height */
-#ms-order, #ms-receiving, #ms-receiver, #ms-goods, #ms-analytics, #ms-lifecycle, #ms-actlog {
-  height: calc(100vh - 48px);
-  overflow: hidden;
+@media (max-width: 768px) {
+  
 }
-/* Sidebar drawer ──────────────────────────────────────────── */
+
+
+/* ── Sidebar drawer ──────────────────────────────────────────── */
 #app-sidebar { display: none; }
 
 /* ── Content: full viewport width ───────────────────────────── */
@@ -744,12 +748,12 @@ function deepDiveLoc(locCode) {
     <div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;" id="sb-role-name">Admin</div>
     <div style="font-size:10px;color:#4A5568;margin-top:1px;" id="sb-role-loc">Megan Henley · Scout</div>
   </div>
-  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;" id="asb-admin-section">Admin Dashboard</div>
+  <div id="asb-admin-label" style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Admin Dashboard</div>
   <div class="asb-item" id="asb-portfolio" onclick="closeMobileMenu();showScreen('portfolio')">▪ Portfolio</div>
   <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 MedSync Analytics</div>
   <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
   <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">📋 Activity Log</div>
-  <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;" id="asb-admin-hr">
+  <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
   <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
   <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
@@ -760,7 +764,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" onclick="closeMobileMenu();showScreen('portfolio')">⚙️ Admin Settings</div>
 </div>
 <div id="app-content">
-<div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;"><div id="screen1">
+<div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;display:block;"><div id="screen1">
   <div class="screen">
 
     <!-- Nav bar -->
@@ -962,43 +966,43 @@ function deepDiveLoc(locCode) {
 
 <div id="ms-analytics" class="ms-screen">
   <iframe src="medsync_analytics_live.html" 
-    style="width:100%;height:100%;border:none;display:block;" 
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
     title="ms-analytics">
   </iframe>
 </div>
 <div id="ms-lifecycle" class="ms-screen">
   <iframe src="medsync_lot_lifecycle_live.html" 
-    style="width:100%;height:100%;border:none;display:block;" 
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
     title="ms-lifecycle">
   </iframe>
 </div>
 <div id="ms-actlog" class="ms-screen">
   <iframe src="medsync_activity_log_live.html" 
-    style="width:100%;height:100%;border:none;display:block;" 
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
     title="ms-actlog">
   </iframe>
 </div>
 <div id="ms-order" class="ms-screen">
   <iframe src="medsync_weekly_order_live.html"
-    style="width:100%;height:100%;border:none;display:block;"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Weekly Order">
   </iframe>
 </div>
 <div id="ms-receiving" class="ms-screen">
   <iframe src="medsync_receiving_live.html"
-    style="width:100%;height:100%;border:none;display:block;"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Receiving">
   </iframe>
 </div>
 <div id="ms-receiver" class="ms-screen">
   <iframe src="medsync_hospital_receiver_live.html"
-    style="width:100%;height:100%;border:none;display:block;"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Hospital Receiver">
   </iframe>
 </div>
 <div id="ms-goods" class="ms-screen">
   <iframe src="medsync_goods_lost_live.html"
-    style="width:100%;height:100%;border:none;display:block;"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Goods Lost">
   </iframe>
 </div>
@@ -2607,8 +2611,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Array.isArray(user.locations) && user.locations[0]) userLocName = user.locations[0].name;
     else if (user.locations.name) userLocName = user.locations.name;
   }
-  // Fallback: some setups store location_name as a flat field
-  if (!userLocName && user.location_name) userLocName = user.location_name;
   var isManager = user.role === 'manager';
 
   // Set role badge
@@ -2621,15 +2623,14 @@ document.addEventListener('DOMContentLoaded', () => {
   var sbName = document.getElementById('sb-role-name');
   if (sbName) sbName.textContent = isManager ? 'Location Manager' : 'Admin';
   var sbLoc = document.getElementById('sb-role-loc');
-  if (sbLoc) sbLoc.textContent = (user.full_name || '') + (userLocName ? ' · ' + userLocName : ' · Scout');
+  if (sbLoc) sbLoc.textContent = user.full_name + (userLocName ? ' · ' + userLocName : ' · Scout');
 
   // Store on window for other functions to use
   window.currentUser = user;
   window.currentUserLoc = userLocName;
   window.currentRole = isManager ? 'manager' : 'admin';
 
-  // Apply location scoping and nav for managers
-  // Note: apply scoping even if userLocName is null so nav hiding always works
+  // Apply location scoping for managers
   if (isManager) {
     applyManagerScoping(userLocName);
     showScreen('order');
@@ -2639,49 +2640,38 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 function applyManagerScoping(locName) {
-  // Portfolio filter — lock to manager location (only if locName known)
+  // Lock location filter if known
   if (locName) {
     var locSel = document.getElementById('loc-filter');
     if (locSel) { locSel.value = locName; locSel.disabled = true; }
   }
 
-  // Receiving iframe — lock location
+  // Scope iframes to manager's location on load
   if (locName) {
     var recIframe = document.querySelector('#ms-receiving iframe');
-    if (recIframe) {
-      recIframe.addEventListener('load', function() {
-        recIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
-      });
-    }
+    if (recIframe) recIframe.addEventListener('load', function() {
+      recIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
+    });
 
-    // Weekly Order iframe — lock location
     var ordIframe = document.querySelector('#ms-order iframe');
-    if (ordIframe) {
-      ordIframe.addEventListener('load', function() {
-        ordIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
-      });
-    }
+    if (ordIframe) ordIframe.addEventListener('load', function() {
+      ordIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: true }, '*');
+    });
 
-    // Goods Lost iframe — set default but allow toggle
     var glIframe = document.querySelector('#ms-goods iframe');
-    if (glIframe) {
-      glIframe.addEventListener('load', function() {
-        glIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: false }, '*');
-      });
-    }
+    if (glIframe) glIframe.addEventListener('load', function() {
+      glIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: false }, '*');
+    });
   }
 
-  // Hide role toggle buttons (managers can't switch roles)
-  var rtAdmin = document.getElementById('rt-admin');
-  var rtMgr = document.getElementById('rt-mgr');
-  if (rtAdmin) rtAdmin.style.display = 'none';
-  if (rtMgr) rtMgr.style.display = 'none';
+  // Hide admin-only nav buttons (top bar)
+  ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
 
-  // Hide admin-only nav items in top nav and sidebar
-  var adminOnlyIds = ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog',
-                      'asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog',
-                      'asb-admin-section','asb-admin-hr'];
-  adminOnlyIds.forEach(function(id) {
+  // Hide admin-only sidebar items + section label
+  ['asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog','asb-admin-label'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
