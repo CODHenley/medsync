@@ -57,13 +57,15 @@ function toggleMobileMenu() {
 }
 
 // Hide internal nav in all iframes after they load
-document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
-  iframe.addEventListener('load', function() {
-    try {
-      var s = iframe.contentDocument.createElement('style');
-      s.textContent = '.nav{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;} body{margin:0!important;padding:0!important;} .outer{margin:0!important;}';
-      iframe.contentDocument.head.appendChild(s);
-    } catch(e) {}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
+    iframe.addEventListener('load', function() {
+      try {
+        var s = iframe.contentDocument.createElement('style');
+        s.textContent = '.nav{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;} body{margin:0!important;padding:0!important;} .outer{margin:0!important;}';
+        iframe.contentDocument.head.appendChild(s);
+      } catch(e) {}
+    });
   });
 });
 
