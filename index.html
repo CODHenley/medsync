@@ -144,7 +144,6 @@ function deepDiveLoc(locCode) {
   .section-title strong { font-weight: 600; }
   .section-desc { font-size: 15px; color: #4a6a65; line-height: 1.7; margin-bottom: 2rem; max-width: 640px; }
   .divider { height: 0.5px; background: #C8C4D8; margin: 4rem 0; }
-#app-content .divider { display: none; }
 
   /* Nav bar shared */
   .vp-nav { background: #1C2B4A; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-radius: 12px 12px 0 0; }
@@ -2577,46 +2576,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (user.full_name) {
     var av = document.getElementById('ms-avatar');
     if (av) av.textContent = user.full_name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    var navAv = document.getElementById('nav-avatar');
-    if (navAv) navAv.textContent = user.full_name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
   }
-  var userLocName = null;
-  if (user.locations) {
-    if (Array.isArray(user.locations) && user.locations[0]) userLocName = user.locations[0].name;
-    else if (user.locations.name) userLocName = user.locations.name;
+  if (user.role) {
+    var rb = document.getElementById('ms-role');
+    if (rb) rb.textContent = user.role === 'admin' ? 'Admin' : 'Manager';
   }
-  var isManager = user.role === 'manager';
-  window.currentUser = user;
-  window.currentUserLoc = userLocName;
-  window.currentRole = isManager ? 'manager' : 'admin';
-  var rb = document.getElementById('ms-role');
-  if (rb) rb.textContent = isManager ? 'Manager' : 'Admin';
-  var navBadge = document.getElementById('nav-role-badge');
-  if (navBadge) navBadge.textContent = isManager ? 'Manager' : 'Admin';
-  var sbName = document.getElementById('sb-role-name');
-  if (sbName) sbName.textContent = isManager ? 'Location Manager' : 'Admin';
-  var sbLoc = document.getElementById('sb-role-loc');
-  if (sbLoc) sbLoc.textContent = (user.full_name || 'User') + (userLocName ? ' · ' + userLocName : ' · Scout');
-  if (isManager && userLocName) applyManagerScoping(userLocName);
   showScreen('portfolio');
-}
-
-function applyManagerScoping(locName) {
-  var locSel = document.getElementById('loc-filter');
-  if (locSel) { locSel.value = locName; locSel.disabled = true; }
-  var rtAdmin = document.getElementById('rt-admin');
-  var rtMgr = document.getElementById('rt-mgr');
-  if (rtAdmin) rtAdmin.style.display = 'none';
-  if (rtMgr) rtMgr.style.display = 'none';
-  var selectors = ['#ms-receiving iframe', '#ms-order iframe', '#ms-goods iframe'];
-  selectors.forEach(function(sel, i) {
-    var iframe = document.querySelector(sel);
-    if (iframe) {
-      iframe.addEventListener('load', function() {
-        iframe.contentWindow.postMessage({ type: 'setLocation', loc: locName, locked: i < 2 }, '*');
-      });
-    }
-  });
 })();
 </script>
 </body>
