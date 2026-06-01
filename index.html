@@ -2633,9 +2633,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Apply location scoping for managers
   if (isManager && userLocName) {
     applyManagerScoping(userLocName);
+    showScreen('order');
+  } else {
+    showScreen('portfolio');
   }
-
-  showScreen('portfolio');
 })();
 
 function applyManagerScoping(locName) {
@@ -2676,7 +2677,7 @@ function applyManagerScoping(locName) {
   if (rtAdmin) rtAdmin.style.display = 'none';
   if (rtMgr) rtMgr.style.display = 'none';
 
-  // Bug 3 — hide admin-only nav items in top nav and sidebar
+  // Hide admin-only nav items in top nav and sidebar
   var adminOnlyIds = ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog',
                       'asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog',
                       'asb-admin-section','asb-admin-hr'];
@@ -2684,9 +2685,6 @@ function applyManagerScoping(locName) {
     var el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  // Show manager as default screen (first available ops screen)
-  // (boot already calls showScreen('portfolio') which will be hidden — redirect to order)
-  setTimeout(function() { showScreen('order'); }, 0);
 }
 </script>
 
