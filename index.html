@@ -12,7 +12,7 @@ var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
-    if (el) { el.style.display = (s === name) ? 'block' : 'none'; }
+    if (el) { el.style.display = (s === name) ? 'block' : 'none'; el.style.height = (s === name) ? 'calc(100vh - 48px)' : '0px'; }
   });
   document.querySelectorAll('.mnb').forEach(function(b) { b.classList.remove('active'); });
   var nb = document.getElementById('mnb-' + name);
