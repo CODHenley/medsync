@@ -39,18 +39,20 @@ function showOpsScreen(n) { showScreen(n); }
 function toggleMobileMenu() {
   var sb = document.getElementById('app-sidebar');
   var ov = document.getElementById('mob-overlay');
-  var pw = document.getElementById('page-wrapper');
+  var ab = document.getElementById('app-body');
   var isOpen = sb.style.display === 'block';
   if (isOpen) {
     sb.style.display = 'none';
     sb.style.boxShadow = 'none';
     ov.classList.remove('active');
-    pw.style.transform = 'translateX(0)';
+    ab.style.transform = 'translateX(0)';
+    ab.style.transition = 'transform 0.25s ease';
   } else {
     sb.style.display = 'block';
     sb.style.boxShadow = '4px 0 20px rgba(0,0,0,.18)';
     ov.classList.add('active');
-    pw.style.transform = 'translateX(260px)';
+    ab.style.transform = 'translateX(260px)';
+    ab.style.transition = 'transform 0.25s ease';
   }
 }
 
@@ -67,11 +69,12 @@ document.querySelectorAll('.ms-screen iframe').forEach(function(iframe) {
 
 function closeMobileMenu() {
   var sb = document.getElementById('app-sidebar');
-  var pw = document.getElementById('page-wrapper');
+  var ab = document.getElementById('app-body');
   sb.style.display = 'none';
   sb.style.boxShadow = 'none';
   document.getElementById('mob-overlay').classList.remove('active');
-  pw.style.transform = 'translateX(0)';
+  ab.style.transform = 'translateX(0)';
+  ab.style.transition = 'transform 0.25s ease';
 }
 
 function signOut() {
