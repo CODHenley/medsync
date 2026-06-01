@@ -662,7 +662,12 @@ function deepDiveLoc(locCode) {
   }
 }
 
-/* ── Sidebar drawer ──────────────────────────────────────────── */
+/* Iframe screen wrappers need explicit height */
+#ms-order, #ms-receiving, #ms-receiver, #ms-goods, #ms-analytics, #ms-lifecycle, #ms-actlog {
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+/* Sidebar drawer ──────────────────────────────────────────── */
 #app-sidebar { display: none; }
 
 /* ── Content: full viewport width ───────────────────────────── */
