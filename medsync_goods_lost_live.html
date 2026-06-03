@@ -389,6 +389,8 @@ let state = {
   productId: null,
   productName: null,
   productPrice: null,
+  productUnit: 'units',
+  productPkgSize: 1,
   category: 'Diagnostic duplicate',
   subCategory: 'Confirm results',
   qty: 1,
@@ -434,7 +436,7 @@ async function loadLocations() {
 }
 
 async function loadProducts() {
-  const res = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category&order=name', { headers: H });
+  const res = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size&order=name', { headers: H });
   const prods = await res.json();
   const sel = document.getElementById('product-select');
   prods.forEach(p => {
@@ -442,6 +444,8 @@ async function loadProducts() {
     opt.value = p.id;
     opt.textContent = p.name;
     opt.dataset.price = getPriceEstimate(p.name);
+    opt.dataset.unit = p.dispensing_unit || 'units';
+    opt.dataset.pkgSize = p.package_size || 1;
     sel.appendChild(opt);
   });
 }
@@ -496,6 +500,9 @@ function onProductChange() {
   state.productId = sel.value;
   state.productName = opt.text;
   state.productPrice = parseFloat(opt.dataset.price) || 0;
+  state.productUnit = opt.dataset.unit || 'units';
+  state.productPkgSize = parseFloat(opt.dataset.pkgSize) || 1;
+  document.getElementById('qty-unit').textContent = state.productUnit;
   updateValueDisplay();
 }
 
@@ -533,7 +540,9 @@ function changeQty(delta) {
 }
 
 function updateValueDisplay() {
-  const val = (state.productPrice || 0) * state.qty;
+  const pkgSize = state.productPkgSize || 1;
+  const costPerUnit = (state.productPrice || 0) / pkgSize;
+  const val = costPerUnit * (state.qty || 1);
   document.getElementById('loss-value').textContent = val > 0 ? '$' + val.toFixed(2) + ' loss' : '—';
 }
 
