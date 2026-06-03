@@ -583,7 +583,8 @@ async function submitLoss() {
   btn.disabled = true;
   btn.textContent = 'Submitting…';
 
-  const valueLost = (state.productPrice || 0) * state.qty;
+  const _pkgSize = state.productPkgSize || 1;
+  const valueLost = ((state.productPrice || 0) / _pkgSize) * state.qty;
   const note = document.getElementById('loss-note').value.trim();
 
   try {
@@ -604,8 +605,8 @@ async function submitLoss() {
 
     if (!res.ok) throw new Error(await res.text());
 
-    // Log to activity_log
-    await fetch(SUPA_URL + '/rest/v1/activity_log', {
+    // Log to activity_log (fire-and-forget — never blocks success screen)
+    fetch(SUPA_URL + '/rest/v1/activity_log', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({
@@ -620,7 +621,7 @@ async function submitLoss() {
           qty: state.qty
         }
       })
-    });
+    }).catch(() => {});
 
     // Show success
     document.getElementById('success-detail').textContent =
