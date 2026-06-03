@@ -185,9 +185,12 @@ async function loadLocations() {
     opt.value = l.id; opt.textContent = l.name; sel.appendChild(opt);
   });
   if (locs.length) {
-    sel.value = locs[0].id;
-    state.locationId = locs[0].id;
-    state.locationName = locs[0].name;
+    const _target = window._pendingLocation;
+    const _match = _target ? locs.find(l => l.name === _target) : null;
+    const _loc = _match || locs[0];
+    sel.value = _loc.id;
+    state.locationId = _loc.id;
+    state.locationName = _loc.name;
     await loadOrders();
   }
 }
@@ -454,6 +457,20 @@ function showToast(msg) {
 }
 
 boot();
+
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.type !== 'setLocation') return;
+  window._pendingLocation = e.data.loc;
+  var sel = document.getElementById('loc-select');
+  if (!sel || sel.options.length <= 1) return;
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].text === e.data.loc) {
+      sel.value = sel.options[i].value;
+      onLocChange();
+      break;
+    }
+  }
+});
 </script>
 </body>
 </html>
