@@ -33,6 +33,24 @@ function showScreen(name) {
     window._actlogLoaded = true;
     if (typeof loadEvents === 'function') setTimeout(loadEvents, 100);
   }
+  if (['order','receiving','goods'].indexOf(name) !== -1) {
+    try {
+      var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+      if (mu.role === 'manager' && mu.locations && mu.locations[0]) {
+        var locName = mu.locations[0].name;
+        var locSel = '#ms-' + name + ' iframe';
+        var locAttempts = 0;
+        var locTimer = setInterval(function() {
+          locAttempts++;
+          var locIframe = document.querySelector(locSel);
+          if (locIframe && locIframe.contentWindow) {
+            locIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName }, '*');
+          }
+          if (locAttempts >= 10) clearInterval(locTimer);
+        }, 300);
+      }
+    } catch(e) {}
+  }
 }
 function showOpsScreen(n) { showScreen(n); }
 
@@ -2583,7 +2601,17 @@ document.addEventListener('DOMContentLoaded', () => {
     var rb = document.getElementById('ms-role');
     if (rb) rb.textContent = user.role === 'admin' ? 'Admin' : 'Manager';
   }
-  showScreen('portfolio');
+  if (user.role === 'manager') {
+    ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    ['asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog','asb-admin-label'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    showScreen('order');
+  } else {
+    showScreen('portfolio');
+  }
 })();
 </script>
 </body>
