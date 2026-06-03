@@ -601,7 +601,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 const HEADERS = {
   'apikey': SUPA_KEY,
-  'Authorization': 'Bearer ' + SUPA_KEY,
+  'Authorization': 'Bearer ' + (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}').access_token || SUPA_KEY; } catch(e) { return SUPA_KEY; } })(),
   'Content-Type': 'application/json'
 };
 
