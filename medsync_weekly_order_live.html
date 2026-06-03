@@ -224,7 +224,14 @@ async function loadLocations() {
   if (locs.length) {
     var _mu = {};
     try { _mu = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
-    var _locName = (_mu.role === 'manager' && _mu.locations && _mu.locations[0]) ? _mu.locations[0].name : null;
+    var _locName = null;
+    if (_mu.role === 'manager' && _mu.locations) {
+      if (Array.isArray(_mu.locations) && _mu.locations[0]) {
+        _locName = _mu.locations[0].name;
+      } else if (_mu.locations.name) {
+        _locName = _mu.locations.name;
+      }
+    }
     const _match = _locName ? locs.find(l => l.name === _locName) : null;
     const _loc = _match || locs[0];
     sel.value = _loc.id;
