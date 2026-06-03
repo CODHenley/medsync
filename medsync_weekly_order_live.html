@@ -222,8 +222,10 @@ async function loadLocations() {
     sel.appendChild(opt);
   });
   if (locs.length) {
-    const _target = window._pendingLocation;
-    const _match = _target ? locs.find(l => l.name === _target) : null;
+    var _mu = {};
+    try { _mu = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+    var _locName = (_mu.role === 'manager' && _mu.locations && _mu.locations[0]) ? _mu.locations[0].name : null;
+    const _match = _locName ? locs.find(l => l.name === _locName) : null;
     const _loc = _match || locs[0];
     sel.value = _loc.id;
     state.locationId = _loc.id;
