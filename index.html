@@ -669,12 +669,12 @@ function deepDiveLoc(locCode) {
 
 /* ── FINAL: all screens clear the fixed nav ──────────────────── */
 @media (max-width: 768px) {
-  /* Iframe screens: push container down */
-  #ms-analytics, #ms-lifecycle, #ms-actlog, #ms-receiver {
+  /* Iframe screens: push container down via margin */
+  #ms-analytics, #ms-lifecycle, #ms-actlog {
     margin-top: 48px !important;
   }
-  /* Inline screens: pad content down */
-  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods {
+  /* Inline screens + receiver: pad content down (avoids margin collapse) */
+  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods, #ms-receiver {
     padding-top: 48px !important;
     box-sizing: border-box !important;
   }
