@@ -196,8 +196,6 @@ tr:hover td{background:#FAFAF8;}
   .kpi { padding: 10px 12px !important; min-width: 0 !important; overflow: hidden !important; }
   .kpi-l, .kpi-v, .kpi-s { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
 
-  /* Lot lifecycle KPI: 3 cols */
-  .kpi-row { grid-template-columns: repeat(3, 1fr) !important; }
 
   /* Activity log summary: 2 cols */
   .summary-row { grid-template-columns: repeat(2, 1fr) !important; }
@@ -284,6 +282,48 @@ html, body { margin: 0 !important; padding: 0 !important; }
 
 @media (max-width: 768px) {
   .right, .main-area { padding-top: 0 !important; box-sizing: border-box !important; }
+}
+
+/* ── FINAL: hard-constrain all containers to viewport width ── */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+  }
+  .outer, .right, .body-split, .main-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  .kpi-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    box-sizing: border-box !important;
+  }
+  .kpi {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+  .card, .card-head, .bar-chart, .rev-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+  /* Hide the long "Target: 8–10%…" subtitle on mobile — no room */
+  .card-head .card-sub {
+    display: none !important;
+  }
+  /* Revenue grid: 2×2 */
+  .rev-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    overflow: hidden !important;
+  }
 }
 </style>
 
