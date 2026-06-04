@@ -168,9 +168,11 @@ async function boot() {
 }
 
 function render() {
-  window.scrollTo(0, 0);
-  document.body.scrollTop = 0;
-  document.documentElement.scrollTop = 0;
+  setTimeout(function() {
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }, 120);
   const app = document.getElementById('app');
   switch(state.screen) {
     case 'welcome': app.innerHTML = renderWelcome(); break;
