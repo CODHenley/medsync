@@ -67,6 +67,13 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .btn-primary:hover{background:#243459;}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
 .btn-secondary{padding:11px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;}
+.b-warn{background:#FEF3E2;color:#C07830;border-color:#E0C080;}
+.loss-btn{background:none;border:0.5px solid #C8922A;color:#C8922A;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.loss-opts{display:flex;gap:6px;padding:8px 0 2px;}
+.loss-opt{flex:1;padding:8px 4px;border-radius:8px;border:0.5px solid;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.loss-opt-exp{background:#FEF0F0;border-color:#E0AAAA;color:#C0392B;}
+.loss-opt-dmg{background:#FEF3E2;border-color:#E0C080;color:#A06020;}
+.loss-opt-cancel{background:#F5F3FA;border-color:var(--border);color:var(--mist);}
 .btn-secondary:hover{background:#F0EEF8;}
 
 /* Success */
@@ -160,6 +167,7 @@ let state = {
   scannedCount: 0,
   goodsProductName: '',
   goodsProductId: null,
+  activeGoodsLine: null,
 };
 
 async function boot() {
@@ -211,8 +219,7 @@ function onNameNext() {
   state.name = name;
   state.locationId = locSel.value;
   state.locationName = locSel.options[locSel.selectedIndex].text;
-  state.screen = 'task';
-  render();
+  onTaskSelect('receive');
 }
 
 // ── TASK SELECTION ────────────────────────────────────────────
@@ -303,10 +310,22 @@ function renderReceive() {
           <button class="btn-scan" onclick="hrScan()">Scan</button>
         </div>
         <div class="scan-items">
-          ${state.lines.map(l => `
-            <div class="scan-item ${l.status}">
-              <span class="si-name">${l.name}</span>
-              <span class="si-badge ${l.status==='confirmed'?'b-ok':'b-pend'}">${l.status==='confirmed'?'✓ Done':'Awaiting'}</span>
+          ${state.lines.map((l,i) => `
+            <div class="scan-item ${l.status}" style="flex-direction:column;align-items:stretch;gap:0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span class="si-name" style="${l.status==='lost'?'text-decoration:line-through;color:var(--mist);':''}">${l.name}</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  ${l.status !== 'lost' ? `<button class="loss-btn" onclick="event.stopPropagation();showLossOptions(${i})">⚠ Loss</button>` : ''}
+                  <span class="si-badge ${l.status==='confirmed'?'b-ok':l.status==='lost'?'b-warn':'b-pend'}">${l.status==='confirmed'?'✓ Done':l.status==='lost'?'⚠ Lost':'Awaiting'}</span>
+                </div>
+              </div>
+              ${state.activeGoodsLine === i ? `
+                <div class="loss-opts">
+                  <button class="loss-opt loss-opt-exp" onclick="hrLogGoodsLine(${i},'Expired product')">⏰ Expired</button>
+                  <button class="loss-opt loss-opt-dmg" onclick="hrLogGoodsLine(${i},'Damaged / Spilled')">💧 Damaged</button>
+                  <button class="loss-opt loss-opt-cancel" onclick="state.activeGoodsLine=null;render()">Cancel</button>
+                </div>
+              ` : ''}
             </div>`).join('')}
         </div>
       </div>
@@ -461,6 +480,41 @@ function renderGoods() {
       </button>
     </div>
     <button class="btn-secondary" onclick="state.screen='task';render()">← Back</button>`;
+}
+
+function showLossOptions(idx) {
+  state.activeGoodsLine = state.activeGoodsLine === idx ? null : idx;
+  render();
+}
+
+async function hrLogGoodsLine(idx, category) {
+  const line = state.lines[idx];
+  state.lines[idx].status = 'lost';
+  state.activeGoodsLine = null;
+  render();
+  showToast('⚠ ' + line.name + ' logged as ' + category);
+  fetch(SUPA_URL + '/rest/v1/goods_lost', {
+    method: 'POST',
+    headers: { ...H, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      location_id: state.locationId,
+      category:    category,
+      qty_lost:    1,
+      value_lost:  0,
+      notes:       line.name + ' · Submitted by ' + state.name + ' via Hospital Receiver',
+    })
+  }).catch(() => {});
+  fetch(SUPA_URL + '/rest/v1/activity_log', {
+    method: 'POST',
+    headers: { ...H, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      location_id: state.locationId,
+      event_type:  'goods',
+      description: 'Goods lost: ' + line.name + ' (' + category + ')',
+      flag:        'ok',
+      metadata:    { category, product: line.name, submitted_by: state.name }
+    })
+  }).catch(() => {});
 }
 
 async function hrLogGoods(category) {
