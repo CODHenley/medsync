@@ -2584,7 +2584,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (user.role) {
     var rb = document.getElementById('ms-role');
-    if (rb) rb.textContent = user.role === 'admin' ? 'Admin' : 'Manager';
+    if (rb) rb.textContent = user.role === 'admin' ? 'Admin' :
+    user.role === 'hospital_manager' ? 'H. Manager' :
+    user.role === 'receiver' ? 'Receiver' : 'Manager';
   }
   if (user.role === 'manager') {
     ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
@@ -2594,6 +2596,22 @@ document.addEventListener('DOMContentLoaded', () => {
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('order');
+  } else if (user.role === 'receiver') {
+    // Receiver: only hospital receiver screen
+    ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    ['asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog',
+     'asb-order','asb-receiving','asb-goods','asb-admin-label'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    showScreen('receiver');
+  } else if (user.role === 'hospital_manager') {
+    // Hospital manager: analytics/reporting only, read-only
+    ['asb-order','asb-receiving','asb-goods','asb-receiver'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    showScreen('portfolio');
   } else {
     showScreen('portfolio');
   }
