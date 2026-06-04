@@ -673,10 +673,15 @@ function deepDiveLoc(locCode) {
   #ms-analytics, #ms-lifecycle, #ms-actlog {
     margin-top: 48px !important;
   }
-  /* Inline screens + receiver: pad content down (avoids margin collapse) */
-  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods, #ms-receiver {
+  /* Inline screens: pad content down */
+  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods {
     padding-top: 48px !important;
     box-sizing: border-box !important;
+  }
+  /* Receiver: target iframe directly — immune to margin/padding collapse */
+  #ms-receiver iframe {
+    margin-top: 48px !important;
+    height: calc(100vh - 96px) !important;
   }
 }
 </style>
