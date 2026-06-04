@@ -366,15 +366,15 @@ async function hrComplete() {
           qty_received:    line.qty,
           qty_remaining:   line.qty,
           received_date:   new Date().toISOString().split('T')[0],
-          expiration_date: '2027-06-01',
+          expiration_date: line.expDate || new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split('T')[0],
           status:          'Active',
           po_reference:    state.selectedOrder.ref,
         })
       });
     }
 
-    // Log activity
-    await fetch(SUPA_URL + '/rest/v1/activity_log', {
+    // Log activity (fire-and-forget)
+    fetch(SUPA_URL + '/rest/v1/activity_log', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({
@@ -385,7 +385,7 @@ async function hrComplete() {
         flag:         'ok',
         metadata: { received_by: state.name, skus: confirmed.length }
       })
-    });
+    }).catch(() => {});
 
     state.doneTitle = 'Delivery received!';
     state.doneSub = state.selectedOrder.ref + ' · ' + confirmed.length + ' items confirmed\nReceived by ' + state.name + ' · ' + state.locationName;
@@ -438,7 +438,7 @@ async function hrLogGoods(category) {
         notes:        'Submitted by ' + state.name + ' via Hospital Receiver',
       })
     });
-    await fetch(SUPA_URL + '/rest/v1/activity_log', {
+    fetch(SUPA_URL + '/rest/v1/activity_log', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({
@@ -448,7 +448,7 @@ async function hrLogGoods(category) {
         flag:         'ok',
         metadata: { category, submitted_by: state.name }
       })
-    });
+    }).catch(() => {});
     state.doneTitle = 'Entry logged';
     state.doneSub = category + ' logged by ' + state.name + '\n' + state.locationName;
     state.screen = 'done';
