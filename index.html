@@ -2613,11 +2613,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     showScreen('portfolio');
   } else if (user.role === 'inventory_lead') {
-    // Inventory lead: orders, receiving, goods, analytics (location-scoped) — no portfolio/lifecycle/actlog/users
-    ['mnb-portfolio','mnb-lifecycle','mnb-actlog'].forEach(function(id){
+    // Inventory lead: portfolio, analytics, lifecycle, orders, receiving, goods — no actlog/users/receiver
+    ['mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    ['asb-portfolio','asb-lifecycle','asb-actlog','asb-receiver','asb-users','asb-admin-label'].forEach(function(id){
+    ['asb-actlog','asb-receiver','asb-users','asb-admin-label'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     // Scope analytics to their location
