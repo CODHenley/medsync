@@ -519,87 +519,54 @@ function deepDiveLoc(locCode) {
 .loc-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 @media (max-width: 700px) {
-  /* Metric grid — 2 cols on mobile */
+  /* KPI metric cards — 2 cols */
   .metric-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .metric { padding: 14px !important; }
   .metric-value { font-size: 22px !important; }
 
-  /* Table — hide header, make each row a card */
+  /* Hide desktop column headers */
   .col-header { display: none !important; }
-
-  .tbl-row {
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 14px 16px !important;
-    gap: 6px !important;
-  }
-
-  /* Location name — full width top */
-  .tbl-row > div:first-child {
-    border-bottom: 0.5px solid #E4E0F0 !important;
-    padding-bottom: 8px !important;
-    margin-bottom: 4px !important;
-  }
   .loc-name { font-size: 14px !important; }
   .loc-sub { font-size: 12px !important; }
 
-  /* Stats row — flex wrap the remaining spans */
-  .tbl-row > span,
-  .tbl-row > div:not(:first-child) {
-    display: inline-flex !important;
-    font-size: 13px !important;
-  }
-}
-@media (max-width: 700px) {
-  /* Location rows — card style */
+  /* Each location row: 2-column stat grid */
   .tbl-row {
+    display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    padding: 12px 16px !important;
-    gap: 6px 8px !important;
-    row-gap: 6px !important;
+    padding: 12px 14px !important;
+    gap: 8px 12px !important;
+    align-items: start !important;
   }
 
-  /* First col (name) spans full width */
+  /* Location name header spans full width */
   .tbl-row > div:first-child {
     grid-column: 1 / -1 !important;
-    border-bottom: 0.5px solid #E4E0F0;
-    padding-bottom: 6px;
-    margin-bottom: 2px;
+    border-bottom: 0.5px solid #E4E0F0 !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
   }
 
-  /* All spans get labels via ::before */
-  .tbl-row > span { font-size: 13px !important; }
-
-  /* Metric grid — 2 cols on mobile */
-  .metric-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .metric { padding: 14px !important; }
-  .metric-value { font-size: 22px !important; }
-}
-
-
-/* ── Analytics screen — mobile ───────────────────────────────── */
-
-
-
-/* ── Portfolio row labels on mobile ─────────────────────────── */
-@media (max-width: 700px) {
+  /* Each stat: label stacked above value, compactly left-aligned */
   .tbl-row span[data-label] {
-    display: grid !important;
-    grid-template-columns: 62px 1fr !important;
-    align-items: center !important;
-    font-size: 12px !important;
-    padding: 1px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    align-items: flex-start !important;
   }
   .tbl-row span[data-label]::before {
     content: attr(data-label) !important;
-    font-size: 10px !important;
+    font-size: 9px !important;
     color: #8A93A8 !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
+    letter-spacing: 0.05em !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+  }
+  /* Value text */
+  .tbl-row span[data-label] > *,
+  .tbl-row span[data-label] .badge {
+    font-size: 13px !important;
   }
 }
 
