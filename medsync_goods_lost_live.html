@@ -437,18 +437,28 @@ async function loadLocations() {
 }
 
 async function loadProducts() {
-  const res = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size&order=name', { headers: H });
-  const prods = await res.json();
-  const sel = document.getElementById('product-select');
-  prods.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.name;
-    opt.dataset.price = getPriceEstimate(p.name);
-    opt.dataset.unit = p.dispensing_unit || 'units';
-    opt.dataset.pkgSize = p.package_size || 1;
-    sel.appendChild(opt);
-  });
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size&order=name', { headers: H });
+    let prods = await res.json();
+    // Fallback if columns missing or auth error returns an object
+    if (!Array.isArray(prods)) {
+      const res2 = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category&order=name', { headers: H });
+      prods = await res2.json();
+    }
+    if (!Array.isArray(prods)) return;
+    const sel = document.getElementById('product-select');
+    prods.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      opt.dataset.price = getPriceEstimate(p.name);
+      opt.dataset.unit = p.dispensing_unit || 'units';
+      opt.dataset.pkgSize = p.package_size || 1;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    showToast('Could not load products — check connection');
+  }
 }
 
 async function loadHistory() {

@@ -158,6 +158,8 @@ let state = {
   selectedOrder: null,
   lines: [],
   scannedCount: 0,
+  goodsProductName: '',
+  goodsProductId: null,
 };
 
 async function boot() {
@@ -427,36 +429,42 @@ async function hrComplete() {
   }
 }
 
-// ── GOODS LOST (simplified) ───────────────────────────────────
+// ── GOODS LOST (receiving context) ───────────────────────────
 function renderGoods() {
+  // Build product options from order lines if available, else empty
+  const lineOptions = state.lines && state.lines.length
+    ? state.lines.map(l => `<option value="${l.name}">${l.name}</option>`).join('')
+    : '';
+  const hasLines = lineOptions.length > 0;
   return `
     <div class="header">
       <div class="header-title">Log goods lost</div>
       <div class="header-sub">${state.locationName} · ${state.name}</div>
     </div>
-    <div class="card" style="gap:12px;">
-      <div class="card-label">What happened?</div>
-      <button class="task-btn" onclick="hrLogGoods('Diagnostic duplicate')">
-        <div class="task-icon" style="background:var(--purple-bg,#EEEDFE);">🔬</div>
-        <div><div class="task-title">Diagnostic duplicate</div><div class="task-sub">Test rerun — Catalyst, reagents</div></div>
-      </button>
+    <div class="card" style="gap:14px;">
+      <div class="card-label">Which product?</div>
+      ${hasLines
+        ? `<select id="gr-product" onchange="state.goodsProductName=this.value" style="font-size:15px;padding:10px 12px;border:0.5px solid var(--border);border-radius:10px;width:100%;background:#fff;">
+             <option value="">Select product…</option>
+             ${lineOptions}
+           </select>`
+        : `<input id="gr-product" type="text" placeholder="Product name…" oninput="state.goodsProductName=this.value" style="font-size:15px;padding:10px 12px;border:0.5px solid var(--border);border-radius:10px;width:100%;box-sizing:border-box;">`
+      }
+      <div class="card-label" style="margin-top:4px;">What happened?</div>
       <button class="task-btn" onclick="hrLogGoods('Expired product')">
-        <div class="task-icon" style="background:var(--red-bg);">⏰</div>
-        <div><div class="task-title">Expired product</div><div class="task-sub">Past expiry date, must discard</div></div>
+        <div class="task-icon" style="background:var(--red-bg,#FDECEA);">⏰</div>
+        <div><div class="task-title">Expired product</div><div class="task-sub">Arrived past expiry date — must discard</div></div>
       </button>
       <button class="task-btn" onclick="hrLogGoods('Damaged / Spilled')">
-        <div class="task-icon" style="background:var(--amber-bg);">💧</div>
-        <div><div class="task-title">Damaged or spilled</div><div class="task-sub">Broken, dropped, or contaminated</div></div>
-      </button>
-      <button class="task-btn" onclick="hrLogGoods('Medication waste')">
-        <div class="task-icon" style="background:#E1F5EE;">💊</div>
-        <div><div class="task-title">Medication waste</div><div class="task-sub">Partial vial, unused draw</div></div>
+        <div class="task-icon" style="background:var(--amber-bg,#FEF3E2);">💧</div>
+        <div><div class="task-title">Damaged or spilled</div><div class="task-sub">Broken, dropped, or contaminated on arrival</div></div>
       </button>
     </div>
     <button class="btn-secondary" onclick="state.screen='task';render()">← Back</button>`;
 }
 
 async function hrLogGoods(category) {
+  if (!state.goodsProductName) { showToast('Please select a product first'); return; }
   try {
     await fetch(SUPA_URL + '/rest/v1/goods_lost', {
       method: 'POST',
@@ -466,7 +474,7 @@ async function hrLogGoods(category) {
         category:     category,
         qty_lost:     1,
         value_lost:   0,
-        notes:        'Submitted by ' + state.name + ' via Hospital Receiver',
+        notes:        state.goodsProductName + ' · Submitted by ' + state.name + ' via Hospital Receiver',
       })
     });
     fetch(SUPA_URL + '/rest/v1/activity_log', {
