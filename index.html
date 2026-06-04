@@ -2592,7 +2592,8 @@ document.addEventListener('DOMContentLoaded', () => {
     var rb = document.getElementById('ms-role');
     if (rb) rb.textContent = user.role === 'admin' ? 'Admin' :
     user.role === 'hospital_manager' ? 'H. Manager' :
-    user.role === 'receiver' ? 'Receiver' : 'Manager';
+    user.role === 'receiver' ? 'Receiver' :
+    user.role === 'inventory_lead' ? 'Inv. Lead' : 'Manager';
   }
   // manager and admin have identical access
   if (user.role === 'receiver') {
@@ -2611,6 +2612,27 @@ document.addEventListener('DOMContentLoaded', () => {
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('portfolio');
+  } else if (user.role === 'inventory_lead') {
+    // Inventory lead: orders, receiving, goods, analytics (location-scoped) — no portfolio/lifecycle/actlog/users
+    ['mnb-portfolio','mnb-lifecycle','mnb-actlog'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    ['asb-portfolio','asb-lifecycle','asb-actlog','asb-receiver','asb-users','asb-admin-label'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    // Scope analytics to their location
+    var _mu2 = user;
+    if (_mu2.locations) {
+      var _loc2 = Array.isArray(_mu2.locations) ? (_mu2.locations[0] && _mu2.locations[0].name) : _mu2.locations.name;
+      if (_loc2) {
+        localStorage.setItem('medsync_analytics_loc', _loc2);
+        var _aIframe = document.querySelector('#ms-analytics iframe');
+        if (_aIframe && _aIframe.contentWindow) {
+          setTimeout(function(){ _aIframe.contentWindow.postMessage({ type: 'setLocation', loc: _loc2 }, '*'); }, 800);
+        }
+      }
+    }
+    showScreen('order');
   } else {
     // admin + manager: full access
     showScreen('portfolio');
