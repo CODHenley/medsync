@@ -277,7 +277,7 @@ function renderReceive() {
           <button class="task-btn" onclick="onOrderSelect('${o.id}','${o.order_ref}','${o.total_value}')">
             <div class="task-icon" style="background:#E1F5EE;">🚚</div>
             <div>
-              <div class="task-title">${o.order_ref}</div>
+              <div class="task-title">${o.order_ref.replace("ORD-","PO-")}</div>
               <div class="task-sub">$${Number(o.total_value||0).toFixed(2)} · ${new Date(o.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
             </div>
           </button>`).join('')
@@ -292,12 +292,12 @@ function renderReceive() {
   return `
     <div class="header">
       <div class="header-title">Scanning delivery</div>
-      <div class="header-sub">${state.selectedOrder.ref} · ${state.locationName}</div>
+      <div class="header-sub">${state.selectedOrder.ref.replace("ORD-","PO-")} · ${state.locationName}</div>
     </div>
     <div class="scan-card">
       <div class="scan-head">
         <div>
-          <div class="scan-head-title">${state.selectedOrder.ref}</div>
+          <div class="scan-head-title">${state.selectedOrder.ref.replace("ORD-","PO-")}</div>
           <div class="scan-head-sub">Scan each item as you unbox it</div>
         </div>
         <div class="scan-progress">${confirmed} of ${state.lines.length}</div>
