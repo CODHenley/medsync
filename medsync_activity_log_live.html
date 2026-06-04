@@ -259,6 +259,30 @@ html, body { margin: 0 !important; padding: 0 !important; }
   .sum-l { font-size: 11px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
   .tbl-wrap { overflow-x: auto !important; }
 }
+
+/* ── Mobile event cards ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .topbar { flex-direction: column !important; align-items: stretch !important; padding: 10px 12px !important; gap: 8px !important; }
+  .tb-left { flex-wrap: wrap !important; gap: 6px !important; }
+  .tb-right { display: none !important; }
+  .search-wrap { flex: 1 1 100% !important; }
+  .search-wrap input { width: 100% !important; box-sizing: border-box !important; }
+  select { flex: 1 !important; min-width: 0 !important; box-sizing: border-box !important; }
+  .content { padding: 10px 12px !important; box-sizing: border-box !important; }
+  .summary-row { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+  .sum-card { min-width: 0 !important; padding: 10px 12px !important; }
+  .sum-v { font-size: 18px !important; }
+  .sum-l { font-size: 9px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+  .table-section { border-radius: 10px !important; }
+  .table-head-bar { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+  .type-tabs { overflow-x: auto !important; width: 100% !important; padding-bottom: 2px !important; }
+  thead { display: none !important; }
+}
+.ev-card { padding: 10px 14px; cursor: pointer; border-bottom: 0.5px solid #F5F3FA; transition: background .08s; }
+.ev-card:hover { background: #F8F7FC; }
+.ev-card:last-child { border-bottom: none; }
+.ev-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.ev-card-meta { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 </style>
 
 <script>
@@ -608,24 +632,52 @@ function renderTable() {
   }
   empty.style.display = 'none';
 
-  tbody.innerHTML = sorted.map(e => {
-    const flagBadge = e.flag==='alert' ? '<span class="badge b-alert">Alert</span>'
-                    : e.flag==='warn'  ? '<span class="badge b-warn">Flagged</span>'
-                    : '<span class="badge b-ok">OK</span>';
-    const typeBadge = `<span class="badge ${typeClass(e.type)}">${typeLabel(e.type)}</span>`;
-    return `<tr class="ev-row" onclick="openDetail('${e.dbId}')">
-      <td><span class="ev-id">${e.id}</span></td>
-      <td>${typeBadge}</td>
-      <td><div class="ev-desc">${e.desc}</div><div class="ev-meta">${e.detail}</div></td>
-      <td><div class="user-chip">
-        <div class="user-dot" style="background:${userColor(e.user)};">${initials(e.user)}</div>
-        <span style="font-size:11px;">${e.user}</span>
-      </div></td>
-      <td style="font-size:11px;">${e.loc}</td>
-      <td><span class="ts">${fmtTs(e.ts)}</span></td>
-      <td>${flagBadge}</td>
-    </tr>`;
-  }).join('');
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    // Mobile: render event cards instead of table rows
+    tbody.innerHTML = sorted.map(e => {
+      const flagBadge = e.flag==='alert' ? '<span class="badge b-alert">Alert</span>'
+                      : e.flag==='warn'  ? '<span class="badge b-warn">Flagged</span>'
+                      : '';
+      const typeBadge = `<span class="badge ${typeClass(e.type)}">${typeLabel(e.type)}</span>`;
+      return `<tr><td colspan="7" style="padding:0;border:none;">
+        <div class="ev-card" onclick="openDetail('${e.dbId}')">
+          <div class="ev-card-top">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${typeBadge}${flagBadge}</div>
+            <span class="ts" style="font-size:10px;">${fmtTs(e.ts)}</span>
+          </div>
+          <div class="ev-desc" style="margin:4px 0 2px;">${e.desc}</div>
+          <div class="ev-card-meta">
+            <div class="user-chip">
+              <div class="user-dot" style="background:${userColor(e.user)};width:18px;height:18px;font-size:9px;">${initials(e.user)}</div>
+              <span style="font-size:11px;">${e.user}</span>
+            </div>
+            <span style="font-size:11px;color:var(--mist);">${e.loc}</span>
+          </div>
+        </div>
+      </td></tr>`;
+    }).join('');
+  } else {
+    tbody.innerHTML = sorted.map(e => {
+      const flagBadge = e.flag==='alert' ? '<span class="badge b-alert">Alert</span>'
+                      : e.flag==='warn'  ? '<span class="badge b-warn">Flagged</span>'
+                      : '<span class="badge b-ok">OK</span>';
+      const typeBadge = `<span class="badge ${typeClass(e.type)}">${typeLabel(e.type)}</span>`;
+      return `<tr class="ev-row" onclick="openDetail('${e.dbId}')">
+        <td><span class="ev-id">${e.id}</span></td>
+        <td>${typeBadge}</td>
+        <td><div class="ev-desc">${e.desc}</div><div class="ev-meta">${e.detail}</div></td>
+        <td><div class="user-chip">
+          <div class="user-dot" style="background:${userColor(e.user)};">${initials(e.user)}</div>
+          <span style="font-size:11px;">${e.user}</span>
+        </div></td>
+        <td style="font-size:11px;">${e.loc}</td>
+        <td><span class="ts">${fmtTs(e.ts)}</span></td>
+        <td>${flagBadge}</td>
+      </tr>`;
+    }).join('');
+  }
 }
 
 // ── Event detail modal ────────────────────────────────────────
