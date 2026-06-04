@@ -667,10 +667,16 @@ function deepDiveLoc(locCode) {
   width: 100% !important;
 }
 
-/* ── FINAL: iframe screens start below fixed nav ────────────── */
+/* ── FINAL: all screens clear the fixed nav ──────────────────── */
 @media (max-width: 768px) {
+  /* Iframe screens: push container down */
   #ms-analytics, #ms-lifecycle, #ms-actlog, #ms-receiver {
     margin-top: 48px !important;
+  }
+  /* Inline screens: pad content down */
+  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods {
+    padding-top: 48px !important;
+    box-sizing: border-box !important;
   }
 }
 </style>
