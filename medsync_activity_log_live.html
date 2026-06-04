@@ -237,6 +237,19 @@ html, body { margin: 0 !important; padding: 0 !important; }
 
 html { height: 100%; overflow: hidden; }
 body { height: 100%; overflow: hidden; min-height: 0 !important; }
+
+@media (max-width: 768px) {
+  .topbar { flex-wrap: wrap !important; align-items: flex-start !important; gap: 6px !important; padding: 10px 14px !important; }
+  .tb-left { flex: 1 1 100% !important; }
+  .tb-right { flex: 1 1 100% !important; justify-content: flex-start !important; }
+  .search-wrap { flex: 1 !important; min-width: 0 !important; }
+  .search-wrap input { width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+  .topbar .btn { display: none !important; }
+  .summary-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .sum-card { min-width: 0 !important; overflow: hidden !important; }
+  .sum-v { font-size: 20px !important; }
+  .sum-l { font-size: 11px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+}
 </style>
 
 <script>

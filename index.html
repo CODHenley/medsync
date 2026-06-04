@@ -584,21 +584,22 @@ function deepDiveLoc(locCode) {
 /* ── Portfolio row labels on mobile ─────────────────────────── */
 @media (max-width: 700px) {
   .tbl-row span[data-label] {
-    display: flex !important;
+    display: grid !important;
+    grid-template-columns: 88px 1fr !important;
     align-items: center !important;
-    gap: 6px !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
+    padding: 1px 0 !important;
   }
   .tbl-row span[data-label]::before {
-    content: attr(data-label);
+    content: attr(data-label) !important;
     font-size: 10px !important;
     color: #8A93A8 !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.03em !important;
-    width: 82px !important;
-    flex-shrink: 0 !important;
+    letter-spacing: 0.04em !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 }
 

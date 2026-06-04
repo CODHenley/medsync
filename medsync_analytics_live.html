@@ -237,6 +237,10 @@ html, body { margin: 0 !important; padding: 0 !important; }
 
 html { height: 100%; overflow: hidden; }
 body { height: 100%; overflow: hidden; min-height: 0 !important; }
+
+@media (max-width: 768px) {
+  .rev-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
 </style>
 
 <script>
