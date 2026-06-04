@@ -75,6 +75,15 @@ select.nav-sel option{background:var(--navy);}
 
 /* PO status footer */
 .po-footer{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.loss-btn{background:none;border:0.5px solid #C8922A;color:#C8922A;padding:3px 7px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:6px;white-space:nowrap;}
+.loss-expand{padding:10px 16px 12px;background:#FEF8F0;border-top:0.5px solid #F0DDB0;display:flex;flex-direction:column;gap:8px;}
+.loss-note{font-size:13px;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;width:100%;box-sizing:border-box;font-family:'DM Sans',sans-serif;}
+.loss-btns{display:flex;gap:6px;}
+.loss-opt{flex:1;padding:7px 4px;border-radius:8px;border:0.5px solid;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.loss-opt-exp{background:#FEF0F0;border-color:#E0AAAA;color:#C0392B;}
+.loss-opt-dmg{background:#FEF3E2;border-color:#E0C080;color:#A06020;}
+.loss-opt-cancel{background:#F5F3FA;border-color:var(--border);color:var(--mist);}
+.item-row.lost{background:#FEF8F0;}
 .pf-status{font-size:12px;color:var(--slate);}
 .pf-status strong{color:var(--navy);}
 .btn-complete{padding:9px 20px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
@@ -280,14 +289,58 @@ function renderItems() {
       : l.status === 'awaiting'
       ? '<span class="badge b-awaiting">⏳ Pending</span>'
       : '<span class="badge b-pending">Awaiting scan</span>';
-    return `<div class="item-row ${l.status}" id="item-row-${i}">
-      <div><div class="item-name">${l.name}</div><div class="item-ndc">${l.ndc}</div></div>
-      <div style="font-size:12px;">${l.qtyOrdered}</div>
-      <div style="font-size:12px;font-weight:${l.qtyReceived?'500':'400'};color:${l.qtyReceived?'var(--navy)':'var(--mist)'};">${l.qtyReceived || '—'}</div>
-      <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--mist);">${l.lotNum ? '#'+l.lotNum+'<br>Exp '+l.expDate : '—'}</div>
-      <div>${statusBadge}</div>
+    const lossExpanded = state.activeGoodsLine === i;
+    return `<div style="border-bottom:0.5px solid #F5F3FA;">
+      <div class="item-row ${l.status === 'lost' ? 'lost' : l.status}" id="item-row-${i}" style="border-bottom:none;">
+        <div><div class="item-name" style="${l.status==='lost'?'text-decoration:line-through;color:var(--mist);':''}">${l.name}</div><div class="item-ndc">${l.ndc}</div></div>
+        <div style="font-size:12px;">${l.qtyOrdered}</div>
+        <div style="font-size:12px;font-weight:${l.qtyReceived?'500':'400'};color:${l.qtyReceived?'var(--navy)':'var(--mist)'};">${l.qtyReceived || '—'}</div>
+        <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--mist);">${l.lotNum ? '#'+l.lotNum+'<br>Exp '+l.expDate : '—'}</div>
+        <div style="display:flex;align-items:center;">
+          ${l.status !== 'lost' ? statusBadge : '<span class="badge" style="background:#FEF3E2;color:#A06020;border-color:#E0C080;">⚠ Lost</span>'}
+          ${l.status !== 'lost' ? `<button class="loss-btn" onclick="showReceivingLoss(${i})">⚠ Loss</button>` : ''}
+        </div>
+      </div>
+      ${lossExpanded ? `
+        <div class="loss-expand">
+          <input id="rloss-note-${i}" class="loss-note" type="text" placeholder="Optional note (lot #, condition)…">
+          <div class="loss-btns">
+            <button class="loss-opt loss-opt-exp" onclick="logReceivingLoss(${i},'Expired product')">⏰ Expired</button>
+            <button class="loss-opt loss-opt-dmg" onclick="logReceivingLoss(${i},'Damaged / Spilled')">💧 Damaged</button>
+            <button class="loss-opt loss-opt-cancel" onclick="state.activeGoodsLine=null;renderItems()">Cancel</button>
+          </div>
+        </div>
+      ` : ''}
     </div>`;
   }).join('');
+}
+
+function showReceivingLoss(idx) {
+  state.activeGoodsLine = state.activeGoodsLine === idx ? null : idx;
+  renderItems();
+}
+
+async function logReceivingLoss(idx, category) {
+  const line = state.lines[idx];
+  const noteEl = document.getElementById('rloss-note-' + idx);
+  const note = noteEl ? noteEl.value.trim() : '';
+  state.lines[idx].status = 'lost';
+  state.activeGoodsLine = null;
+  renderItems();
+  updateStatus();
+  showToast('⚠ ' + line.name + ' logged as ' + category);
+  const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
+  const _H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+  fetch(SUPA_URL + '/rest/v1/goods_lost', {
+    method: 'POST', headers: _H,
+    body: JSON.stringify({
+      location_id: state.locationId,
+      category:    category,
+      qty_lost:    1,
+      value_lost:  0,
+      notes:       line.name + (note ? ' · ' + note : '') + ' · Logged via PO Receiving',
+    })
+  }).catch(() => {});
 }
 
 function updateStatus() {
