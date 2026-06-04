@@ -625,7 +625,7 @@ function deepDiveLoc(locCode) {
   #app-body {
     display: block !important;
     margin: 0 !important;
-    padding-top: 48px !important;
+    padding-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
     padding-bottom: 0 !important;
@@ -637,11 +637,14 @@ function deepDiveLoc(locCode) {
   
 /* ── Content clears fixed nav — no gap between nav and subheader ── */
 @media (max-width: 768px) {
-  /* Portfolio: first visible element clears the nav */
-  
-  /* Iframes: topbar clears the nav */
-  .ms-screen iframe {
-    margin-top: 0 !important;
+  /* app-content: no overflow scrolling on mobile */
+  #app-content { overflow-y: visible !important; }
+  /* Iframe screens: offset below fixed nav */
+  #ms-analytics, #ms-lifecycle, #ms-actlog, #ms-receiver {
+    margin-top: 48px !important;
+  }
+  #ms-analytics iframe, #ms-lifecycle iframe, #ms-actlog iframe, #ms-receiver iframe {
+    height: calc(100vh - 96px) !important;
   }
 }
 @media (max-width: 768px) {
