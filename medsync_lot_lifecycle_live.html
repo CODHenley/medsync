@@ -305,7 +305,7 @@ html, body { margin: 0 !important; padding: 0 !important; }
 .lot-card-label { font-size: 9px; color: var(--mist); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; width: 26px; flex-shrink: 0; }
 
 @media (max-width: 768px) {
-  .right, .main-area { padding-top: 48px !important; box-sizing: border-box !important; }
+  .right, .main-area { padding-top: 0 !important; box-sizing: border-box !important; }
 }
 </style>
 
@@ -327,7 +327,7 @@ if (window.self !== window.top) {
       if (mainArea) {
         mainArea.style.height = 'auto';
         mainArea.style.overflowY = 'auto';
-        mainArea.style.paddingTop = '52px';
+        mainArea.style.paddingTop = '0';
         mainArea.style.boxSizing = 'border-box';
       }
     }
