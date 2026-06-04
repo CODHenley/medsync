@@ -157,6 +157,11 @@ let state = {
 };
 
 async function boot() {
+  if (window.self !== window.top && window.innerWidth <= 768) {
+    var shell = document.getElementById('app');
+    if (shell) shell.style.paddingTop = '52px';
+    document.body.style.paddingTop = '0';
+  }
   const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
   state.locations = await res.json();
   render();
