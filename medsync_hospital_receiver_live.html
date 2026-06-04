@@ -320,10 +320,13 @@ function renderReceive() {
                 </div>
               </div>
               ${state.activeGoodsLine === i ? `
-                <div class="loss-opts">
-                  <button class="loss-opt loss-opt-exp" onclick="hrLogGoodsLine(${i},'Expired product')">⏰ Expired</button>
-                  <button class="loss-opt loss-opt-dmg" onclick="hrLogGoodsLine(${i},'Damaged / Spilled')">💧 Damaged</button>
-                  <button class="loss-opt loss-opt-cancel" onclick="state.activeGoodsLine=null;render()">Cancel</button>
+                <div class="loss-opts" style="flex-direction:column;gap:8px;">
+                  <input id="loss-note-${i}" type="text" placeholder="Optional note (e.g. lot #, condition)…" style="font-size:14px;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;width:100%;box-sizing:border-box;font-family:'DM Sans',sans-serif;">
+                  <div style="display:flex;gap:6px;">
+                    <button class="loss-opt loss-opt-exp" onclick="hrLogGoodsLine(${i},'Expired product')">⏰ Expired</button>
+                    <button class="loss-opt loss-opt-dmg" onclick="hrLogGoodsLine(${i},'Damaged / Spilled')">💧 Damaged</button>
+                    <button class="loss-opt loss-opt-cancel" onclick="state.activeGoodsLine=null;render()">Cancel</button>
+                  </div>
                 </div>
               ` : ''}
             </div>`).join('')}
@@ -489,6 +492,8 @@ function showLossOptions(idx) {
 
 async function hrLogGoodsLine(idx, category) {
   const line = state.lines[idx];
+  const noteEl = document.getElementById('loss-note-' + idx);
+  const note = noteEl ? noteEl.value.trim() : '';
   state.lines[idx].status = 'lost';
   state.activeGoodsLine = null;
   render();
@@ -501,7 +506,7 @@ async function hrLogGoodsLine(idx, category) {
       category:    category,
       qty_lost:    1,
       value_lost:  0,
-      notes:       line.name + ' · Submitted by ' + state.name + ' via Hospital Receiver',
+      notes:       line.name + ' · ' + (note ? note + ' · ' : '') + 'Submitted by ' + state.name + ' via Hospital Receiver',
     })
   }).catch(() => {});
   fetch(SUPA_URL + '/rest/v1/activity_log', {
