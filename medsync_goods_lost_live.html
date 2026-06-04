@@ -371,6 +371,7 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
     <div class="success-icon">✓</div>
     <div class="success-title">Loss logged</div>
     <div class="success-sub" id="success-detail">Entry saved and on-hand updated automatically.</div>
+    <div class="success-sub" id="success-thanks" style="margin-top:6px;font-weight:500;color:var(--navy);"></div>
     <button class="btn-primary" onclick="resetForm()">Log another</button>
   </div>
 </div>
@@ -626,6 +627,13 @@ async function submitLoss() {
     // Show success
     document.getElementById('success-detail').textContent =
       state.productName + ' · ' + state.category + ' · $' + valueLost.toFixed(2) + ' logged.';
+    (function(){
+      try {
+        var _u = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+        var _name = (_u.full_name || '').split(' ')[0] || _u.full_name || '';
+        document.getElementById('success-thanks').textContent = _name ? 'Thank you, ' + _name + '!' : '';
+      } catch(e) {}
+    })();
     document.getElementById('main-content').style.display = 'none';
     document.getElementById('success-screen').style.display = 'flex';
 
