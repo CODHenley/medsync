@@ -288,6 +288,21 @@ html, body { margin: 0 !important; padding: 0 !important; }
   .table-wrap { overflow-x: auto !important; }
   .modal { width: calc(100vw - 32px) !important; max-width: 100% !important; }
 }
+
+@media (max-width: 768px) {
+  .topbar { flex-direction: column !important; padding: 10px 12px !important; gap: 6px !important; }
+  .tb-left { flex-wrap: wrap !important; gap: 6px !important; }
+  .tb-right { display: none !important; }
+  .content { padding: 10px 12px !important; box-sizing: border-box !important; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .table-wrap { overflow-x: hidden !important; }
+  thead { display: none !important; }
+}
+.lot-card { padding: 10px 14px; cursor: pointer; border-bottom: 0.5px solid #F5F3FA; }
+.lot-card:hover { background: #F8F7FC; }
+.lot-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.lot-card-row { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 12px; }
+.lot-card-label { font-size: 9px; color: var(--mist); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; width: 26px; flex-shrink: 0; }
 </style>
 
 <script>
@@ -714,6 +729,27 @@ function filterTable() {
     const dea = lot.cs
       ? `<span class="b-dea">DEA ${lot.deaSched.replace('Schedule ','')}</span>`
       : '<span style="color:var(--mist);font-size:11px;">—</span>';
+    if (window.innerWidth <= 768) {
+      return `<tr><td colspan="8" style="padding:0;border:none;">
+        <div class="lot-card" onclick="openLot('${lot.dbId}')">
+          <div class="lot-card-top">
+            <div style="font-weight:600;font-size:13px;">${lot.name}</div>
+            <span class="badge ${statusClass(lot.status)}">${lot.status}</span>
+          </div>
+          <div class="lot-card-row">
+            <span class="lot-card-label">LOT</span><span class="lot-num" style="font-size:12px;">${lot.id}</span>
+            <span class="lot-card-label" style="margin-left:12px;">QTY</span><span class="qty" style="font-size:12px;">${lot.qtyRem} / ${lot.qtyIn}</span>
+          </div>
+          <div class="lot-card-row">
+            <span class="lot-card-label">EXP</span><span class="exp-date ${expClass}" style="font-size:12px;">${formatDate(lot.exp)} · ${daysTxt}</span>
+          </div>
+          <div class="lot-card-row">
+            <span class="lot-card-label">LOC</span><span style="font-size:12px;">${lot.loc}</span>
+            ${lot.cs ? `<span class="b-dea" style="margin-left:8px;">DEA ${lot.deaSched.replace('Schedule ','')}</span>` : ''}
+          </div>
+        </div>
+      </td></tr>`;
+    }
     return `<tr class="lot-row" onclick="openLot('${lot.dbId}')">
       <td><span class="lot-num">${lot.id}</span></td>
       <td><div class="prod-name">${lot.name}</div><div class="prod-mfr">${lot.mfr}</div></td>

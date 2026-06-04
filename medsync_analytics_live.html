@@ -247,6 +247,23 @@ html, body { margin: 0 !important; padding: 0 !important; }
 @media (max-width: 768px) {
   .rev-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+@media (max-width: 768px) {
+  .topbar { flex-direction: column !important; padding: 10px 12px !important; gap: 6px !important; align-items: stretch !important; }
+  .tb-left { flex-wrap: wrap !important; gap: 6px !important; }
+  .tb-right { display: none !important; }
+  .filter-row, .topbar select { flex: 1 !important; min-width: 0 !important; box-sizing: border-box !important; font-size: 16px !important; }
+  .content, .main-col { padding: 10px 12px !important; box-sizing: border-box !important; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .kpi { min-width: 0 !important; overflow: hidden !important; padding: 10px !important; }
+  .kpi-l, .kpi-s { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+  .rev-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .bar-chart .bar-row { flex-wrap: wrap !important; }
+  .side-col { width: 100% !important; border-left: none !important; border-top: 0.5px solid var(--border) !important; }
+  .panel-tabs { flex-direction: row !important; overflow-x: auto !important; border-right: none !important; -webkit-overflow-scrolling: touch !important; }
+  .ptab { flex-shrink: 0 !important; border-left: none !important; border-bottom: 2px solid transparent !important; }
+  .ptab.active { border-bottom-color: var(--navy) !important; border-left: none !important; }
+}
 </style>
 
 <script>
