@@ -96,7 +96,14 @@ body { margin: 0 !important; padding: 0 !important; }
 /* ══ MOBILE LAYOUT ══════════════════════════════════════════════ */
 @media (max-width: 768px) {
   html, body { overflow-x: hidden !important; }
-  .topbar { padding-top: 0 !important; padding-left: 16px !important; padding-right: 16px !important; padding-bottom: 8px !important; }
+  .topbar { padding: 0 12px !important; height: 48px !important; }
+  .tb-sub { display: none !important; }
+  .tb-title { font-size: 13px !important; }
+  .tb-left { gap: 8px !important; }
+  .loc-sel { font-size: 12px !important; max-width: 130px !important; }
+  .cd-label { font-size: 8px !important; letter-spacing: .02em !important; }
+  .cd-time { font-size: 14px !important; }
+  .countdown { padding: 3px 8px !important; }
   input, select { font-size: 16px !important; }
   .col-header { padding: 6px 12px !important; font-size: 9px !important; letter-spacing: .02em !important; }
 }
