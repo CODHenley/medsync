@@ -235,8 +235,14 @@ html, body { margin: 0 !important; padding: 0 !important; }
   .right, .main-area { height: auto !important; overflow: visible !important; }
 }
 
-html { height: 100%; overflow: hidden; }
-body { height: 100%; overflow: hidden; min-height: 0 !important; }
+@media (min-width: 769px) {
+  html { height: 100%; overflow: hidden; }
+  body { height: 100%; overflow: hidden; min-height: 0 !important; }
+}
+@media (max-width: 768px) {
+  .outer, .main-area, .content, .topbar { max-width: 100% !important; overflow-x: hidden !important; }
+  .tb-left, .tb-right { max-width: 100% !important; flex-shrink: 1 !important; }
+}
 
 @media (max-width: 768px) {
   .rev-grid { grid-template-columns: repeat(2, 1fr) !important; }
