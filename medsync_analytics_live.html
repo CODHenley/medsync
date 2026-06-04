@@ -353,7 +353,7 @@ async function loadPurchaseIntelligence() {
     // Fetch order lines (purchases this month)
     const olRes = await fetch(
       SUPA_URL + '/rest/v1/order_lines?select=qty_ordered,products(id,name)&order=qty_ordered.desc',
-      { headers: H }
+      { headers: HEADERS }
     );
     const olData = await olRes.json();
 
@@ -370,7 +370,7 @@ async function loadPurchaseIntelligence() {
     // Fetch goods lost this month
     const glRes = await fetch(
       SUPA_URL + '/rest/v1/goods_lost?select=qty_lost,value_lost,notes,category&created_at=gte.' + monthStart,
-      { headers: H }
+      { headers: HEADERS }
     );
     const glData = await glRes.json();
 
@@ -463,7 +463,7 @@ async function loadExpiryRisk() {
 
     const lotRes = await fetch(
       SUPA_URL + '/rest/v1/lots?select=expiration_date,qty_remaining,products(name)&expiration_date=lte.' + d90 + '&disposal_date=is.null&order=expiration_date.asc',
-      { headers: H }
+      { headers: HEADERS }
     );
     const lots = await lotRes.json();
 
