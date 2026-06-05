@@ -70,6 +70,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .qty-input{width:60px;padding:4px 6px;border:0.5px solid var(--border);border-radius:6px;font-size:12px;text-align:center;font-family:'DM Sans',sans-serif;}
 .vetcove-price{color:#1C6FAD;font-weight:500;}
 .tbd-price{color:var(--mist);font-style:italic;font-size:11px;}
+.filter-bar{display:flex;gap:8px;align-items:center;padding:10px 16px;background:#F8F7FC;border-bottom:0.5px solid var(--border);flex-wrap:wrap;}
+.filter-bar input{flex:1;min-width:160px;padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;}
+.filter-bar select{padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
+.filter-count{font-size:11px;color:var(--mist);white-space:nowrap;}
 
 /* Summary bar */
 .summary-bar{background:var(--navy);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;color:#fff;}
@@ -398,9 +402,17 @@ function buildOrder() {
 
 // ── SCREEN 3: Order review ─────────────────────────────────────────────────
 function renderOrderScreen() {
-  const items = state.orderItems;
+  const allItems = state.orderItems;
+  const fSearch = (state.orderFilter||'').toLowerCase();
+  const fCat = state.orderCat||'all';
+  const items = allItems.filter(function(i){
+    var matchSearch = !fSearch || i.name.toLowerCase().includes(fSearch) || (i.sku||'').toLowerCase().includes(fSearch);
+    var matchCat = fCat==='all' || i.cat===fCat;
+    return matchSearch && matchCat;
+  });
+  const allCats = [...new Set(allItems.map(i => i.cat))];
   const cats = [...new Set(items.map(i => i.cat))];
-  const totalItems = items.reduce((s,i) => s + i.qty, 0);
+  const totalItems = allItems.reduce((s,i) => s + i.qty, 0);
 
   return `
     ${stepBar(2)}
@@ -412,6 +424,15 @@ function renderOrderScreen() {
     </div>
     <div class="alert">⚡ Unit pricing will auto-populate once your Vetcove API key is connected. Adjust quantities before submitting.</div>
     <div class="card" style="padding:0;overflow:hidden;">
+      <div class="filter-bar">
+        <input type="text" placeholder="Search product or SKU…" value="${state.orderFilter||''}"
+          oninput="state.orderFilter=this.value;renderOrderInPlace()">
+        <select onchange="state.orderCat=this.value;renderOrderInPlace()">
+          <option value="all">All categories</option>
+          ${allCats.map(c => `<option value="${c}" ${(state.orderCat||'all')===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+        <span class="filter-count" id="filter-count">${items.length} of ${allItems.length} items</span>
+      </div>
       <table class="order-table">
         <thead><tr><th>Product</th><th>SKU / Code</th><th>Category</th><th>Location</th><th style="text-align:center;">Qty</th><th>Unit Price</th></tr></thead>
         <tbody>
@@ -470,6 +491,12 @@ function renderOrderScreen() {
         </div>
       </div>
     </div>`;
+}
+
+function renderOrderInPlace() {
+  // Re-render just the order screen content
+  var shell = document.getElementById('shell');
+  if (shell) shell.innerHTML = renderOrderScreen();
 }
 
 function updateQty(sku, val) {
