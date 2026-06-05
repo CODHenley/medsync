@@ -54,6 +54,39 @@ function showScreen(name) {
 }
 function showOpsScreen(n) { showScreen(n); }
 
+function filterByRegion(region) {
+  var rows = document.querySelectorAll('#ms-portfolio .tbl-row');
+  var shown = 0;
+  rows.forEach(function(row) {
+    var r = row.dataset.region || '';
+    var visible = region === 'all' || r === region;
+    row.style.display = visible ? '' : 'none';
+    if (visible) shown++;
+  });
+  var countEl = document.getElementById('region-filter-count');
+  if (countEl) countEl.textContent = region === 'all' ? '' : shown+' location'+(shown!==1?'s':'');
+}
+
+async function loadRegionFilter() {
+  try {
+    var SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+    var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+    var res = await fetch(SUPA_URL+'/rest/v1/regions?select=id,name&order=name', {
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY}
+    });
+    var regions = await res.json();
+    var sel = document.getElementById('region-filter');
+    if (sel && Array.isArray(regions)) {
+      regions.forEach(function(r) {
+        var opt = document.createElement('option');
+        opt.value = r.name;
+        opt.textContent = r.name;
+        sel.appendChild(opt);
+      });
+    }
+  } catch(e) {}
+}
+
 function toggleMobileMenu() {
   var sb = document.getElementById('app-sidebar');
   var ov = document.getElementById('mob-overlay');
@@ -820,6 +853,14 @@ function deepDiveLoc(locCode) {
       </div>
     </div>
 
+    <!-- Region filter -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0 6px;">
+      <span style="font-size:11px;font-weight:600;color:#8A93A8;text-transform:uppercase;letter-spacing:.04em;">Filter by region:</span>
+      <select id="region-filter" onchange="filterByRegion(this.value)" style="padding:5px 10px;border:0.5px solid #DDD9EC;border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:#1C2B4A;">
+        <option value="all">All regions</option>
+      </select>
+      <span id="region-filter-count" style="font-size:11px;color:#8A93A8;"></span>
+    </div>
     <!-- Location table — 7 columns, compact badges -->
     <div class="loc-table-wrap">
         <div class="col-header">
@@ -833,7 +874,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- Lincoln Park -->
-        <div class="tbl-row">
+        <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Lincoln Park</p><p class="loc-sub">IL · Brianna L.</p></div>
           <span class="good" data-label="COGs">8.1%</span>
           <span class="warn-t" data-label="Alerts">3</span>
@@ -844,7 +885,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- Old Orchard -->
-        <div class="tbl-row warn">
+        <div class="tbl-row warn" data-region="Chicagoland">
           <div>
             <p class="loc-name">Old Orchard</p>
             <p class="loc-sub warn-t">IL · Jamie K. · <span style="color:#a33030;">WG: +38% gauze</span></p>
@@ -858,7 +899,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- West Loop -->
-        <div class="tbl-row">
+        <div class="tbl-row" data-region="Chicagoland">
           <div>
             <p class="loc-name">West Loop</p>
             <p class="loc-sub">IL · Alex M. · <span style="color:#a0700a;">WG: +21% syringes</span></p>
@@ -872,7 +913,7 @@ function deepDiveLoc(locCode) {
         </div>
 
         <!-- Wheaton -->
-        <div class="tbl-row">
+        <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Wheaton</p><p class="loc-sub">IL · Sam R.</p></div>
           <span class="good" data-label="COGs">8.7%</span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
@@ -2650,6 +2691,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     // admin + manager: full access
     showScreen('portfolio');
+    loadRegionFilter();
   }
 })();
 </script>
