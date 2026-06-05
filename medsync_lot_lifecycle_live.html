@@ -276,7 +276,12 @@ html, body { margin: 0 !important; padding: 0 !important; }
 }
 
 @media (min-width: 769px) {
-  html { height: 100%; overflow: hidden;   .main-area { display: flex; flex-direction: column; }
+  html { height: 100%; overflow: hidden; }
+  body { height: 100%; overflow: hidden; min-height: 0 !important; }
+  .outer { height: 100% !important; min-height: 0 !important; grid-template-rows: 1fr; }
+  .main-area { min-height: 0 !important; }
+  .content { overflow-y: auto !important; min-height: 0 !important; }
+}
   .content { min-height: 0; overflow-y: auto; }
 }
   body { height: 100%; overflow: hidden; min-height: 0 !important;   .main-area { display: flex; flex-direction: column; }

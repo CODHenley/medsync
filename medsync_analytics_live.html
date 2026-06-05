@@ -236,6 +236,14 @@ html, body { margin: 0 !important; padding: 0 !important; }
 @media (min-width: 769px) {
   html { height: 100%; overflow: hidden; }
   body { height: 100%; overflow: hidden; min-height: 0 !important; }
+  .outer { height: 100% !important; min-height: 0 !important; grid-template-rows: 1fr; }
+  .right { min-height: 0 !important; }
+  .body-split { grid-template-rows: minmax(0, 1fr); }
+  .main-col, .side-col { min-height: 0; }
+}
+  body { height: 100%; overflow: hidden; min-height: 0 !important; }
+  .outer { height: 100% !important; min-height: 0 !important; grid-template-rows: 1fr; }
+  .right, .main-area { min-height: 0 !important; }
   .body-split { grid-template-rows: minmax(0, 1fr); }
   .main-col { min-height: 0; }
   .side-col { min-height: 0; }
