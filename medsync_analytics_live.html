@@ -362,7 +362,13 @@ async function loadPI() {
     var gl=await r2.json();
     var bought={},lostQ={},lostV={};
     if(Array.isArray(ol))ol.forEach(function(x){var n=x.products&&x.products.name;if(!n)return;bought[n]=(bought[n]||0)+(x.qty_ordered||0);});
-    if(Array.isArray(gl))gl.forEach(function(x){var n=(x.notes||'').split(' · ')[0].trim()||'Unknown';lostQ[n]=(lostQ[n]||0)+(x.qty_lost||1);lostV[n]=(lostV[n]||0)+parseFloat(x.value_lost||0);});
+    var _CATS=['Diagnostic duplicate','Expired product','Damaged / Spilled','Medication waste','In-house use','Other','Inhalants / Anesthesia Drugs','Controlled Substances (DEA)'];
+    if(Array.isArray(gl))gl.forEach(function(x){
+      var raw=(x.notes||'').split(' · ')[0].trim();
+      if(!raw||_CATS.indexOf(raw)>=0) return;
+      lostQ[raw]=(lostQ[raw]||0)+(x.qty_lost||1);
+      lostV[raw]=(lostV[raw]||0)+parseFloat(x.value_lost||0);
+    });
     var prods=Array.from(new Set([].concat(Object.keys(bought),Object.keys(lostQ))));
     if(!prods.length){prods=['Buprenorphine 0.3mg/ml','Ketamine HCl 10mg/ml','Gabapentin 100mg caps','Carprofen 50mg tabs','Dexmedetomidine 0.5mg/ml','Maropitant Citrate 10mg/ml'];[20,15,214,180,10,8].forEach(function(v,i){bought[prods[i]]=v;});[2,1,14,5,1,0].forEach(function(v,i){lostQ[prods[i]]=v;lostV[prods[i]]=[376,142,10,12,110,0][i];});}
     prods.sort(function(a,b){return(bought[b]||0)-(bought[a]||0);});prods=prods.slice(0,8);
@@ -693,14 +699,9 @@ if (window.self !== window.top) {
 
         <!-- Goods Lost -->
         <div class="pcontent" id="p-gl" style="display:none;">
-          <div><div class="pc-title">Goods lost deep dive</div><div class="pc-sub">May 2026 · all locations · 47 submissions</div></div>
-          <div class="mrow"><span class="mk">Total loss</span><span class="mv cr">$2,847</span></div>
-          <div class="mrow"><span class="mk">vs. prior month</span><span class="mv ca">↑ $340 (+14%)</span></div>
-          <div class="mrow"><span class="mk">Diagnostic duplicate</span><span class="mv ca">$1,248 · 44%</span></div>
-          <div class="mrow"><span class="mk">Expired product</span><span class="mv">$724 · 25%</span></div>
-          <div class="mrow"><span class="mk">In-house use</span><span class="mv cr">$481 · 17%</span></div>
-          <div class="mrow"><span class="mk">Medication waste</span><span class="mv">$294 · 10%</span></div>
-          <div class="mrow"><span class="mk">Damaged / Spilled</span><span class="mv">$100 · 4%</span></div>
+          <div><div class="pc-title">Goods lost deep dive</div><div class="pc-sub" id="gl-sub">Month to date · all locations</div></div>
+          <div class="mrow"><span class="mk">Total loss</span><span class="mv cr" id="gl-total">…</span></div>
+          <div id="gl-cat-rows"></div>
           <div style="border-top:0.5px solid var(--border);padding-top:8px;margin-top:2px;">
             <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Top 5 by frequency</div>
             <div class="mrow"><span class="mk">Catalyst Chem 10</span><span class="mv">11 entries</span></div>
@@ -992,6 +993,12 @@ function renderGLBars(byCategory, total) {
       <div class="gl-pct">${pct}%</div>
     </div>`;
   }).join('') || '<div style="color:var(--mist);font-size:11px;padding:8px 0;">No goods lost entries for this period.</div>';
+  var totalEl=document.getElementById('gl-total'); if(totalEl) totalEl.textContent=fmt$(total);
+  var catRows=document.getElementById('gl-cat-rows');
+  if(catRows) catRows.innerHTML=sorted.slice(0,6).map(function(e){
+    var pct=total>0?Math.round((e[1]/total)*100):0;
+    return '<div class="mrow"><span class="mk">'+e[0]+'</span><span class="mv">'+fmt$(e[1])+' · '+pct+'%</span></div>';
+  }).join('');
 }
 
 // ── Render COGs bars by location ─────────────────────────────
