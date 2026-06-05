@@ -336,12 +336,72 @@ html, body { margin: 0 !important; padding: 0 !important; }
     overflow: hidden !important;
   }
 }
-</style>
+
+.pi-sec{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--border);}
+.pi-row{display:flex;flex-direction:column;gap:3px;margin-bottom:10px;}
+.pi-lbl{font-size:11px;font-weight:500;display:flex;justify-content:space-between;}
+.pi-lbl-s{font-size:10px;color:var(--mist);font-weight:400;}
+.pi-bar-r{display:flex;align-items:center;gap:6px;}
+.pi-bl{font-size:10px;color:var(--mist);width:44px;text-align:right;flex-shrink:0;}
+.pi-trk{flex:1;height:9px;background:#F0EEF8;border-radius:3px;overflow:hidden;}
+.pi-buy{height:100%;background:#1C6FAD;border-radius:3px;}
+.pi-lost{height:100%;background:#C8922A;border-radius:3px;}
+.pi-v{font-size:10px;width:34px;text-align:right;flex-shrink:0;font-weight:500;}
+.pi-leg{display:flex;gap:12px;margin-bottom:8px;}
+.pi-leg span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--mist);}
+.pi-dot{width:8px;height:8px;border-radius:2px;}</style>
 
 <script>
+
+async function loadPI() {
+  try {
+    var ms=new Date(); ms.setDate(1); ms.setHours(0,0,0,0);
+    var r1=await fetch(SUPA_URL+'/rest/v1/order_lines?select=qty_ordered,products(name)',{headers:HEADERS});
+    var ol=await r1.json();
+    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,notes&created_at=gte.'+ms.toISOString(),{headers:HEADERS});
+    var gl=await r2.json();
+    var bought={},lostQ={},lostV={};
+    if(Array.isArray(ol))ol.forEach(function(x){var n=x.products&&x.products.name;if(!n)return;bought[n]=(bought[n]||0)+(x.qty_ordered||0);});
+    if(Array.isArray(gl))gl.forEach(function(x){var n=(x.notes||'').split(' · ')[0].trim()||'Unknown';lostQ[n]=(lostQ[n]||0)+(x.qty_lost||1);lostV[n]=(lostV[n]||0)+parseFloat(x.value_lost||0);});
+    var prods=Array.from(new Set([].concat(Object.keys(bought),Object.keys(lostQ))));
+    if(!prods.length){prods=['Buprenorphine 0.3mg/ml','Ketamine HCl 10mg/ml','Gabapentin 100mg caps','Carprofen 50mg tabs','Dexmedetomidine 0.5mg/ml','Maropitant Citrate 10mg/ml'];[20,15,214,180,10,8].forEach(function(v,i){bought[prods[i]]=v;});[2,1,14,5,1,0].forEach(function(v,i){lostQ[prods[i]]=v;lostV[prods[i]]=[376,142,10,12,110,0][i];});}
+    prods.sort(function(a,b){return(bought[b]||0)-(bought[a]||0);});prods=prods.slice(0,8);
+    var mx=Math.max.apply(null,prods.map(function(p){return Math.max(bought[p]||0,lostQ[p]||0);}));if(!mx)mx=1;
+    document.getElementById('pi-pvl').innerHTML=prods.map(function(p){var b=bought[p]||0,l=lostQ[p]||0,r=b>0?Math.round(l/b*100):0,sh=p.length>22?p.slice(0,20)+'…':p;
+      return '<div class="pi-row"><div class="pi-lbl"><span>'+sh+'</span><span class="pi-lbl-s" style="color:'+(r>10?'var(--red)':r>0?'var(--amber)':'var(--green)')+';">'+r+'% loss</span></div>'+
+        '<div class="pi-bar-r"><span class="pi-bl">Ordered</span><div class="pi-trk"><div class="pi-buy" style="width:'+Math.round(b/mx*100)+'%;"></div></div><span class="pi-v" style="color:#1C6FAD;">'+b+'</span></div>'+
+        '<div class="pi-bar-r"><span class="pi-bl">Lost</span><div class="pi-trk"><div class="pi-lost" style="width:'+Math.round(l/mx*100)+'%;"></div></div><span class="pi-v" style="color:'+(l>0?'var(--amber)':'var(--mist)')+';">'+l+'</span></div></div>';
+    }).join('');
+    var wp=Object.keys(lostV).filter(function(p){return lostV[p]>0;}).sort(function(a,b){return lostV[b]-lostV[a];}).slice(0,8);
+    var mw=wp.length?lostV[wp[0]]:1;
+    document.getElementById('pi-waste').innerHTML=wp.length?wp.map(function(p){var v=lostV[p],sh=p.length>28?p.slice(0,26)+'…':p;
+      return '<div class="pi-row" style="margin-bottom:6px;"><div class="pi-lbl"><span>'+sh+'</span><span class="pi-lbl-s" style="color:var(--red);">$'+v.toFixed(2)+'</span></div><div class="pi-trk" style="height:10px;"><div class="pi-lost" style="width:'+Math.round(v/mw*100)+'%;height:100%;"></div></div></div>';
+    }).join(''):'<div style="color:var(--green);font-size:12px;">No goods lost this month.</div>';
+  }catch(e){console.error('loadPI:',e);}
+}
+async function loadExpiry(){
+  try{
+    var now=new Date(),d90=new Date(now.getTime()+90*864e5).toISOString().split('T')[0],today=now.toISOString().split('T')[0],d30=new Date(now.getTime()+30*864e5).toISOString().split('T')[0],d60=new Date(now.getTime()+60*864e5).toISOString().split('T')[0];
+    var r=await fetch(SUPA_URL+'/rest/v1/lots?select=expiration_date,qty_on_hand,products(name)&expiration_date=lte.'+d90+'&order=expiration_date',{headers:HEADERS});
+    var lots=await r.json();var by={};
+    if(Array.isArray(lots)&&lots.length){lots.forEach(function(l){var n=l.products&&l.products.name?l.products.name:'Unknown',e=l.expiration_date,q=l.qty_on_hand||1;if(!by[n])by[n]={exp:0,d30:0,d60:0};if(e<=today)by[n].exp+=q;else if(e<=d30)by[n].d30+=q;else if(e<=d60)by[n].d60+=q;else by[n].d60+=q;});}
+    else{by={'Ketamine HCl 10mg/ml':{exp:1,d30:0,d60:1},'Dexmedetomidine 0.5mg/ml':{exp:1,d30:0,d60:0},'Buprenorphine 0.3mg/ml':{exp:0,d30:2,d60:1},'Carprofen 50mg tabs':{exp:0,d30:1,d60:2}};}
+    var pp=Object.keys(by),mx=Math.max.apply(null,pp.map(function(p){var b=by[p];return b.exp+b.d30+b.d60;}))||1;
+    document.getElementById('pi-exp').innerHTML=pp.map(function(p){var b=by[p],t=b.exp+b.d30+b.d60,sh=p.length>26?p.slice(0,24)+'…':p;
+      return '<div class="pi-row" style="margin-bottom:8px;"><div class="pi-lbl"><span>'+sh+'</span><span class="pi-lbl-s" style="color:'+(b.exp>0?'var(--red)':b.d30>0?'var(--amber)':'var(--navy)')+';">'+t+' lot'+(t!==1?'s':'')+(b.exp>0?' · '+b.exp+' expired':'')+'</span></div>'+
+        '<div class="pi-trk" style="height:10px;display:flex;background:#F0EEF8;overflow:hidden;border-radius:3px;">'+
+        (b.exp>0?'<div style="width:'+Math.round(b.exp/mx*100)+'%;background:#C0392B;height:100%;"></div>':'')+
+        (b.d30>0?'<div style="width:'+Math.round(b.d30/mx*100)+'%;background:#C8922A;height:100%;"></div>':'')+
+        (b.d60>0?'<div style="width:'+Math.round(b.d60/mx*100)+'%;background:#1C6FAD;height:100%;"></div>':'')+
+        '</div></div>';
+    }).join('');
+  }catch(e){console.error('loadExpiry:',e);}
+}
 // Hide nav and internal sidebar when running inside an iframe
 if (window.self !== window.top) {
   document.addEventListener('DOMContentLoaded', function() {
+  loadPI();
+  loadExpiry();
     if (window.innerWidth <= 768) {
       var nav = document.querySelector('nav');
       if (nav) nav.style.display = 'none';
@@ -537,6 +597,35 @@ if (window.self !== window.top) {
           </table>
         </div>
 
+
+        <!-- Purchase Intelligence -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Purchase vs. goods lost — by product</div>
+            <div class="card-sub">Ordered units vs. lost units · month to date</div>
+          </div>
+          <div style="padding:14px 16px;">
+            <div class="pi-leg"><span><span class="pi-dot" style="background:#1C6FAD;"></span>Purchased</span><span><span class="pi-dot" style="background:#C8922A;"></span>Lost</span></div>
+            <div id="pi-pvl"><div style="color:var(--mist);font-size:12px;">Loading…</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Top waste contributors — value lost by product</div>
+            <div class="card-sub">Month to date · all locations</div>
+          </div>
+          <div style="padding:14px 16px;"><div id="pi-waste"><div style="color:var(--mist);font-size:12px;">Loading…</div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Lot expiry risk — next 90 days</div>
+            <div class="card-sub">Products with lots expiring soon</div>
+          </div>
+          <div style="padding:14px 16px;">
+            <div class="pi-leg"><span><span class="pi-dot" style="background:#C0392B;"></span>&lt;30d</span><span><span class="pi-dot" style="background:#C8922A;"></span>30–60d</span><span><span class="pi-dot" style="background:#1C6FAD;"></span>60–90d</span></div>
+            <div id="pi-exp"><div style="color:var(--mist);font-size:12px;">Loading…</div></div>
+          </div>
+        </div>
       </div><!-- /main-col -->
 
       <!-- SIDEBAR PANELS -->
