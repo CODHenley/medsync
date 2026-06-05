@@ -143,45 +143,52 @@ function renderAll() {
   if (!_regions.length) {
     container.innerHTML = '<div style="color:var(--mist);font-size:13px;padding:12px 0;">No regions yet. Create your first region to start grouping locations.</div>';
   } else {
-    container.innerHTML = '<div class="region-grid">'+_regions.map(function(reg) {
+    var html = '<div class="region-grid">';
+    _regions.forEach(function(reg) {
       var locs = _locations.filter(function(l){ return l.region_id === reg.id; });
-      return '<div class="region-card">'+
-        '<div class="region-head">'+
-          '<div><div class="region-name">'+reg.name+'</div>'+
-          (reg.description?'<div class="region-count">'+reg.description+'</div>':'')+
-          '<div class="region-count" style="margin-top:2px;">'+locs.length+' location'+(locs.length!==1?'s':'')+'</div></div>'+
-          '<div class="region-actions">'+
-            '<button class="btn-secondary" onclick="showRenameRegion(\''+reg.id+'\',\''+reg.name.replace(/'/g,'\\'')+'\')" style="font-size:11px;padding:5px 10px;">✏️ Rename</button>'+
-          '</div>'+
-        '</div>'+
-        '<div class="loc-list">'+
-          (locs.length ? locs.map(function(l){
-            return '<div class="loc-item">'+
-              '<div><div class="loc-name">'+l.name+'</div></div>'+
-              '<button class="move-btn" onclick="showMoveModal(\''+l.id+'\',\''+l.name.replace(/'/g,'\\'')+'\')">Move →</button>'+
-            '</div>';
-          }).join('') : '<div style="padding:10px 16px;font-size:11px;color:var(--mist);">No locations assigned yet.</div>')+
-        '</div>'+
-      '</div>';
-    }).join('')+'</div>';
+      html += '<div class="region-card">';
+      html += '<div class="region-head">';
+      html += '<div><div class="region-name">'+reg.name+'</div>';
+      if (reg.description) html += '<div class="region-count">'+reg.description+'</div>';
+      html += '<div class="region-count" style="margin-top:2px;">'+locs.length+' location'+(locs.length!==1?'s':'')+'</div></div>';
+      html += '<div class="region-actions"><button class="btn-secondary rename-btn" data-id="'+reg.id+'" style="font-size:11px;padding:5px 10px;">✏️ Rename</button></div>';
+      html += '</div>';
+      html += '<div class="loc-list">';
+      if (locs.length) {
+        locs.forEach(function(l){
+          html += '<div class="loc-item"><div><div class="loc-name">'+l.name+'</div></div>';
+          html += '<button class="move-btn do-move" data-id="'+l.id+'">Move →</button></div>';
+        });
+      } else {
+        html += '<div style="padding:10px 16px;font-size:11px;color:var(--mist);">No locations assigned yet.</div>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
   }
 
-  // Unassigned locations
   var unassigned = _locations.filter(function(l){ return !l.region_id; });
   var uc = document.getElementById('unassigned-container');
   if (unassigned.length) {
-    uc.innerHTML = '<div class="no-region">'+
-      '<div class="no-region-title">⚠ Unassigned locations ('+unassigned.length+')</div>'+
-      unassigned.map(function(l){
-        return '<div class="unassigned-item">'+
-          '<div class="loc-name">'+l.name+'</div>'+
-          '<button class="move-btn" onclick="showMoveModal(\''+l.id+'\',\''+l.name.replace(/'/g,'\\'')+'\')">Assign to region →</button>'+
-        '</div>';
-      }).join('')+
-    '</div>';
+    var uhtml = '<div class="no-region"><div class="no-region-title">⚠ Unassigned locations ('+unassigned.length+')</div>';
+    unassigned.forEach(function(l){
+      uhtml += '<div class="unassigned-item"><div class="loc-name">'+l.name+'</div>';
+      uhtml += '<button class="move-btn do-move" data-id="'+l.id+'">Assign to region →</button></div>';
+    });
+    uhtml += '</div>';
+    uc.innerHTML = uhtml;
   } else {
     uc.innerHTML = '<div style="color:var(--green);font-size:12px;padding:8px 0;">✓ All locations are assigned to a region.</div>';
   }
+
+  // Event delegation — no onclick strings needed
+  document.querySelectorAll('.rename-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ showRenameRegion(this.dataset.id); });
+  });
+  document.querySelectorAll('.do-move').forEach(function(btn){
+    btn.addEventListener('click', function(){ showMoveModal(this.dataset.id); });
+  });
 }
 
 // ── Region modal ──────────────────────────────────────────────────────────
@@ -195,12 +202,12 @@ function showCreateRegion() {
   setTimeout(function(){ document.getElementById('modal-name').focus(); }, 100);
 }
 
-function showRenameRegion(id, name) {
+function showRenameRegion(id) {
   _editRegionId = id;
   var reg = _regions.find(function(r){ return r.id===id; });
   document.getElementById('modal-title').textContent = 'Rename region';
   document.getElementById('modal-submit').textContent = 'Save';
-  document.getElementById('modal-name').value = name;
+  document.getElementById('modal-name').value = reg ? reg.name : '';
   document.getElementById('modal-desc').value = reg ? (reg.description||'') : '';
   document.getElementById('region-modal').style.display = 'block';
 }
@@ -228,10 +235,11 @@ async function submitRegionModal() {
 }
 
 // ── Move modal ────────────────────────────────────────────────────────────
-function showMoveModal(locId, locName) {
+function showMoveModal(locId) {
   _movingLocId = locId;
-  _movingLocName = locName;
-  document.getElementById('move-loc-name').textContent = locName;
+  var loc = _locations.find(function(l){ return l.id===locId; });
+  _movingLocName = loc ? loc.name : '';
+  document.getElementById('move-loc-name').textContent = _movingLocName;
   var sel = document.getElementById('move-region-sel');
   sel.innerHTML = '<option value="">— Unassigned —</option>'+
     _regions.map(function(r){ return '<option value="'+r.id+'">'+r.name+'</option>'; }).join('');
