@@ -53,6 +53,14 @@ function showScreen(name) {
   }
 }
 function showOpsScreen(n) { showScreen(n); }
+
+// Close hamburger when clicking anywhere outside the sidebar
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('app-body').addEventListener('click', function() {
+    var sb = document.getElementById('app-sidebar');
+    if (sb && sb.style.display === 'block') { closeMobileMenu(); }
+  });
+});
 // Handle navigate messages from iframe screens (e.g. Settings quick links)
 window.addEventListener('message', function(e) {
   if (e.data && e.data.type === 'navigate') { showScreen(e.data.screen); }
