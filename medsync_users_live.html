@@ -40,6 +40,11 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .sp-active{background:var(--green-bg);color:var(--green);}
 .sp-inactive{background:#F0EEF8;color:var(--mist);}
 
+/* Status group with label */
+.status-group{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.meta-label{font-size:9px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
+.action-group{display:flex;gap:5px;}
+
 /* Action buttons */
 .action-btn{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;border:0.5px solid;}
 .btn-deactivate{background:#FEF3E2;color:var(--amber);border-color:#F0D090;}
@@ -216,9 +221,12 @@ async function loadUsers() {
           <div class="user-email">${u.email || ''}</div>
         </div>
         <div class="user-meta">
-          ${statusPill}
+          <div class="status-group">
+            <div class="meta-label">Current Status</div>
+            ${statusPill}
+          </div>
           <span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role] || u.role}</span>
-          ${actionBtns}
+          ${actionBtns ? `<div class="action-group">${actionBtns}</div>` : ''}
         </div>
       </div>
       <div id="confirm-${u.id}" style="display:none;">
