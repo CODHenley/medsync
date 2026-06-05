@@ -52,13 +52,13 @@ LOCATION_IDS = {
 # ── GraphQL helpers ──────────────────────────────────────────────────────────
 def gql(token, query, variables=None):
     payload = json.dumps({'query': query, 'variables': variables or {}}).encode()
-    # Vetspire uses Authorization: Bearer (confirmed via GraphQL Network Inspector)
+    # Vetspire API key — no Bearer prefix (confirmed via Vetspire support test)
     req = urllib.request.Request(
         VETSPIRE_URL,
         data=payload,
         headers={
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token,
+            'Authorization': token,
         }
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
