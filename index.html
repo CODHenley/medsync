@@ -112,6 +112,12 @@ function toggleMobileMenu() {
     sb.style.boxShadow = '4px 0 20px rgba(0,0,0,.18)';
     ov.classList.add('active');
     document.getElementById('app-content').style.pointerEvents = 'none';
+    // Body-level click catcher covers iframes too
+    var cc = document.createElement('div');
+    cc.id = 'menu-click-catcher';
+    cc.style.cssText = 'position:fixed;inset:0;z-index:199;cursor:default;';
+    cc.addEventListener('click', closeMobileMenu);
+    document.body.appendChild(cc);
   }
 }
 
@@ -132,6 +138,8 @@ function closeMobileMenu() {
   sb.style.boxShadow = 'none';
   document.getElementById('mob-overlay').classList.remove('active');
   document.getElementById('app-content').style.pointerEvents = '';
+  var cc = document.getElementById('menu-click-catcher');
+  if (cc) cc.remove();
 }
 
 function signOut() {
