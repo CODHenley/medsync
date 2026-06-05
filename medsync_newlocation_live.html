@@ -104,6 +104,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .dot-pend{background:var(--gold);}
 
 .nav{display:none;}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;}
+.modal{background:#fff;border-radius:14px;padding:24px;width:480px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.2);}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:16px;}
 @media(max-width:768px){
   .shell{padding:16px 12px 40px;}
   .tile-grid{grid-template-columns:1fr;}
@@ -196,13 +199,62 @@ const DENOVO_SETS = {
   specialty: [],
 };
 
-// GP adds GI, dermatology, wellness focus
-DENOVO_SETS.general = [...DENOVO_SETS.urgent_care,
+// GP: preventatives are the primary revenue driver + wellness focus
+DENOVO_SETS.general = [
+  // Medical Equipment (same base as UC, minus some ICU-heavy items)
+  {cat:'Medical Equipment',name:'IDEXX Catalyst One Chemistry Analyzer',sku:'IDEXX Catalyst One',qty:1,section:'Laboratory'},
+  {cat:'Medical Equipment',name:'IDEXX ProCyte One Hematology Analyzer',sku:'IDEXX ProCyte One',qty:1,section:'Laboratory'},
+  {cat:'Medical Equipment',name:'IDEXX SediVue Dx Urinalysis Analyzer',sku:'IDEXX SediVue Dx',qty:1,section:'Laboratory'},
+  {cat:'Medical Equipment',name:'Midmark Multiparameter Anesthesia Monitor',sku:'PM-9000',qty:1,section:'Surgery'},
+  {cat:'Medical Equipment',name:'Wildcat 750 Anesthesia Machine',sku:'Vetamac',qty:1,section:'Surgery'},
+  {cat:'Medical Equipment',name:'AlphaTRAK 2 Glucometer',sku:'AlphaTRAK 2',qty:2,section:'Treatment / Lab'},
+  {cat:'Medical Equipment',name:'MidMark Platform Scale',sku:'MidMark 07-893-6514',qty:2,section:'Exam Rooms'},
+  {cat:'Medical Equipment',name:'T-Top 10 Veterinary Autoclave',sku:'Tuttnauer T-Top 10',qty:1,section:'Surgery Prep'},
+  // Diagnostics
+  {cat:'Diagnostics',name:'SNAP 4Dx Plus (30-pack) — HW/Lyme/Ehrlichia/Anaplasma',sku:'99-0011516',qty:4,section:'Laboratory'},
+  {cat:'Diagnostics',name:'SNAP Parvovirus Test (5-pack)',sku:'99-09214',qty:2,section:'Laboratory'},
+  {cat:'Diagnostics',name:'SNAP Feline Triple Test (FIV/FeLV/HW)',sku:'9-0009442',qty:2,section:'Laboratory'},
+  {cat:'Diagnostics',name:'SNAP cPL Test',sku:'99-0018136',qty:2,section:'Laboratory'},
+  {cat:'Diagnostics',name:'Catalyst CHEM17 Disk',sku:'98-11003-02',qty:24,section:'Laboratory'},
+  {cat:'Diagnostics',name:'ProCyte Dx Reagent Pack',sku:'98-14323-00',qty:4,section:'Laboratory'},
+  // ── PREVENTATIVES — primary GP revenue driver ──────────────────
+  {cat:'Preventatives — Canine',name:'NexGard (afoxolaner) Flea & Tick — sm dog',sku:'CA4920Y07AMZ1',qty:12,section:'Pharmacy'},
+  {cat:'Preventatives — Canine',name:'NexGard (afoxolaner) Flea & Tick — med dog',sku:'10020414',qty:12,section:'Pharmacy'},
+  {cat:'Preventatives — Canine',name:'NexGard (afoxolaner) Flea & Tick — lg dog',sku:'10020415',qty:12,section:'Pharmacy'},
+  {cat:'Preventatives — Canine',name:'Heartgard Plus (ivermectin/pyrantel) — sm',sku:'10000320',qty:12,section:'Pharmacy'},
+  {cat:'Preventatives — Canine',name:'Heartgard Plus (ivermectin/pyrantel) — med',sku:'10020413',qty:12,section:'Pharmacy'},
+  {cat:'Preventatives — Canine',name:'Simparica Trio (sarolaner) — sm dog',sku:'8713122',qty:6,section:'Pharmacy'},
+  {cat:'Preventatives — Canine',name:'Simparica Trio (sarolaner) — med dog',sku:'8724639',qty:6,section:'Pharmacy'},
+  {cat:'Preventatives — Canine',name:'Simparica Trio (sarolaner) — lg dog',sku:'8713130',qty:6,section:'Pharmacy'},
+  {cat:'Preventatives — Feline',name:'Revolution Plus (selamectin) — cat',sku:'CA4875030AM',qty:6,section:'Pharmacy'},
+  {cat:'Preventatives — Feline',name:'Bravecto (fluralaner) — cat',sku:'724089645937',qty:6,section:'Pharmacy'},
+  // Dental (high GP revenue)
+  {cat:'Dental',name:'Oravet Dental Hygiene Chews — sm dog',sku:'4110',qty:4,section:'Pharmacy'},
+  {cat:'Dental',name:'Oravet Dental Hygiene Chews — med dog',sku:'4111',qty:4,section:'Pharmacy'},
+  {cat:'Dental',name:'Oravet Dental Hygiene Chews — lg dog',sku:'4112',qty:4,section:'Pharmacy'},
+  {cat:'Dental',name:'CET Enzymatic Toothpaste Poultry',sku:'TY12',qty:6,section:'Pharmacy'},
+  {cat:'Dental',name:'Vetoquinol Enzadent Oral Rinse',sku:'FEL050',qty:4,section:'Pharmacy'},
+  // Vaccines (wellness visit drivers)
+  {cat:'Vaccines',name:'Vanguard DAPP vaccine',sku:'Vanguard DAPP',qty:20,section:'Pharmacy / Cold Storage'},
+  {cat:'Vaccines',name:'PUREVAX Feline RCP Vaccine',sku:'NPATRO100',qty:20,section:'Pharmacy / Cold Storage'},
+  {cat:'Vaccines',name:'Nobivac Rabies Vaccine',sku:'63323036019',qty:20,section:'Pharmacy / Cold Storage'},
+  {cat:'Vaccines',name:'Bordetella Intranasal Vaccine',sku:'10014547',qty:10,section:'Pharmacy / Cold Storage'},
+  // Core pharmacy
+  {cat:'Antibiotics',name:'Doxycycline 100mg Tablets',sku:'76439010150',qty:1,section:'Pharmacy'},
+  {cat:'Antibiotics',name:'Amoxicillin-Clavulanate (Clavamox) Tabs',sku:'63304069201',qty:2,section:'Pharmacy'},
+  {cat:'Antibiotics',name:'Enrofloxacin 68mg Tablets',sku:'67877021905',qty:1,section:'Pharmacy'},
+  {cat:'Analgesia',name:'Carprofen 50mg Tablets',sku:'CA4875030AM',qty:2,section:'Pharmacy'},
+  {cat:'Analgesia',name:'Gabapentin 100mg Capsules',sku:'53746010105',qty:2,section:'Pharmacy'},
   {cat:'GI / Gastrointestinal',name:'Metronidazole 500mg Tablets',sku:'VINVMETR2505',qty:1,section:'Pharmacy'},
-  {cat:'GI / Gastrointestinal',name:'Metoclopramide 5mg/mL',sku:'00526009185',qty:1,section:'Pharmacy'},
-  {cat:'Prescription Diets',name:'Prescription GI Diet (small)',sku:'604202',qty:1,section:'Pharmacy'},
-  {cat:'Prescription Diets',name:'Prescription Urinary Diet',sku:'605362',qty:1,section:'Pharmacy'},
-  {cat:'Dermatology',name:'Apoquel (Oclacitinib) Tablets',sku:'APOMOR-INJ021VC',qty:1,section:'Pharmacy'},
+  {cat:'GI / Gastrointestinal',name:'Metoclopramide 5mg/mL Injection',sku:'00526009185',qty:1,section:'Pharmacy'},
+  {cat:'GI / Gastrointestinal',name:'Sucralfate 1g Tablets',sku:'290330301',qty:1,section:'Pharmacy'},
+  {cat:'Prescription Diets',name:'Hill's Prescription Diet i/d GI',sku:'604202',qty:2,section:'Pharmacy'},
+  {cat:'Prescription Diets',name:'Hill's Prescription Diet c/d Urinary',sku:'605362',qty:2,section:'Pharmacy'},
+  {cat:'Prescription Diets',name:'Royal Canin Urinary SO',sku:'6238',qty:2,section:'Pharmacy'},
+  {cat:'Controlled Substances',name:'Ketamine HCl 100mg/mL',sku:'10026697',qty:1,section:'Pharmacy'},
+  {cat:'Controlled Substances',name:'Buprenorphine 0.3mg/mL',sku:'12496-0757-01',qty:1,section:'Pharmacy'},
+  {cat:'Injectables',name:'Dexmedetomidine 0.5mg/mL',sku:'50383023310',qty:1,section:'Pharmacy'},
+  {cat:'Injectables',name:'Acepromazine 10mg/mL',sku:'17478023535',qty:1,section:'Pharmacy'},
 ];
 
 // ER adds more ICU/critical care
@@ -386,13 +438,61 @@ function renderOrderScreen() {
     <div class="btn-row">
       <button class="btn-secondary" onclick="state.screen='config';render()">← Back</button>
       <button class="btn-secondary" onclick="exportOrder()">↓ Export CSV</button>
+      <button class="btn-secondary" onclick="showAddItem()">+ Add item</button>
       <button class="btn-primary" onclick="submitOrder()">Submit to Vetcove →</button>
+    </div>
+    <div id="add-item-modal" style="display:none;">
+      <div class="modal-bg" onclick="hideAddItem()">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-title">Add item to order</div>
+          <div class="field"><label>Product name</label><input id="ai-name" type="text" placeholder="e.g. Bravecto Plus for Cats"></div>
+          <div class="field-row">
+            <div class="field"><label>SKU / Vetcove code</label><input id="ai-sku" type="text" placeholder="e.g. 99-12345"></div>
+            <div class="field"><label>Qty</label><input id="ai-qty" type="number" min="1" value="1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Category</label>
+              <select id="ai-cat">
+                <option>Preventatives — Canine</option><option>Preventatives — Feline</option>
+                <option>Vaccines</option><option>Diagnostics</option>
+                <option>Antibiotics</option><option>Analgesia</option>
+                <option>Controlled Substances</option><option>Injectables</option>
+                <option>GI / Gastrointestinal</option><option>Dental</option>
+                <option>Prescription Diets</option><option>Medical Equipment</option><option>Other</option>
+              </select>
+            </div>
+            <div class="field"><label>Location / Area</label><input id="ai-loc" type="text" placeholder="e.g. Pharmacy"></div>
+          </div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn-secondary" onclick="hideAddItem()">Cancel</button>
+            <button class="btn-primary" onclick="addCustomItem()">Add to order</button>
+          </div>
+        </div>
+      </div>
     </div>`;
 }
 
 function updateQty(sku, val) {
   const item = state.orderItems.find(i => i.sku === sku);
   if (item) item.qty = parseInt(val) || 0;
+}
+
+function showAddItem() {
+  document.getElementById('add-item-modal').style.display='block';
+}
+function hideAddItem() {
+  document.getElementById('add-item-modal').style.display='none';
+}
+function addCustomItem() {
+  var name = document.getElementById('ai-name').value.trim();
+  var sku  = document.getElementById('ai-sku').value.trim();
+  var qty  = parseInt(document.getElementById('ai-qty').value) || 1;
+  var cat  = document.getElementById('ai-cat').value;
+  var loc  = document.getElementById('ai-loc').value.trim() || 'Pharmacy';
+  if (!name) { showToast('Please enter a product name'); return; }
+  state.orderItems.push({cat:cat, name:name, sku:sku||'—', qty:qty, section:loc});
+  hideAddItem();
+  render();
 }
 
 function exportOrder() {
