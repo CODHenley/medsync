@@ -330,13 +330,15 @@ function renderConfigScreen() {
     </div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="state.screen='type';render()">← Back</button>
-      <button class="btn-primary" onclick="buildOrder()" ${!state.practiceType||!state.locationName?'disabled':''}>Build opening order →</button>
+      <button class="btn-primary" onclick="buildOrder()">Build opening order →</button>
     </div>`;
 }
 
 function selectPractice(id) { state.practiceType = id; render(); }
 
 function buildOrder() {
+  if (!state.practiceType) { showToast('Please select a practice type'); return; }
+  if (!state.locationName.trim()) { showToast('Please enter a location name'); return; }
   state.orderItems = (DENOVO_SETS[state.practiceType] || DENOVO_SETS.urgent_care).map(item => ({...item}));
   state.screen = 'order';
   render();
@@ -605,6 +607,13 @@ function getGPSAddress() {
   });
 }
 
+function showToast(msg) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1C2B4A;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2800);
+}
 render();
 </script>
 </body>
