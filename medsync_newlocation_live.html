@@ -461,7 +461,7 @@ function renderOrderScreen() {
       <div class="sum-item"><div class="sum-val">${cats.length}</div><div class="sum-lbl">Categories</div></div>
       <div class="sum-item"><div class="sum-val" style="color:#E8B84B;">TBD</div><div class="sum-lbl">Est. cost (Vetcove)</div></div>
     </div>
-    <div class="alert">⚡ Unit pricing will auto-populate once your Vetcove API key is connected. Adjust quantities before submitting.</div>
+    <div class="alert">⚡ Unit pricing shown is GPO-estimated. Adjust quantities, then export a PDF to place with Vetcove or your distributor rep.</div>
     <div class="card" style="padding:0;overflow:hidden;">
       <div class="filter-bar">
         <input type="text" placeholder="Search product or SKU…" value="${state.orderFilter||''}"
@@ -499,7 +499,7 @@ function renderOrderScreen() {
       <button class="btn-secondary" onclick="state.screen='config';render()">← Back</button>
       <button class="btn-secondary" onclick="exportOrder()">↓ Export CSV</button>
       <button class="btn-secondary" onclick="showAddItem()">+ Add item</button>
-      <button class="btn-primary" onclick="submitOrder()">Submit to Vetcove →</button>
+      <button class="btn-primary" onclick="submitOrder()">Export Order PDF</button>
     </div>
     <div id="add-item-modal" style="display:none;">
       <div class="modal-bg" onclick="hideAddItem()">
@@ -700,7 +700,7 @@ function renderDoneScreen() {
       <div class="success-icon">${isDeNovo ? '🏗️' : '🔗'}</div>
       <div class="success-title">${isDeNovo ? state.locationName+' is ready to order' : state.locationName+' connected'}</div>
       <div class="success-sub">${isDeNovo
-        ? state.orderItems.length+' line items ready to submit to Vetcove. Unit pricing will populate once your Vetcove API key is active.'
+        ? state.orderItems.length+' line items ready. Export PDF to place with Vetcove or your MWI rep by 1pm.'
         : 'Vetspire connected. Inventory import and min/max sync will complete within a few minutes.'
       }</div>
       <div class="success-actions">
