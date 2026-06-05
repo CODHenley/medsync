@@ -230,10 +230,14 @@ function deepDiveLoc(locCode) {
 
   /* Metric cards */
   .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #C8C4D8; border-bottom: 0.5px solid #C8C4D8; }
-  .metric { background: #fff; padding: 14px 18px; }
-  .metric-label { font-size: 10px; color: #4A5568; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
-  .metric-value { font-size: 24px; font-weight: 500; }
-  .metric-sub { font-size: 11px; color: #4A5568; margin-top: 3px; }
+  .metric { background: #fff; padding: 16px 20px; transition: background .15s; }
+  .metric-label { font-size: 10px; color: #8A93A8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+  .metric-value { font-size: 26px; font-weight: 600; line-height: 1.1; }
+  .metric-sub { font-size: 11px; color: #4A5568; margin-top: 4px; }
+  .metric.m-good { border-left: 3px solid #2E8B57; background: linear-gradient(90deg,#F5FDF8 0%,#fff 30%); }
+  .metric.m-warn { border-left: 3px solid #C8922A; background: linear-gradient(90deg,#FFFBF4 0%,#fff 30%); }
+  .metric.m-bad  { border-left: 3px solid #C0392B; background: linear-gradient(90deg,#FFF5F5 0%,#fff 30%); }
+  .metric.m-navy { border-left: 3px solid #1C2B4A; background: linear-gradient(90deg,#F5F6FA 0%,#fff 30%); }
 
   /* Table rows */
   .col-header { display: grid; padding: 8px 20px; background: #F0EEF8; border-bottom: 0.5px solid #C8C4D8; font-size: 10px; color: #4A5568; text-transform: uppercase; letter-spacing: 0.05em;   grid-template-columns: 1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;
@@ -823,29 +827,35 @@ function deepDiveLoc(locCode) {
     </div>
     <div class="with-sidebar" id="sb-admin-s1"><div class="sidebar-content">
 
+    <!-- Portfolio health banner -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 20px 6px;background:#F8F7FC;border-bottom:0.5px solid #E4E0F0;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#2E8B57;flex-shrink:0;"></span>
+      <span style="font-size:12px;color:#1C2B4A;font-weight:500;">Portfolio health: <strong>3 of 4 locations on track</strong></span>
+      <span style="font-size:11px;color:#C8922A;margin-left:auto;">⚠ Old Orchard: order pending · 58m remaining</span>
+    </div>
     <!-- KPI tiles — 3+3 row layout, no truncation -->
     <div class="metric-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="metric" style="cursor:pointer;" onclick="dbNav('cogs');">
+      <div class="metric m-good" style="cursor:pointer;" onclick="dbNav('cogs');">
         <p class="metric-label">Portfolio COGs</p>
         <p class="metric-value good">8.4%</p>
         <p class="metric-sub good">Target 8–10% · <span style="text-decoration:underline;">Deep dive →</span></p>
       </div>
-      <div class="metric">
+      <div class="metric m-warn">
         <p class="metric-label">Min alerts</p>
-        <p class="metric-value warn-t">7</p>
+        <p class="metric-value warn-t" style="font-size:26px;">7</p>
         <p class="metric-sub warn-t">Across 3 locations</p>
       </div>
-      <div class="metric">
+      <div class="metric m-bad">
         <p class="metric-label">Expiring within 30d</p>
         <p class="metric-value bad-t">4</p>
         <p class="metric-sub warn-t">Products at risk</p>
       </div>
-      <div class="metric" style="cursor:pointer;" onclick="dbNav('gl');">
+      <div class="metric m-warn" style="cursor:pointer;" onclick="dbNav('gl');">
         <p class="metric-label">Goods lost</p>
         <p class="metric-value warn-t">$2,847</p>
         <p class="metric-sub warn-t">↑ $340 vs prior · <span style="text-decoration:underline;">Deep dive →</span></p>
       </div>
-      <div class="metric">
+      <div class="metric m-navy">
         <p class="metric-label">Order cutoff</p>
         <p class="metric-value" style="color:#1C2B4A;">1:00 PM</p>
         <p class="metric-sub warn-t">OO pending · 1h 58m left</p>
@@ -857,6 +867,12 @@ function deepDiveLoc(locCode) {
       </div>
     </div>
 
+    <!-- Location section label -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 4px;">
+      <div style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:.06em;" id="loc-section-label">
+        Locations — Chicagoland Region
+      </div>
+    </div>
     <!-- Region filter -->
     <div style="display:flex;align-items:center;gap:10px;padding:10px 0 6px;">
       <span style="font-size:11px;font-weight:600;color:#8A93A8;text-transform:uppercase;letter-spacing:.04em;">Filter by region:</span>
@@ -880,7 +896,7 @@ function deepDiveLoc(locCode) {
         <!-- Lincoln Park -->
         <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Lincoln Park</p><p class="loc-sub">IL · Brianna L.</p></div>
-          <span class="good" data-label="COGs">8.1%</span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">8.1%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:35%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
           <span class="warn-t" data-label="Alerts">3</span>
           <span class="bad-t" data-label="Expiring">2 ⚠</span>
           <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$580</span>
@@ -894,7 +910,7 @@ function deepDiveLoc(locCode) {
             <p class="loc-name">Old Orchard</p>
             <p class="loc-sub warn-t">IL · Jamie K. · <span style="color:#a33030;">WG: +38% gauze</span></p>
           </div>
-          <span class="warn-t" data-label="COGs">9.8%</span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="warn-t" style="font-size:12px;font-weight:600;">9.8%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:63%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
           <span class="warn-t" data-label="Alerts">2</span>
           <span class="bad-t" data-label="Expiring">1 ⚠</span>
           <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$1,340</span>
@@ -908,7 +924,7 @@ function deepDiveLoc(locCode) {
             <p class="loc-name">West Loop</p>
             <p class="loc-sub">IL · Alex M. · <span style="color:#a0700a;">WG: +21% syringes</span></p>
           </div>
-          <span class="good" data-label="COGs">7.9%</span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">7.9%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:32%;transform:translateX(-50%);width:5px;height:5px;background:#C8922A;border-radius:50%;top:-1px;"></div></div></span>
           <span class="bad-t" data-label="Alerts">2</span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Expiring">0</span>
           <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$490</span>
@@ -919,7 +935,7 @@ function deepDiveLoc(locCode) {
         <!-- Wheaton -->
         <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Wheaton</p><p class="loc-sub">IL · Sam R.</p></div>
-          <span class="good" data-label="COGs">8.7%</span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">8.7%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
           <span class="warn-t" data-label="Expiring">1</span>
           <span style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">$437</span>
@@ -930,7 +946,7 @@ function deepDiveLoc(locCode) {
         <!-- DEMO: Naperville (Chicagoland South) -->
         <div class="tbl-row" data-region="Chicagoland South">
           <div><p class="loc-name">Naperville <span style="font-size:9px;background:#E4E0F0;color:#8A93A8;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px;">DEMO</span></p><p class="loc-sub">IL · Demo Location</p></div>
-          <span class="good" data-label="COGs">8.2%</span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">8.2%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:37%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">2</span>
           <span class="warn-t" data-label="Expiring">1</span>
           <span style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">$612</span>
@@ -941,7 +957,7 @@ function deepDiveLoc(locCode) {
         <!-- DEMO: Aurora (Chicagoland West) -->
         <div class="tbl-row" data-region="Chicagoland West">
           <div><p class="loc-name">Aurora <span style="font-size:9px;background:#E4E0F0;color:#8A93A8;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px;">DEMO</span></p><p class="loc-sub">IL · Demo Location</p></div>
-          <span class="warn-t" data-label="COGs">9.1%</span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="warn-t" style="font-size:12px;font-weight:600;">9.1%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:52%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
           <span class="warn-t" data-label="Alerts">4</span>
           <span class="bad-t" data-label="Expiring">3 ⚠</span>
           <span class="warn-t" data-label="Goods lost">$891</span>
@@ -952,7 +968,7 @@ function deepDiveLoc(locCode) {
         <!-- DEMO: Schaumburg (Chicagoland South) -->
         <div class="tbl-row" data-region="Chicagoland South">
           <div><p class="loc-name">Schaumburg <span style="font-size:9px;background:#E4E0F0;color:#8A93A8;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px;">DEMO</span></p><p class="loc-sub">IL · Demo Location</p></div>
-          <span class="good" data-label="COGs">7.8%</span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">7.8%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:30%;transform:translateX(-50%);width:5px;height:5px;background:#C8922A;border-radius:50%;top:-1px;"></div></div></span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">1</span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Expiring">0</span>
           <span style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">$215</span>
