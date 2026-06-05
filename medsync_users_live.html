@@ -19,13 +19,15 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .card-body{padding:20px;}
 
 /* User rows */
-.user-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid #F5F3FA;gap:10px;}
+.user-row{display:grid;grid-template-columns:1fr 110px 130px 180px;align-items:center;padding:11px 0;border-bottom:0.5px solid #F5F3FA;gap:8px;}
 .user-row:last-child{border-bottom:none;}
 .user-row.inactive{opacity:.5;}
-.user-info{flex:1;min-width:0;}
+.user-info{min-width:0;}
 .user-name{font-size:13px;font-weight:500;}
 .user-email{font-size:11px;color:var(--mist);margin-top:1px;}
-.user-meta{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.user-status-cell{display:flex;justify-content:center;}
+.user-role-cell{display:flex;justify-content:center;}
+.user-actions-cell{display:flex;justify-content:center;gap:5px;}
 
 /* Role badges */
 .role-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;}
@@ -40,9 +42,10 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .sp-active{background:var(--green-bg);color:var(--green);}
 .sp-inactive{background:#F0EEF8;color:var(--mist);}
 
-/* Status group with label */
-.status-group{display:flex;flex-direction:column;align-items:center;gap:3px;}
-.meta-label{font-size:9px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
+/* Table column headers */
+.col-headers{display:grid;grid-template-columns:1fr 110px 130px 180px;padding:8px 20px;background:#F8F7FC;border-bottom:0.5px solid var(--border);}
+.col-label{font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
+.col-label.center{text-align:center;}
 .action-group{display:flex;gap:5px;}
 
 /* Action buttons */
@@ -122,8 +125,14 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
     <div class="card-head">
       <div class="card-title">Current users</div>
     </div>
-    <div class="card-body" id="user-list">
-      <div class="empty">Loading…</div>
+    <div class="col-headers">
+      <span class="col-label">Name</span>
+      <span class="col-label center">Current Status</span>
+      <span class="col-label center">Role</span>
+      <span class="col-label center">Status Options</span>
+    </div>
+    <div id="user-list" style="padding:0 20px;">
+      <div class="empty" style="padding:16px 0;">Loading…</div>
     </div>
   </div>
 
@@ -220,14 +229,9 @@ async function loadUsers() {
           <div class="user-name">${u.full_name || '—'}</div>
           <div class="user-email">${u.email || ''}</div>
         </div>
-        <div class="user-meta">
-          <div class="status-group">
-            <div class="meta-label">Current Status</div>
-            ${statusPill}
-          </div>
-          <span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role] || u.role}</span>
-          ${actionBtns ? `<div class="action-group">${actionBtns}</div>` : ''}
-        </div>
+        <div class="user-status-cell">${statusPill}</div>
+        <div class="user-role-cell"><span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role] || u.role}</span></div>
+        <div class="user-actions-cell">${actionBtns}</div>
       </div>
       <div id="confirm-${u.id}" style="display:none;">
         <div class="confirm-row">
