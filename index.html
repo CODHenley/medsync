@@ -55,6 +55,13 @@ function showScreen(name) {
 function showOpsScreen(n) { showScreen(n); }
 
 // Close hamburger when clicking anywhere outside the sidebar
+// window.blur fires when focus moves into an iframe — reliable cross-iframe close
+window.addEventListener('blur', function() {
+  var sb = document.getElementById('app-sidebar');
+  if (sb && sb.style.display === 'block') {
+    setTimeout(closeMobileMenu, 0);
+  }
+});
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('app-body').addEventListener('click', function() {
     var sb = document.getElementById('app-sidebar');
