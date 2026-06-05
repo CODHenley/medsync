@@ -317,7 +317,16 @@ function renderConfigScreen() {
         <div class="field"><label>Location name</label><input id="loc-name" type="text" placeholder="e.g. Naperville" value="${state.locationName}" oninput="state.locationName=this.value"></div>
         <div class="field"><label>Target open date</label><input id="open-date" type="date" value="${state.openDate}" oninput="state.openDate=this.value"></div>
       </div>
-      <div class="field"><label>Address</label><input id="loc-addr" type="text" placeholder="123 Main St, City, IL 60000" value="${state.address}" oninput="state.address=this.value"></div>
+      <div class="field">
+        <label>Address</label>
+        <div style="position:relative;">
+          <input id="loc-addr" type="text" placeholder="Start typing or use GPS…" value="${state.address}"
+            oninput="state.address=this.value;addressAutocomplete(this.value)" autocomplete="off"
+            style="padding-right:44px;">
+          <button onclick="getGPSAddress()" title="Use my location" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:2px 4px;">📍</button>
+        </div>
+        <div id="addr-suggestions" style="position:relative;z-index:100;"></div>
+      </div>
     </div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="state.screen='type';render()">← Back</button>
@@ -532,6 +541,63 @@ function startOver() {
 
 function goToPortfolio() {
   if (window.self !== window.top) window.parent.postMessage({type:'navigate',screen:'portfolio'},'*');
+}
+
+
+// ── Address autocomplete (OpenStreetMap Nominatim) ────────────────────────
+var _addrTimer = null;
+function addressAutocomplete(val) {
+  clearTimeout(_addrTimer);
+  var box = document.getElementById('addr-suggestions');
+  if (!box) return;
+  if (!val || val.length < 4) { box.innerHTML = ''; return; }
+  _addrTimer = setTimeout(async function() {
+    try {
+      var res = await fetch('https://nominatim.openstreetmap.org/search?format=json&countrycodes=us&limit=5&q='+encodeURIComponent(val), {
+        headers: {'Accept-Language': 'en-US', 'User-Agent': 'MedSync/1.0'}
+      });
+      var results = await res.json();
+      if (!results.length) { box.innerHTML = ''; return; }
+      box.innerHTML = '<div style="position:absolute;left:0;right:0;background:#fff;border:0.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);overflow:hidden;margin-top:2px;">' +
+        results.map(function(r) {
+          return '<div style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #F5F3FA;" ' +
+            'onmouseover="this.style.background='#F0EEF8'" onmouseout="this.style.background=''" ' +
+            'onclick="selectAddress(''+r.display_name.replace(/'/g,'')+'')">' +
+            r.display_name + '</div>';
+        }).join('') + '</div>';
+    } catch(e) {}
+  }, 350);
+}
+
+function selectAddress(addr) {
+  state.address = addr;
+  var inp = document.getElementById('loc-addr');
+  if (inp) inp.value = addr;
+  var box = document.getElementById('addr-suggestions');
+  if (box) box.innerHTML = '';
+}
+
+function getGPSAddress() {
+  if (!navigator.geolocation) { alert('Geolocation not supported'); return; }
+  var inp = document.getElementById('loc-addr');
+  if (inp) inp.placeholder = 'Getting location…';
+  navigator.geolocation.getCurrentPosition(async function(pos) {
+    var lat = pos.coords.latitude, lon = pos.coords.longitude;
+    try {
+      var res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon, {
+        headers: {'Accept-Language': 'en-US', 'User-Agent': 'MedSync/1.0'}
+      });
+      var data = await res.json();
+      var addr = data.display_name || (lat.toFixed(5)+', '+lon.toFixed(5));
+      selectAddress(addr);
+      if (inp) inp.value = addr;
+    } catch(e) {
+      if (inp) inp.placeholder = '123 Main St, City, IL 60000';
+    }
+  }, function() {
+    if (inp) inp.placeholder = '123 Main St, City, IL 60000';
+    alert('Location access denied. Please enter address manually.');
+  });
 }
 
 render();
