@@ -64,6 +64,23 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .btn-confirm-del{padding:5px 12px;background:var(--red);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .btn-cancel-del{padding:5px 12px;background:#fff;color:var(--mist);border:0.5px solid var(--border);border-radius:7px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
+
+/* Data access scope */
+.scope-section{margin-bottom:14px;}
+.scope-radios{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.scope-radio{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:0.5px solid var(--border);border-radius:9px;transition:border-color .12s;}
+.scope-radio:hover{border-color:#9B8EC4;}
+.scope-radio.selected{border-color:var(--navy);background:#F8F7FC;}
+.scope-radio input[type=radio]{width:14px;height:14px;accent-color:var(--navy);flex-shrink:0;}
+.scope-radio-label{font-size:13px;font-weight:500;color:var(--navy);}
+.scope-radio-sub{font-size:11px;color:var(--mist);margin-top:1px;}
+.scope-sub-field{margin-top:10px;padding:12px;background:#F8F7FC;border-radius:9px;border:0.5px solid var(--border);}
+.loc-checkboxes{display:flex;flex-direction:column;gap:7px;max-height:160px;overflow-y:auto;}
+.loc-check{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;}
+.loc-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--navy);}
+/* Access scope display in user list */
+.user-access{font-size:10px;color:var(--mist);margin-top:2px;}
+
 /* Create form */
 .field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
 label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
@@ -116,7 +133,42 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
         <label>Location</label>
         <select id="new-loc"></select>
       </div>
-      <button class="btn-primary" onclick="createUser()">Create user →</button>
+      <!-- Data Access Scope -->
+      <div class="scope-section">
+        <label>Data Access</label>
+        <div class="scope-radios" id="scope-radios">
+          <label class="scope-radio selected">
+            <input type="radio" name="access-scope" value="all" checked onchange="onScopeChange()">
+            <div>
+              <div class="scope-radio-label">All locations</div>
+              <div class="scope-radio-sub">Can see data across every location and region</div>
+            </div>
+          </label>
+          <label class="scope-radio">
+            <input type="radio" name="access-scope" value="region" onchange="onScopeChange()">
+            <div>
+              <div class="scope-radio-label">By region</div>
+              <div class="scope-radio-sub">Sees all locations within one assigned region</div>
+            </div>
+          </label>
+          <label class="scope-radio">
+            <input type="radio" name="access-scope" value="locations" onchange="onScopeChange()">
+            <div>
+              <div class="scope-radio-label">Specific locations</div>
+              <div class="scope-radio-sub">Sees only selected locations</div>
+            </div>
+          </label>
+        </div>
+        <div id="scope-region-field" class="scope-sub-field" style="display:none;">
+          <label style="margin-bottom:6px;display:block;">Region</label>
+          <select id="scope-region" style="margin:0;"></select>
+        </div>
+        <div id="scope-locations-field" class="scope-sub-field" style="display:none;">
+          <label style="margin-bottom:6px;display:block;">Locations</label>
+          <div class="loc-checkboxes" id="scope-loc-checkboxes"></div>
+        </div>
+      </div>
+            <button class="btn-primary" onclick="createUser()">Create user →</button>
     </div>
   </div>
 
@@ -144,6 +196,73 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+
+let _regions = [];
+let _locations = [];
+
+async function loadScopeData() {
+  const [rRes, lRes] = await Promise.all([
+    fetch(SUPA_URL + '/rest/v1/regions?select=id,name&order=name', { headers: H }),
+    fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H }),
+  ]);
+  _regions = await rRes.json();
+  _locations = await lRes.json();
+
+  // Populate region dropdown
+  const rSel = document.getElementById('scope-region');
+  if (Array.isArray(_regions)) {
+    rSel.innerHTML = _regions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  }
+
+  // Populate location checkboxes
+  const lBox = document.getElementById('scope-loc-checkboxes');
+  if (Array.isArray(_locations)) {
+    lBox.innerHTML = _locations.map(l =>
+      `<label class="loc-check"><input type="checkbox" value="${l.id}"> ${l.name}</label>`
+    ).join('');
+  }
+}
+
+function onScopeChange() {
+  const val = document.querySelector('input[name="access-scope"]:checked').value;
+  document.getElementById('scope-region-field').style.display    = val === 'region'    ? 'block' : 'none';
+  document.getElementById('scope-locations-field').style.display = val === 'locations' ? 'block' : 'none';
+  // Update selected radio styling
+  document.querySelectorAll('.scope-radio').forEach(el => {
+    el.classList.toggle('selected', el.querySelector('input').checked);
+  });
+}
+
+function getSelectedScope() {
+  const scope = document.querySelector('input[name="access-scope"]:checked').value;
+  let region_id = null;
+  let location_ids = null;
+  if (scope === 'region') {
+    region_id = document.getElementById('scope-region').value || null;
+  } else if (scope === 'locations') {
+    const checked = [...document.querySelectorAll('#scope-loc-checkboxes input:checked')].map(i => i.value);
+    location_ids = checked.length ? checked : null;
+  }
+  return { scope, region_id, location_ids };
+}
+
+function formatAccess(u) {
+  const scope = u.access_scope || 'all';
+  if (scope === 'all') return 'Access: all locations';
+  if (scope === 'region') {
+    const r = Array.isArray(_regions) ? _regions.find(r => r.id === u.access_region_id) : null;
+    return 'Access: ' + (r ? r.name + ' region' : 'region');
+  }
+  if (scope === 'locations') {
+    const ids = u.access_location_ids || [];
+    const names = Array.isArray(_locations)
+      ? ids.map(id => { const l = _locations.find(l => l.id === id); return l ? l.name : ''; }).filter(Boolean)
+      : [];
+    return 'Access: ' + (names.length ? names.join(', ') : 'specific locations');
+  }
+  return '';
+}
+
 
 let myRole = 'manager';
 let myId   = null;
@@ -176,11 +295,10 @@ async function boot() {
     roleSel.addEventListener('change', onRoleChange);
     onRoleChange();
 
-    const locRes = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
-    const locs = await locRes.json();
+    await loadScopeData();
     const locSel = document.getElementById('new-loc');
-    if (Array.isArray(locs)) {
-      locSel.innerHTML = locs.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+    if (Array.isArray(_locations)) {
+      locSel.innerHTML = _locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
     }
 
     await loadUsers();
@@ -195,7 +313,7 @@ function onRoleChange() {
 
 async function loadUsers() {
   const res = await fetch(
-    SUPA_URL + '/rest/v1/users?select=id,full_name,email,role,is_active&order=role,full_name',
+    SUPA_URL + '/rest/v1/users?select=id,full_name,email,role,is_active,access_scope,access_region_id,access_location_ids&order=role,full_name',
     { headers: H }
   );
   const users = await res.json();
@@ -228,6 +346,7 @@ async function loadUsers() {
         <div class="user-info">
           <div class="user-name">${u.full_name || '—'}</div>
           <div class="user-email">${u.email || ''}</div>
+          <div class="user-access">${formatAccess(u)}</div>
         </div>
         <div class="user-status-cell">${statusPill}</div>
         <div class="user-role-cell"><span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role] || u.role}</span></div>
@@ -294,6 +413,7 @@ async function createUser() {
   const email = document.getElementById('new-email').value.trim();
   const pass  = document.getElementById('new-pass').value.trim();
   const role  = document.getElementById('new-role').value;
+  const scopeData = getSelectedScope();
 
   if (!name || !email || !pass) { showMsg('Please fill in all fields.', 'error'); return; }
 
@@ -313,7 +433,12 @@ async function createUser() {
     await fetch(SUPA_URL + '/rest/v1/users', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ id: userId, email, full_name: name, role, is_active: true })
+      body: JSON.stringify({
+          id: userId, email, full_name: name, role, is_active: true,
+          access_scope:         scopeData.scope,
+          access_region_id:     scopeData.region_id,
+          access_location_ids:  scopeData.location_ids,
+        })
     });
 
     showMsg(name + ' created as ' + (ROLE_LABELS[role] || role) + '.', 'success');
