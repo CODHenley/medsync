@@ -17,16 +17,46 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .card-head{padding:16px 20px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .card-title{font-size:13px;font-weight:600;}
 .card-body{padding:20px;}
-.user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid #F5F3FA;}
+
+/* User rows */
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid #F5F3FA;gap:10px;}
 .user-row:last-child{border-bottom:none;}
+.user-row.inactive{opacity:.5;}
+.user-info{flex:1;min-width:0;}
 .user-name{font-size:13px;font-weight:500;}
 .user-email{font-size:11px;color:var(--mist);margin-top:1px;}
+.user-meta{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+
+/* Role badges */
 .role-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;}
 .rb-admin{background:rgba(28,43,74,.1);color:var(--navy);}
 .rb-manager{background:var(--green-bg);color:var(--green);}
 .rb-receiver{background:#E6F1FB;color:#1A6FAD;}
 .rb-hospital_manager{background:#EEE8F5;color:var(--purple);}
 .rb-inventory_lead{background:#FEF3E2;color:var(--amber);}
+
+/* Status pill */
+.status-pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;}
+.sp-active{background:var(--green-bg);color:var(--green);}
+.sp-inactive{background:#F0EEF8;color:var(--mist);}
+
+/* Action buttons */
+.action-btn{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;border:0.5px solid;}
+.btn-deactivate{background:#FEF3E2;color:var(--amber);border-color:#F0D090;}
+.btn-deactivate:hover{background:#FDE8C0;}
+.btn-activate{background:var(--green-bg);color:var(--green);border-color:#B0D8C0;}
+.btn-activate:hover{background:#D0EDD8;}
+.btn-delete{background:var(--red-bg);color:var(--red);border-color:#F0AAAA;}
+.btn-delete:hover{background:#FACACA;}
+
+/* Confirm delete inline */
+.confirm-row{background:#FEF3E2;border-radius:8px;padding:10px 14px;margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.confirm-text{font-size:12px;color:var(--amber);}
+.confirm-actions{display:flex;gap:6px;}
+.btn-confirm-del{padding:5px 12px;background:var(--red);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-cancel-del{padding:5px 12px;background:#fff;color:var(--mist);border:0.5px solid var(--border);border-radius:7px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+
+/* Create form */
 .field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
 label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
 input,select{padding:10px 12px;border:0.5px solid var(--border);border-radius:9px;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;background:#fff;color:var(--navy);}
@@ -38,6 +68,8 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
 .msg.error{background:var(--red-bg);color:var(--red);border:0.5px solid #F0AAAA;display:block;}
 .empty{color:var(--mist);font-size:12px;padding:12px 0;text-align:center;}
 .nav{display:none;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s;}
+.toast.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -70,9 +102,7 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
       </div>
       <div class="field">
         <label>Role</label>
-        <select id="new-role">
-          <!-- Options populated by JS based on logged-in role -->
-        </select>
+        <select id="new-role"></select>
       </div>
       <div class="field" id="loc-field" style="display:none;">
         <label>Location</label>
@@ -93,6 +123,7 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
   </div>
 
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
@@ -101,12 +132,19 @@ const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
 
 let myRole = 'manager';
+let myId   = null;
+let _pendingDeleteId = null;
+
 const ROLE_LABELS = {
   admin: 'Admin', manager: 'Manager', hospital_manager: 'H. Manager',
   receiver: 'Receiver', inventory_lead: 'Inventory Lead'
 };
-// Roles each role can create
 const CREATABLE = {
+  admin:   ['admin','manager','hospital_manager','receiver','inventory_lead'],
+  manager: ['receiver','inventory_lead']
+};
+// Roles a given role can manage (activate/deactivate/delete)
+const MANAGEABLE = {
   admin:   ['admin','manager','hospital_manager','receiver','inventory_lead'],
   manager: ['receiver','inventory_lead']
 };
@@ -115,20 +153,15 @@ async function boot() {
   try {
     const mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
     myRole = mu.role || 'manager';
-    document.getElementById('tb-sub').textContent =
-      'User Management · ' + (mu.full_name || '');
+    myId   = mu.id || null;
+    document.getElementById('tb-sub').textContent = 'User Management · ' + (mu.full_name || '');
 
-    // Populate role options
     const roleSel = document.getElementById('new-role');
     const allowed = CREATABLE[myRole] || CREATABLE['manager'];
-    roleSel.innerHTML = allowed.map(r =>
-      `<option value="${r}">${ROLE_LABELS[r] || r}</option>`
-    ).join('');
-
+    roleSel.innerHTML = allowed.map(r => `<option value="${r}">${ROLE_LABELS[r] || r}</option>`).join('');
     roleSel.addEventListener('change', onRoleChange);
     onRoleChange();
 
-    // Load locations for manager/receiver roles
     const locRes = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
     const locs = await locRes.json();
     const locSel = document.getElementById('new-loc');
@@ -137,34 +170,111 @@ async function boot() {
     }
 
     await loadUsers();
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 function onRoleChange() {
   const role = document.getElementById('new-role').value;
-  const showLoc = ['manager','receiver','inventory_lead'].includes(role);
-  document.getElementById('loc-field').style.display = showLoc ? 'block' : 'none';
+  document.getElementById('loc-field').style.display =
+    ['manager','receiver','inventory_lead'].includes(role) ? 'block' : 'none';
 }
 
 async function loadUsers() {
-  const res = await fetch(SUPA_URL + '/rest/v1/users?select=id,full_name,email,role&order=role,full_name', { headers: H });
+  const res = await fetch(
+    SUPA_URL + '/rest/v1/users?select=id,full_name,email,role,is_active&order=role,full_name',
+    { headers: H }
+  );
   const users = await res.json();
   const el = document.getElementById('user-list');
   if (!Array.isArray(users) || users.length === 0) {
     el.innerHTML = '<div class="empty">No users found.</div>';
     return;
   }
-  el.innerHTML = users.map(u => `
-    <div class="user-row">
-      <div>
-        <div class="user-name">${u.full_name || '—'}</div>
-        <div class="user-email">${u.email || ''}</div>
+
+  const manageable = MANAGEABLE[myRole] || [];
+
+  el.innerHTML = users.map(u => {
+    const active   = u.is_active !== false;
+    const canManage = manageable.includes(u.role) && u.id !== myId;
+    const statusPill = active
+      ? '<span class="status-pill sp-active">Active</span>'
+      : '<span class="status-pill sp-inactive">Inactive</span>';
+
+    let actionBtns = '';
+    if (canManage) {
+      const toggleBtn = active
+        ? `<button class="action-btn btn-deactivate" data-id="${u.id}" onclick="deactivateUser('${u.id}','${u.full_name}')">Deactivate</button>`
+        : `<button class="action-btn btn-activate"   data-id="${u.id}" onclick="activateUser('${u.id}','${u.full_name}')">Activate</button>`;
+      const deleteBtn = `<button class="action-btn btn-delete" onclick="confirmDelete('${u.id}','${u.full_name}')">Delete</button>`;
+      actionBtns = toggleBtn + deleteBtn;
+    }
+
+    return `
+      <div class="user-row${active ? '' : ' inactive'}" id="row-${u.id}">
+        <div class="user-info">
+          <div class="user-name">${u.full_name || '—'}</div>
+          <div class="user-email">${u.email || ''}</div>
+        </div>
+        <div class="user-meta">
+          ${statusPill}
+          <span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role] || u.role}</span>
+          ${actionBtns}
+        </div>
       </div>
-      <span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role] || u.role}</span>
-    </div>
-  `).join('');
+      <div id="confirm-${u.id}" style="display:none;">
+        <div class="confirm-row">
+          <span class="confirm-text">Delete <strong>${u.full_name}</strong>? This cannot be undone.</span>
+          <div class="confirm-actions">
+            <button class="btn-cancel-del" onclick="cancelDelete('${u.id}')">Cancel</button>
+            <button class="btn-confirm-del" onclick="deleteUser('${u.id}','${u.full_name}')">Delete</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function deactivateUser(id, name) {
+  await fetch(SUPA_URL + '/rest/v1/users?id=eq.' + id, {
+    method: 'PATCH', headers: H,
+    body: JSON.stringify({ is_active: false })
+  });
+  showToast(name + ' deactivated');
+  await loadUsers();
+}
+
+async function activateUser(id, name) {
+  await fetch(SUPA_URL + '/rest/v1/users?id=eq.' + id, {
+    method: 'PATCH', headers: H,
+    body: JSON.stringify({ is_active: true })
+  });
+  showToast(name + ' reactivated');
+  await loadUsers();
+}
+
+function confirmDelete(id, name) {
+  // Hide any other open confirms first
+  if (_pendingDeleteId && _pendingDeleteId !== id) {
+    const prev = document.getElementById('confirm-' + _pendingDeleteId);
+    if (prev) prev.style.display = 'none';
+  }
+  _pendingDeleteId = id;
+  const el = document.getElementById('confirm-' + id);
+  if (el) el.style.display = 'block';
+}
+
+function cancelDelete(id) {
+  const el = document.getElementById('confirm-' + id);
+  if (el) el.style.display = 'none';
+  _pendingDeleteId = null;
+}
+
+async function deleteUser(id, name) {
+  await fetch(SUPA_URL + '/rest/v1/users?id=eq.' + id, {
+    method: 'DELETE', headers: H
+  });
+  showToast(name + ' deleted');
+  _pendingDeleteId = null;
+  await loadUsers();
 }
 
 async function createUser() {
@@ -172,14 +282,10 @@ async function createUser() {
   const email = document.getElementById('new-email').value.trim();
   const pass  = document.getElementById('new-pass').value.trim();
   const role  = document.getElementById('new-role').value;
-  const msg   = document.getElementById('msg');
 
-  if (!name || !email || !pass) {
-    showMsg('Please fill in all fields.', 'error'); return;
-  }
+  if (!name || !email || !pass) { showMsg('Please fill in all fields.', 'error'); return; }
 
   try {
-    // Sign up via Supabase auth
     const signRes = await fetch(SUPA_URL + '/auth/v1/signup', {
       method: 'POST',
       headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
@@ -187,33 +293,36 @@ async function createUser() {
     });
     const signData = await signRes.json();
     const userId = signData.id || (signData.user && signData.user.id);
-
     if (!userId) {
       showMsg('Auth signup failed: ' + (signData.msg || signData.message || JSON.stringify(signData)), 'error');
       return;
     }
 
-    // Insert into users table
     await fetch(SUPA_URL + '/rest/v1/users', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ id: userId, email, full_name: name, role })
+      body: JSON.stringify({ id: userId, email, full_name: name, role, is_active: true })
     });
 
-    showMsg(name + ' created successfully as ' + (ROLE_LABELS[role] || role) + '.', 'success');
+    showMsg(name + ' created as ' + (ROLE_LABELS[role] || role) + '.', 'success');
     document.getElementById('new-name').value = '';
     document.getElementById('new-email').value = '';
     document.getElementById('new-pass').value = 'MedSync2026!';
     await loadUsers();
-  } catch(e) {
-    showMsg('Error: ' + e.message, 'error');
-  }
+  } catch(e) { showMsg('Error: ' + e.message, 'error'); }
 }
 
 function showMsg(text, type) {
   const el = document.getElementById('msg');
-  el.textContent = text;
-  el.className = 'msg ' + type;
+  el.textContent = text; el.className = 'msg ' + type;
+}
+
+let _toastT = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  if (_toastT) clearTimeout(_toastT);
+  _toastT = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
 boot();

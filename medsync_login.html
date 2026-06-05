@@ -180,15 +180,27 @@ async function signIn() {
     // Fetch user profile
     const uid = JSON.parse(atob(data.access_token.split('.')[1])).sub;
     const uRes = await fetch(
-      SUPA_URL + '/rest/v1/users?select=full_name,role,locations(name)&id=eq.' + uid,
+      SUPA_URL + '/rest/v1/users?select=id,full_name,role,is_active,locations(name)&id=eq.' + uid,
       { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token } }
     );
     const users = await uRes.json();
-    if (users && users[0]) {
-      localStorage.setItem('medsync_user', JSON.stringify(users[0]));
+
+    // Block inactive users
+    if (!users || !users[0]) {
+      errorBox.textContent = 'Account not found. Contact your administrator.';
+      errorBox.classList.add('show');
+      btn.classList.remove('loading'); btn.disabled = false;
+      return;
+    }
+    if (users[0].is_active === false) {
+      errorBox.textContent = 'Your account has been deactivated. Contact your administrator.';
+      errorBox.classList.add('show');
+      btn.classList.remove('loading'); btn.disabled = false;
+      return;
     }
 
-    showToast('✓ Welcome back' + (users[0] ? ', ' + users[0].full_name.split(' ')[0] + '!' : '!'));
+    localStorage.setItem('medsync_user', JSON.stringify(users[0]));
+    showToast('✓ Welcome back, ' + users[0].full_name.split(' ')[0] + '!');
     setTimeout(() => { window.location.replace('index.html'); }, 600);
 
   } catch(err) {
