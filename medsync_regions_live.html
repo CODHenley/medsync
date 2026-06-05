@@ -115,20 +115,27 @@ var _regions = [], _locations = [], _editRegionId = null, _movingLocId = null, _
 async function boot() {
   var mu = {}; try{ mu = JSON.parse(localStorage.getItem('medsync_user')||'{}'); }catch(e){}
   document.getElementById('tb-sub').textContent = 'Region Management · '+(mu.full_name||'Admin');
-  await Promise.all([loadRegions(), loadLocations()]);
+  try { await Promise.all([loadRegions(), loadLocations()]); }
+  catch(e) { console.error('boot error:', e); }
   renderAll();
 }
 
 async function loadRegions() {
-  var r = await fetch(SUPA_URL+'/rest/v1/regions?select=id,name,description&order=name', {headers:H});
-  var d = await r.json();
-  _regions = Array.isArray(d) ? d : [];
+  try {
+    var r = await fetch(SUPA_URL+'/rest/v1/regions?select=id,name,description&order=name', {headers:H});
+    var d = await r.json();
+    if (!Array.isArray(d)) { console.error('regions error:', d); }
+    _regions = Array.isArray(d) ? d : [];
+  } catch(e) { console.error('loadRegions:', e); _regions = []; }
 }
 
 async function loadLocations() {
-  var r = await fetch(SUPA_URL+'/rest/v1/locations?select=id,name,region_id&order=name', {headers:H});
-  var d = await r.json();
-  _locations = Array.isArray(d) ? d : [];
+  try {
+    var r = await fetch(SUPA_URL+'/rest/v1/locations?select=id,name,region_id&order=name', {headers:H});
+    var d = await r.json();
+    if (!Array.isArray(d)) { console.error('locations error:', d); }
+    _locations = Array.isArray(d) ? d : [];
+  } catch(e) { console.error('loadLocations:', e); _locations = []; }
 }
 
 function renderAll() {
