@@ -58,7 +58,7 @@ select:focus{border-color:var(--navy);}
 .btn:hover{background:#F0EEF8;}
 
 /* BODY SPLIT */
-.body-split{display:grid;grid-template-columns:1fr 272px;flex:1;min-height:0;overflow:hidden;}
+.body-split{display:grid;grid-template-columns:1fr 272px;grid-template-rows:minmax(0,1fr);flex:1;min-height:0;overflow:hidden;}
 
 /* MAIN COLUMN */
 .main-col{overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;min-height:0;}
@@ -462,7 +462,7 @@ async function loadExpiryRisk() {
     const today = now.toISOString().split('T')[0];
 
     const lotRes = await fetch(
-      SUPA_URL + '/rest/v1/lots?select=expiration_date,qty_remaining,products(name)&expiration_date=lte.' + d90 + '&disposal_date=is.null&order=expiration_date.asc',
+      SUPA_URL + '/rest/v1/lots?select=expiration_date,qty_on_hand,products(name)&expiration_date=lte.' + d90 + '&order=expiration_date',
       { headers: HEADERS }
     );
     const lots = await lotRes.json();
@@ -474,7 +474,7 @@ async function loadExpiryRisk() {
         var name = lot.products && lot.products.name ? lot.products.name : 'Unknown';
         if (!byProduct[name]) byProduct[name] = { expired:0, d30:0, d60:0 };
         var exp = lot.expiration_date;
-        var qty = lot.qty_remaining || 1;
+        var qty = lot.qty_on_hand || 1;
         if (exp <= today) byProduct[name].expired += qty;
         else if (exp <= d30) byProduct[name].d30 += qty;
         else if (exp <= d60) byProduct[name].d60 += qty;
