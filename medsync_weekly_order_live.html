@@ -87,6 +87,23 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy);cursor:poin
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
 
+
+/* ── PRINT / PDF EXPORT ──────────────────────────────────────────── */
+@media print {
+  body { overflow: visible !important; height: auto !important; background: #fff; }
+  .topbar, .footer, #confirm-modal, #toast, .qty-ctrl, .hold-row { display: none !important; }
+  .table-wrap { overflow: visible !important; height: auto !important; }
+  .order-row.held { display: none !important; }
+  #pdf-header { display: block !important; }
+  #pdf-footer { display: block !important; }
+}
+#pdf-header { display: none; padding: 0 20px 16px; border-bottom: 2px solid #1C2B4A; margin-bottom: 8px; }
+#pdf-header .ph-logo { font-size: 20px; font-weight: 700; color: #1C2B4A; letter-spacing: -.5px; }
+#pdf-header .ph-logo span { color: #C8922A; }
+#pdf-header .ph-meta { font-size: 11px; color: #8A93A8; margin-top: 4px; }
+#pdf-header .ph-ref { font-size: 13px; font-weight: 600; color: #1C2B4A; margin-top: 6px; }
+#pdf-footer { display: none; padding: 14px 20px 0; border-top: 1px solid #DDD9EC; margin-top: 8px; font-size: 11px; color: #8A93A8; }
+
 /* ══ IFRAME LAYOUT — nav and sidebar handled by parent app ══════ */
 .outer { margin-top: 0 !important; padding-top: 0 !important; }
 html, body { margin: 0 !important; padding: 0 !important; }
@@ -115,6 +132,12 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
 </head>
 <body>
 
+
+<div id="pdf-header">
+  <div class="ph-logo">Med<span>Sync</span></div>
+  <div class="ph-meta" id="pdf-meta">Weekly Purchase Order</div>
+  <div class="ph-ref" id="pdf-ref"></div>
+</div>
 <div class="topbar">
   <div class="tb-left">
     <div>
@@ -126,7 +149,7 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
     </select>
   </div>
   <div class="countdown">
-    <div class="cd-label">Vetcove cutoff</div>
+    <div class="cd-label">Order cutoff</div>
     <div class="cd-time" id="countdown">1:00:00</div>
   </div>
 </div>
@@ -151,23 +174,23 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div class="footer-total" id="order-total">$0.00</div>
-      <button class="btn-submit" id="submit-btn" onclick="openConfirm()">Submit to Vetcove →</button>
+      <button class="btn-submit" id="submit-btn" onclick="openConfirm()">Export Order PDF</button>
     </div>
   </div>
 </div>
 
 <div class="success" id="success-view">
   <div class="success-icon">✓</div>
-  <div class="success-title">Order submitted</div>
-  <div class="success-sub" id="success-detail">Your order has been sent to Vetcove.</div>
+  <div class="success-title">PO saved — PDF ready</div>
+  <div class="success-sub" id="success-detail">PO saved to MedSync. Use the PDF to place your order in Vetcove or with your distributor rep by 1pm.</div>
   <button class="btn-new" onclick="resetOrder()">Start new order</button>
 </div>
 
 <!-- Confirm modal -->
 <div class="modal-bg" id="confirm-modal">
   <div class="modal">
-    <div class="modal-title">Confirm order</div>
-    <div class="modal-sub" id="confirm-sub">Review your order before submitting to Vetcove.</div>
+    <div class="modal-title">Review &amp; Export Order</div>
+    <div class="modal-sub" id="confirm-sub">Review your order, then export a PDF to place with Vetcove or your distributor rep.</div>
     <div class="modal-items" id="confirm-items"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div style="font-size:12px;color:var(--mist);">Total</div>
@@ -175,7 +198,7 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
-      <button class="btn-confirm" id="confirm-btn" onclick="submitOrder()">Submit to Vetcove →</button>
+      <button class="btn-confirm" id="confirm-btn" onclick="submitOrder()">Save PO &amp; Export PDF</button>
     </div>
   </div>
 </div>
@@ -444,9 +467,11 @@ async function submitOrder() {
 
     closeConfirm();
     document.getElementById('success-detail').textContent =
-      orderRef + ' · ' + active.length + ' SKUs · $' + total.toFixed(2) + (isLate ? ' · ⚠ Submitted after 1pm cutoff' : ' · Submitted on time');
+      orderRef + ' · ' + active.length + ' item' + (active.length!==1?'s':'') + ' · $' + total.toFixed(2) + (isLate ? ' · ⚠ After cutoff' : ' · On time');
     document.getElementById('main-view').style.display = 'none';
     document.getElementById('success-view').style.display = 'flex';
+    // Open PDF print window
+    openPrintWindow(active, total, orderRef, isLate);
 
   } catch(err) {
     showToast('⚠ Error submitting order — ' + err.message);
@@ -491,6 +516,56 @@ function showToast(msg) {
   toastT = setTimeout(() => { t.style.opacity = '0'; }, 2800);
 }
 
+function openPrintWindow(lines, total, ref, isLate) {
+  var loc = state.locationName || 'Location';
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var rows = lines.map(function(l){
+    return '<tr>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #f0eef8;font-size:12px;font-weight:500;">'+l.name+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #f0eef8;font-size:12px;text-align:center;">'+l.orderQty+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #f0eef8;font-size:12px;text-align:right;">$'+l.gpoPrice.toFixed(2)+'</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #f0eef8;font-size:12px;font-weight:600;text-align:right;">$'+(l.gpoPrice*l.orderQty).toFixed(2)+'</td>'
+      + '</tr>';
+  }).join('');
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>'+ref+'</title>'
+    + '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"DM Sans",sans-serif;color:#1C2B4A;font-size:13px;padding:32px 40px;}'
+    + '.logo{font-size:22px;font-weight:700;letter-spacing:-.5px;}'
+    + '.logo span{color:#C8922A;}'
+    + '.meta{font-size:11px;color:#8A93A8;margin-top:4px;}'
+    + '.ref{font-size:14px;font-weight:600;margin-top:8px;}'
+    + 'hr{border:none;border-top:2px solid #1C2B4A;margin:14px 0;}'
+    + 'table{width:100%;border-collapse:collapse;margin-top:16px;}'
+    + 'thead tr{background:#1C2B4A;color:#fff;}'
+    + 'thead th{padding:9px 10px;font-size:11px;font-weight:600;text-align:left;letter-spacing:.04em;}'
+    + 'thead th:nth-child(2),thead th:nth-child(3),thead th:nth-child(4){text-align:right;}'
+    + 'tbody tr:hover{background:#F8F7FC;}'
+    + '.total-row td{padding:10px 10px;font-weight:700;font-size:13px;border-top:2px solid #1C2B4A;}'
+    + '.footer{margin-top:24px;padding-top:14px;border-top:1px solid #DDD9EC;font-size:11px;color:#8A93A8;}'
+    + '.late{color:#C0392B;font-weight:600;}'
+    + '@media print{body{padding:20px 28px;}}'
+    + '</style></head><body>'
+    + '<div class="logo">Med<span>Sync</span></div>'
+    + '<div class="meta">Scout Veterinary Urgent Care &nbsp;·&nbsp; '+loc+' &nbsp;·&nbsp; '+dateStr+'</div>'
+    + '<div class="ref">Purchase Order: '+ref+(isLate?' &nbsp;<span class="late">⚠ Submitted after 1pm cutoff</span>':'')+'</div>'
+    + '<hr>'
+    + '<table><thead><tr>'
+    + '<th>Product</th><th style="text-align:right;">Qty</th><th style="text-align:right;">GPO Price</th><th style="text-align:right;">Line Total</th>'
+    + '</tr></thead><tbody>'+rows
+    + '<tr class="total-row"><td colspan="3">Order Total</td><td style="text-align:right;">$'+total.toFixed(2)+'</td></tr>'
+    + '</tbody></table>'
+    + '<div class="footer">Place this order at <strong>vetcove.com</strong> or with your MWI Animal Health rep by <strong>1:00 PM</strong> for next-day delivery.<br>'
+    + 'This PDF is your MedSync purchase order record &mdash; reference number '+ref+' has been saved to the platform.</div>'
+    + '<script>window.onload=function(){window.print();}<\/script>'
+    + '</body></html>';
+  var w = window.open('','_blank','width=800,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
+
 boot();
 
 window.addEventListener('message', function(e) {
@@ -507,5 +582,10 @@ window.addEventListener('message', function(e) {
   }
 });
 </script>
+
+<div id="pdf-footer" id="pdf-footer-el">
+  Place this order at <strong>vetcove.com</strong> or with your MWI rep by <strong>1:00 PM</strong> for next-day delivery. &nbsp;·&nbsp; Generated by MedSync &nbsp;·&nbsp; medsync.vet
+</div>
+
 </body>
 </html>
