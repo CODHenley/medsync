@@ -890,13 +890,13 @@ var REGION_LOCS = {
 function onRegionFilter(region) {
   var sel = document.getElementById('loc');
   if (!sel) return;
+  // Filter location dropdown options
   var locs = REGION_LOCS[region] || [];
   Array.from(sel.options).forEach(function(opt) {
     if (opt.value === 'all') { opt.hidden = false; return; }
-    var locName = opt.text;
-    opt.hidden = region !== 'all' && !locs.includes(locName);
+    opt.hidden = region !== 'all' && !locs.includes(opt.text);
   });
-  if (region !== 'all') { sel.value = 'all'; }
+  sel.value = 'all';
   refresh();
 }
 
@@ -913,9 +913,29 @@ async function loadData() {
   document.getElementById('cogs-title').textContent = 'COGs by location — ' + label;
   document.getElementById('gl-title').textContent = 'Goods lost by category — ' + label;
 
-  // Build location filter
-  const locFilter = loc !== 'all'
-    ? `&location_id=eq.${LOC_IDS[loc]}` : '';
+  // Build location filter — respect region selection
+  const _region = (document.getElementById('region-filter')||{}).value || 'all';
+  const _regLocs = REGION_LOCS[_region] || [];
+  const _regIds = _regLocs.map(function(n){
+    var e = Object.entries(LOC_NAMES).find(function(e){ return e[1]===n; });
+    return e ? e[0] : null;
+  }).filter(Boolean);
+  let locFilter = '';
+  if (loc !== 'all') {
+    locFilter = `&location_id=eq.${LOC_IDS[loc]}`;
+  } else if (_region !== 'all' && _regIds.length > 0) {
+    locFilter = `&location_id=in.(${_regIds.join(',')})`;
+  } else if (_region !== 'all' && _regIds.length === 0) {
+    // No real Supabase data for this region
+    ['k-cogs','k-sav','k-gl','k-wg'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.textContent = '—';
+    });
+    var cb = document.getElementById('cogs-bars');
+    if(cb) cb.innerHTML = '<div style="color:var(--mist);font-size:12px;padding:12px 0;">No active locations in this region yet — add locations via New Location Setup.</div>';
+    var gb = document.getElementById('gl-bars');
+    if(gb) gb.innerHTML = '';
+    return;
+  }
 
   try {
     // ── 1. Goods lost totals ─────────────────────────────────
