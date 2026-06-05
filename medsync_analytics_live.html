@@ -236,6 +236,9 @@ html, body { margin: 0 !important; padding: 0 !important; }
 @media (min-width: 769px) {
   html { height: 100%; overflow: hidden; }
   body { height: 100%; overflow: hidden; min-height: 0 !important; }
+  .body-split { grid-template-rows: minmax(0, 1fr); }
+  .main-col { min-height: 0; }
+  .side-col { min-height: 0; }
 }
 @media (max-width: 768px) {
   .outer, .main-area, .content, .topbar { max-width: 100% !important; overflow-x: hidden !important; }
