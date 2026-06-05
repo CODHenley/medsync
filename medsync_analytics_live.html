@@ -395,7 +395,7 @@ async function loadPI() {
 async function loadExpiry() {
   try {
     var now=new Date(), d90=new Date(now.getTime()+90*864e5).toISOString().split('T')[0], today=now.toISOString().split('T')[0], d30=new Date(now.getTime()+30*864e5).toISOString().split('T')[0], d60=new Date(now.getTime()+60*864e5).toISOString().split('T')[0];
-    var r=await fetch(SUPA_URL+'/rest/v1/lots?select=expiration_date,qty_on_hand,products(name)&expiration_date=lte.'+d90+'&order=expiration_date.asc.nullslast', {headers:HEADERS});
+    var r=await fetch(SUPA_URL+'/rest/v1/lots?select=expiration_date,qty_on_hand,products(name)&expiration_date=lte.'+d90+'&order=expiration_date', {headers:HEADERS});
     var lots=await r.json();
     var by={};
     if(Array.isArray(lots)&&lots.length){
