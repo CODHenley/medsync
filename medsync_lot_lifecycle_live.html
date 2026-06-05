@@ -323,7 +323,13 @@ if (window.self !== window.top) {
       }
       var sidebar = document.querySelector('.outer > .sidebar, .outer > aside');
       if (sidebar) sidebar.style.display = 'none';
-      // Nav offset handled by parent CSS (margin-top on ms-screen containers)
+      var mainArea = document.querySelector('.main-area, .right');
+      if (mainArea) {
+        mainArea.style.height = 'auto';
+        mainArea.style.overflowY = 'auto';
+        mainArea.style.paddingTop = '0';
+        mainArea.style.boxSizing = 'border-box';
+      }
     }
   });
 }
@@ -615,7 +621,7 @@ async function loadLots() {
   setTableLoading(true);
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/lots?select=*,products(*),locations(name),users(full_name)&order=expiration_date',
+      SUPA_URL + '/rest/v1/lots?select=*,products(*),locations(name),users(full_name)&order=expiration_date.asc',
       { headers: H }
     );
     const rows = await res.json();
@@ -829,7 +835,7 @@ async function openLot(dbId) {
   tl.innerHTML = '<div style="color:var(--mist);font-size:11px;padding:8px 0;">Loading history…</div>';
   try {
     const logRes = await fetch(
-      SUPA_URL + `/rest/v1/activity_log?select=description,metadata,created_at,users(full_name)&reference_id=eq.${lot.id}&order=created_at`,
+      SUPA_URL + `/rest/v1/activity_log?select=description,metadata,created_at,users(full_name)&reference_id=eq.${lot.id}&order=created_at.asc`,
       { headers: H }
     );
     const logs = await logRes.json();
