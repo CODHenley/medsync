@@ -103,6 +103,7 @@ function toggleMobileMenu() {
     sb.style.display = 'block';
     sb.style.boxShadow = '4px 0 20px rgba(0,0,0,.18)';
     ov.classList.add('active');
+    document.getElementById('app-content').style.pointerEvents = 'none';
   }
 }
 
@@ -122,6 +123,7 @@ function closeMobileMenu() {
   sb.style.display = 'none';
   sb.style.boxShadow = 'none';
   document.getElementById('mob-overlay').classList.remove('active');
+  document.getElementById('app-content').style.pointerEvents = '';
 }
 
 function signOut() {
