@@ -96,13 +96,13 @@ def get_products_at_location(token, location_id):
     offset = 0
     page_size = 20
 
+    # minimumThreshold + maximumQuantity are on LowStockThreshold, not Product
+    # sortField/sortDirection are not used in getProductCounts operation — removed
     query = '''
     query getProductCounts(
       $locationId: ID!
       $limit: Int
       $offset: Int
-      $sortField: String
-      $sortDirection: String
     ) {
       products(
         onlyTrackInventory: true
@@ -112,8 +112,6 @@ def get_products_at_location(token, location_id):
       ) {
         id
         name
-        minimumThreshold
-        maximumQuantity
         inventoryLevels(locationId: $locationId) {
           stock
           locationId
@@ -123,11 +121,9 @@ def get_products_at_location(token, location_id):
 
     while True:
         result = vs_gql(token, query, {
-            'locationId':    location_id,
-            'limit':         page_size,
-            'offset':        offset,
-            'sortField':     'name',
-            'sortDirection': 'asc',
+            'locationId': location_id,
+            'limit':      page_size,
+            'offset':     offset,
         })
 
         if 'errors' in result:
@@ -144,11 +140,9 @@ def get_products_at_location(token, location_id):
             stock = sum(float(lv.get('stock') or 0) for lv in levels
                         if str(lv.get('locationId')) == str(location_id))
             all_products.append({
-                'id':               p['id'],
-                'name':             p['name'],
-                'stock':            stock,
-                'current_min':      p.get('minimumThreshold'),
-                'current_max':      p.get('maximumQuantity'),
+                'id':    p['id'],
+                'name':  p['name'],
+                'stock': stock,
             })
 
         if len(page) < page_size:
@@ -344,8 +338,7 @@ def run_sync(token, dry_run=False, location_filter=None):
 
             print(f'  ✓ {prod_name}')
             print(f'    on-hand={stock:.1f}  avg_daily={avg_daily:.2f}  '
-                  f'→ min={int(math.ceil(new_min))}  max={int(math.ceil(new_max))}  '
-                  f'(was min={p["current_min"]} max={p["current_max"]})')
+                  f'→ min={int(math.ceil(new_min))}  max={int(math.ceil(new_max))}')
 
             # 4. Write to Vetspire
             ok = write_threshold(token, vs_loc_id, vs_prod_id, new_min, new_max, dry_run)
