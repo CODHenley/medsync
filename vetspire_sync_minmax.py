@@ -64,35 +64,89 @@ def gql(token, query, variables=None):
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read())
 
-def list_locations(token):
-    # Locations are hardcoded — this just tests connectivity
+def test_connectivity(token):
+    # Minimal query — just confirms auth is working
     q = '''query { __typename }'''
     return gql(token, q)
 
-def list_products(token):
-    q = '''query GetProducts {
-      products(filter: { trackInventory: true }, first: 500) {
-        nodes { id name }
+def list_products(token, location_id, limit=20, offset=0):
+    """
+    Uses the real getProductCounts query structure confirmed via GraphQL inspector.
+    Vetspire paginates at 20/page — caller should loop with offset to get all.
+    Fields confirmed: id, name. minimumThreshold/stockCount to be verified
+    once upsertLowStockThreshold mutation response is captured.
+    """
+    q = '''query getProductCounts(
+      $locationId: ID!
+      $limit: Int
+      $offset: Int
+      $sortBy: SortProductOptions
+      $sortField: String
+      $sortDirection: String
+    ) {
+      products(
+        onlyTrackInventory: true
+        onlyEnabledAt: $locationId
+        limit: $limit
+        offset: $offset
+      ) {
+        id
+        name
+        minimumThreshold
+        maximumQuantity
       }
     }'''
-    return gql(token, q)
+    return gql(token, q, {
+        'locationId':    str(location_id),
+        'limit':         limit,
+        'offset':        offset,
+        'sortBy':        'ALPHABETICAL',
+        'sortField':     'name',
+        'sortDirection': 'asc',
+    })
 
-def upsert_threshold(token, location_id, product_id, threshold, reorder_qty, dry_run=False):
+def list_all_products(token, location_id):
+    """Paginates through all products at a location, 20 at a time."""
+    all_products = []
+    offset = 0
+    while True:
+        result = list_products(token, location_id, limit=20, offset=offset)
+        page = result.get('data', {}).get('products', [])
+        if not page:
+            break
+        all_products.extend(page)
+        if len(page) < 20:
+            break
+        offset += 20
+    return all_products
+
+def upsert_threshold(token, location_id, product_id, threshold, max_qty, dry_run=False):
+    """
+    Confirmed via GraphQL inspector on scoutcare.vetspire.com:
+      - threshold      = Minimum Threshold (the reorder point)
+      - reorderQuantity = Maximum Quantity (the restocking target)
+      - response does NOT include productId — removed to avoid schema error
+    Variables confirmed: locationId "23083", productId "646466", threshold 5, reorderQuantity 10
+    """
     if dry_run:
         print(f'  [DRY RUN] locationId={location_id} productId={product_id} '
-              f'threshold={threshold} reorderQty={reorder_qty}')
+              f'min={threshold} max={max_qty}')
         return True
     q = '''
     mutation upsertLowStockThreshold($input: LowStockThresholdInput!) {
       upsertLowStockThreshold(input: $input) {
-        id locationId productId threshold reorderQuantity
+        id
+        locationId
+        threshold
+        reorderQuantity
+        __typename
       }
     }'''
     result = gql(token, q, {'input': {
-        'locationId':     str(location_id),
-        'productId':      str(product_id),
-        'threshold':      int(threshold),
-        'reorderQuantity': int(reorder_qty),
+        'locationId':      str(location_id),
+        'productId':       str(product_id),
+        'threshold':       int(threshold),
+        'reorderQuantity': int(max_qty),
     }})
     return 'errors' not in result
 
