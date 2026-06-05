@@ -139,16 +139,20 @@ const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_s
 const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
 
 let state = {
-  screen: 'type',        // type | config | order | existing | done
-  locationType: null,    // denovo | existing
-  practiceType: null,    // urgent_care | general | er | specialty
-  pimsType: null,        // vetspire | (others)
+  screen: 'type',
+  locationType: null,
+  practiceType: null,
+  pimsType: null,
   locationName: '',
   address: '',
   openDate: '',
   pimsApiKey: '',
   pimsConnected: false,
   orderItems: [],
+  regionId: null,
+  regionName: '',
+  regions: [],       // loaded from Supabase
+  createNewRegion: false,
 };
 
 // ── De Novo product sets by practice type ─────────────────────────────────
@@ -347,10 +351,18 @@ function selectType(t) { state.locationType = t; render(); }
 function nextFromType() {
   if (!state.locationType) return;
   state.screen = state.locationType === 'denovo' ? 'config' : 'existing';
-  render();
+  loadRegions().then(render);
 }
 
 // ── SCREEN 2a: De Novo config ──────────────────────────────────────────────
+async function loadRegions() {
+  try {
+    var r = await fetch(SUPA_URL+'/rest/v1/regions?select=id,name&order=name', {headers:H});
+    var data = await r.json();
+    if (Array.isArray(data)) { state.regions = data; }
+  } catch(e) { state.regions = []; }
+}
+
 function renderConfigScreen() {
   return `
     ${stepBar(1)}
@@ -384,6 +396,19 @@ function renderConfigScreen() {
         <div id="addr-suggestions" style="position:relative;z-index:100;"></div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-title">Region assignment</div>
+      <div class="card-sub">Group this location into a regional portfolio for analytics and leadership reporting.</div>
+      <div class="field">
+        <label>Region</label>
+        <select id="region-sel" onchange="onRegionChange(this.value)">
+          <option value="">Select or create region…</option>
+          ${state.regions.map(function(r){ return '<option value="'+r.id+'" '+(state.regionId===r.id?'selected':'')+'>'+r.name+'</option>'; }).join('')}
+          <option value="__new__" ${state.createNewRegion?'selected':''}>+ Create new region</option>
+        </select>
+      </div>
+      ${state.createNewRegion ? '<div class="field"><label>New region name</label><input type="text" placeholder="e.g. Chicagoland North" value="${state.regionName}" oninput="state.regionName=this.value" style="font-size:14px;"></div>' : ''}
+    </div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="state.screen='type';render()">← Back</button>
       <button class="btn-primary" onclick="buildOrder()">Build opening order →</button>
@@ -391,6 +416,20 @@ function renderConfigScreen() {
 }
 
 function selectPractice(id) { state.practiceType = id; render(); }
+
+function onRegionChange(val) {
+  if (val === '__new__') {
+    state.createNewRegion = true;
+    state.regionId = null;
+    state.regionName = '';
+  } else {
+    state.createNewRegion = false;
+    state.regionId = val || null;
+    var reg = state.regions.find(function(r){ return r.id === val; });
+    state.regionName = reg ? reg.name : '';
+  }
+  render();
+}
 
 function buildOrder() {
   if (!state.practiceType) { showToast('Please select a practice type'); return; }
@@ -534,19 +573,30 @@ function exportOrder() {
 }
 
 async function submitOrder() {
-  // Save location + order to Supabase
   try {
-    const locRes = await fetch(SUPA_URL+'/rest/v1/locations', {
-      method: 'POST',
-      headers: {...H, 'Prefer': 'return=representation'},
-      body: JSON.stringify({name: state.locationName, address: state.address})
+    // Create region if new
+    var regionId = state.regionId;
+    if (state.createNewRegion && state.regionName.trim()) {
+      var rr = await fetch(SUPA_URL+'/rest/v1/regions', {
+        method:'POST', headers:{...H,'Prefer':'return=representation'},
+        body: JSON.stringify({name: state.regionName.trim()})
+      });
+      var rd = await rr.json();
+      regionId = Array.isArray(rd) ? rd[0]?.id : rd?.id;
+    }
+    // Save location
+    var payload = {name: state.locationName, address: state.address};
+    if (regionId) payload.region_id = regionId;
+    var locRes = await fetch(SUPA_URL+'/rest/v1/locations', {
+      method:'POST', headers:{...H,'Prefer':'return=representation'},
+      body: JSON.stringify(payload)
     });
-    const locData = await locRes.json();
+    var locData = await locRes.json();
     state.newLocationId = Array.isArray(locData) ? locData[0]?.id : locData?.id;
+    state.newRegionName = state.regionName || (state.regions.find(function(r){return r.id===regionId;})||{}).name || '';
     state.screen = 'done';
     render();
   } catch(e) {
-    // Even if save fails, show success for demo
     state.screen = 'done';
     render();
   }

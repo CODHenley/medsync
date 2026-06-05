@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','users','newlocation'];
+var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','users','newlocation','regions'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -674,7 +674,7 @@ function deepDiveLoc(locCode) {
     margin-top: 48px !important;
   }
   /* Inline screens: pad content down */
-  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods, #ms-users, #ms-newlocation {
+  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods, #ms-users, #ms-newlocation, #ms-regions {
     padding-top: 48px !important;
     box-sizing: border-box !important;
   }
@@ -748,6 +748,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
   <div class="asb-item" id="asb-users" onclick="closeMobileMenu();showScreen('users')">👥 Manage Users</div>
   <div class="asb-item" id="asb-newlocation" onclick="closeMobileMenu();showScreen('newlocation')">🏗️ New Location Setup</div>
+  <div class="asb-item" id="asb-regions" onclick="closeMobileMenu();showScreen('regions')">🗺️ Manage Regions</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Settings</div>
   <div class="asb-item" onclick="closeMobileMenu();showScreen('portfolio')">⚙️ Admin Settings</div>
@@ -1005,6 +1006,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_newlocation_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="New Location Setup">
+  </iframe>
+</div>
+<div id="ms-regions" class="ms-screen">
+  <iframe src="medsync_regions_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Manage Regions">
   </iframe>
 </div>
 <div id="ms-toast"></div>
@@ -2615,7 +2622,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showScreen('receiver');
   } else if (user.role === 'hospital_manager') {
     // Hospital manager: analytics/reporting only, read-only
-    ['asb-order','asb-receiving','asb-goods','asb-receiver','asb-users','asb-newlocation'].forEach(function(id){
+    ['asb-order','asb-receiving','asb-goods','asb-receiver','asb-users','asb-newlocation','asb-regions'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('portfolio');
