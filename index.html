@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','users','newlocation','regions'];
+var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','users','newlocation','regions','settings'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -53,6 +53,10 @@ function showScreen(name) {
   }
 }
 function showOpsScreen(n) { showScreen(n); }
+// Handle navigate messages from iframe screens (e.g. Settings quick links)
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'navigate') { showScreen(e.data.screen); }
+});
 
 function filterByRegion(region) {
   var rows = document.querySelectorAll('#ms-portfolio .tbl-row');
@@ -707,7 +711,7 @@ function deepDiveLoc(locCode) {
     margin-top: 48px !important;
   }
   /* Inline screens: pad content down */
-  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods, #ms-users, #ms-newlocation, #ms-regions {
+  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods, #ms-users, #ms-newlocation, #ms-regions, #ms-settings {
     padding-top: 48px !important;
     box-sizing: border-box !important;
   }
@@ -784,7 +788,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-regions" onclick="closeMobileMenu();showScreen('regions')">🗺️ Manage Regions</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Settings</div>
-  <div class="asb-item" onclick="closeMobileMenu();showScreen('portfolio')">⚙️ Admin Settings</div>
+  <div class="asb-item" id="asb-settings" onclick="closeMobileMenu();showScreen('settings')">⚙️ Admin Settings</div>
 </div>
 <div id="app-content">
 <div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;display:block;"><div id="screen1">
@@ -1086,6 +1090,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_regions_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Manage Regions">
+  </iframe>
+</div>
+<div id="ms-settings" class="ms-screen">
+  <iframe src="medsync_settings_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Admin Settings">
   </iframe>
 </div>
 <div id="ms-toast"></div>

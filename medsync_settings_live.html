@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync · Admin Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#DDD9EC;--bg:#F5F3FA;--amber:#C8922A;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
+.topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;flex-shrink:0;}
+.tb-title{font-size:15px;font-weight:600;color:#fff;}
+.shell{max-width:860px;margin:0 auto;padding:24px 20px 48px;display:flex;flex-direction:column;gap:20px;}
+.section-title{font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+.card{background:#fff;border:0.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.card-head{padding:16px 20px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:14px;font-weight:600;}
+.card-sub{font-size:11px;color:var(--mist);margin-top:2px;}
+.card-body{padding:20px;}
+
+/* Integration tiles */
+.int-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.int-tile{border:1px solid var(--border);border-radius:12px;padding:16px;background:#fff;display:flex;flex-direction:column;gap:10px;}
+.int-head{display:flex;align-items:center;gap:10px;}
+.int-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}
+.int-name{font-size:13px;font-weight:600;}
+.int-desc{font-size:11px;color:var(--mist);}
+.status-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;}
+.pill-ok{background:#E8F5EE;color:var(--green);}
+.pill-pending{background:#FEF3E2;color:var(--amber);}
+.pill-soon{background:#F0EEF8;color:var(--mist);}
+.int-api{position:relative;}
+.int-api input{width:100%;padding:8px 70px 8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;background:#F8F7FC;color:var(--navy);}
+.int-api button{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:4px 10px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+
+/* Threshold rows */
+.thresh-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #F5F3FA;}
+.thresh-row:last-child{border-bottom:none;}
+.thresh-label{font-size:13px;font-weight:500;}
+.thresh-sub{font-size:11px;color:var(--mist);margin-top:2px;}
+.thresh-ctrl{display:flex;align-items:center;gap:8px;}
+.thresh-input{width:70px;padding:6px 8px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;text-align:center;font-family:'DM Sans',sans-serif;}
+.thresh-unit{font-size:12px;color:var(--mist);}
+
+/* Quick links */
+.ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.ql-tile{border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;background:#fff;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;}
+.ql-tile:hover{border-color:#9B8EC4;background:#F8F7FC;}
+.ql-icon{font-size:20px;}
+.ql-name{font-size:12px;font-weight:600;}
+.ql-desc{font-size:10px;color:var(--mist);margin-top:1px;}
+
+/* Save bar */
+.save-bar{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.save-note{font-size:12px;color:var(--mist);}
+.btn-primary{padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-primary:hover{opacity:.9;}
+
+/* Org profile */
+.profile-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
+.field input,.field select{padding:9px 11px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
+.field input:focus,.field select:focus{outline:none;border-color:var(--navy);}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s;}
+.toast.show{opacity:1;}
+.nav{display:none;}
+@media(max-width:768px){
+  .shell{padding:16px 12px 40px;}
+  .profile-row{grid-template-columns:1fr;}
+  .int-grid{grid-template-columns:1fr;}
+  .ql-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="tb-title">Admin Settings</div>
+</div>
+
+<div class="shell">
+
+  <!-- ── Organization Profile ─────────────────────────────────── -->
+  <div>
+    <div class="section-title">Organization</div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Organization profile</div><div class="card-sub">Your practice identity and subscription details</div></div>
+      </div>
+      <div class="card-body">
+        <div class="profile-row">
+          <div class="field"><label>Organization name</label><input id="org-name" type="text" value="Scout Veterinary Urgent Care"></div>
+          <div class="field"><label>Subscription tier</label><select><option>Enterprise</option><option>Professional</option><option>Starter</option></select></div>
+        </div>
+        <div class="profile-row">
+          <div class="field"><label>Primary contact</label><input type="text" value="Megan Henley"></div>
+          <div class="field"><label>Contact email</label><input type="email" value="mhenley@scoutcare.com"></div>
+        </div>
+        <div class="profile-row">
+          <div class="field"><label>Platform URL</label><input type="text" value="medsync.vet" readonly style="background:#F8F7FC;color:var(--mist);"></div>
+          <div class="field"><label>Timezone</label><select><option>America/Chicago (CT)</option><option>America/New_York (ET)</option><option>America/Denver (MT)</option><option>America/Los_Angeles (PT)</option></select></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Integrations ──────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">Integrations</div>
+    <div class="int-grid">
+
+      <!-- Vetcove -->
+      <div class="int-tile">
+        <div class="int-head">
+          <div class="int-logo" style="background:#1C6FAD;">VC</div>
+          <div>
+            <div class="int-name">Vetcove</div>
+            <span class="status-pill pill-pending">⏳ Pending API key</span>
+          </div>
+        </div>
+        <div class="int-desc">Real-time pricing, GPO routing, and order submission. Contact Vetcove support to request your API token.</div>
+        <div class="int-api">
+          <input id="vc-key" type="password" placeholder="Paste Vetcove API key…">
+          <button onclick="saveKey('vc')">Save</button>
+        </div>
+      </div>
+
+      <!-- Vetspire -->
+      <div class="int-tile">
+        <div class="int-head">
+          <div class="int-logo" style="background:#2E8B57;">VS</div>
+          <div>
+            <div class="int-name">Vetspire</div>
+            <span class="status-pill pill-pending">⏳ API access requested</span>
+          </div>
+        </div>
+        <div class="int-desc">Count-on-hand sync, min/max write-back, and seasonal reorder automation via GraphQL API.</div>
+        <div class="int-api">
+          <input id="vs-key" type="password" placeholder="Paste Vetspire API key…">
+          <button onclick="saveKey('vs')">Save</button>
+        </div>
+      </div>
+
+      <!-- EzyVet -->
+      <div class="int-tile" style="opacity:.6;">
+        <div class="int-head">
+          <div class="int-logo" style="background:#5B3FA8;">EZ</div>
+          <div>
+            <div class="int-name">EzyVet</div>
+            <span class="status-pill pill-soon">Coming soon</span>
+          </div>
+        </div>
+        <div class="int-desc">Inventory import and min/max sync for EzyVet-managed practices.</div>
+      </div>
+
+      <!-- Cornerstone -->
+      <div class="int-tile" style="opacity:.6;">
+        <div class="int-head">
+          <div class="int-logo" style="background:#C8922A;">CS</div>
+          <div>
+            <div class="int-name">Cornerstone</div>
+            <span class="status-pill pill-soon">Coming soon</span>
+          </div>
+        </div>
+        <div class="int-desc">Inventory import and min/max sync for IDEXX Cornerstone practices.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Alert Thresholds ──────────────────────────────────────── -->
+  <div>
+    <div class="section-title">Alert thresholds</div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Performance alerts</div><div class="card-sub">Thresholds that trigger flags and notifications across the platform</div></div>
+      </div>
+      <div class="card-body">
+        <div class="thresh-row">
+          <div><div class="thresh-label">COGs target range</div><div class="thresh-sub">Alert when a location falls outside this range</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="cogs-min" value="8" min="0" max="100">
+            <span class="thresh-unit">% min</span>
+            <input class="thresh-input" type="number" id="cogs-max" value="10" min="0" max="100">
+            <span class="thresh-unit">% max</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Goods lost threshold</div><div class="thresh-sub">Alert when monthly goods lost exceeds this amount</div></div>
+          <div class="thresh-ctrl">
+            <span class="thresh-unit">$</span>
+            <input class="thresh-input" type="number" id="gl-thresh" value="3000" style="width:90px;">
+            <span class="thresh-unit">/ month</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Expiry alert window</div><div class="thresh-sub">Flag lots expiring within this many days</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="exp-days" value="30">
+            <span class="thresh-unit">days</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">White goods variance threshold</div><div class="thresh-sub">Flag when a location orders X% above expected rate</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="wg-thresh" value="20">
+            <span class="thresh-unit">% above expected</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Order Settings ───────────────────────────────────────── -->
+  <div>
+    <div class="section-title">Order settings</div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Vetcove order configuration</div><div class="card-sub">Defaults applied to all weekly orders</div></div>
+      </div>
+      <div class="card-body">
+        <div class="thresh-row">
+          <div><div class="thresh-label">Vetcove cutoff time</div><div class="thresh-sub">Orders must be submitted before this time (Central Time)</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="time" id="cutoff-time" value="13:00" style="width:110px;">
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Preferred distributor</div><div class="thresh-sub">Primary vendor for non-GPO items</div></div>
+          <div class="thresh-ctrl">
+            <select style="padding:6px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;">
+              <option>MWI Animal Health</option>
+              <option>Covetrus</option>
+              <option>Patterson Veterinary</option>
+              <option>Midwest Veterinary Supply</option>
+            </select>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">GPO membership</div><div class="thresh-sub">Applied automatically to eligible items at checkout</div></div>
+          <div class="thresh-ctrl">
+            <select style="padding:6px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;">
+              <option>VetCor GPO</option>
+              <option>Vet-Advantage</option>
+              <option>VPP GPO</option>
+              <option>None</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Quick Links ──────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">Admin shortcuts</div>
+    <div class="ql-grid">
+      <div class="ql-tile" onclick="nav('users')">
+        <div class="ql-icon">👥</div>
+        <div><div class="ql-name">Manage Users</div><div class="ql-desc">Roles, permissions, accounts</div></div>
+      </div>
+      <div class="ql-tile" onclick="nav('regions')">
+        <div class="ql-icon">🗺️</div>
+        <div><div class="ql-name">Manage Regions</div><div class="ql-desc">Group and reassign locations</div></div>
+      </div>
+      <div class="ql-tile" onclick="nav('newlocation')">
+        <div class="ql-icon">🏗️</div>
+        <div><div class="ql-name">New Location Setup</div><div class="ql-desc">De novo or existing practice</div></div>
+      </div>
+      <div class="ql-tile" onclick="nav('actlog')">
+        <div class="ql-icon">📋</div>
+        <div><div class="ql-name">Activity Log</div><div class="ql-desc">Full audit trail</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Save bar ─────────────────────────────────────────────── -->
+  <div class="save-bar">
+    <div class="save-note">Changes to thresholds apply across all locations immediately.</div>
+    <button class="btn-primary" onclick="saveSettings()">Save settings</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function nav(screen) {
+  if (window.self !== window.top) {
+    window.parent.postMessage({type:'navigate',screen:screen},'*');
+  }
+}
+
+function saveKey(type) {
+  var key = document.getElementById(type+'-key').value.trim();
+  if (!key) { showToast('Please paste your API key first'); return; }
+  localStorage.setItem('medsync_'+type+'_key', key);
+  showToast(type === 'vc' ? 'Vetcove key saved' : 'Vetspire key saved');
+}
+
+function saveSettings() {
+  var settings = {
+    cogs_min:   document.getElementById('cogs-min').value,
+    cogs_max:   document.getElementById('cogs-max').value,
+    gl_thresh:  document.getElementById('gl-thresh').value,
+    exp_days:   document.getElementById('exp-days').value,
+    wg_thresh:  document.getElementById('wg-thresh').value,
+    cutoff:     document.getElementById('cutoff-time').value,
+  };
+  localStorage.setItem('medsync_settings', JSON.stringify(settings));
+  showToast('✓ Settings saved');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2800);
+}
+
+// Load saved settings on boot
+(function() {
+  try {
+    var s = JSON.parse(localStorage.getItem('medsync_settings') || '{}');
+    if (s.cogs_min) document.getElementById('cogs-min').value = s.cogs_min;
+    if (s.cogs_max) document.getElementById('cogs-max').value = s.cogs_max;
+    if (s.gl_thresh) document.getElementById('gl-thresh').value = s.gl_thresh;
+    if (s.exp_days) document.getElementById('exp-days').value = s.exp_days;
+    if (s.wg_thresh) document.getElementById('wg-thresh').value = s.wg_thresh;
+    if (s.cutoff) document.getElementById('cutoff-time').value = s.cutoff;
+  } catch(e) {}
+  // Check for saved keys
+  if (localStorage.getItem('medsync_vc_key')) {
+    document.getElementById('vc-key').placeholder = '••••••• (saved)';
+  }
+  if (localStorage.getItem('medsync_vs_key')) {
+    document.getElementById('vs-key').placeholder = '••••••• (saved)';
+  }
+})();
+
+// Handle postMessage nav from parent
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'navigate' && window.self === window.top) {
+    // If loaded directly, ignore
+  }
+});
+</script>
+</body>
+</html>
