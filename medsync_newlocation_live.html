@@ -558,13 +558,18 @@ function addressAutocomplete(val) {
       });
       var results = await res.json();
       if (!results.length) { box.innerHTML = ''; return; }
-      box.innerHTML = '<div style="position:absolute;left:0;right:0;background:#fff;border:0.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);overflow:hidden;margin-top:2px;">' +
-        results.map(function(r) {
-          return '<div style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #F5F3FA;" ' +
-            'onmouseover="this.style.background='#F0EEF8'" onmouseout="this.style.background=''" ' +
-            'onclick="selectAddress(''+r.display_name.replace(/'/g,'')+'')">' +
-            r.display_name + '</div>';
-        }).join('') + '</div>';
+      var html = '<div id="addr-drop" style="position:absolute;left:0;right:0;top:100%;background:#fff;border:0.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);overflow:hidden;margin-top:2px;z-index:999;">';
+      results.forEach(function(r) {
+        var safe = r.display_name.replace(/"/g, '&quot;');
+        html += '<div class="addr-opt" data-addr="' + safe + '" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #F5F3FA;">' + r.display_name + '</div>';
+      });
+      html += '</div>';
+      box.innerHTML = html;
+      box.querySelectorAll('.addr-opt').forEach(function(el) {
+        el.addEventListener('mouseenter', function(){ this.style.background='#F0EEF8'; });
+        el.addEventListener('mouseleave', function(){ this.style.background=''; });
+        el.addEventListener('click', function(){ selectAddress(this.dataset.addr); });
+      });
     } catch(e) {}
   }, 350);
 }
