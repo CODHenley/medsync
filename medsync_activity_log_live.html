@@ -366,7 +366,13 @@ if (window.self !== window.top) {
           <span class="search-icon">⌕</span>
           <input type="text" id="ev-search" placeholder="Search user, event, location…" oninput="renderTable()">
         </div>
-        <select id="loc-filter" onchange="renderTable()">
+        <select id="region-filter-al" onchange="onRegionFilterAl(this.value)" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);">
+          <option value="all">All regions</option>
+          <option value="Chicagoland">Chicagoland</option>
+          <option value="Chicagoland South">Chicagoland South</option>
+          <option value="Chicagoland West">Chicagoland West</option>
+        </select>
+                <select id="loc-filter" onchange="renderTable()">
           <option value="all">All locations</option>
           <option value="Lincoln Park">Lincoln Park</option>
           <option value="Old Orchard">Old Orchard</option>
@@ -631,6 +637,25 @@ function getFiltered() {
     if (date==='month' && ts < '2026-05-01') return false;
     return true;
   });
+}
+
+
+var REGION_LOCS = {
+  'Chicagoland':       ['Lincoln Park','Old Orchard','West Loop','Wheaton'],
+  'Chicagoland South': ['Naperville','Schaumburg'],
+  'Chicagoland West':  ['Aurora'],
+};
+
+function onRegionFilterAl(region) {
+  var sel = document.getElementById('loc-filter');
+  if (!sel) return;
+  var locs = REGION_LOCS[region] || [];
+  Array.from(sel.options).forEach(function(opt) {
+    if (opt.value === 'all') { opt.hidden = false; return; }
+    opt.hidden = region !== 'all' && !locs.includes(opt.value);
+  });
+  if (region !== 'all') sel.value = 'all';
+  renderTable();
 }
 
 function renderTable() {
