@@ -502,11 +502,12 @@ async function hrLogGoodsLine(idx, category) {
     method: 'POST',
     headers: { ...H, 'Prefer': 'return=minimal' },
     body: JSON.stringify({
-      location_id: state.locationId,
-      category:    category,
-      qty_lost:    1,
-      value_lost:  0,
-      notes:       line.name + ' · ' + (note ? note + ' · ' : '') + 'Submitted by ' + state.name + ' via Hospital Receiver',
+      location_id:  state.locationId,
+      category:     category,
+      qty_lost:     1,
+      value_lost:   0,
+      product_name: line.name,
+      notes:        line.name + ' · ' + (note ? note + ' · ' : '') + 'Submitted by ' + state.name + ' via Hospital Receiver',
     })
   }).catch(() => {});
   fetch(SUPA_URL + '/rest/v1/activity_log', {
@@ -533,6 +534,7 @@ async function hrLogGoods(category) {
         category:     category,
         qty_lost:     1,
         value_lost:   0,
+        product_name: state.goodsProductName,
         notes:        state.goodsProductName + ' · Submitted by ' + state.name + ' via Hospital Receiver',
       })
     });

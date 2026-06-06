@@ -334,11 +334,12 @@ async function logReceivingLoss(idx, category) {
   fetch(SUPA_URL + '/rest/v1/goods_lost', {
     method: 'POST', headers: _H,
     body: JSON.stringify({
-      location_id: state.locationId,
-      category:    category,
-      qty_lost:    1,
-      value_lost:  0,
-      notes:       line.name + (note ? ' · ' + note : '') + ' · Logged via PO Receiving',
+      location_id:  state.locationId,
+      category:     category,
+      qty_lost:     1,
+      value_lost:   0,
+      product_name: line.name,
+      notes:        line.name + (note ? ' · ' + note : '') + ' · Logged via PO Receiving',
     })
   }).catch(() => {});
 }
