@@ -754,10 +754,17 @@ function deepDiveLoc(locCode) {
 <!-- Welcome splash -->
 <div id="welcome-splash" style="position:fixed;inset:0;z-index:9999;background:#1C2B4A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;opacity:1;transition:opacity .7s ease;pointer-events:none;">
 
-  <!-- Pill icon — crop to show only the pill portion of the PNG -->
-  <div style="width:440px;max-width:85vw;overflow:hidden;height:320px;display:flex;align-items:center;justify-content:flex-start;">
-    <img src="medsync_logo.png" alt="MedSync" style="width:820px;max-width:none;margin-left:0px;">
-  </div>
+  <!-- Pill — exact same paths as app header, scaled up -->
+  <svg width="420" height="287" viewBox="6 1 38 26" style="display:block;">
+    <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#F5EDD8"/>
+    <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#E8B84B"/>
+    <line x1="28" y1="3" x2="28" y2="25" stroke="#1C2B4A" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+    <line x1="19" y1="7" x2="19" y2="21" stroke="rgba(28,43,74,0.85)" stroke-width="1.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <path d="M 19 9 C 15 11 15 14 19 16 C 23 18 23 20 19 21" fill="none" stroke="rgba(28,43,74,0.85)" stroke-width="1.2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <path d="M 19 9 C 23 11 23 14 19 16 C 15 18 15 20 19 21" fill="none" stroke="rgba(28,43,74,0.85)" stroke-width="1.2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <path d="M 19 7 C 16 5 12 4 10 6 C 12 6 16 7 19 7 Z" fill="rgba(28,43,74,0.85)"/>
+    <path d="M 19 7 C 22 5 26 4 28 6 C 26 6 22 7 19 7 Z" fill="rgba(28,43,74,0.85)"/>
+  </svg>
 
   <!-- Wordmark -->
   <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
