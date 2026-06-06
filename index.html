@@ -750,6 +750,29 @@ function deepDiveLoc(locCode) {
 </style>
 </head>
 <body>
+
+<!-- Welcome splash -->
+<div id="welcome-splash" style="position:fixed;inset:0;z-index:9999;background:#1C2B4A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;opacity:1;transition:opacity .7s ease;pointer-events:none;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="font-family:'DM Sans',sans-serif;font-size:32px;font-weight:600;color:#fff;letter-spacing:-.5px;">Med<span style="color:#C8922A;">Sync</span></div>
+  </div>
+  <div style="width:280px;height:0.5px;background:rgba(200,146,42,.4);"></div>
+  <div id="splash-name" style="font-family:'DM Sans',sans-serif;font-size:15px;color:rgba(255,255,255,.7);text-align:center;"></div>
+  <div style="font-family:Georgia,serif;font-style:italic;font-size:16px;color:rgba(255,255,255,.45);text-align:center;max-width:320px;line-height:1.6;">The platform veterinary medicine has been waiting for.</div>
+</div>
+<script>
+(function(){
+  var mu={}; try{mu=JSON.parse(localStorage.getItem('medsync_user')||'{}');}catch(e){}
+  var fn=mu.full_name?mu.full_name.split(' ')[0]:'';
+  var el=document.getElementById('splash-name');
+  if(el&&fn) el.textContent='Welcome back, '+fn+'.';
+  setTimeout(function(){
+    var s=document.getElementById('welcome-splash');
+    if(s){s.style.opacity='0';setTimeout(function(){s.style.display='none';},700);}
+  },1800);
+})();
+</script>
+
 <script>
 // Auth guard — redirect to login if no valid session
 (function authGuard() {
