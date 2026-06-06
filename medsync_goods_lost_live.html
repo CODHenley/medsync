@@ -607,6 +607,7 @@ async function submitLoss() {
       body: JSON.stringify({
         location_id:  state.locationId,
         product_id:   state.productId,
+        product_name: state.productName || null,
         category:     state.category,
         sub_category: state.category === 'Diagnostic duplicate' ? state.subCategory : null,
         qty_lost:     state.qty,

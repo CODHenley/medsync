@@ -154,12 +154,12 @@ def supa_patch(path, body):
 def get_unsynced_losses():
     """
     Fetch goods_lost rows not yet pushed to Vetspire.
-    Joins products to get product name for the Vetspire lookup.
+    Uses product_name (stored at submission) and locations join for location name.
     """
     rows = supa_get(
         '/rest/v1/goods_lost'
         '?select=id,location_id,qty_lost,category,notes,created_at,'
-        'locations(name),products(name)'
+        'product_name,locations(name)'
         '&vetspire_synced=eq.false'
         '&order=created_at.asc'
         '&limit=100'
@@ -222,11 +222,9 @@ def run_sync(token, dry_run=False):
         qty_lost     = float(loss.get('qty_lost') or 0)
         category     = loss.get('category', 'Unknown')
         notes        = loss.get('notes') or ''
-        location_obj = loss.get('locations') or {}
-        product_obj  = loss.get('products') or {}
-
+        location_obj  = loss.get('locations') or {}
         location_name = location_obj.get('name') if isinstance(location_obj, dict) else None
-        product_name  = product_obj.get('name')  if isinstance(product_obj, dict) else None
+        product_name  = loss.get('product_name')
 
         print(f'\n  Processing: {product_name} @ {location_name} · qty={qty_lost} · {category}')
 
