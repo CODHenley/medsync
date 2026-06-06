@@ -291,8 +291,9 @@ let currentTab = 'A';
 let timerInterval = null;
 let timerSeconds = 0;
 let countStarted = false;
-let products = {};      // { 'A': [...], 'B': [...], 'C': [...] }
-let dueCategories = []; // ['A','B'] etc
+let products = {};        // { 'A': [...], 'B': [...], 'C': [...] }
+let dueCategories = [];   // ['A','B'] etc
+let submittedCategories = new Set(); // categories already submitted this session
 let currentLocation = null;
 let currentLocationId = null;
 
@@ -470,6 +471,7 @@ function switchTab(cat) {
     document.getElementById('tab-'+c.toLowerCase()).classList.toggle('active', c===cat);
   });
   renderContent();
+  updateSubmitButton();
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -646,31 +648,46 @@ function updateProgressBar() {
 }
 
 function updateSubmitButton() {
-  const { counted, total } = getCountedProducts();
   const btn = document.getElementById('submit-btn');
-  btn.disabled = (counted < total || total === 0);
+  const cat = currentTab;
+  const isDue = dueCategories.includes(cat);
+  const prods = products[cat] || [];
+  const allEntered = prods.length > 0 && prods.every(p => p.actual !== null);
+  const alreadyDone = submittedCategories.has(cat);
+
+  if (!isDue) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-clipboard-check"></i> Not Due';
+    return;
+  }
+  if (alreadyDone) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-check"></i> Cat ' + cat + ' Submitted';
+    return;
+  }
+  btn.disabled = !allEntered;
+  btn.innerHTML = '<i class="ti ti-clipboard-check"></i> Submit Cat ' + cat;
 }
 
 // ── Submit modal ─────────────────────────────────────────────────────────────
 function openSubmitModal() {
-  const { counted, discs } = getCountedProducts();
+  const cat = currentTab;
+  const prods = products[cat] || [];
+  const counted = prods.filter(p => p.actual !== null).length;
+  const discs = prods.filter(p => p.actual !== null && Math.abs(getVariancePct(p)) > 10).length;
   stopTimer();
   const timeStr = formatTime(timerSeconds);
   document.getElementById('m-products').textContent = counted;
   document.getElementById('m-discrepancies').textContent = discs;
   document.getElementById('m-time').textContent = timeStr;
-  const cats = dueCategories.join(' + Cat ');
-  document.getElementById('modal-sub').textContent = `Cat ${cats} count at ${currentLocation} — ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})}.`;
+  document.getElementById('modal-sub').textContent = `Cat ${cat} count at ${currentLocation} — ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})}.`;
 
-  // List discrepancies
   const discItems = [];
-  dueCategories.forEach(cat => {
-    (products[cat]||[]).forEach(p => {
-      if (p.actual !== null && Math.abs(getVariancePct(p)) > 10) {
-        const diff = p.actual - p.expected;
-        discItems.push(`${p.name}: expected ${p.expected}, counted ${p.actual} (${diff>0?'+':''}${diff})`);
-      }
-    });
+  prods.forEach(p => {
+    if (p.actual !== null && Math.abs(getVariancePct(p)) > 10) {
+      const diff = p.actual - p.expected;
+      discItems.push(`${p.name}: expected ${p.expected}, counted ${p.actual} (${diff>0?'+':''}${diff})`);
+    }
   });
 
   if (discItems.length) {
@@ -690,30 +707,30 @@ function closeModal() {
 
 // ── Submit to Supabase ────────────────────────────────────────────────────────
 async function submitCount() {
-  const { counted, discs } = getCountedProducts();
+  const cat = currentTab;
+  const prods = products[cat] || [];
+  const counted = prods.filter(p => p.actual !== null).length;
+  const discs = prods.filter(p => p.actual !== null && Math.abs(getVariancePct(p)) > 10).length;
   const mins = Math.round(timerSeconds / 60) || 1;
-  const cats = dueCategories.join(' + Cat ');
   const flag = discs > 0 ? 'warn' : 'ok';
-  const desc = `Cycle count completed — Cat ${cats} · ${counted} products verified · ${discs} discrepanc${discs===1?'y':'ies'} · ${mins} min`;
+  const desc = `Cycle count completed — Cat ${cat} · ${counted} products verified · ${discs} discrepanc${discs===1?'y':'ies'} · ${mins} min`;
 
-  // Build discrepancy metadata
+  // Build discrepancy metadata — scoped to this category
   const discData = [];
-  dueCategories.forEach(cat => {
-    (products[cat]||[]).forEach(p => {
-      if (p.actual !== null && Math.abs(getVariancePct(p)) > 10) {
-        discData.push({ product: p.name, expected: p.expected, actual: p.actual, pct: Math.round(getVariancePct(p)) });
-      }
-    });
+  prods.forEach(p => {
+    if (p.actual !== null && Math.abs(getVariancePct(p)) > 10) {
+      discData.push({ product: p.name, expected: p.expected, actual: p.actual, pct: Math.round(getVariancePct(p)) });
+    }
   });
 
   const payload = {
     location_id: currentLocationId,
     event_type: 'count',
     description: desc,
-    reference_id: `CC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${currentLocation.replace(/\s/g,'').toUpperCase().slice(0,3)}`,
+    reference_id: `CC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${cat}-${currentLocation.replace(/\s/g,'').toUpperCase().slice(0,3)}`,
     flag,
     metadata: JSON.stringify({
-      categories: dueCategories,
+      category: cat,
       products_counted: counted,
       discrepancies: discs,
       elapsed_seconds: timerSeconds,
@@ -728,23 +745,38 @@ async function submitCount() {
       body: JSON.stringify(payload)
     });
   } catch(e) {
-    console.warn('Activity log write failed (may need migration for count type):', e);
+    console.warn('Activity log write failed:', e);
   }
+
+  // Mark this category done
+  submittedCategories.add(cat);
 
   // Show success
   document.getElementById('modal-overlay').classList.remove('open');
   document.getElementById('s-products').textContent = counted;
   document.getElementById('s-disc').textContent = discs;
   document.getElementById('s-time').textContent = mins;
-  document.getElementById('s-sub').textContent = `${currentLocation} · Cat ${cats} · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+  document.getElementById('s-sub').textContent = `${currentLocation} · Cat ${cat} · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
   document.getElementById('success-overlay').classList.add('open');
 }
 
 function closeSuccess() {
   document.getElementById('success-overlay').classList.remove('open');
-  // Notify parent to update portfolio
-  try { window.parent.postMessage({ type: 'cycleCountDone', location: currentLocation }, '*'); } catch(e) {}
-  resetCount();
+  // Find next due category that hasn't been submitted yet
+  const nextCat = dueCategories.find(c => !submittedCategories.has(c));
+  if (nextCat) {
+    // Resume timer for next category
+    timerSeconds = 0;
+    countStarted = false;
+    document.getElementById('timer-val').textContent = '00:00';
+    document.getElementById('timer-wrap').classList.remove('running');
+    switchTab(nextCat);
+  } else {
+    // All due categories done
+    try { window.parent.postMessage({ type: 'cycleCountDone', location: currentLocation }, '*'); } catch(e) {}
+    resetCount();
+  }
+  updateSubmitButton();
 }
 
 // ── Reset ────────────────────────────────────────────────────────────────────
