@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','users','newlocation','regions','settings'];
+var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cycle','users','newlocation','regions','settings'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -847,6 +847,7 @@ function deepDiveLoc(locCode) {
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
   <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
   <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
+  <div class="asb-item" id="asb-cycle" onclick="closeMobileMenu();showScreen('cycle')">🔄 Cycle Count</div>
   <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
   <div class="asb-item" id="asb-users" onclick="closeMobileMenu();showScreen('users')">👥 Manage Users</div>
   <div class="asb-item" id="asb-newlocation" onclick="closeMobileMenu();showScreen('newlocation')">🏗️ New Location Setup</div>
@@ -1126,6 +1127,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_activity_log_live.html" 
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
     title="ms-actlog">
+  </iframe>
+</div>
+<div id="ms-cycle" class="ms-screen">
+  <iframe src="medsync_cycle_count_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Cycle Count">
   </iframe>
 </div>
 <div id="ms-order" class="ms-screen">
@@ -2685,7 +2692,7 @@ const sidebarDefs = {
         { icon: 'ti-shopping-cart',    label: 'Weekly order',            href: '#screen5' },
         { icon: 'ti-clipboard-list',    label: 'Formulary setup',         href: '#screen10b' },
         { icon: 'ti-package',          label: 'Receiving',               href: '#screen6' },
-        { icon: 'ti-rotate-clockwise', label: 'Cycle count',             href: '#screen5' },
+        { icon: 'ti-rotate-clockwise', label: 'Cycle count',             href: '#cycle' },
         { icon: 'ti-clipboard-x',      label: 'Goods lost',              href: '#screen8' },
       ]},
       { label: 'Support', items: [
@@ -2704,7 +2711,7 @@ const sidebarDefs = {
         { icon: 'ti-shopping-cart',    label: 'Weekly order',            href: '#screen5' },
         { icon: 'ti-clipboard-list',    label: 'Formulary setup',         href: '#screen10b' },
         { icon: 'ti-package',          label: 'Receiving',               href: '#screen6' },
-        { icon: 'ti-rotate-clockwise', label: 'Cycle count',             href: '#screen5' },
+        { icon: 'ti-rotate-clockwise', label: 'Cycle count',             href: '#cycle' },
         { icon: 'ti-clipboard-x',      label: 'Goods lost',              href: '#screen8' },
       ]},
       { label: 'Settings', items: [
@@ -2777,7 +2784,7 @@ document.addEventListener('DOMContentLoaded', () => {
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     ['asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog',
-     'asb-order','asb-receiving','asb-goods','asb-users','asb-newlocation','asb-admin-label'].forEach(function(id){
+     'asb-order','asb-receiving','asb-cycle','asb-goods','asb-users','asb-newlocation','asb-admin-label'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('receiver');
