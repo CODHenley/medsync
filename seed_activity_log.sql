@@ -23,7 +23,7 @@ VALUES
 ),
 (
   (SELECT id FROM locations WHERE name = 'Lincoln Park'),
-  'goods_lost', 'Goods lost submitted — Ketamine HCl 10mg/ml',
+  'goods', 'Goods lost submitted — Ketamine HCl 10mg/ml',
   NULL, 'warn',
   '{"product": "Ketamine HCl 10mg/ml", "category": "Expired product", "qty": 2, "value": 284.00, "submitted_by": "Alex M."}'::jsonb,
   NOW() - INTERVAL '5 days'
@@ -60,14 +60,14 @@ VALUES
 ),
 (
   (SELECT id FROM locations WHERE name = 'Old Orchard'),
-  'goods_lost', 'Goods lost submitted — Maropitant Citrate 10mg/ml',
+  'goods', 'Goods lost submitted — Maropitant Citrate 10mg/ml',
   NULL, 'ok',
   '{"product": "Maropitant Citrate 10mg/ml", "category": "Damaged / Spilled", "qty": 1, "value": 84.20, "note": "Vial dropped during draw", "submitted_by": "Jamie K."}'::jsonb,
   NOW() - INTERVAL '4 days'
 ),
 (
   (SELECT id FROM locations WHERE name = 'Old Orchard'),
-  'goods_lost', 'Goods lost submitted — Ondansetron 2mg/ml',
+  'goods', 'Goods lost submitted — Ondansetron 2mg/ml',
   NULL, 'warn',
   '{"product": "Ondansetron 2mg/ml", "category": "Expired product", "qty": 3, "value": 115.20, "submitted_by": "Jamie K."}'::jsonb,
   NOW() - INTERVAL '2 days'
@@ -90,14 +90,14 @@ VALUES
 ),
 (
   (SELECT id FROM locations WHERE name = 'West Loop'),
-  'goods_lost', 'Goods lost submitted — Gabapentin 100mg caps',
+  'goods', 'Goods lost submitted — Gabapentin 100mg caps',
   NULL, 'ok',
   '{"product": "Gabapentin 100mg caps", "category": "Medication waste", "qty": 12, "value": 11.64, "note": "Partial blister packs after discharge", "submitted_by": "Alex M."}'::jsonb,
   NOW() - INTERVAL '3 days'
 ),
 (
   (SELECT id FROM locations WHERE name = 'West Loop'),
-  'goods_lost', 'Goods lost submitted — Hydromorphone 2mg/ml',
+  'goods', 'Goods lost submitted — Hydromorphone 2mg/ml',
   NULL, 'warn',
   '{"product": "Hydromorphone 2mg/ml", "category": "Controlled Substances (DEA)", "qty": 1, "value": 218.00, "note": "DEA waste log #WL-0604-01 filed", "submitted_by": "Alex M."}'::jsonb,
   NOW() - INTERVAL '1 day'
@@ -134,21 +134,21 @@ VALUES
 ),
 (
   (SELECT id FROM locations WHERE name = 'Wheaton'),
-  'goods_lost', 'Goods lost submitted — Meloxicam 5mg/ml',
+  'goods', 'Goods lost submitted — Meloxicam 5mg/ml',
   NULL, 'ok',
   '{"product": "Meloxicam 5mg/ml", "category": "Expired product", "qty": 2, "value": 44.80, "submitted_by": "Casey R."}'::jsonb,
   NOW() - INTERVAL '3 days'
 ),
 (
   (SELECT id FROM locations WHERE name = 'Wheaton'),
-  'goods_lost', 'Goods lost submitted — Tramadol 50mg tabs',
+  'goods', 'Goods lost submitted — Tramadol 50mg tabs',
   NULL, 'ok',
   '{"product": "Tramadol 50mg tabs", "category": "In-house use", "qty": 6, "value": 7.44, "note": "Staff patient tx, not billed", "submitted_by": "Casey R."}'::jsonb,
   NOW() - INTERVAL '2 days'
 ),
 (
   (SELECT id FROM locations WHERE name = 'Wheaton'),
-  'user_event', 'Min/Max thresholds updated — 4 products adjusted for peak season',
+  'user', 'Min/Max thresholds updated — 4 products adjusted for peak season',
   NULL, 'ok',
   '{"products_updated": 4, "updated_by": "Megan Henley", "season": "peak"}'::jsonb,
   NOW() - INTERVAL '10 days'

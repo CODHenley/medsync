@@ -34,7 +34,6 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .rb-admin{background:rgba(28,43,74,.1);color:var(--navy);}
 .rb-manager{background:var(--green-bg);color:var(--green);}
 .rb-receiver{background:#E6F1FB;color:#1A6FAD;}
-.rb-hospital_manager{background:#EEE8F5;color:var(--purple);}
 .rb-inventory_lead{background:#FEF3E2;color:var(--amber);}
 
 /* Status pill */
@@ -269,16 +268,15 @@ let myId   = null;
 let _pendingDeleteId = null;
 
 const ROLE_LABELS = {
-  admin: 'Admin', manager: 'Manager', hospital_manager: 'H. Manager',
-  receiver: 'Receiver', inventory_lead: 'Inventory Lead'
+  admin: 'Admin', manager: 'Manager', receiver: 'Receiver', inventory_lead: 'Inventory Lead'
 };
 const CREATABLE = {
-  admin:   ['admin','manager','hospital_manager','receiver','inventory_lead'],
+  admin:   ['admin','manager','receiver','inventory_lead'],
   manager: ['receiver','inventory_lead']
 };
 // Roles a given role can manage (activate/deactivate/delete)
 const MANAGEABLE = {
-  admin:   ['admin','manager','hospital_manager','receiver','inventory_lead'],
+  admin:   ['admin','manager','receiver','inventory_lead'],
   manager: ['receiver','inventory_lead']
 };
 

@@ -2732,7 +2732,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (user.role) {
     var rb = document.getElementById('ms-role');
     if (rb) rb.textContent = user.role === 'admin' ? 'Admin' :
-    user.role === 'hospital_manager' ? 'H. Manager' :
     user.role === 'receiver' ? 'Receiver' :
     user.role === 'inventory_lead' ? 'Inv. Lead' : 'Manager';
   }
@@ -2747,18 +2746,14 @@ document.addEventListener('DOMContentLoaded', () => {
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('receiver');
-  } else if (user.role === 'hospital_manager') {
-    // Hospital manager: analytics/reporting only, read-only
-    ['asb-order','asb-receiving','asb-goods','asb-receiver','asb-users','asb-newlocation','asb-regions'].forEach(function(id){
-      var el = document.getElementById(id); if (el) el.style.display = 'none';
-    });
-    showScreen('portfolio');
   } else if (user.role === 'inventory_lead') {
-    // Inventory lead: portfolio, analytics, lifecycle, orders, receiving, goods — no actlog/users/receiver
-    ['mnb-actlog'].forEach(function(id){
+    // Inventory Lead: analytics (COGs/purchasing visibility), order, receiving, goods lost, lot lifecycle
+    // No portfolio (executive view), no activity log, no admin, no receiver
+    ['mnb-portfolio','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    ['asb-actlog','asb-receiver','asb-users','asb-admin-label'].forEach(function(id){
+    ['asb-portfolio','asb-actlog','asb-receiver','asb-users',
+     'asb-admin-label','asb-newlocation','asb-regions'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     // Scope analytics to their location
