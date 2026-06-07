@@ -832,9 +832,28 @@ async function init() {
       const locs = await r.json();
       if (locs && locs[0]) { currentLocation = locs[0].name; currentLocationId = locs[0].id; }
     } catch(e) {}
-    if (!currentLocation) { currentLocation = 'Lincoln Park'; }
+    if (!currentLocation) {
+      try {
+        const r = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&limit=1&order=name', { headers: H });
+        const locs = await r.json();
+        if (locs && locs[0]) { currentLocation = locs[0].name; currentLocationId = locs[0].id; }
+      } catch(e) { currentLocation = 'Lincoln Park'; }
+    }
   } else {
-    currentLocation = 'Lincoln Park';
+    const _mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+    if (_mu.locations && Array.isArray(_mu.locations) && _mu.locations[0]) {
+      currentLocation = _mu.locations[0].name;
+      currentLocationId = _mu.locations[0].id;
+    } else if (_mu.locations && _mu.locations.name) {
+      currentLocation = _mu.locations.name;
+      currentLocationId = _mu.locations.id;
+    } else {
+      try {
+        const r = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&limit=1&order=name', { headers: H });
+        const locs = await r.json();
+        if (locs && locs[0]) { currentLocation = locs[0].name; currentLocationId = locs[0].id; }
+      } catch(e) { currentLocation = 'Lincoln Park'; }
+    }
   }
 
   document.getElementById('loc-label').textContent = currentLocation;

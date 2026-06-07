@@ -388,9 +388,9 @@ async function loadPI() {
 async function loadExpiry(){
   try{
     var now=new Date(),d90=new Date(now.getTime()+90*864e5).toISOString().split('T')[0],today=now.toISOString().split('T')[0],d30=new Date(now.getTime()+30*864e5).toISOString().split('T')[0],d60=new Date(now.getTime()+60*864e5).toISOString().split('T')[0];
-    var r=await fetch(SUPA_URL+'/rest/v1/lots?select=expiration_date,qty_on_hand,products(name)&expiration_date=lte.'+d90+'&order=expiration_date',{headers:HEADERS});
+    var r=await fetch(SUPA_URL+'/rest/v1/lots?select=expiration_date,qty_remaining,products(name)&expiration_date=lte.'+d90+'&order=expiration_date',{headers:HEADERS});
     var lots=await r.json();var by={};
-    if(Array.isArray(lots)&&lots.length){lots.forEach(function(l){var n=l.products&&l.products.name?l.products.name:'Unknown',e=l.expiration_date,q=l.qty_on_hand||1;if(!by[n])by[n]={exp:0,d30:0,d60:0};if(e<=today)by[n].exp+=q;else if(e<=d30)by[n].d30+=q;else if(e<=d60)by[n].d60+=q;else by[n].d60+=q;});}
+    if(Array.isArray(lots)&&lots.length){lots.forEach(function(l){var n=l.products&&l.products.name?l.products.name:'Unknown',e=l.expiration_date,q=l.qty_remaining||1;if(!by[n])by[n]={exp:0,d30:0,d60:0};if(e<=today)by[n].exp+=q;else if(e<=d30)by[n].d30+=q;else if(e<=d60)by[n].d60+=q;else by[n].d60+=q;});}
     else{by={'Ketamine HCl 10mg/ml':{exp:1,d30:0,d60:1},'Dexmedetomidine 0.5mg/ml':{exp:1,d30:0,d60:0},'Buprenorphine 0.3mg/ml':{exp:0,d30:2,d60:1},'Carprofen 50mg tabs':{exp:0,d30:1,d60:2}};}
     var pp=Object.keys(by),mx=Math.max.apply(null,pp.map(function(p){var b=by[p];return b.exp+b.d30+b.d60;}))||1;
     document.getElementById('pi-exp').innerHTML=pp.map(function(p){var b=by[p],t=b.exp+b.d30+b.d60,sh=p.length>26?p.slice(0,24)+'…':p;
@@ -475,10 +475,6 @@ if (window.self !== window.top) {
 <select id="region-filter" onchange="onRegionFilter(this.value)" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);"><option value="all">All regions</option><option value="Chicagoland">Chicagoland</option><option value="Chicagoland South">Chicagoland South</option><option value="Chicagoland West">Chicagoland West</option></select>
                 <select id="loc" onchange="refresh()">
           <option value="all">All locations</option>
-          <option value="lp">Lincoln Park</option>
-          <option value="oo">Old Orchard</option>
-          <option value="wl">West Loop</option>
-          <option value="wh">Wheaton</option>
         </select>
       </div>
       <div class="tb-right">
@@ -832,7 +828,7 @@ const RANGE_LABELS = {
 };
 
 function getDateRange(dr) {
-  const now = new Date('2026-05-29T00:00:00');
+  const now = new Date();
   let from, to = new Date(now);
   to.setHours(23, 59, 59);
   switch(dr) {
@@ -1143,7 +1139,23 @@ function showToast(msg) {
 // ── Filter change ────────────────────────────────────────────
 function refresh() { loadData(); }
 
+// ── Dynamic location dropdown ────────────────────────────────
+async function loadLocationFilter() {
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: HEADERS });
+    const locs = await res.json();
+    const sel = document.getElementById('loc');
+    if (!sel || !Array.isArray(locs)) return;
+    const allOpt = sel.querySelector('option[value=""]');
+    sel.innerHTML = '';
+    if (allOpt) sel.appendChild(allOpt);
+    else { const o = document.createElement('option'); o.value=''; o.textContent='All locations'; sel.appendChild(o); }
+    locs.forEach(l => { const o = document.createElement('option'); o.value = l.name; o.textContent = l.name; sel.appendChild(o); });
+  } catch(e) { console.warn('Could not load locations', e); }
+}
+
 // ── Boot ─────────────────────────────────────────────────────
+loadLocationFilter();
 loadData();
 </script>
 

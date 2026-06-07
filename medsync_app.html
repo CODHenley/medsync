@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods'];
+var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cyclecount','users','settings','regions','newlocation'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -86,6 +86,11 @@ function deepDiveLoc(locCode) {
   }
   setTimeout(tryPost, 300);
 }
+
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'navigate' && e.data.screen) showScreen(e.data.screen);
+});
 </script>
 <style>
 
@@ -507,13 +512,17 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-actlog" onclick="showScreen('actlog')">📋 Activity Log</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
-  <div class="asb-item" id="asb-order" onclick="showScreen('order')">🛒 Weekly Order</div>
+  <div class="asb-item" id="asb-order" onclick="showScreen('order')">🛒 Purchase Orders</div>
   <div class="asb-item" id="asb-receiving" onclick="showScreen('receiving')">📦 Receiving</div>
   <div class="asb-item" id="asb-receiver" onclick="showScreen('receiver')">🏥 Hospital Receiver</div>
   <div class="asb-item" id="asb-goods" onclick="showScreen('goods')">⚠️ Goods Lost</div>
+  <div class="asb-item" id="asb-cyclecount" onclick="showScreen('cyclecount')">🔄 Cycle Count</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
-  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Settings</div>
-  <div class="asb-item" onclick="showScreen('portfolio')">⚙️ Admin Settings</div>
+  <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Settings &amp; Admin</div>
+  <div class="asb-item" id="asb-settings" onclick="showScreen('settings')">⚙️ Admin Settings</div>
+  <div class="asb-item" id="asb-users" onclick="showScreen('users')">👥 Users</div>
+  <div class="asb-item" id="asb-regions" onclick="showScreen('regions')">🗺️ Regions</div>
+  <div class="asb-item" id="asb-newlocation" onclick="showScreen('newlocation')">➕ New Location</div>
 </div>
 <div id="app-content">
 <div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;display:block;"><div id="screen1">
@@ -756,6 +765,36 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_goods_lost_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Goods Lost">
+  </iframe>
+</div>
+<div id="ms-cyclecount" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+  <iframe src="medsync_cycle_count_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Cycle Count">
+  </iframe>
+</div>
+<div id="ms-users" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+  <iframe src="medsync_users_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Users">
+  </iframe>
+</div>
+<div id="ms-settings" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+  <iframe src="medsync_settings_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Settings">
+  </iframe>
+</div>
+<div id="ms-regions" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+  <iframe src="medsync_regions_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Regions">
+  </iframe>
+</div>
+<div id="ms-newlocation" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+  <iframe src="medsync_newlocation_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="New Location">
   </iframe>
 </div>
 <div id="ms-toast"></div>

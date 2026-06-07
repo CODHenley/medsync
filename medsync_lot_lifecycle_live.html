@@ -284,12 +284,9 @@ html, body { margin: 0 !important; padding: 0 !important; }
 }
   .content { min-height: 0; overflow-y: auto; }
 }
-  body { height: 100%; overflow: hidden; min-height: 0 !important;   .main-area { display: flex; flex-direction: column; }
-  .content { min-height: 0; overflow-y: auto; }
-}
+  body { height: 100%; overflow: hidden; min-height: 0 !important; }
   .main-area { display: flex; flex-direction: column; }
   .content { min-height: 0; overflow-y: auto; }
-}
 @media (max-width: 768px) {
   .outer, .main-area, .content, .topbar { max-width: 100% !important; overflow-x: hidden !important; }
   .tb-left, .tb-right { max-width: 100% !important; flex-shrink: 1 !important; }
@@ -387,11 +384,7 @@ if (window.self !== window.top) {
             <option value="Chicagoland West">Chicagoland West</option>
           </select>
                     <select id="loc-filter" onchange="filterTable()">
-            <option value="all">All locations</option>
-            <option value="Lincoln Park">Lincoln Park</option>
-            <option value="Old Orchard">Old Orchard</option>
-            <option value="West Loop">West Loop</option>
-            <option value="Wheaton">Wheaton</option>
+            <option value="">All locations</option>
           </select>
           <select id="cs-filter" onchange="filterTable()">
             <option value="all">All products</option>
@@ -625,7 +618,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY) };
 
-const TODAY = new Date('2026-05-29T00:00:00');
+const TODAY = new Date();
 
 // All lots loaded from Supabase — kept in memory for filtering/search
 let ALL_LOTS = [];
@@ -997,7 +990,23 @@ function showToast(msg) {
   toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
 }
 
+// ── Dynamic location dropdown ────────────────────────────────
+async function loadLocationFilter() {
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
+    const locs = await res.json();
+    const sel = document.getElementById('loc-filter');
+    if (!sel || !Array.isArray(locs)) return;
+    const allOpt = sel.querySelector('option[value=""]');
+    sel.innerHTML = '';
+    if (allOpt) sel.appendChild(allOpt);
+    else { const o = document.createElement('option'); o.value=''; o.textContent='All locations'; sel.appendChild(o); }
+    locs.forEach(l => { const o = document.createElement('option'); o.value = l.name; o.textContent = l.name; sel.appendChild(o); });
+  } catch(e) { console.warn('Could not load locations', e); }
+}
+
 // ── Boot ──────────────────────────────────────────────────────
+loadLocationFilter();
 loadLots();
 </script>
 </body>

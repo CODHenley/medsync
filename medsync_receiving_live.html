@@ -226,44 +226,51 @@ async function onLocChange() {
 async function loadOrders() {
   document.getElementById('tb-sub').textContent = 'Receiving · ' + state.locationName;
   const res = await fetch(
-    SUPA_URL + `/rest/v1/orders?select=id,order_ref,total_value,submitted_at,status&location_id=eq.${state.locationId}&status=in.(Submitted,Late)&order=submitted_at.desc&limit=6`,
+    SUPA_URL + `/rest/v1/po_items?select=id,product_id,product_name,vendor,qty_ordered,unit_price,week_start,status&location_id=eq.${state.locationId}&status=eq.submitted&order=added_at.desc&limit=6`,
     { headers: H }
   );
-  const orders = await res.json();
+  const items = await res.json();
   const grid = document.getElementById('po-grid');
-  if (!orders.length) {
+  if (!items.length) {
     grid.innerHTML = '<div style="color:var(--mist);font-size:12px;grid-column:1/-1;">No pending orders for this location.</div>';
     return;
   }
-  grid.innerHTML = orders.map(o => `
-    <div class="po-card" onclick="selectOrder('${o.id}','${o.order_ref}','${o.total_value}','${o.submitted_at}')">
-      <div class="po-ref">${o.order_ref}</div>
-      <div class="po-meta">$${Number(o.total_value||0).toFixed(2)} · ${o.status} · ${new Date(o.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+  // Group po_items into a pseudo-PO keyed by week_start + vendor for display
+  const groups = {};
+  items.forEach(i => {
+    const key = (i.week_start || 'pending') + '|' + (i.vendor || '');
+    if (!groups[key]) groups[key] = { week_start: i.week_start, vendor: i.vendor, items: [], total: 0 };
+    groups[key].items.push(i);
+    groups[key].total += Number(i.unit_price || 0) * Number(i.qty_ordered || 1);
+  });
+  grid.innerHTML = Object.entries(groups).map(([key, g]) => `
+    <div class="po-card" onclick="selectPOGroup(${JSON.stringify(key)})">
+      <div class="po-ref">${g.vendor || 'Vendor'} · ${g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</div>
+      <div class="po-meta">$${g.total.toFixed(2)} · ${g.items.length} SKUs · Submitted</div>
     </div>
   `).join('');
+  // Store groups for selection
+  window._poGroups = groups;
 }
 
-async function selectOrder(id, ref, total, submittedAt) {
+async function selectPOGroup(groupKey) {
   // Mark selected
   document.querySelectorAll('.po-card').forEach(c => c.classList.remove('active'));
   event.currentTarget.classList.add('active');
 
-  state.selectedOrder = { id, ref, total, submittedAt };
+  const g = (window._poGroups || {})[groupKey];
+  if (!g) return;
+
+  const ref = (g.vendor || 'Vendor') + ' · ' + (g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+  state.selectedOrder = { id: groupKey, ref, total: g.total, submittedAt: g.week_start };
   state.hasDiscrepancy = false;
 
-  // Load order lines
-  const res = await fetch(
-    SUPA_URL + `/rest/v1/order_lines?select=id,qty_ordered,products(id,name,ndc)&order_id=eq.${id}`,
-    { headers: H }
-  );
-  const lines = await res.json();
-
-  state.lines = lines.map(l => ({
-    lineId:    l.id,
-    productId: l.products?.id,
-    name:      l.products?.name || '—',
-    ndc:       l.products?.ndc || '—',
-    qtyOrdered: l.qty_ordered || 1,
+  state.lines = g.items.map(i => ({
+    lineId:      i.id,
+    productId:   i.product_id,
+    name:        i.product_name || '—',
+    ndc:         '—',
+    qtyOrdered:  i.qty_ordered || 1,
     qtyReceived: 0,
     lotNum: null, expDate: null,
     status: 'pending'
@@ -271,7 +278,7 @@ async function selectOrder(id, ref, total, submittedAt) {
 
   document.getElementById('po-title').textContent = ref;
   document.getElementById('po-meta').textContent =
-    lines.length + ' SKUs · $' + Number(total).toFixed(2) + ' · ' + new Date(submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    g.items.length + ' SKUs · $' + g.total.toFixed(2) + ' · ' + (g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
   document.getElementById('receiving-panel').style.display = 'block';
   document.getElementById('scan-last').style.display = 'none';
   document.getElementById('disc-banner').style.display = 'none';
@@ -338,6 +345,7 @@ async function logReceivingLoss(idx, category) {
       category:     category,
       qty_lost:     1,
       value_lost:   0,
+      product_id:   line.productId,
       product_name: line.name,
       notes:        line.name + (note ? ' · ' + note : '') + ' · Logged via PO Receiving',
     })
@@ -436,7 +444,6 @@ async function completeSession() {
       headers: { ...H, 'Prefer': 'return=representation' },
       body: JSON.stringify({
         location_id:     state.locationId,
-        order_id:        state.selectedOrder.id,
         status:          hasDisc ? 'Flagged' : 'Completed',
         skus_expected:   state.lines.length,
         skus_scanned:    confirmed.length,
@@ -482,12 +489,15 @@ async function completeSession() {
       })
     });
 
-    // Update order status to Received
-    await fetch(SUPA_URL + `/rest/v1/orders?id=eq.${state.selectedOrder.id}`, {
-      method: 'PATCH',
-      headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ status: 'Received' })
-    });
+    // Update po_items status to Received
+    for (const line of state.lines) {
+      if (!line.lineId) continue;
+      await fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${line.lineId}`, {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'received' })
+      });
+    }
 
     document.getElementById('success-detail').textContent =
       state.selectedOrder.ref + ' · ' + confirmed.length + ' of ' + state.lines.length + ' SKUs confirmed' +
