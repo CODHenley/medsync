@@ -2398,8 +2398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (av) av.textContent = initials;
     var sbl = document.getElementById('sb-role-loc');
     if (sbl) sbl.textContent = name + ' · ' + loc;
-    var nava = document.getElementById('nav-avatar');
-    if (nava) nava.textContent = initials;
+    document.querySelectorAll('#nav-avatar, .vp-avatar').forEach(function(el){ el.textContent = initials; });
   }
   if (user.role) {
     var rb = document.getElementById('ms-role');
