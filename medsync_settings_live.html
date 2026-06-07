@@ -389,6 +389,18 @@ function showToast(msg) {
 
 // Load saved settings on boot
 (function() {
+  // Populate profile fields from logged-in user
+  try {
+    var u = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+    if (u.full_name) {
+      var pc = document.querySelector('input[value="Megan Henley"]');
+      if (pc) pc.value = u.full_name;
+    }
+    if (u.email) {
+      var em = document.querySelector('input[type="email"][value="mhenley@scoutcare.com"]');
+      if (em) em.value = u.email;
+    }
+  } catch(e) {}
   try {
     var s = JSON.parse(localStorage.getItem('medsync_settings') || '{}');
     if (s.cogs_min) document.getElementById('cogs-min').value = s.cogs_min;
