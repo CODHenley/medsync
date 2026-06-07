@@ -237,18 +237,24 @@ async function signIn() {
 // ── Redirect based on role ─────────────────────────────────────
 async function redirectUser(token) {
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/users?select=role,full_name,locations(name)&id=eq.' +
-      JSON.parse(atob(token.split('.')[1])).sub, {
+    const jwt = JSON.parse(atob(token.split('.')[1]));
+    const res = await fetch(SUPA_URL + '/rest/v1/users?select=role,full_name,email,locations(name)&id=eq.' + jwt.sub, {
       headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
     });
     const users = await res.json();
     const user = users[0];
 
     if (user) {
-      localStorage.setItem('medsync_user', JSON.stringify(user));
-      showToast('✓ Signed in as ' + user.full_name + ' (' + user.role + ')');
-      console.log('Auth success:', user);
-      // Redirect after short delay
+      // Flatten nested locations object so all pages can read user.location_name
+      const stored = {
+        full_name:     user.full_name  || '',
+        role:          user.role       || '',
+        email:         user.email      || jwt.email || '',
+        location_name: user.locations  ? user.locations.name : ''
+      };
+      localStorage.setItem('medsync_user', JSON.stringify(stored));
+      showToast('✓ Signed in as ' + stored.full_name + ' (' + stored.role + ')');
+      console.log('Auth success:', stored);
       setTimeout(() => {
         window.location.href = 'medsync_analytics_live.html';
       }, 1500);
