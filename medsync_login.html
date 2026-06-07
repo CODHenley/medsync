@@ -212,6 +212,7 @@ async function signIn() {
     }
 
     localStorage.setItem('medsync_user', JSON.stringify(users[0]));
+    saveRecentLogin(email, users[0].full_name, users[0].role);
     showToast('✓ Welcome back, ' + users[0].full_name.split(' ')[0] + '!');
     setTimeout(() => { window.location.replace('index.html'); }, 600);
 
@@ -225,36 +226,44 @@ async function signIn() {
   }
 }
 
-const DEMO_ACCOUNTS = {
-  admin: [
-    { name: 'Tripp Welge',   email: 'tripp.w@medsync.vet',  sub: 'CEO · Thurlow Veterinary',       badge: 'db-admin', label: 'Admin' },
-    { name: 'Megan Henley',  email: 'megan.h@medsync.vet',  sub: 'megan.h@medsync.vet',            badge: 'db-admin', label: 'Admin' },
-    { name: 'Jon Sala',      email: 'jsala@scoutcare.com',   sub: 'Director of Finance · Thurlow',  badge: 'db-admin', label: 'Admin' },
-  ],
-  manager: [
-    { name: 'Jamie K.',  email: 'jamie.k@scout.vet',  sub: 'Old Orchard',   badge: 'db-mgr',  label: 'Manager' },
-    { name: 'Sam T.',    email: 'sam.t@scout.vet',    sub: 'Lincoln Park',  badge: 'db-mgr',  label: 'Manager' },
-  ],
-  lead: [
-    { name: 'Alex M.',  email: 'alex.m@scout.vet',  sub: 'West Loop',  badge: 'db-lead',  label: 'Inv. Lead' },
-  ],
-  receiver: [
-    { name: 'Casey R.',  email: 'casey.r@scout.vet',  sub: 'Hospital Receiver',  badge: 'db-recv',  label: 'Receiver' },
-  ],
+const PILL_TO_ROLE = { admin:'admin', manager:'manager', lead:'inventory_lead', receiver:'receiver' };
+const ROLE_META = {
+  admin:          { badge:'db-admin', label:'Admin' },
+  manager:        { badge:'db-mgr',   label:'Manager' },
+  inventory_lead: { badge:'db-lead',  label:'Inv. Lead' },
+  receiver:       { badge:'db-recv',  label:'Receiver' },
 };
 
-function filterDemo(role, pill) {
+function getRecentLogins() {
+  try { return JSON.parse(localStorage.getItem('medsync_recent_logins') || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveRecentLogin(email, name, role) {
+  const logins = getRecentLogins().filter(l => l.email !== email);
+  logins.unshift({ email, name, role, ts: Date.now() });
+  localStorage.setItem('medsync_recent_logins', JSON.stringify(logins.slice(0, 30)));
+}
+
+function filterDemo(pillKey, pill) {
   document.querySelectorAll('.demo-pill').forEach(p => p.classList.remove('active'));
   pill.classList.add('active');
+  const role = PILL_TO_ROLE[pillKey];
+  const logins = getRecentLogins().filter(l => l.role === role).slice(0, 3);
   const grid = document.getElementById('demo-grid');
-  grid.innerHTML = (DEMO_ACCOUNTS[role] || []).map(u => `
+  if (!logins.length) {
+    grid.innerHTML = '<div style="font-size:11px;color:var(--mist);padding:6px 2px;">No recent logins</div>';
+    return;
+  }
+  const meta = ROLE_META[role] || { badge:'db-admin', label:role };
+  grid.innerHTML = logins.map(u => `
     <button class="demo-btn" onclick="demoLogin('${u.email}')">
-      <div><div class="demo-name">${u.name}</div><div class="demo-role">${u.sub}</div></div>
-      <span class="demo-badge ${u.badge}">${u.label}</span>
+      <div><div class="demo-name">${u.name || u.email}</div><div class="demo-role">${u.email}</div></div>
+      <span class="demo-badge ${meta.badge}">${meta.label}</span>
     </button>`).join('');
 }
 
-// Init with admin tab
+// Init — show admin tab
 filterDemo('admin', document.querySelector('.demo-pill'));
 
 function demoLogin(email) {
