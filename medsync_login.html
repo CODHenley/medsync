@@ -192,7 +192,7 @@ async function signIn() {
     // Fetch user profile
     const uid = JSON.parse(atob(data.access_token.split('.')[1])).sub;
     const uRes = await fetch(
-      SUPA_URL + '/rest/v1/users?select=id,full_name,role,is_active,locations(name)&id=eq.' + uid,
+      SUPA_URL + '/rest/v1/users?select=id,full_name,role,email,is_active,locations(name)&id=eq.' + uid,
       { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token } }
     );
     const users = await uRes.json();
@@ -211,9 +211,17 @@ async function signIn() {
       return;
     }
 
-    localStorage.setItem('medsync_user', JSON.stringify(users[0]));
-    saveRecentLogin(email, users[0].full_name, users[0].role);
-    showToast('✓ Welcome back, ' + users[0].full_name.split(' ')[0] + '!');
+    // Flatten nested locations object so all pages read user.location_name correctly
+    const u = users[0];
+    const stored = {
+      full_name:     u.full_name     || '',
+      role:          u.role          || '',
+      email:         u.email         || email,
+      location_name: u.locations     ? u.locations.name : ''
+    };
+    localStorage.setItem('medsync_user', JSON.stringify(stored));
+    saveRecentLogin(email, stored.full_name, stored.role);
+    showToast('✓ Welcome back, ' + stored.full_name.split(' ')[0] + '!');
     setTimeout(() => { window.location.replace('index.html'); }, 600);
 
   } catch(err) {
