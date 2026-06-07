@@ -566,6 +566,16 @@ function exp(type){
   t.style.opacity='1';
   setTimeout(()=>t.style.opacity='0',2600);
 }
+
+// ── Boot: sidebar identity ──────────────────────────────────
+(function() {
+  var u = {}; try { u = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+  if (u.full_name) {
+    var loc = u.location_name || 'Scout';
+    var sbl = document.querySelector('.sb-role-loc');
+    if (sbl) sbl.textContent = u.full_name + ' · ' + loc;
+  }
+})();
 </script>
 </body>
 </html>

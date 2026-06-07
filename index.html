@@ -1920,8 +1920,12 @@ function setRole(r) {
   document.getElementById('rt-mgr').classList.toggle('active',   r==='manager');
   document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Manager';
   document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Location Manager';
-  document.getElementById('sb-role-loc').textContent    = r==='admin' ? 'Megan Henley · Scout' : 'Jamie K. · Old Orchard';
-  document.getElementById('nav-avatar').textContent     = r==='admin' ? 'MH' : 'JK';
+  var _u = {}; try { _u = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+  var _name = _u.full_name || (r==='admin' ? 'Admin' : 'Manager');
+  var _loc  = _u.location_name || (r==='admin' ? 'Scout' : 'Old Orchard');
+  document.getElementById('sb-role-loc').textContent    = _name + ' · ' + _loc;
+  var _initials = _name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || (r==='admin' ? 'AD' : 'MG');
+  document.getElementById('nav-avatar').textContent     = _initials;
   const locSel = document.getElementById('loc-filter');
   locSel.value    = r==='manager' ? 'Old Orchard' : 'all';
   locSel.disabled = r==='manager';
@@ -2767,9 +2771,15 @@ document.addEventListener('DOMContentLoaded', () => {
 (function boot() {
   var user = {};
   try { user = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
-  if (user.full_name) {
+  var name = user.full_name || '';
+  var loc  = user.location_name || 'Scout';
+  if (name) {
+    var initials = name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
     var av = document.getElementById('ms-avatar');
-    if (av) av.textContent = user.full_name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+    if (av) av.textContent = initials;
+    var sbl = document.getElementById('sb-role-loc');
+    if (sbl) sbl.textContent = name + ' · ' + loc;
+    document.querySelectorAll('#nav-avatar, .vp-avatar').forEach(function(el){ el.textContent = initials; });
   }
   if (user.role) {
     var rb = document.getElementById('ms-role');
