@@ -98,6 +98,41 @@ select.nav-sel option{background:var(--navy);}
 .btn-new{padding:11px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+/* ── MOBILE ──────────────────────────────────────────────── */
+@media (max-width:600px) {
+  /* Topbar */
+  .topbar{padding:0 12px;gap:8px;}
+  .tb-title{font-size:13px;}
+  select.nav-sel{font-size:11px;padding:4px 8px;max-width:130px;}
+
+  /* Content */
+  .content{padding:10px 10px 20px;}
+
+  /* PO grid: single column */
+  .po-grid{grid-template-columns:1fr;}
+
+  /* Items table: collapse to 2 cols — name | status */
+  .items-head,
+  .item-row{grid-template-columns:1fr auto;}
+
+  /* Hide Ordered (2nd), Received (3rd), Lot/Exp (4th) */
+  .items-head > *:nth-child(2),
+  .items-head > *:nth-child(3),
+  .items-head > *:nth-child(4),
+  .item-row > *:nth-child(2),
+  .item-row > *:nth-child(3),
+  .item-row > *:nth-child(4){display:none;}
+
+  /* Scan bar — big touch targets, prevent iOS zoom */
+  .sim-bar{padding:10px 12px;gap:8px;flex-wrap:wrap;}
+  .sim-input{font-size:16px;padding:10px 12px;min-height:44px;}
+  .btn-sim,.btn-auto{min-height:44px;padding:10px 14px;font-size:13px;}
+
+  /* Complete button */
+  .po-footer{flex-wrap:wrap;gap:10px;padding:10px 12px;}
+  .btn-complete{width:100%;padding:12px;font-size:14px;text-align:center;}
+}
 </style>
 </head>
 <body>

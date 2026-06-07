@@ -173,6 +173,58 @@ select.loc-sel option{background:var(--navy);color:#fff;}
   .topbar,.window-banner,.tabs,.sticky-footer,#add-modal,#toast{display:none!important;}
   .content{overflow:visible!important;padding:0!important;}
 }
+
+/* ── MOBILE ──────────────────────────────────────────────────── */
+@media (max-width:600px) {
+  /* Topbar */
+  .topbar{padding:0 12px;}
+  .tb-title{font-size:13px;}
+  select.loc-sel{font-size:11px;padding:4px 8px;max-width:130px;height:28px;}
+  .window-pill{font-size:10px;padding:3px 8px;}
+
+  /* Window banner: hide countdown on mobile */
+  .window-banner{padding:8px 12px;gap:10px;}
+  .wb-right{display:none;}
+
+  /* Stat bar: wrap into 2×2 */
+  .stat-bar{flex-wrap:wrap;gap:8px 16px;padding:8px 12px;}
+  .sb-divider{display:none;}
+  .sb-spacer{display:none;}
+  .add-btn{width:100%;justify-content:center;}
+
+  /* Content */
+  .content{padding:10px 10px 100px;}
+
+  /* Queue table: name | qty ctrl | remove (3 cols) */
+  .q-col-hdr,
+  .q-row{grid-template-columns:1fr 96px 36px;}
+
+  /* Hide On Hand (2nd) and Price (4th) */
+  .q-col-hdr span:nth-child(2),
+  .q-row > *:nth-child(2),
+  .q-col-hdr span:nth-child(4),
+  .q-row > *:nth-child(4){display:none;}
+
+  /* Qty controls */
+  .qty-btn{width:28px;height:28px;font-size:16px;}
+  .qty-num{font-size:14px;}
+
+  /* Vendor header: hide meta, keep name + subtotal + print btn */
+  .v-meta{display:none;}
+
+  /* Vendor items: name | qty | total (hide price) */
+  .v-item-hdr,
+  .v-item-row{grid-template-columns:1fr 56px 72px;}
+  .v-item-hdr span:nth-child(3),
+  .v-item-row > *:nth-child(3){display:none;}
+
+  /* Sticky footer */
+  .sticky-footer{padding:8px 12px;flex-wrap:wrap;gap:8px;}
+  .footer-info{font-size:11px;}
+  .footer-btns{width:100%;justify-content:flex-end;}
+  .btn{font-size:11px;padding:6px 12px;}
+  .btn-primary{flex:1;justify-content:center;}
+}
 </style>
 </head>
 <body>

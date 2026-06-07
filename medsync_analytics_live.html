@@ -574,11 +574,11 @@ if (window.self !== window.top) {
           <table>
             <thead><tr><th>Savings driver</th><th>Amount</th><th>Share</th><th>Status</th></tr></thead>
             <tbody>
-              <tr><td>GPO discount capture</td><td style="font-weight:500;color:var(--green);">$9,840</td><td>53%</td><td><span class="badge b-ok">On track</span></td></tr>
+              <tr><td>GPO discount capture</td><td style="font-weight:500;color:var(--green);" id="gpo-row-amt">$9,840</td><td>53%</td><td><span class="badge b-ok">On track</span></td></tr>
               <tr><td>Vetcove best-price routing</td><td style="font-weight:500;color:var(--green);">$5,120</td><td>28%</td><td><span class="badge b-ok">On track</span></td></tr>
               <tr><td>SKU optimization</td><td style="font-weight:500;color:var(--green);">$2,460</td><td>13%</td><td><span class="badge b-ok">On track</span></td></tr>
               <tr><td>Order consolidation</td><td style="font-weight:500;color:var(--green);">$1,000</td><td>6%</td><td><span class="badge b-ok">On track</span></td></tr>
-              <tr style="background:#F8F7FB;"><td style="font-weight:600;">Total YTD</td><td style="font-weight:700;color:var(--green);">$18,420</td><td style="color:var(--mist);">$44K pace</td><td><span class="badge b-ok">↑ 12% vs prior yr</span></td></tr>
+              <tr style="background:#F8F7FB;"><td style="font-weight:600;">Total YTD</td><td style="font-weight:700;color:var(--green);" id="total-ytd-table">$18,420</td><td style="color:var(--mist);">$44K pace</td><td><span class="badge b-ok">↑ 12% vs prior yr</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -716,9 +716,9 @@ if (window.self !== window.top) {
         <!-- Procurement -->
         <div class="pcontent" id="p-proc" style="display:none;">
           <div><div class="pc-title">Procurement savings</div><div class="pc-sub">YTD · all locations · vs. list price</div></div>
-          <div class="mrow"><span class="mk">Total YTD</span><span class="mv cg">$18,420</span></div>
+          <div class="mrow"><span class="mk">Total YTD</span><span class="mv cg" id="proc-total-ytd">$18,420</span></div>
           <div class="mrow"><span class="mk">Annual pace</span><span class="mv cg">~$44,000</span></div>
-          <div class="mrow"><span class="mk">GPO discounts</span><span class="mv cg">$9,840</span></div>
+          <div class="mrow"><span class="mk">GPO discounts</span><span class="mv cg" id="proc-gpo-amt">$9,840</span></div>
           <div class="mrow"><span class="mk">Best-price routing</span><span class="mv cg">$5,120</span></div>
           <div class="mrow"><span class="mk">SKU optimization</span><span class="mv cg">$2,460</span></div>
           <div class="mrow"><span class="mk">Order consolidation</span><span class="mv cg">$1,000</span></div>
@@ -967,6 +967,14 @@ async function loadData() {
     ksav.className = totalSav > 0 ? 'kpi-v cg' : 'kpi-v cm';
     const ksavs = document.getElementById('k-sav-s');
     if (ksavs) ksavs.textContent = 'Est. GPO discount · 12% capture rate';
+    // Update procurement detail panels with live GPO figure
+    const otherSav = 5120 + 2460 + 1000; // Vetcove + SKU + consolidation (static)
+    const totalYTD = totalSav + otherSav;
+    var _el;
+    _el = document.getElementById('gpo-row-amt');    if (_el) _el.textContent = fmt$(totalSav);
+    _el = document.getElementById('total-ytd-table'); if (_el) _el.textContent = fmt$(totalYTD);
+    _el = document.getElementById('proc-gpo-amt');   if (_el) _el.textContent = fmt$(totalSav);
+    _el = document.getElementById('proc-total-ytd'); if (_el) _el.textContent = fmt$(totalYTD);
 
     // Order compliance — derive from po_items week coverage
     const weeksSeen = {};
