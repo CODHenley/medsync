@@ -40,6 +40,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
 .loading .btn-text{display:none;}
 .divider{border:none;border-top:0.5px solid var(--border);margin:20px 0;}
 .demo-label{font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+.demo-pills{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.demo-pill{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:0.5px solid var(--border);background:#FAFAF8;color:var(--mist);transition:all .12s;}
+.demo-pill.active{background:var(--navy);color:#fff;border-color:var(--navy);}
 .demo-grid{display:flex;flex-direction:column;gap:6px;}
 .demo-btn{padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:#FAFAF8;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:space-between;transition:all .1s;border:none;width:100%;text-align:left;}
 .demo-btn:hover{background:#F0EEF8;}
@@ -48,6 +51,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
 .demo-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;}
 .db-admin{background:rgba(28,43,74,.1);color:var(--navy);}
 .db-mgr{background:var(--green-bg);color:var(--green);}
+.db-lead{background:#FEF3E2;color:#C8922A;}
 .db-recv{background:#E6F1FB;color:#1A6FAD;}
 .error-box{background:var(--red-bg);border:0.5px solid #f0a0a0;border-radius:8px;padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:16px;display:none;}
 .error-box.show{display:block;}
@@ -89,29 +93,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
       </button>
       <hr class="divider">
       <div class="demo-label">Demo accounts</div>
-      <div class="demo-grid">
-        <button class="demo-btn" onclick="demoLogin('megan.h@medsync.vet')">
-          <div><div class="demo-name">Megan Henley</div><div class="demo-role">megan.h@medsync.vet</div></div>
-          <span class="demo-badge db-admin">Admin</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('jamie.k@scout.vet')">
-          <div><div class="demo-name">Jamie K.</div><div class="demo-role">jamie.k@scout.vet · Old Orchard</div></div>
-          <span class="demo-badge db-mgr">Manager</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('sam.t@scout.vet')">
-          <div><div class="demo-name">Sam T.</div><div class="demo-role">sam.t@scout.vet · Lincoln Park</div></div>
-          <span class="demo-badge db-mgr">Manager</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('alex.m@scout.vet')">
-          <div><div class="demo-name">Alex M.</div><div class="demo-role">alex.m@scout.vet · West Loop · Inv. Lead</div></div>
-          <span class="demo-badge" style="background:#FEF3E2;color:#C8922A;">Inv. Lead</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('casey.r@scout.vet')">
-          <div><div class="demo-name">Casey R.</div><div class="demo-role">casey.r@scout.vet · Hospital Receiver</div></div>
-          <span class="demo-badge db-recv">Receiver</span>
-        </button>
-
+      <div class="demo-pills">
+        <span class="demo-pill active" onclick="filterDemo('admin',this)">Admin</span>
+        <span class="demo-pill" onclick="filterDemo('manager',this)">Manager</span>
+        <span class="demo-pill" onclick="filterDemo('lead',this)">Inv. Lead</span>
+        <span class="demo-pill" onclick="filterDemo('receiver',this)">Receiver</span>
       </div>
+      <div class="demo-grid" id="demo-grid"></div>
     </div>
     <div class="card-footer">MedSync · Scout Veterinary Urgent Care · Thurlow Veterinary Services</div>
   </div>
@@ -236,6 +224,38 @@ async function signIn() {
     busy = false;
   }
 }
+
+const DEMO_ACCOUNTS = {
+  admin: [
+    { name: 'Tripp Welge',   email: 'tripp.w@medsync.vet',  sub: 'CEO · Thurlow Veterinary',       badge: 'db-admin', label: 'Admin' },
+    { name: 'Megan Henley',  email: 'megan.h@medsync.vet',  sub: 'megan.h@medsync.vet',            badge: 'db-admin', label: 'Admin' },
+    { name: 'Jon Sala',      email: 'jsala@scoutcare.com',   sub: 'Director of Finance · Thurlow',  badge: 'db-admin', label: 'Admin' },
+  ],
+  manager: [
+    { name: 'Jamie K.',  email: 'jamie.k@scout.vet',  sub: 'Old Orchard',   badge: 'db-mgr',  label: 'Manager' },
+    { name: 'Sam T.',    email: 'sam.t@scout.vet',    sub: 'Lincoln Park',  badge: 'db-mgr',  label: 'Manager' },
+  ],
+  lead: [
+    { name: 'Alex M.',  email: 'alex.m@scout.vet',  sub: 'West Loop',  badge: 'db-lead',  label: 'Inv. Lead' },
+  ],
+  receiver: [
+    { name: 'Casey R.',  email: 'casey.r@scout.vet',  sub: 'Hospital Receiver',  badge: 'db-recv',  label: 'Receiver' },
+  ],
+};
+
+function filterDemo(role, pill) {
+  document.querySelectorAll('.demo-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  const grid = document.getElementById('demo-grid');
+  grid.innerHTML = (DEMO_ACCOUNTS[role] || []).map(u => `
+    <button class="demo-btn" onclick="demoLogin('${u.email}')">
+      <div><div class="demo-name">${u.name}</div><div class="demo-role">${u.sub}</div></div>
+      <span class="demo-badge ${u.badge}">${u.label}</span>
+    </button>`).join('');
+}
+
+// Init with admin tab
+filterDemo('admin', document.querySelector('.demo-pill'));
 
 function demoLogin(email) {
   document.getElementById('email').value = email;
