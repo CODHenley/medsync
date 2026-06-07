@@ -276,11 +276,34 @@ function demoLogin(email) {
 async function forgotPassword() {
   const email = document.getElementById('email').value.trim();
   if (!email) { document.getElementById('email').focus(); showToast('Enter your email first'); return; }
+
+  // 1. Send reset link to the user
   await fetch(SUPA_URL + '/auth/v1/recover', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, redirectTo: window.location.href.split('?')[0].split('#')[0] })
   });
+
+  // 2. Notify managers — query is allowed by the anon_read_manager_contacts RLS policy
+  try {
+    const mRes = await fetch(
+      SUPA_URL + '/rest/v1/users?select=full_name,email&role=in.(admin,manager)&is_active=eq.true',
+      { headers: { 'apikey': SUPA_KEY } }
+    );
+    const managers = await mRes.json();
+    if (Array.isArray(managers) && managers.length) {
+      const to = managers.map(m => m.email).join(',');
+      const subject = encodeURIComponent('MedSync Password Reset Request');
+      const body = encodeURIComponent(
+        email + ' has requested a password reset on MedSync.\n\n' +
+        'They will receive a reset link by email. No action is required unless you need to assist them.'
+      );
+      window.open('mailto:' + to + '?subject=' + subject + '&body=' + body);
+      showToast('✓ Reset sent · managers notified');
+      return;
+    }
+  } catch(e) { /* fall through */ }
+
   showToast('✓ Password reset sent to ' + email);
 }
 
