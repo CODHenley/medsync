@@ -248,15 +248,25 @@ function renderTask() {
     <button class="btn-secondary" onclick="state.screen='welcome';render()">← Back</button>`;
 }
 
+let _hrPoGroups = {};
+
 async function onTaskSelect(task) {
   state.task = task;
   if (task === 'receive') {
-    // Load open orders for this location
+    // Load submitted po_items for this location, group by vendor + week_start
     const res = await fetch(
-      SUPA_URL + `/rest/v1/orders?select=id,order_ref,total_value,submitted_at&location_id=eq.${state.locationId}&status=in.(Submitted,Late)&order=submitted_at.desc&limit=4`,
+      SUPA_URL + `/rest/v1/po_items?select=id,product_id,product_name,vendor,qty_ordered,unit_price,week_start,status&location_id=eq.${state.locationId}&status=eq.submitted&order=added_at.desc&limit=20`,
       { headers: H }
     );
-    state.orders = await res.json();
+    const items = await res.json();
+    _hrPoGroups = {};
+    (Array.isArray(items) ? items : []).forEach(i => {
+      const key = (i.week_start || 'pending') + '|' + (i.vendor || '');
+      if (!_hrPoGroups[key]) _hrPoGroups[key] = { week_start: i.week_start, vendor: i.vendor, items: [], total: 0 };
+      _hrPoGroups[key].items.push(i);
+      _hrPoGroups[key].total += Number(i.unit_price || 0) * Number(i.qty_ordered || 1);
+    });
+    state.orders = Object.entries(_hrPoGroups).map(([key, g]) => ({ key, ...g }));
     state.screen = 'receive';
   } else {
     state.screen = 'goods';
@@ -274,14 +284,14 @@ function renderReceive() {
       </div>
       <div class="card" style="gap:10px;">
         ${state.orders.length ? state.orders.map(o => `
-          <button class="task-btn" onclick="onOrderSelect('${o.id}','${o.order_ref}','${o.total_value}')">
+          <button class="task-btn" onclick="onPOGroupSelect(${JSON.stringify(o.key)})">
             <div class="task-icon" style="background:#E1F5EE;">🚚</div>
             <div>
-              <div class="task-title">${o.order_ref.replace("ORD-","PO-")}</div>
-              <div class="task-sub">$${Number(o.total_value||0).toFixed(2)} · ${new Date(o.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+              <div class="task-title">${o.vendor || 'Vendor'} · ${o.week_start ? new Date(o.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</div>
+              <div class="task-sub">$${o.total.toFixed(2)} · ${o.items.length} SKUs · Submitted</div>
             </div>
           </button>`).join('')
-          : '<div style="color:var(--mist);font-size:13px;text-align:center;padding:12px 0;">No open orders for this location.</div>'
+          : '<div style="color:var(--mist);font-size:13px;text-align:center;padding:12px 0;">No pending orders for this location.</div>'
         }
       </div>
       <button class="btn-secondary" onclick="state.screen='task';render()">← Back</button>`;
@@ -339,19 +349,18 @@ function renderReceive() {
     <button class="btn-secondary" onclick="state.selectedOrder=null;state.lines=[];state.lastScanMsg='';render()">← Choose different order</button>`;
 }
 
-async function onOrderSelect(id, ref, total) {
-  state.selectedOrder = { id, ref, total };
-  const res = await fetch(
-    SUPA_URL + `/rest/v1/order_lines?select=id,qty_ordered,products(id,name,ndc)&order_id=eq.${id}`,
-    { headers: H }
-  );
-  const lines = await res.json();
-  state.lines = lines.map(l => ({
-    productId: l.products?.id,
-    name: l.products?.name || '—',
-    ndc: l.products?.ndc || '',
-    qty: l.qty_ordered,
-    status: 'pending',
+function onPOGroupSelect(groupKey) {
+  const g = _hrPoGroups[groupKey];
+  if (!g) return;
+  const ref = (g.vendor || 'Vendor') + ' · ' + (g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+  state.selectedOrder = { key: groupKey, ref, total: g.total };
+  state.lines = g.items.map(i => ({
+    lineId:    i.id,
+    productId: i.product_id,
+    name:      i.product_name || '—',
+    ndc:       '—',
+    qty:       i.qty_ordered || 1,
+    status:    'pending',
     lotNum: null, expDate: null,
   }));
   state.lastScanMsg = '';
@@ -392,21 +401,15 @@ async function hrComplete() {
   if (!confirmed.length) return;
 
   try {
-    // Log receiving session
-    await fetch(SUPA_URL + '/rest/v1/receiving_sessions', {
-      method: 'POST',
-      headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        location_id:     state.locationId,
-        order_id:        state.selectedOrder.id,
-        status:          'Completed',
-        skus_expected:   state.lines.length,
-        skus_scanned:    confirmed.length,
-        has_discrepancy: confirmed.length < state.lines.length,
-        completed_at:    new Date().toISOString(),
-        notes:           'Received by ' + state.name,
-      })
-    });
+    // Mark received po_items as received
+    for (const line of confirmed) {
+      if (!line.lineId) continue;
+      await fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${line.lineId}`, {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'received' })
+      });
+    }
 
     // Create lot records
     for (const line of confirmed) {

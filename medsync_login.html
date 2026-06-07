@@ -250,7 +250,7 @@ async function forgotPassword() {
   await fetch(SUPA_URL + '/auth/v1/recover', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ email, redirectTo: window.location.href.split('?')[0].split('#')[0] })
   });
   showToast('✓ Password reset sent to ' + email);
 }
@@ -271,8 +271,11 @@ let _recoveryToken = null;
   const hash = window.location.hash.substring(1);
   const params = {};
   hash.split('&').forEach(pair => {
-    const [k, v] = pair.split('=');
-    if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+    const eq = pair.indexOf('=');
+    if (eq < 1) return;
+    const k = decodeURIComponent(pair.substring(0, eq));
+    const v = decodeURIComponent(pair.substring(eq + 1));
+    params[k] = v;
   });
   if (params.type === 'recovery' && params.access_token) {
     _recoveryToken = params.access_token;
