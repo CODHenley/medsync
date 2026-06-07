@@ -429,7 +429,7 @@ async function createUser() {
       return;
     }
 
-    await fetch(SUPA_URL + '/rest/v1/users', {
+    const profileRes = await fetch(SUPA_URL + '/rest/v1/users', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({
@@ -439,6 +439,11 @@ async function createUser() {
           access_location_ids:  scopeData.location_ids,
         })
     });
+    if (!profileRes.ok) {
+      const errBody = await profileRes.text();
+      showMsg('Auth user created but profile insert failed: ' + errBody, 'error');
+      return;
+    }
 
     showMsg(name + ' created as ' + (ROLE_LABELS[role] || role) + '.', 'success');
     document.getElementById('new-name').value = '';

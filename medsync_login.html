@@ -51,6 +51,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
 .db-recv{background:#E6F1FB;color:#1A6FAD;}
 .error-box{background:var(--red-bg);border:0.5px solid #f0a0a0;border-radius:8px;padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:16px;display:none;}
 .error-box.show{display:block;}
+.success-box{background:var(--green-bg);border:0.5px solid #7CC4AD;border-radius:8px;padding:10px 13px;font-size:12px;color:var(--green);margin-bottom:16px;display:none;}
+.success-box.show{display:block;}
 .card-footer{padding:14px 30px;border-top:0.5px solid var(--border);background:#FAFAF8;text-align:center;font-size:11px;color:var(--mist);}
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:200;}
 </style>
@@ -113,6 +115,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
     </div>
     <div class="card-footer">MedSync · Scout Veterinary Urgent Care · Thurlow Veterinary Services</div>
   </div>
+    <!-- Reset password panel (shown when recovery token detected) -->
+    <div id="reset-panel" style="display:none;">
+      <div class="card-top">
+        <div class="card-eyebrow">Scout Veterinary Urgent Care</div>
+        <div class="card-title">Set new password</div>
+        <div class="card-sub">Enter and confirm your new password below</div>
+      </div>
+      <div class="card-body">
+        <div class="error-box" id="reset-error-box"></div>
+        <div class="success-box" id="reset-success-box"></div>
+        <div class="field">
+          <label>New Password</label>
+          <input type="password" id="new-password" placeholder="••••••••••" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label>Confirm Password</label>
+          <input type="password" id="confirm-password" placeholder="••••••••••" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')setNewPassword()">
+        </div>
+        <button class="btn-login" id="reset-btn" onclick="setNewPassword()">
+          <div class="spinner"></div>
+          <span class="btn-text">Set password</span>
+        </button>
+      </div>
+      <div class="card-footer">MedSync · Scout Veterinary Urgent Care · Thurlow Veterinary Services</div>
+    </div>
 </div>
 <div id="toast"></div>
 <script>
@@ -233,6 +261,76 @@ function showToast(msg) {
   t.textContent = msg; t.style.opacity = '1';
   if (toastT) clearTimeout(toastT);
   toastT = setTimeout(() => { t.style.opacity = '0'; }, 2800);
+}
+
+
+// ── Password recovery flow ────────────────────────────────────────────────────
+let _recoveryToken = null;
+
+(function detectRecovery() {
+  const hash = window.location.hash.substring(1);
+  const params = {};
+  hash.split('&').forEach(pair => {
+    const [k, v] = pair.split('=');
+    if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+  });
+  if (params.type === 'recovery' && params.access_token) {
+    _recoveryToken = params.access_token;
+    // Hide login card content, show reset panel
+    document.querySelector('.card-top').style.display = 'none';
+    document.querySelector('.card-body').style.display = 'none';
+    document.querySelector('.card-footer').style.display = 'none';
+    document.getElementById('reset-panel').style.display = 'block';
+    // Clean up URL
+    history.replaceState(null, '', window.location.pathname);
+  }
+})();
+
+async function setNewPassword() {
+  const np = document.getElementById('new-password').value;
+  const cp = document.getElementById('confirm-password').value;
+  const errBox = document.getElementById('reset-error-box');
+  const okBox  = document.getElementById('reset-success-box');
+  errBox.textContent = ''; errBox.classList.remove('show');
+  okBox.textContent  = ''; okBox.classList.remove('show');
+
+  if (!np || np.length < 8) {
+    errBox.textContent = 'Password must be at least 8 characters.';
+    errBox.classList.add('show'); return;
+  }
+  if (np !== cp) {
+    errBox.textContent = 'Passwords do not match.';
+    errBox.classList.add('show'); return;
+  }
+
+  const btn = document.getElementById('reset-btn');
+  btn.classList.add('loading'); btn.disabled = true;
+
+  try {
+    const res = await fetch(SUPA_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + _recoveryToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: np })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errBox.textContent = data.message || data.msg || 'Failed to update password.';
+      errBox.classList.add('show');
+    } else {
+      okBox.textContent = 'Password updated! Redirecting to sign in...';
+      okBox.classList.add('show');
+      setTimeout(() => window.location.replace('medsync_login.html'), 2000);
+    }
+  } catch(e) {
+    errBox.textContent = 'Error: ' + e.message;
+    errBox.classList.add('show');
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
 }
 </script>
 </body>
