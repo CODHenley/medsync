@@ -13,6 +13,36 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .tb-title{font-size:15px;font-weight:600;color:#fff;}
 .tb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
 .content{max-width:760px;margin:0 auto;padding:24px 20px;display:flex;flex-direction:column;gap:20px;}
+
+/* Role guide */
+.role-guide-toggle{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;cursor:pointer;user-select:none;}
+.role-guide-toggle:hover{background:#FAFAF8;}
+.rg-toggle-left{display:flex;align-items:center;gap:10px;}
+.rg-toggle-icon{font-size:16px;color:var(--amber);}
+.rg-toggle-title{font-size:13px;font-weight:600;color:var(--navy);}
+.rg-toggle-sub{font-size:11px;color:var(--mist);margin-top:1px;}
+.rg-chevron{font-size:14px;color:var(--mist);transition:transform .2s;}
+.rg-chevron.open{transform:rotate(90deg);}
+.role-guide-body{display:none;padding:0 20px 20px;}
+.role-guide-body.open{display:block;}
+.rg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.rg-card{border:0.5px solid var(--border);border-radius:9px;padding:13px 15px;}
+.rg-role-name{font-size:12px;font-weight:700;margin-bottom:5px;}
+.rg-role-name.admin{color:var(--navy);}
+.rg-role-name.manager{color:var(--green);}
+.rg-role-name.inventory_lead{color:var(--amber);}
+.rg-role-name.receiver{color:#1A6FAD;}
+.rg-desc{font-size:11px;color:var(--mist);line-height:1.55;margin-bottom:8px;}
+.rg-access{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--mist);margin-bottom:4px;}
+.rg-access-list{display:flex;flex-direction:column;gap:3px;}
+.rg-access-item{font-size:11px;display:flex;align-items:flex-start;gap:5px;line-height:1.4;}
+.rg-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.rg-dot.full{background:var(--green);}
+.rg-dot.limited{background:var(--amber);}
+.rg-dot.none{background:#DDD9EC;}
+.rg-legend{display:flex;align-items:center;gap:14px;margin-top:12px;padding-top:10px;border-top:0.5px solid var(--border);}
+.rg-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--mist);}
+@media(max-width:560px){.rg-grid{grid-template-columns:1fr;}}
 .card{background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
 .card-head{padding:16px 20px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .card-title{font-size:13px;font-weight:600;}
@@ -106,6 +136,86 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
   </div>
 </div>
 <div class="content">
+
+  <!-- Role Reference Guide -->
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div class="role-guide-toggle" onclick="toggleRoleGuide(this)">
+      <div class="rg-toggle-left">
+        <i class="ti ti-users-group rg-toggle-icon"></i>
+        <div>
+          <div class="rg-toggle-title">Role Reference Guide</div>
+          <div class="rg-toggle-sub">Descriptions, responsibilities, and access levels for each role</div>
+        </div>
+      </div>
+      <i class="ti ti-chevron-right rg-chevron" id="rg-chevron"></i>
+    </div>
+    <div class="role-guide-body" id="role-guide-body">
+      <div class="rg-grid">
+
+        <!-- Admin -->
+        <div class="rg-card">
+          <div class="rg-role-name admin">Admin</div>
+          <div class="rg-desc">Full system access across all locations. Manages users, settings, and has visibility into portfolio-level analytics.</div>
+          <div class="rg-access">Access includes</div>
+          <div class="rg-access-list">
+            <div class="rg-access-item"><span class="rg-dot full"></span>All inventory &amp; order screens</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>User management &amp; role assignment</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>System settings &amp; location setup</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Portfolio analytics (all locations)</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Receiving, cycle counts, goods lost</div>
+          </div>
+        </div>
+
+        <!-- Manager -->
+        <div class="rg-card">
+          <div class="rg-role-name manager">Manager</div>
+          <div class="rg-desc">Multi-location operational access. Oversees day-to-day inventory, orders, and staff. Cannot modify system settings or add new locations.</div>
+          <div class="rg-access">Access includes</div>
+          <div class="rg-access-list">
+            <div class="rg-access-item"><span class="rg-dot full"></span>Inventory, orders, receiving</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Cycle counts &amp; goods lost</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Analytics (assigned locations)</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Create Receivers &amp; Inventory Leads</div>
+            <div class="rg-access-item"><span class="rg-dot none"></span>No system settings or location creation</div>
+          </div>
+        </div>
+
+        <!-- Inventory Lead -->
+        <div class="rg-card">
+          <div class="rg-role-name inventory_lead">Inventory Lead</div>
+          <div class="rg-desc">Single-location inventory specialist. Manages orders, receiving, and cycle counts. Limited analytics view with no user management.</div>
+          <div class="rg-access">Access includes</div>
+          <div class="rg-access-list">
+            <div class="rg-access-item"><span class="rg-dot full"></span>Inventory &amp; purchase orders</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Receiving &amp; cycle counts</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Goods lost reporting</div>
+            <div class="rg-access-item"><span class="rg-dot limited"></span>Limited analytics (own location)</div>
+            <div class="rg-access-item"><span class="rg-dot none"></span>No user management</div>
+          </div>
+        </div>
+
+        <!-- Receiver -->
+        <div class="rg-card">
+          <div class="rg-role-name receiver">Receiver</div>
+          <div class="rg-desc">Task-focused access for staff who receive deliveries and log goods lost. No inventory management or order screens.</div>
+          <div class="rg-access">Access includes</div>
+          <div class="rg-access-list">
+            <div class="rg-access-item"><span class="rg-dot full"></span>Receive deliveries</div>
+            <div class="rg-access-item"><span class="rg-dot full"></span>Submit goods lost reports</div>
+            <div class="rg-access-item"><span class="rg-dot none"></span>No inventory management</div>
+            <div class="rg-access-item"><span class="rg-dot none"></span>No purchase orders</div>
+            <div class="rg-access-item"><span class="rg-dot none"></span>No analytics or user management</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="rg-legend">
+        <div class="rg-legend-item"><span class="rg-dot full"></span>Full access</div>
+        <div class="rg-legend-item"><span class="rg-dot limited"></span>Limited access</div>
+        <div class="rg-legend-item"><span class="rg-dot none"></span>No access</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Create user -->
   <div class="card">
@@ -310,6 +420,13 @@ function onRoleChange() {
   const role = document.getElementById('new-role').value;
   document.getElementById('loc-field').style.display =
     ['manager','receiver','inventory_lead'].includes(role) ? 'block' : 'none';
+}
+
+function toggleRoleGuide() {
+  const body = document.getElementById('role-guide-body');
+  const chev = document.getElementById('rg-chevron');
+  const open = body.classList.toggle('open');
+  chev.classList.toggle('open', open);
 }
 
 async function loadUsers() {
