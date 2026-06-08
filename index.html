@@ -773,7 +773,7 @@ function deepDiveLoc(locCode) {
 </div>
 <script>
 (function(){
-  var mu={}; try{mu=JSON.parse(localStorage.getItem('medsync_user')||'{}');}catch(e){}
+  var mu={}; try{mu=JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');}catch(e){}
   var fn=mu.full_name?mu.full_name.split(' ')[0]:'';
   var el=document.getElementById('splash-name');
   if(el&&fn) el.textContent='Welcome back, '+fn+'!';
