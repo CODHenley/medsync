@@ -244,12 +244,9 @@ html, body { margin: 0 !important; padding: 0 !important; }
 }
   .content { min-height: 0; overflow-y: auto; }
 }
-  body { height: 100%; overflow: hidden; min-height: 0 !important;   .main-area { display: flex; flex-direction: column; }
-  .content { min-height: 0; overflow-y: auto; }
-}
+  body { height: 100%; overflow: hidden; min-height: 0 !important; }
   .main-area { display: flex; flex-direction: column; }
   .content { min-height: 0; overflow-y: auto; }
-}
 @media (max-width: 768px) {
   .outer, .main-area, .content, .topbar { max-width: 100% !important; overflow-x: hidden !important; }
   .tb-left, .tb-right { max-width: 100% !important; flex-shrink: 1 !important; }
@@ -373,11 +370,7 @@ if (window.self !== window.top) {
           <option value="Chicagoland West">Chicagoland West</option>
         </select>
                 <select id="loc-filter" onchange="renderTable()">
-          <option value="all">All locations</option>
-          <option value="Lincoln Park">Lincoln Park</option>
-          <option value="Old Orchard">Old Orchard</option>
-          <option value="West Loop">West Loop</option>
-          <option value="Wheaton">Wheaton</option>
+          <option value="">All locations</option>
         </select>
         <select id="date-filter" onchange="renderTable()">
           <option value="all">All dates</option>
@@ -585,10 +578,14 @@ function setRole(r) {
   currentRole = r;
   document.getElementById('rt-admin').classList.toggle('active', r==='admin');
   document.getElementById('rt-mgr').classList.toggle('active',   r==='manager');
-  document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Manager';
+  try { window.parent.document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Manager'; } catch(e) {}
   document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Location Manager';
-  document.getElementById('sb-role-loc').textContent    = r==='admin' ? 'Megan Henley · Scout' : 'Jamie K. · Old Orchard';
-  document.getElementById('nav-avatar').textContent     = r==='admin' ? 'MH' : 'JK';
+  var _u2 = {}; try { _u2 = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+  var _name2 = _u2.full_name || (r==='admin' ? 'Admin' : 'Manager');
+  var _loc2  = _u2.location_name || (r==='admin' ? 'Scout' : 'Old Orchard');
+  document.getElementById('sb-role-loc').textContent    = _name2 + ' · ' + _loc2;
+  var _init2 = _name2.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || (r==='admin' ? 'AD' : 'MG');
+  try { window.parent.document.getElementById('nav-avatar').textContent = _init2; } catch(e) {}
   const locSel = document.getElementById('loc-filter');
   locSel.value    = r==='manager' ? 'Old Orchard' : 'all';
   locSel.disabled = r==='manager';
@@ -620,7 +617,7 @@ function getFiltered() {
   const search = document.getElementById('ev-search').value.toLowerCase();
   const loc    = document.getElementById('loc-filter').value;
   const date   = document.getElementById('date-filter').value;
-  const today  = '2026-05-29';
+  const today  = new Date().toISOString().slice(0,10);
 
   return ALL_EVENTS.filter(e => {
     if (currentRole==='manager' && e.loc!=='Old Orchard' && e.loc!=='All locations') return false;
@@ -817,11 +814,38 @@ function exportCSV() {
   showToast('✓ Activity log exported as CSV');
 }
 
+// ── Dynamic location dropdown ────────────────────────────────
+async function loadLocationFilter() {
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
+    const locs = await res.json();
+    const sel = document.getElementById('loc-filter');
+    if (!sel || !Array.isArray(locs)) return;
+    const allOpt = sel.querySelector('option[value=""]');
+    sel.innerHTML = '';
+    if (allOpt) sel.appendChild(allOpt);
+    else { const o = document.createElement('option'); o.value=''; o.textContent='All locations'; sel.appendChild(o); }
+    locs.forEach(l => { const o = document.createElement('option'); o.value = l.name; o.textContent = l.name; sel.appendChild(o); });
+  } catch(e) { console.warn('Could not load locations', e); }
+}
+
 // ── Boot ──────────────────────────────────────────────────────
+(function bootSidebar() {
+  var u = {}; try { u = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+  if (u.full_name) {
+    var initials = u.full_name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+    var loc = u.location_name || 'Scout';
+    var sbl = document.getElementById('sb-role-loc');
+    if (sbl) sbl.textContent = u.full_name + ' · ' + loc;
+    try { window.parent.document.getElementById('nav-avatar').textContent = initials; } catch(e) {}
+    try { window.parent.document.querySelectorAll('.vp-avatar').forEach(function(el){ el.textContent = initials; }); } catch(e) {}
+  }
+})();
 document.querySelector('th[data-col="ts"]').classList.add('sort-desc');
 // Wire export button
-document.querySelector('.btn[onclick*="CSV"]') && 
+document.querySelector('.btn[onclick*="CSV"]') &&
   document.querySelector('.btn[onclick*="CSV"]').setAttribute('onclick','exportCSV()');
+loadLocationFilter();
 loadEvents();
 </script>
 </body>

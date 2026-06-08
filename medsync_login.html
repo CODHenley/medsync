@@ -30,7 +30,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
 .field input{width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--navy);outline:none;}
 .field input:focus{border-color:var(--navy);}
 .field input.err{border-color:var(--red);}
-.forgot{font-size:11px;color:var(--mist);text-align:right;margin-top:-10px;margin-bottom:16px;cursor:pointer;}
+.forgot{font-size:11px;color:var(--mist);text-align:right;cursor:pointer;}
+.remember-row{display:flex;align-items:center;justify-content:space-between;margin-top:-8px;margin-bottom:16px;}
+.remember-label{display:flex;align-items:center;gap:6px;font-size:11px;color:#4A5568;cursor:pointer;user-select:none;}
+.remember-label input[type=checkbox]{width:13px;height:13px;accent-color:var(--navy);cursor:pointer;}
 .btn-login{width:100%;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .12s;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;}
 .btn-login:hover{background:#243459;}
 .btn-login:disabled{opacity:.5;cursor:not-allowed;}
@@ -40,6 +43,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
 .loading .btn-text{display:none;}
 .divider{border:none;border-top:0.5px solid var(--border);margin:20px 0;}
 .demo-label{font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+.demo-pills{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.demo-pill{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:0.5px solid var(--border);background:#FAFAF8;color:var(--mist);transition:all .12s;}
+.demo-pill.active{background:var(--navy);color:#fff;border-color:var(--navy);}
 .demo-grid{display:flex;flex-direction:column;gap:6px;}
 .demo-btn{padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:#FAFAF8;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:space-between;transition:all .1s;border:none;width:100%;text-align:left;}
 .demo-btn:hover{background:#F0EEF8;}
@@ -48,6 +54,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
 .demo-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;}
 .db-admin{background:rgba(28,43,74,.1);color:var(--navy);}
 .db-mgr{background:var(--green-bg);color:var(--green);}
+.db-lead{background:#FEF3E2;color:#C8922A;}
 .db-recv{background:#E6F1FB;color:#1A6FAD;}
 .error-box{background:var(--red-bg);border:0.5px solid #f0a0a0;border-radius:8px;padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:16px;display:none;}
 .error-box.show{display:block;}
@@ -82,36 +89,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
         <input type="password" id="password" placeholder="••••••••••" autocomplete="current-password"
           onkeydown="if(event.key==='Enter')signIn()">
       </div>
-      <div class="forgot" onclick="forgotPassword()">Forgot password?</div>
+      <div class="remember-row">
+        <label class="remember-label">
+          <input type="checkbox" id="remember-me">
+          Remember me
+        </label>
+        <div class="forgot" onclick="forgotPassword()">Forgot password?</div>
+      </div>
       <button class="btn-login" id="login-btn" onclick="signIn()">
         <div class="spinner"></div>
         <span class="btn-text">Sign in</span>
       </button>
       <hr class="divider">
       <div class="demo-label">Demo accounts</div>
-      <div class="demo-grid">
-        <button class="demo-btn" onclick="demoLogin('megan.h@medsync.vet')">
-          <div><div class="demo-name">Megan Henley</div><div class="demo-role">megan.h@medsync.vet</div></div>
-          <span class="demo-badge db-admin">Admin</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('jamie.k@scout.vet')">
-          <div><div class="demo-name">Jamie K.</div><div class="demo-role">jamie.k@scout.vet · Old Orchard</div></div>
-          <span class="demo-badge db-mgr">Manager</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('sam.t@scout.vet')">
-          <div><div class="demo-name">Sam T.</div><div class="demo-role">sam.t@scout.vet · Lincoln Park</div></div>
-          <span class="demo-badge db-mgr">Manager</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('alex.m@scout.vet')">
-          <div><div class="demo-name">Alex M.</div><div class="demo-role">alex.m@scout.vet · West Loop · Inv. Lead</div></div>
-          <span class="demo-badge" style="background:#FEF3E2;color:#C8922A;">Inv. Lead</span>
-        </button>
-        <button class="demo-btn" onclick="demoLogin('casey.r@scout.vet')">
-          <div><div class="demo-name">Casey R.</div><div class="demo-role">casey.r@scout.vet · Hospital Receiver</div></div>
-          <span class="demo-badge db-recv">Receiver</span>
-        </button>
-
+      <div class="demo-pills">
+        <span class="demo-pill active" onclick="filterDemo('admin',this)">Admin</span>
+        <span class="demo-pill" onclick="filterDemo('manager',this)">Manager</span>
+        <span class="demo-pill" onclick="filterDemo('lead',this)">Inv. Lead</span>
+        <span class="demo-pill" onclick="filterDemo('receiver',this)">Receiver</span>
       </div>
+      <div class="demo-grid" id="demo-grid"></div>
     </div>
     <div class="card-footer">MedSync · Scout Veterinary Urgent Care · Thurlow Veterinary Services</div>
   </div>
@@ -150,7 +147,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // Check existing session on load
 (function checkSession() {
   try {
-    const sess = JSON.parse(localStorage.getItem('medsync_session') || 'null');
+    const sess = JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || 'null');
     if (sess && sess.access_token && sess.expires_at) {
       const exp = new Date(sess.expires_at * 1000);
       if (exp > new Date()) {
@@ -160,6 +157,15 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     }
     localStorage.removeItem('medsync_session');
     localStorage.removeItem('medsync_user');
+    sessionStorage.removeItem('medsync_session');
+    sessionStorage.removeItem('medsync_user');
+    // Pre-fill email and check "Remember me" if previously remembered
+    const remembered = localStorage.getItem('medsync_remember') === '1';
+    const recentLogins = JSON.parse(localStorage.getItem('medsync_recent_logins') || '[]');
+    if (remembered && recentLogins[0]) {
+      document.getElementById('email').value = recentLogins[0].email;
+      document.getElementById('remember-me').checked = true;
+    }
   } catch(e) {}
 })();
 
@@ -198,13 +204,17 @@ async function signIn() {
       return;
     }
 
-    // Store session
-    localStorage.setItem('medsync_session', JSON.stringify(data));
+    // Store session — persist if "Remember me" checked, session-only otherwise
+    const remember = document.getElementById('remember-me').checked;
+    const store = remember ? localStorage : sessionStorage;
+    if (!remember) { localStorage.removeItem('medsync_session'); localStorage.removeItem('medsync_user'); }
+    localStorage.setItem('medsync_remember', remember ? '1' : '0');
+    store.setItem('medsync_session', JSON.stringify(data));
 
     // Fetch user profile
     const uid = JSON.parse(atob(data.access_token.split('.')[1])).sub;
     const uRes = await fetch(
-      SUPA_URL + '/rest/v1/users?select=id,full_name,role,is_active,locations(name)&id=eq.' + uid,
+      SUPA_URL + '/rest/v1/users?select=id,full_name,role,email,is_active,locations(name)&id=eq.' + uid,
       { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token } }
     );
     const users = await uRes.json();
@@ -223,8 +233,17 @@ async function signIn() {
       return;
     }
 
-    localStorage.setItem('medsync_user', JSON.stringify(users[0]));
-    showToast('✓ Welcome back, ' + users[0].full_name.split(' ')[0] + '!');
+    // Flatten nested locations object so all pages read user.location_name correctly
+    const u = users[0];
+    const stored = {
+      full_name:     u.full_name     || '',
+      role:          u.role          || '',
+      email:         u.email         || email,
+      location_name: u.locations     ? u.locations.name : ''
+    };
+    store.setItem('medsync_user', JSON.stringify(stored));
+    saveRecentLogin(email, stored.full_name, stored.role);
+    showToast('✓ Welcome back, ' + stored.full_name.split(' ')[0] + '!');
     setTimeout(() => { window.location.replace('index.html'); }, 600);
 
   } catch(err) {
@@ -236,6 +255,46 @@ async function signIn() {
     busy = false;
   }
 }
+
+const PILL_TO_ROLE = { admin:'admin', manager:'manager', lead:'inventory_lead', receiver:'receiver' };
+const ROLE_META = {
+  admin:          { badge:'db-admin', label:'Admin' },
+  manager:        { badge:'db-mgr',   label:'Manager' },
+  inventory_lead: { badge:'db-lead',  label:'Inv. Lead' },
+  receiver:       { badge:'db-recv',  label:'Receiver' },
+};
+
+function getRecentLogins() {
+  try { return JSON.parse(localStorage.getItem('medsync_recent_logins') || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveRecentLogin(email, name, role) {
+  const logins = getRecentLogins().filter(l => l.email !== email);
+  logins.unshift({ email, name, role, ts: Date.now() });
+  localStorage.setItem('medsync_recent_logins', JSON.stringify(logins.slice(0, 30)));
+}
+
+function filterDemo(pillKey, pill) {
+  document.querySelectorAll('.demo-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  const role = PILL_TO_ROLE[pillKey];
+  const logins = getRecentLogins().filter(l => l.role === role).slice(0, 3);
+  const grid = document.getElementById('demo-grid');
+  if (!logins.length) {
+    grid.innerHTML = '<div style="font-size:11px;color:var(--mist);padding:6px 2px;">No recent logins</div>';
+    return;
+  }
+  const meta = ROLE_META[role] || { badge:'db-admin', label:role };
+  grid.innerHTML = logins.map(u => `
+    <button class="demo-btn" onclick="demoLogin('${u.email}')">
+      <div><div class="demo-name">${u.name || u.email}</div><div class="demo-role">${u.email}</div></div>
+      <span class="demo-badge ${meta.badge}">${meta.label}</span>
+    </button>`).join('');
+}
+
+// Init — show admin tab
+filterDemo('admin', document.querySelector('.demo-pill'));
 
 function demoLogin(email) {
   document.getElementById('email').value = email;
@@ -250,9 +309,9 @@ async function forgotPassword() {
   await fetch(SUPA_URL + '/auth/v1/recover', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ email, redirectTo: window.location.href.split('?')[0].split('#')[0] })
   });
-  showToast('✓ Password reset sent to ' + email);
+  showToast('✓ Check your email for a reset link');
 }
 
 let toastT = null;
@@ -271,8 +330,11 @@ let _recoveryToken = null;
   const hash = window.location.hash.substring(1);
   const params = {};
   hash.split('&').forEach(pair => {
-    const [k, v] = pair.split('=');
-    if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+    const eq = pair.indexOf('=');
+    if (eq < 1) return;
+    const k = decodeURIComponent(pair.substring(0, eq));
+    const v = decodeURIComponent(pair.substring(eq + 1));
+    params[k] = v;
   });
   if (params.type === 'recovery' && params.access_token) {
     _recoveryToken = params.access_token;

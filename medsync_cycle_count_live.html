@@ -165,6 +165,53 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 /* EMPTY STATE */
 .empty-state{text-align:center;padding:48px 20px;color:var(--mist);}
 .empty-icon{font-size:32px;margin-bottom:10px;}
+
+/* ── MOBILE ──────────────────────────────────────────────── */
+@media (max-width:600px) {
+  /* Topbar */
+  .topbar{padding:0 12px;}
+  .tb-title{font-size:13px;}
+  .tb-loc{display:none;}
+  .timer-label{display:none;}
+  .timer-val{font-size:12px;}
+  .timer-wrap{padding:5px 8px;}
+
+  /* Due banner */
+  .due-banner{padding:6px 12px;flex-wrap:wrap;gap:6px;}
+  .due-next{display:none;}
+
+  /* Tabs: scrollable */
+  .tabs{padding:0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tab{padding:9px 12px;font-size:11px;}
+
+  /* Progress */
+  .progress-bar-wrap{padding:6px 12px;}
+
+  /* Content */
+  .content{padding:10px 10px 90px;}
+
+  /* Collapse to 3 cols: name | count | status */
+  .prod-col-header,
+  .prod-row{grid-template-columns:1fr 90px 64px;}
+
+  /* Hide Expected (2nd) and Variance (4th) */
+  .prod-col-header span:nth-child(2),
+  .prod-row > *:nth-child(2),
+  .prod-col-header span:nth-child(4),
+  .prod-row > *:nth-child(4){display:none;}
+
+  /* Count input — fat-finger friendly, prevent iOS zoom */
+  .prod-input{width:80px;height:40px;font-size:16px;padding:6px 8px;}
+
+  /* Footer */
+  .sticky-footer{padding:8px 12px;flex-wrap:wrap;gap:8px;}
+  .footer-stats{gap:10px;flex-wrap:wrap;}
+  .footer-stat{font-size:10px;}
+  .btn{font-size:11px;padding:6px 12px;}
+
+  /* Modal */
+  .modal{width:96%;padding:20px;}
+}
 </style>
 </head>
 <body>
@@ -832,9 +879,28 @@ async function init() {
       const locs = await r.json();
       if (locs && locs[0]) { currentLocation = locs[0].name; currentLocationId = locs[0].id; }
     } catch(e) {}
-    if (!currentLocation) { currentLocation = 'Lincoln Park'; }
+    if (!currentLocation) {
+      try {
+        const r = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&limit=1&order=name', { headers: H });
+        const locs = await r.json();
+        if (locs && locs[0]) { currentLocation = locs[0].name; currentLocationId = locs[0].id; }
+      } catch(e) { currentLocation = 'Lincoln Park'; }
+    }
   } else {
-    currentLocation = 'Lincoln Park';
+    const _mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+    if (_mu.locations && Array.isArray(_mu.locations) && _mu.locations[0]) {
+      currentLocation = _mu.locations[0].name;
+      currentLocationId = _mu.locations[0].id;
+    } else if (_mu.locations && _mu.locations.name) {
+      currentLocation = _mu.locations.name;
+      currentLocationId = _mu.locations.id;
+    } else {
+      try {
+        const r = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&limit=1&order=name', { headers: H });
+        const locs = await r.json();
+        if (locs && locs[0]) { currentLocation = locs[0].name; currentLocationId = locs[0].id; }
+      } catch(e) { currentLocation = 'Lincoln Park'; }
+    }
   }
 
   document.getElementById('loc-label').textContent = currentLocation;

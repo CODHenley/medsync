@@ -1,0 +1,318 @@
+
+### Thurlow Has Something No Software Company Can Buy ###
+Thurlow Veterinary Services Inc. is not just a veterinary practice group. It is a network of live clinical operations generating proprietary data, operational knowledge, and industry expertise that no outside company can replicate.
+Every great veterinary technology company today was built by people who studied the industry from the outside. They guessed at workflows. They surveyed staff. They built for a customer they never were.
+Thurlow doesn't have to guess. Thurlow already runs the practices.
+
+### What a Thurlow Technology Division could build: ###
+
+### What Breaks as Scout Grows from 4 to 40+ Locations ###
+Scout operates today with a spreadsheet-based inventory system purpose-built from scratch by Scout's Admin. It works at 4 locations. It has a ceiling — and that ceiling becomes a critical liability as Scout scales toward 40+ locations over the next decade.
+COGs accuracy at portfolio scale — At 40 locations generating $1M+ revenue each, a 1% COGs deviation represents $400,000+ in annual waste. Without automated forecasting, drift is invisible until it's expensive.
+Inventory Lead dependency — Replicating institutional spreadsheet knowledge across 40 new markets is a hiring, training, and retention risk that compounds with every opening.
+No consolidated visibility — Without MedSync, there is no dashboard. The COD cannot see which location is below Min on a critical drug or trending toward a COGs problem next month. MedSync solves this today for 4 locations — and makes it scalable to 40.
+Peak season blindness — Without predictive forecasting per location, clinical teams discover shortages during the highest-volume months — when stockouts cause the most damage to patient outcomes.
+Manual procurement overhead — Every purchase order requires logging into a vendor portal, manually searching for the product, checking prices, and placing the order. At 40 locations across multiple vendors, this is hours of unnecessary work every week.
+Untracked white goods spend — Gauze, syringes, IV lines, cotton rolls, and surgical drapes are purchased through Vetcove but never tracked in Vetspire. At 4 locations, over-purchasing white goods is a nuisance. At 40 locations, it is an invisible and compounding cost that no existing tool catches — because most hospitals have no mechanism to monitor it at all.
+
+### Built from the Inside, from the Ground Up ###
+MedSync was not conceived in a boardroom or a pitch competition. It was built by Megan Henley — Clinical Operations Director of Scout Veterinary Urgent Care — who didn't just work inside the veterinary inventory problem. She created the entire inventory management process at Scout from scratch.
+Before Megan built it, there was no system. No SOP. No standardized reorder methodology. No demand forecasting. She designed the workflow, wrote the standard operating procedures, trained the Inventory Leads, and then — because the tools available weren't good enough — built the forecasting system herself. The spreadsheet that powers Scout's inventory today is not a workaround. It is Megan's original design, validated across four locations, refined over years of real operational use.
+
+### Why this matters for the investment decision: ###
+The product already exists — Not as a pitch deck. As a working system running on Scout's live data. Megan didn't write a business plan about a problem that needed solving. She solved it first, then recognized the solution had broader value.
+The founder is the customer — Megan uses MedSync every month. She will be the first to know when something doesn't work, the first to identify what's missing, and the first to validate every new feature against clinical reality.
+The process is proprietary — Scout's entire inventory methodology was designed by Megan: the SOP-based three-method reorder calculator, the weighted seasonal index, the goods lost insight categories, the cycle count discipline, the weekly procurement workflow with the Mon/Tue order window and vendor-grouped PO exports, and the lot-level financial tracking architecture. Every layer of MedSync is built on processes Megan invented and validated at Scout. No competitor can replicate this without her.
+Operational specificity — The lot-level tracking architecture, the weekly order cycle with Mon/Tue order window and vendor-grouped PO exports, the four-category cycle count, and the goods lost insight engine were not designed by an engineer. They were designed by the person who lives these problems every week. That depth of operational specificity cannot be faked -- and it makes every product decision Megan makes automatically better than what any outside product team could produce.
+Domain credibility that converts — When Megan walks into a practice group and describes the problem, she's not selling to them. She's describing their reality back to them from her own experience. That is the rarest kind of sales credibility.
+
+### What MedSync Does ###
+MedSync Solutions Co. is a clinical inventory intelligence company. Its founding product is MedSync: a cloud-based veterinary inventory platform that takes everything a high-performing Inventory Lead does manually today — forecasting, ordering, tracking, reporting, and loss management — and makes it automatic, scalable, and accessible from day one at every location. Veterinary is the first vertical because that is where the founding expertise lives and the live proof exists. Human healthcare and other clinical settings are the natural second — the methodology scales directly. MedSync Solutions Co. is designed from the start to be the inventory intelligence layer for any clinical operation, not just veterinary.
+Below is the complete platform. Each capability is covered in depth in the sections that follow.
+
+### Inventory intelligence: ###
+
+### Vetspire integration: ###
+
+### Procurement Intelligence Module (PIM): ###
+
+### Expiration Date Intelligence: ###
+
+### Goods Lost Intelligence: ###
+
+### White goods supply monitoring: ###
+
+### Activity log — Admin and Clinical Support: ###
+
+### Denovo and multi-location capabilities: ###
+
+### The PIM: One Weekly Queue, One Order Window, Zero Missed Deliveries ###
+Most veterinary inventory systems stop at the alert. They tell you something is low — and then leave you to log into a vendor portal, search for the product, compare prices manually, and place the order yourself. MedSync closes the loop — but not by firing individual POs every time a product hits Min. It closes the loop with a structured weekly queue that consolidates every reorder need into one review session, vendor-grouped PO exports, and a Monday/Tuesday order window.
+The Procurement Intelligence Module (PIM) delivers one weekly order cycle built around Scout’s proven procurement workflow — a persistent queue that builds all week, vendor-grouped PO generation (MWI Animal Health, Covetrus, Patterson Veterinary), GPO-estimated pricing, and one-click PDF exports per vendor the IL uses to place orders directly through each distributor portal. Phase 2 connects the platform directly to distributor APIs for automated order submission without leaving MedSync.
+
+### The Automated Procurement Flow: ###
+
+### The weekly order cycle and Mon/Tue order window: ###
+Most distributors require order submission by 1pm Tuesday for next-business-day delivery. MedSync’s order window is Monday all day plus Tuesday before 1pm — giving the IL two full mornings to review and submit. Ordering once per week also maximizes GPO volume thresholds and minimizes per-order shipping costs. MedSync is built around this constraint.
+
+### Vendor network — Contract-price intelligence (Phase 1) and distributor API (Phase 2): ###
+Phase 1: MedSync imports Scout's account-specific contract price lists directly from each distributor — the same GPO-negotiated pricing that determines what Scout actually pays. These price files, available from account reps at MWI Animal Health, Covetrus, and Patterson Veterinary, are stored in MedSync and refreshed on a regular cadence, giving SmartSKU access to Scout's real contracted costs rather than public list prices. Phase 2: As distributor API partnerships are established, MedSync will connect directly to MWI Animal Health and Covetrus for live pricing queries and automated order submission — eliminating the manual price-file refresh cycle entirely.
+
+### Smart SKU recommendation — matched to your exact order need: ###
+When inventory hits Min, MedSync doesn't just find the cheapest product. It finds the right SKU — the one that covers your exact order need in the fewest units, at the lowest per-unit cost, with your GPO discount applied. Here's how it works for a real Scout product:
+MedSync evaluates every available SKU and pack size in Scout's contracted formulary, then scores each option:
+
+### Demand intelligence visible in every search result: ###
+When ordering outside of automated PO flow — manually searching for a product — every search result card shows the full demand picture inline: current on-hand, Min and Max, 30-day projected need, suggested order quantity, seasonal demand flags, and contract pricing with GPO discounts applied. The Inventory Lead never needs to context-switch to the forecasting tab to know what they actually need.
+
+### Expiration Date Intelligence — powered by Vetspire: ###
+Vetspire captures expiration dates at the point of receiving — but offers no reporting on that data. The information exists. It just isn't visible anywhere. MedSync pulls expiration dates directly from the Vetspire API, surfaces them in a dedicated dashboard, and factors them into every inventory count, every forecast, and every purchase recommendation.
+
+### Three expiration intelligence capabilities: ###
+
+### How the recommendation logic changes: ###
+Two scenarios, same product, different expiration outcomes:
+
+### Goods Lost Intelligence — Turning Loss Data into Leadership Action ###
+Every veterinary practice loses product. Medications expire. Diagnostics are rerun. Controlled substances are wasted. Supplies are damaged. The question is not whether it happens — it is whether you know it is happening, why it is happening, and what to do about it.
+Scout already tracks goods lost through a discipline Megan built: one product per submission, six loss categories, a notes field for clinical context, and per-location reconciliation. It works. MedSync takes that foundation and makes it faster to submit, automatic to reconcile, and intelligent enough to tell leadership where to focus.
+
+### The submission form — built for speed in a clinical environment: ###
+The form mirrors Scout's existing one-product-per-submission discipline — because that discipline produces clean data and MedSync preserves it. The difference is that the form lives inside MedSync, on any device, with product search and barcode scan so a clinical team member can log a loss in ten seconds without leaving the treatment room.
+
+### The six loss categories — what each one tells you: ###
+
+### The insight engine — what MedSync surfaces automatically: ###
+Scout’s current tracker relies on a notes field to capture the clinical context behind each goods lost entry — and that notes field contains more operational intelligence than any single column in the spreadsheet. MedSync preserves the notes field for clinical context, but adds structured sub-category selections for the Diagnostic Duplicate category, where the distinction between “Test failed to run” and “User error” determines whether you call IDEXX or schedule a training session. Structured selections eliminate the need for notes field interpretation on the most consequential category. MedSync reads the full pattern of loss types, products, frequencies, sub-categories, and notes across all submissions and surfaces actionable insights rather than leaving them buried in a log.
+Based on Scout's actual 2026 goods lost data, here is what the MedSync insight engine would have surfaced:
+
+### The goods lost dashboard — what leadership sees: ###
+Hospital leadership and the Admin see a single dashboard across all locations — monthly totals by loss category, dollar impact by location, trending insight flags, and a ranked list of where to focus energy this month. No spreadsheet review. No cross-referencing tabs. One screen.
+
+### Lot-level tracking and Vetspire write-back: ###
+When products arrive, MedSync captures everything needed to connect that unit of inventory to its complete financial and clinical history. That data writes back to Vetspire so it is available for finance, procurement analysis, and recall management at the practice level.
+Goods lost write-back to Vetspire — automated, every 15 minutes: When any goods lost entry is submitted in MedSync — from the dedicated goods lost form, from the PO receiving screen, or from the Hospital Receiver workflow — the platform automatically resolves the product to its Vetspire product ID and posts an inventory adjustment that reduces on-hand by the quantity lost. This sync runs on a 15-minute automated cycle. No manual reconciliation. No lag between what MedSync shows and what Vetspire holds. Every screen in MedSync that can capture a goods lost event writes to the same sync queue — so it does not matter whether the submission came from the Inventory Lead, a technician at receiving, or a hospital staff member using the shared receiver login. The adjustment reaches Vetspire within 15 minutes regardless of source.
+
+### The Scan That Changes Everything — and the Write-Back That Closes the Loop ###
+Every existing veterinary inventory system has a critical blind spot at receiving: products arrive, get put on the shelf, and the connection between what was ordered and what was actually received — including the specific lot number and expiration date — is captured manually, if at all. MedSync closes that gap with a single barcode scan at receiving. The dispense side of the equation belongs to VetSpire — that is the point of sale, where the patient record and the clinical invoice live. MedSync does not duplicate that workflow. Instead, it reads the updated on-hand count from VetSpire automatically after each dispense and attributes the depletion to the correct lot using FIFO. The result: MedSync always knows exactly how much product is on the shelf and which lot it came from — without adding any workflow to the clinical team at the point of fill.
+The scan at receiving is the foundation of everything that follows. Every lot record, every carrying time calculation, every expiration alert, every recall trace — all of it begins the moment a product is scanned into the delivery. If the receiving data is wrong, everything downstream is wrong. The scan makes it right, automatically, every time.
+
+### Scan 1 — at receiving · scan-to-PO matching: ###
+When a delivery arrives, the Inventory Lead opens MedSync and sees the open purchase orders for that vendor. As each product comes out of the delivery box, the IL scans the GS1 barcode. That single scan captures the NDC, lot number, expiration date, and pack quantity simultaneously — and automatically matches the scanned product against the corresponding line item on the open PO.
+
+### Hospital Receiver — receiving without inventory access: ###
+When the Inventory Lead is not on-site, deliveries still arrive. The current workflow — unboxing, manually checking off items against the packing slip, setting aside for the IL to update later — is error-prone and creates a lag between receipt and system accuracy. MedSync solves this with a purpose-built Hospital Receiver role: a shared device login that gives any staff member access to exactly two workflows. The first thing they see after logging in is a single question: what would you like to do today? They choose. They proceed. Nothing else is visible.
+
+### VetSpire dispense write-back — how on-hand stays accurate: ###
+
+### What MedSync receives from VetSpire after each dispense: ###
+
+### Injectable on-hand tracking — how VetSpire and MedSync stay in sync: ###
+Injectables present the most nuanced tracking challenge in veterinary inventory. A 20mL vial of Maropitant injectable is not used all at once — it is used across multiple patient visits. VetSpire records each dispense event with quantity dispensed. MedSync reads those quantity updates from the VetSpire API and maintains a running mL-level on-hand count per vial, attributed to the specific lot on the shelf. Every existing system treats that vial as a binary: in stock or not in stock. MedSync tracks every milliliter — without any additional workflow from the clinical team.
+
+### The lot lifecycle — from PO to patient: ###
+The VetSpire write-back closes the last open loop in the product lifecycle. For the first time in veterinary medicine, a practice can see exactly how long it takes for a purchased product to generate revenue — not estimated, not inferred, not reconciled at month-end. Measured. In real time. Per lot. Per product. Per location. And without any change to the clinical workflow at the point of fill.
+
+### A Weekly Count Process That Works in a Clinical Environment ###
+A full physical inventory count shuts down the floor, burns two hours, and produces numbers that are already drifting by the time the count is done. Cycle counting is the professional alternative — count a small portion of the formulary each week, on a rotating schedule, so every product is verified regularly without anyone leaving patient care for an extended period.
+MedSync automates the cycle count schedule entirely. The Inventory Lead never decides what to count — the platform generates the week's count list based on product value, usage velocity, expiration risk, and historical discrepancy. The IL counts, confirms, and the system handles the rest.
+
+### Three count categories — assigned by MedSync: ###
+MedSync automatically assigns every product in the formulary to one of three categories based on clinical risk and product type. Category A covers controlled substances, scheduled drugs, vaccines, and emergency medications — the formulary items where a discrepancy has the highest clinical and regulatory consequence. Category B covers the core formulary: prescription medications, specialty drugs, and diagnostics not captured by A or C. Category C covers supplies, preventatives, and OTC topicals where the cost of an error is lowest. Category determines count frequency — and because category assignment is keyword-driven rather than manual, every new product added to the formulary is automatically classified the moment it enters the system.
+
+### The count schedule — by category: ###
+Category A counts every week — no exceptions. Controlled substances and emergency drugs are too high-risk to leave unchecked for any longer than seven days. Category B counts biweekly, during weeks 1 and 3 of each calendar month. Category C counts biweekly, during weeks 2 and 4. Category D — white goods, supplies, and equipment — counts monthly, during week 4 only. The total count load at any given location is manageable in a single session — typically under 30 minutes — because the four-category structure keeps the weekly list focused on the products that matter most right now.
+
+### How MedSync decides what to count each week: ###
+Category assignment determines the baseline schedule. But MedSync applies three additional rules that can elevate a product into that week's count regardless of its category:
+
+### Count to order in one session: ###
+The count workflow and the ordering workflow are fully connected in MedSync. When the IL completes a count and confirms the on-hand numbers, any product that falls below its Min automatically triggers a PO draft in the PIM — pre-populated with the recommended SKU, the best vendor price, and the GPO discount applied. The IL reviews and approves in the same session.
+Count, confirm, order. Done. The IL is back on the floor.
+The cycle count screen is live in MedSync today. At Lincoln Park, it pulls all 256 active products directly from the Vetspire integration, assigns each to its category automatically, and presents the Inventory Lead with a timed, per-category workflow. A visible timer runs from the moment the first count begins. Each category submits independently the moment all products in that category are entered — so Cat A can be marked complete and logged to the activity record without waiting for Cat B or Cat C. Any product where the counted quantity does not match the expected on-hand is flagged as a discrepancy at the moment of entry, before the category is submitted. The system tracks how many discrepancies were found, logs them alongside the count duration, and surfaces the record for Admin review.
+
+### Two Roles. Two Views. One Platform. ###
+MedSync operates on a four-role access model. Every user logs in to a version of the software built for their job — not a one-size-fits-all interface that shows everyone everything and serves no one well. The four roles in hierarchy order: Admin, Clinical Support, Inventory Lead, and Hospital Receiver.
+
+### What MedSync Analytics shows: ###
+The admin dashboard is the monthly report MedSync generates automatically. It is what the Admin sends to the CEO. It is what proves the ROI. It is the document that makes the case for MedSync at every quarterly business review. And it is generated from real clinical data — not manually assembled from spreadsheets at month-end.
+
+### Eleven Screens. One Platform. Built on Scout. ###
+The following screens illustrate MedSync as it would appear to the clinical team at Scout Veterinary Urgent Care. These are conceptual mockups — for illustrative purposes — designed to show the role-specific interface experience that each MedSync user encounters. Screens are organized by workflow: the Admin dashboard (Portfolio, MedSync Analytics, Lot Lifecycle Analysis, Activity Log), followed by the Inventory Lead and clinical workflows (Weekly Order, Receiving, Hospital Receiver, VetSpire Write-back, Goods Lost), and Settings. Every screen includes a unified platform sidebar showing the full navigation structure for that user’s role — Admin, Clinical Support, Inventory Lead, or Hospital Receiver. Clinical Support sees the full Admin dashboard and operations navigation but cannot access User Management or edit white goods consumption rate assumptions. Hospital Receiver screens show only two workflow options: Receive a delivery and Submit goods lost. Every practice group that joins MedSync sees their own logo in the navigation bar and their own locations in the dashboard. The platform is the same. The identity is theirs.
+
+### Screen 1 — Portfolio dashboard · Admin view ###
+The Admin opens MedSync and sees all four Scout locations simultaneously. Portfolio COGs at 8.4% — within target. Seven Min alerts across three locations. Old Orchard’s order is pending and the Mon/Tue order window closes tomorrow at 1pm, highlighted in amber. The platform insight at the bottom flags Old Orchard’s COGs trending above target and explains why: Gabapentin and Maropitant over-ordered last cycle. The Admin can act on this information before the order submits.
+
+### Screen 5 — Weekly order · IL view ###
+The Inventory Lead at Old Orchard opens the Purchase Orders screen on Monday morning. The order window is open. Every product below Min is pre-populated and organized by vendor — MWI Animal Health and Covetrus — with recommended quantity and GPO-estimated pricing. Carprofen is flagged: the lot on shelf expires in 14 days and current stock covers the need — hold the order, use existing inventory. Two items confirmed, $184.56 total. One click exports separate vendor PDFs ready for distributor portal submission. The IL is back on the floor in under 20 minutes.
+
+### Screen 6 — Receiving scan · IL view · scan-to-PO matching ###
+A delivery arrives from MWI. The Inventory Lead at Lincoln Park opens MedSync and sees PO #4421 with seven line items. She scans each product as it comes out of the box. The GS1 barcode on every pharmaceutical item encodes the NDC, lot number, expiration date, and pack quantity. Each scan automatically matches against the open PO and marks that line item confirmed. Five items scan clean. The sixth — Catalyst Lyte 4 CLIPs — is not yet scanned. The seventh triggers an immediate discrepancy flag: the PO shows Ondansetron 4mg but the scan reads Ondansetron 8mg. MedSync stops the receiving process, flags the item before it goes on the shelf, and keeps that PO line open until the vendor resolves it. No manual entry. No data errors. No wrong product reaching a patient.
+
+### Screen 7 — VetSpire dispense write-back · automatic · on-hand update ###
+A technician at Lincoln Park administers Maropitant to Bella Martinez through VetSpire at the point of sale — exactly as they do today. No action in MedSync. No scan at the point of fill. The moment the dispense is recorded in VetSpire, MedSync reads the updated on-hand count via API: Maropitant Inj 10mg/mL, Lot #MRP2241 decrements from 14.2mL to 11.7mL. The carrying time clock advances. If on-hand falls to Min, a reorder alert fires automatically. The clinical team’s workflow is unchanged. MedSync’s inventory record is accurate.
+
+### Screen 8 — Goods lost form · IL and clinical team · mobile ###
+A technician at Lincoln Park submits a goods lost entry from the treatment room. Product scanned or selected, loss type tapped, quantity entered. The dollar loss calculates automatically. A note field captures the clinical detail — “catalyst clogged again’ — that feeds the insight engine’s equipment flag. On-hand updates the moment the form is submitted. The entire workflow takes less than 30 seconds.
+
+### Screen 3 — Lot lifecycle analysis · Admin view · procurement intelligence ###
+The Admin reviews the lot lifecycle analysis for Maropitant injectable across all four locations. Lot #MRP2239 at West Loop: sold out in 18 days. Lot #MRP2240 at Old Orchard: 34 days, 12mL expired, $120.48 wasted. Lot #MRP2241 at Lincoln Park: 52 days and still active. Lot #MRP2238 at Wheaton: sold in 21 days. The platform insight is automatic: Old Orchard’s demand for this product does not justify a 20mL vial. Reduce Max to one bottle, adjust reorder point to 8mL. MedSync has already updated the recommendation. No manual spreadsheet. No month-end investigation. The data is there the moment it exists.
+
+### Screen 2 — MedSync Analytics · Admin view ###
+The Admin opens MedSync Analytics for the monthly portfolio review. She selects “MTD” from the eleven date range presets and filters to “All locations” — the default portfolio view. Procurement savings YTD at $18,420, on pace for $44,000 annually. Goods lost this month at $2,847, $340 above April — triggering investigation. The white goods monitoring panel flags Old Orchard ordering gauze 38% above expected rate and West Loop ordering syringes 21% above expected rate — an estimated $133/month combined overspend surfaced automatically from receiving data alone. Platform insights are ranked by dollar impact: a Catalyst analyzer equipment flag at Lincoln Park ($1,024), a Maropitant over-ordering flag at Old Orchard ($567), and the white goods divergence across two locations ($133/mo). Old Orchard’s cycle count was not completed this week. She switches the location filter to “Old Orchard” — all KPIs, the COGs chart, and the nav label update instantly. Then she exports: QuickBooks for the finance team, branded PDF for the ownership review, CSV for her own records. The COGs denominator is set to gross production — matching Thurlow’s internal P&L methodology. The monthly report that once took two hours to assemble is done in four minutes.
+
+### How MedSync Gets You to Accurate Data — Fast ###
+Most software companies ship a login and a help document. MedSync shows up. Because the foundation of every forecast, every reorder point, and every purchase order recommendation in the platform is the on-hand count — and the only way to guarantee that number is accurate from day one is to count every item in person.
+
+### Phase 1 — Physical inventory count (pre-launch): ###
+When Scout locations go live on MedSync in Q4 2026, and at every new location thereafter, the MedSync implementation team goes on-site and conducts a complete manual count of every saleable item in the hospital — every medication, every supply, every unit. No estimates. No import from a prior system. A clean, verified count entered directly into MedSync by the implementation team alongside the Inventory Lead.
+
+### Phase 2 — 30-day supported launch: ###
+Once the platform goes live, the MedSync implementation team remains actively engaged with the Inventory Lead for the first 30 days — on-site and virtually — ensuring the system is working correctly, the team is confident, and any questions are answered in real time, not by a help desk ticket.
+
+### What this means for Scout: ###
+On-site count before go-live — Every new Scout location gets a verified, accurate starting count before the platform goes live. No guessing, no importing old spreadsheet data, no compounding errors.
+30-day dedicated support — The Inventory Lead at each new location has a dedicated implementation partner on-site and virtually for the first 30 days — not a help desk ticket, not a video tutorial.
+Week 4 handoff milestone — By the end of Week 4, every location is fully live, the IL is confident and independent, and the data is clean enough to trust the forecasts and the PO recommendations.
+Monday + Friday rhythm — The Monday in-person touch sets the week's priorities. The Friday virtual check closes the loop — was the week successful? What needs adjusting before Monday?
+
+### The Benchmark Starter Program — MedSync for Denovo Practices ###
+MedSync's forecasting engine runs on historical usage data. A denovo practice — a brand new location opening its doors for the first time — has none. No order history. No Vetspire usage reports. No seasonal baseline. The three-method reorder calculator requires annual usage data that simply doesn't exist yet.
+This is not a reason to delay implementation. It is a reason to start with a different data source and transition to actuals as they accumulate.
+
+### Phase 1 — Benchmark-based starter forecasting (Months 1–3): ###
+Before the practice sees its first patient, MedSync loads a benchmark-calibrated starter formulary — a curated set of Min/Max reorder points built from industry data and adjusted for the specific characteristics of the new location. Before forecasting can begin, however, the formulary itself must be established. MedSync offers three structured intake methods depending on what the practice has available:
+Formulary intake — three methods:
+Method 1 — Direct upload (CSV or Excel). The practice uploads a spreadsheet containing their intended product names, NDC numbers, and SKUs. MedSync maps each item to Scout's contract formulary and GPO pricing, applies benchmark-based Min/Max values, and the formulary is ready before the first patient walks in. The right path for practices that have a formulary in mind — a vet opening a second location, a practice migrating from another system, or a PE group deploying a standardized formulary across new acquisitions.
+Method 2 — PIMS integration pull (Vetspire and future integrations). For practices already operating on Vetspire, MedSync pulls the product list directly from the hospital software — every item already dispensed or stocked in the system comes in automatically, no spreadsheet required. The right path for acquisitions and practice migrations where a product history already exists in the PIMS.
+Method 3 — MedSync benchmark default. For truly cold-start practices with no existing formulary and no PIMS history, MedSync loads the full benchmark-calibrated starter formulary based on the practice characteristics below — practice type, provider count, estimated patient volume, geographic market, and exam room count. No upload required. The right path for a brand new practice opening its doors for the first time.
+
+All three methods map products automatically to Scout's contract formulary and GPO pricing before the first order is placed. The Admin selects the method from the Formulary Setup panel in Admin Settings. Formulary setup is Admin-only and every intake action is logged to the activity log with timestamp and author. No competitor offers structured formulary intake for denovo practices in any form.
+
+### Phase 2 — Rapid calibration blend (Months 3–6): ###
+As real usage data accumulates in Vetspire, MedSync begins blending actuals into the forecast progressively — replacing benchmark assumptions with clinical reality at each location.
+
+### Phase 3 — Full historical mode (Month 6+): ###
+By month six, the practice has enough real Vetspire usage data to run the full MedSync forecasting engine — weighted seasonal index, three-method reorder calculator, 12-month rolling forecast, and expiration-aware purchase recommendations. The Benchmark Starter Program is retired. The practice is running on its own data, same as every established Scout location.
+
+### The Scout network advantage: ###
+Every new Scout location that opens contributes anonymized usage data to MedSync's benchmark library. Lincoln Park's first 90 days. Old Orchard's. West Loop's. Wheaton's. Each opening makes the benchmark smarter for the next one.
+At 10 Scout locations, MedSync has the most accurate urgent care denovo benchmark dataset in the industry. At 40 locations, it is proprietary infrastructure that no competitor can replicate without the same network. The benchmark library is not a feature — it is a compounding asset that grows in value with every Scout opening.
+
+### What this means for external customers: ###
+Denovo support opens three buyer segments that established-practice-only products cannot serve:
+Practice management companies — Groups actively opening new locations who need inventory infrastructure from day one, not month six.
+Private equity veterinary roll-ups — PE-backed groups acquiring and integrating new practices need a standardized inventory system that works at acquisition, not after 12 months of history.
+Independent practitioners — First-time practice owners opening a single location who have no historical data, no dedicated inventory manager, and no process — MedSync's benchmark starter gives them a professional starting point immediately.
+
+### Return on Investment for Scout ###
+MedSync was not built for a generic veterinary practice. It was conceived, designed, and prototyped by Scout’s COD (Clinical Operations Director) using Scout's actual Vetspire data, Scout's SOP methodology, and Scout's operational workflows. Every feature solves a problem Scout has today.
+COGs protection — A 0.5% COGs reduction across 40 locations at $1M revenue each saves $200,000+ annually — multiples of the software cost at any price point.
+Procurement savings — GPO discounts, contract-price-optimized SKU selection, and consolidated multi-location ordering reduce per-unit drug costs across the entire Scout formulary. Every dollar saved on procurement goes directly to the bottom line.
+Onboarding efficiency — If each new location requires 40 hours of setup at $25/hour, MedSync recovers $1,000 per opening. At 10 new locations per year, that's $10,000 saved plus the compounding value of consistent execution from day one.
+Stockout prevention — A single peak-season stockout of a high-volume medication can cost hundreds of dollars in missed revenue per day. MedSync eliminates the guesswork that causes those stockouts.
+Admin leverage — Every hour the Admin currently spends chasing inventory status, comparing vendor prices, and approving manual POs is an hour not spent on growth, quality, or team development.
+
+### What MedSync costs Scout vs. what it returns: ###
+Scout receives perpetual preferred pricing at $149/month as the founding customer. At 40 locations, that is $71,520 per year — approximately $1,788 per location annually. Here is what that investment returns:
+
+### Market Opportunity ###
+No existing product combines demand forecasting, multi-location visibility, integrated procurement, and Vetspire integration for veterinary practice groups. The competitive landscape:
+Generic spreadsheets — No automation, no forecasting, no integration. The status quo for most practices today.
+Practice management inventory modules — Track counts only. No predictive capability, no multi-location dashboard, no procurement integration.
+Enterprise distribution platforms — Built for procurement teams, not Inventory Leads. Require large commitments, no forecasting intelligence.
+Vetcove standalone — Price comparison only. No inventory tracking, no demand forecasting, no Min/Max management.
+
+### The one direct competitor — and where the gap exists: ###
+One product targets the same space: Inventory Ally, by Veterinary Care Logistics Inc. Co-founded by Nicole Clausen — author of the inventory management textbook that Scout's SOP methodology is based on. It is a legitimate product. It deserves a clear-eyed comparison.
+One further note: Nicole Clausen, Inventory Ally's co-founder, is the author of the inventory management textbook that Scout's SOP is based on (§3.4, §3.6, §3.6.1, §3.7.1). The fact that her product does not yet include the SOP-based three-method reorder calculator, weighted seasonal index, or Vetspire write-back is precisely the gap MedSync was built to fill.
+
+### Pre-Development Valuation — The Honest Picture ###
+What MedSync represents today is not a pitch deck or a wireframe. It is a working platform with validated methodology, active Vetspire integration, and a four-hospital deployment ready to begin this quarter. The path is a clear three years: deploy at Scout in Q4 2026, validate ROI and refine through 2027, launch to the external market in 2028. The investment ask funds execution of a plan that is already in motion — not a concept that still needs to be proved. That combination places MedSync in a category most early-stage software investments never reach: a product that already works, deployed on the investor’s own operations, generating ROI before the first external customer is approached.
+
+### The full market opportunity: ###
+The initial target of 8,000 small practice groups represents the highest-value beachhead segment. MedSync’s tiered pricing model — $149/month for solo practices, $249 for small groups, $349 for mid-size groups, $449 for large groups — means revenue per customer scales with practice complexity. A solo practice pays $149. A 10-location group pays $449. The same platform, appropriately priced for the size of the problem being solved. But the broader opportunity — 30–35K US practices, the majority underserved by any meaningful inventory intelligence — represents a full TAM of $90M ARR across all 30,000 US veterinary practices, with a $24M small-groups TAM for the initial 8,000 practice group segment. At 10% penetration of that segment, MedSync generates $2.4M in ARR. Most practices are managing inventory through spreadsheets, manual shelf walks, and institutional memory. The gap is not niche. It is industry-wide.
+
+### Industry benchmarks — what pre-development SaaS concepts sell for: ###
+
+### Why MedSync sits at the stronger end: ###
+The working prototype is real — A system running on Scout live data with 14,929 verified formulas, active Vetspire integration, a live cycle count screen processing 256 real products at Lincoln Park, and an automated goods lost sync writing inventory adjustments to Vetspire every 15 minutes is not a mockup. Each of these capabilities is deployed and running today. It de-risks the concept more than any pitch deck could.
+The founder is the customer — Megan Henley built the inventory process that MedSync is based on, uses it every month, and will be the first to validate every new feature against clinical reality. Founder-market fit is the single most important early-stage signal.
+The methodology is proprietary — The SOP-based three-method reorder calculator, weighted seasonal index, PIM engine with contract-price-aware SmartSKU and GPO integration, lot-level financial tracking, weekly order cycle with Mon/Tue order window and vendor-grouped PO exports, goods lost insight engine, smart cycle count, and expiration intelligence were all designed by Megan and validated on Scout data. Eight layers of proprietary operational methodology, and a tiered pricing model that scales revenue with customer complexity — solo practices at $149, large groups at $449. No competitor can replicate this without her.
+The market is larger than it looks — 30–35K practices, the majority underserved, represents a TAM of $24M ARR for the small practice group segment alone — and $90M+ across all 30,000 US veterinary practices. That is a venture-scale market hiding inside what looks like a niche.
+The first customer is already warm — Scout is the origin of the product, the test environment, and the organization that will validate every feature before any external customer sees it. When lot-level tracking data begins flowing -- connecting every PO to every patient dispense to every financial outcome -- Scout becomes the first veterinary group in the country with that depth of procurement intelligence. That data will make MedSync pitch undeniable.
+
+### Recommended investment structure: ###
+
+### A Remarkably Lean Company — Built on Thurlow's Existing Infrastructure, Run by the Right People in the Right Roles ###
+Most startups have to hire a finance director, build marketing from scratch, establish HR, and figure out back-office operations before they write a line of code. MedSync starts with all of that already in place inside Thurlow Veterinary Services Inc. That is not a minor advantage — that is $300K–$500K in annual overhead that MedSync does not need to carry during the build and Scout pilot phases — directly reducing the capital required and making the $400K–$550K ask go further than it would for any standalone startup.
+The question is not whether MedSync needs a full organizational structure — it does, eventually. The question is when each function requires a dedicated MedSync hire versus when Thurlow's existing team can absorb it as a shared service. It is also a question of role clarity: the person who built the product is most valuable when she is building and refining it — not managing a sales pipeline. MedSync is designed around that clarity from day one.
+
+### Function-by-function staffing plan: ###
+
+### The minimum viable team at 2028 market launch: ###
+
+### Revenue milestones to payroll break-even: ###
+
+### What Thurlow's infrastructure is worth to MedSync: ###
+
+### The founder-led credibility model: ###
+Megan Henley does not need to be the person who cold-calls practice managers. Her value to MedSync is highest when she is doing what she does now: designing the product, refining the methodology, and translating clinical experience into software decisions no outside team could replicate. The hired CEO or Head of Sales runs the commercial operation. When a serious prospect needs to hear from the person who built the methodology, Megan joins that conversation. Not to pitch. To validate. Typically 3 to 5 calls per month at peak. Everything else stays in her lane.
+
+### Founder compensation — equity-forward, cash-phased: ###
+A founder who takes lower early cash and higher equity is a founder who believes in what they are building. That is the signal this structure sends to Thurlow — and it is the structure that keeps Megan's incentives most tightly aligned with MedSync's long-term success. Cash increases as MedSync grows. Equity is established now, when its cost is lowest.
+
+### Phased compensation structure: ###
+
+### How the equity stake is structured: ###
+
+### The Case for Tripp Welge as MedSync CEO ###
+Section 16 identifies the CEO + Head of Sales as a critical hire — the person who owns revenue, external company leadership, and investor relationships. That hire is budgeted at $90K–$130K plus equity and commission, with a target start date of Q2 2028. There is a stronger alternative: Tripp Welge, CEO of Thurlow Veterinary Services Inc., filling that role from the outset.
+MedSync’s most powerful commercial asset — identified explicitly in Section 18 — is a reference customer whose CEO can speak to the product directly. If Tripp is MedSync’s CEO, that credibility is not borrowed from a customer relationship. It is structural. The same person who runs the founding clinical operation is also building the company around it. That alignment is rare, and in a relationship-driven industry like veterinary medicine, it closes deals that no pitch deck can close alone.
+Beyond credibility, Tripp’s involvement as CEO directly reduces MedSync’s capital need. The $90K–$130K CEO salary line — plus equity and commission — represents the largest single personnel cost in the 2028 Scout pilot phase. Eliminating or deferring that line meaningfully extends the runway provided by the $400K–$550K deployment investment, and it removes one of the hardest early hires any startup faces: finding someone who understands the product deeply enough to sell it credibly without having built it.
+
+### Why this works — and why the timing is right: ###
+
+### Proposed structure — phased CEO leadership: ###
+
+### The Investment Opportunity ###
+MedSync is seeking a seed investment from Thurlow Veterinary Services Inc. to fund the production-grade development of the MedSync platform — taking a working deployed web app (live at medsync.vet with active Vetspire API integration running on Scout data) and building it into a fully-scaled, enterprise-ready SaaS platform with Vetspire integration, distributor API procurement connectivity, multi-tenant architecture, and a production-ready web interface.
+
+### A Disciplined Path to Market — Built on Proof, Not Promises ###
+MedSync will not rush to market. The veterinary industry is a relationship-driven, word-of-mouth business — one bad experience in a clinical environment spreads faster than any marketing campaign. The roadmap below reflects a deliberate decision to build it right, prove it works, and go to market armed with documented results rather than projections.
+
+### Q4 2026–2027 — Scout deployment and platform refinement: ###
+Q4 2026 is dedicated to deploying MedSync across all four Scout locations — no external customers, no revenue pressure. The goal is to arrive at January 2027 with four locations running, real COGs data flowing, and the first documented ROI month in hand.
+
+### Q4 2026 – 2027 — Scout deployment and clinical validation: ###
+Beginning Q4 2026, MedSync goes live across all four existing Scout locations and any denovo Scout locations that open during the year. No external customers. No marketing. This is the year MedSync earns the right to go to market — by proving it works in the most demanding possible environment: a real multi-site veterinary urgent care group with real patients, real clinical staff, and real financial accountability.
+What the 2027 Scout validation proves — documented and measurable:
+COGs impact — Did MedSync move the COGs needle at Scout? By how much? Against what baseline?
+Stockout reduction — How many reorder alerts were triggered in time? How many stockouts were prevented?
+Procurement savings — Total GPO discount capture across all Scout locations. Best-price routing savings vs. prior ordering behavior.
+Expiration waste eliminated — Total value of expired product prevented across all locations in year one.
+IL time saved — Hours per week recovered from manual inventory tasks per Inventory Lead.
+Denovo accuracy — How close were the Benchmark Starter Program forecasts to actual usage in the first 90 days?
+
+### 2028 — External market launch: ###
+MedSync enters the external market in 2028 not as a new product looking for its first customer — but as a proven platform with a year of documented results, a refined user experience, and a reference customer whose CEO can speak to the product directly.
+
+### Path to break-even in under two years: ###
+With dedicated payroll of $350K–$470K and a realistic blended average of $259/month per customer across the tiered pricing model, MedSync reaches payroll break-even at approximately 130–135 customers. At the right customer acquisition pace, that is achievable by mid-2029 — 18 months from the 2028 external launch. Here are the five strategies that determine whether that timeline holds.
+
+### Development cost strategy — building smart, not just fast: ###
+MedSync does not need to be fully built before it delivers value to Scout. A phased build approach — constructing the platform in layers that match Scout's validation timeline — reduces year-one development cost significantly while ensuring the features that matter most are live and tested before anything else is funded.
+
+### Phase the build — not everything launches at once: ###
+Category A features — the core inventory intelligence, Vetspire integration, and Goods Lost module — deliver the majority of Scout's operational value and should be built first. Category B features build on a validated foundation. Category C features launch with the external market in 2029.
+
+### Five specific cost decisions that reduce year-one spend: ###
+
+### Realistic year-one development cost with this strategy: ###
+
+### A Final Note ###
+The veterinary industry is underserved by technology. The tools that exist were built from the outside — by engineers who studied the industry but never ran a practice, never managed a controlled substance audit, never scrambled to find Gabapentin during a peak-season surge.
+Thurlow Veterinary Services Inc. has something those companies will never have: a network of live clinical operations, a leadership team with deep industry expertise, and staff who understand the problems from the inside out.
+MedSync is how Thurlow begins monetizing that knowledge beyond patient care. It is the founding product of what could become a veterinary technology division that builds the tools the industry actually needs — because Thurlow is the industry.
+The veterinary inventory problem is real. The market gap is documented. The methodology is proven. The first customer is already inside the building. The only thing missing is the capital to build it. That is what this conversation is about.
+MedSync Solutions Co.  |  A Thurlow Veterinary Services Technology Initiative  |  May 2026  |  Confidential

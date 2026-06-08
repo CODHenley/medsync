@@ -33,6 +33,8 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .role-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;}
 .rb-admin{background:rgba(28,43,74,.1);color:var(--navy);}
 .rb-manager{background:var(--green-bg);color:var(--green);}
+.rb-hospital_manager{background:var(--green-bg);color:var(--green);}
+.rb-clinical{background:var(--green-bg);color:var(--green);}
 .rb-receiver{background:#E6F1FB;color:#1A6FAD;}
 .rb-inventory_lead{background:#FEF3E2;color:var(--amber);}
 
@@ -399,9 +401,15 @@ function cancelDelete(id) {
 }
 
 async function deleteUser(id, name) {
-  await fetch(SUPA_URL + '/rest/v1/users?id=eq.' + id, {
-    method: 'DELETE', headers: H
+  const res = await fetch(SUPA_URL + '/rest/v1/users?id=eq.' + id, {
+    method: 'DELETE', headers: { ...H, 'Prefer': 'return=minimal' }
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    showToast('Delete failed: ' + (err.message || err.hint || res.status), true);
+    _pendingDeleteId = null;
+    return;
+  }
   showToast(name + ' deleted');
   _pendingDeleteId = null;
   await loadUsers();
@@ -459,11 +467,13 @@ function showMsg(text, type) {
 }
 
 let _toastT = null;
-function showToast(msg) {
+function showToast(msg, isError) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
+  t.textContent = msg;
+  t.style.background = isError ? '#C0392B' : '';
+  t.classList.add('show');
   if (_toastT) clearTimeout(_toastT);
-  _toastT = setTimeout(() => t.classList.remove('show'), 2800);
+  _toastT = setTimeout(() => { t.classList.remove('show'); t.style.background = ''; }, isError ? 4000 : 2800);
 }
 
 boot();
