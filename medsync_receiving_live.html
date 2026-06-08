@@ -297,7 +297,7 @@ async function selectPOGroup(idx) {
   if (!g) return;
 
   const ref = (g.vendor || 'Vendor') + ' · ' + (g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
-  state.selectedOrder = { id: groupKey, ref, total: g.total, submittedAt: g.week_start };
+  state.selectedOrder = { id: idx, ref, total: g.total, submittedAt: g.week_start };
   state.hasDiscrepancy = false;
 
   state.lines = g.items.map(i => ({
