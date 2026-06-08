@@ -278,22 +278,22 @@ async function loadOrders() {
     groups[key].items.push(i);
     groups[key].total += Number(i.unit_price || 0) * Number(i.qty_ordered || 1);
   });
-  grid.innerHTML = Object.entries(groups).map(([key, g]) => `
-    <div class="po-card" onclick="selectPOGroup(${JSON.stringify(key)})">
+  const entries = Object.entries(groups);
+  grid.innerHTML = entries.map(([key, g], idx) => `
+    <div class="po-card" onclick="selectPOGroup(${idx})">
       <div class="po-ref">${g.vendor || 'Vendor'} · ${g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</div>
       <div class="po-meta">$${g.total.toFixed(2)} · ${g.items.length} SKUs · Submitted</div>
     </div>
   `).join('');
-  // Store groups for selection
-  window._poGroups = groups;
+  // Store groups for selection — keyed by index for safe onclick use
+  window._poGroups = entries.map(([key, g]) => g);
 }
 
-async function selectPOGroup(groupKey) {
+async function selectPOGroup(idx) {
   // Mark selected
-  document.querySelectorAll('.po-card').forEach(c => c.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+  document.querySelectorAll('.po-card').forEach((c, i) => c.classList.toggle('active', i === idx));
 
-  const g = (window._poGroups || {})[groupKey];
+  const g = (window._poGroups || [])[idx];
   if (!g) return;
 
   const ref = (g.vendor || 'Vendor') + ' · ' + (g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
