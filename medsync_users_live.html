@@ -395,7 +395,7 @@ const MANAGEABLE = {
 
 async function boot() {
   try {
-    const mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+    const mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
     myRole = mu.role || 'manager';
     myId   = mu.id || null;
     document.getElementById('tb-sub').textContent = 'User Management · ' + (mu.full_name || '');
