@@ -99,6 +99,27 @@ select.nav-sel option{background:var(--navy);}
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
 
+/* ── CAMERA SCANNER MODAL ───────────────────────────────── */
+.cam-overlay{position:fixed;inset:0;background:rgba(10,15,30,.7);display:flex;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(3px);}
+.cam-modal{background:var(--surface);border-radius:14px;overflow:hidden;width:min(480px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.cam-header{background:var(--navy);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;}
+.cam-header-title{color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.cam-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;}
+.cam-close:hover{color:#fff;background:rgba(255,255,255,.1);}
+.cam-body{padding:16px;}
+.cam-viewfinder{position:relative;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:4/3;}
+.cam-video{width:100%;height:100%;object-fit:cover;display:block;}
+.cam-aim{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.cam-aim-box{width:60%;aspect-ratio:3/1;border:2px solid var(--gold);border-radius:6px;box-shadow:0 0 0 9999px rgba(0,0,0,.35);}
+.cam-aim-line{position:absolute;width:60%;height:2px;background:rgba(200,146,42,.6);animation:cam-scan 1.8s ease-in-out infinite;}
+@keyframes cam-scan{0%,100%{top:30%}50%{top:70%}}
+.cam-status{margin-top:10px;text-align:center;font-size:12px;color:var(--mist);min-height:18px;}
+.cam-status.found{color:var(--green);font-weight:600;}
+.cam-status.error{color:var(--red);}
+.cam-hint{font-size:11px;color:var(--mist);text-align:center;margin-top:6px;line-height:1.5;}
+.btn-cam-scan{display:flex;align-items:center;gap:6px;padding:7px 12px;background:rgba(200,146,42,.12);border:0.5px solid var(--gold);color:var(--amber);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.btn-cam-scan:hover{background:rgba(200,146,42,.22);}
+
 /* ── MOBILE ──────────────────────────────────────────────── */
 @media (max-width:600px) {
   /* Topbar */
@@ -181,6 +202,10 @@ select.nav-sel option{background:var(--navy);}
         </div>
         <div class="sim-bar">
           <input class="sim-input" id="scan-input" placeholder="Enter NDC or lot number…" onkeydown="if(event.key==='Enter')processScan()">
+          <button class="btn-cam-scan" onclick="openCameraScanner()" title="Scan barcode with camera">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7V4a1 1 0 0 1 1-1h3"/><path d="M18 3h3a1 1 0 0 1 1 1v3"/><path d="M22 17v3a1 1 0 0 1-1 1h-3"/><path d="M7 21H4a1 1 0 0 1-1-1v-3"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="13" y1="8" x2="13" y2="16"/><line x1="16" y1="8" x2="16" y2="16"/></svg>
+            Camera
+          </button>
           <button class="btn-auto" onclick="autoScanNext()">Auto-scan next</button>
           <button class="btn-sim" onclick="processScan()">Scan →</button>
         </div>
@@ -200,6 +225,30 @@ select.nav-sel option{background:var(--navy);}
   <div class="success-title">Receiving complete</div>
   <div class="success-sub" id="success-detail">Session logged.</div>
   <button class="btn-new" onclick="resetSession()">Receive another delivery</button>
+</div>
+
+<!-- Camera scanner modal -->
+<div class="cam-overlay" id="cam-overlay" style="display:none;" onclick="handleOverlayClick(event)">
+  <div class="cam-modal" onclick="event.stopPropagation()">
+    <div class="cam-header">
+      <div class="cam-header-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7V4a1 1 0 0 1 1-1h3"/><path d="M18 3h3a1 1 0 0 1 1 1v3"/><path d="M22 17v3a1 1 0 0 1-1 1h-3"/><path d="M7 21H4a1 1 0 0 1-1-1v-3"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="13" y1="8" x2="13" y2="16"/><line x1="16" y1="8" x2="16" y2="16"/></svg>
+        Scan Barcode
+      </div>
+      <button class="cam-close" onclick="closeCameraScanner()">✕</button>
+    </div>
+    <div class="cam-body">
+      <div class="cam-viewfinder">
+        <video class="cam-video" id="cam-video" autoplay playsinline muted></video>
+        <div class="cam-aim">
+          <div class="cam-aim-box"></div>
+          <div class="cam-aim-line"></div>
+        </div>
+      </div>
+      <div class="cam-status" id="cam-status">Initializing camera…</div>
+      <div class="cam-hint">Hold the barcode steady inside the frame. The scanner will detect it automatically.</div>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -566,6 +615,84 @@ function showToast(msg) {
 }
 
 boot();
+
+// ── CAMERA BARCODE SCANNER ───────────────────────────────────
+let _camStream = null;
+let _camDetector = null;
+let _camRaf = null;
+let _camActive = false;
+
+async function openCameraScanner() {
+  const overlay = document.getElementById('cam-overlay');
+  const video   = document.getElementById('cam-video');
+  const status  = document.getElementById('cam-status');
+
+  overlay.style.display = 'flex';
+  status.textContent = 'Requesting camera access…';
+  status.className = 'cam-status';
+  _camActive = true;
+
+  // Try native BarcodeDetector first (Chrome/Edge)
+  if ('BarcodeDetector' in window) {
+    try {
+      _camDetector = new BarcodeDetector({
+        formats: ['code_128','code_39','ean_13','ean_8','upc_a','upc_e','data_matrix','qr_code','pdf417']
+      });
+    } catch(e) { _camDetector = null; }
+  }
+
+  try {
+    _camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = _camStream;
+    await video.play();
+    status.textContent = _camDetector
+      ? 'Point camera at a barcode…'
+      : 'Camera ready — type barcode manually if scan fails.';
+    if (_camDetector) _camScanLoop(video, status);
+  } catch(err) {
+    status.textContent = 'Camera access denied or unavailable.';
+    status.className = 'cam-status error';
+  }
+}
+
+function _camScanLoop(video, status) {
+  if (!_camActive) return;
+  _camRaf = requestAnimationFrame(async () => {
+    if (!_camActive) return;
+    try {
+      const barcodes = await _camDetector.detect(video);
+      if (barcodes.length > 0) {
+        const raw = barcodes[0].rawValue;
+        status.textContent = '✓ Detected: ' + raw;
+        status.className = 'cam-status found';
+        // Short pause so user sees the result, then close and fill
+        setTimeout(() => {
+          closeCameraScanner();
+          document.getElementById('scan-input').value = raw;
+          processScan();
+        }, 600);
+        return; // stop looping
+      }
+    } catch(e) { /* frame not ready */ }
+    _camScanLoop(video, status); // keep looping
+  });
+}
+
+function closeCameraScanner() {
+  _camActive = false;
+  if (_camRaf) { cancelAnimationFrame(_camRaf); _camRaf = null; }
+  if (_camStream) { _camStream.getTracks().forEach(t => t.stop()); _camStream = null; }
+  const video = document.getElementById('cam-video');
+  if (video) video.srcObject = null;
+  document.getElementById('cam-overlay').style.display = 'none';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('cam-overlay')) closeCameraScanner();
+}
+// ─────────────────────────────────────────────────────────────
 
 window.addEventListener('message', function(e) {
   if (!e.data || e.data.type !== 'setLocation') return;
