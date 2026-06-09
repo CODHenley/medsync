@@ -68,10 +68,12 @@ select.nav-sel option{background:var(--navy);}
 .sim-bar{background:#F8F7FC;border-top:0.5px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;}
 .sim-input{flex:1;padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none;}
 .sim-input:focus{border-color:var(--navy);}
-.btn-sim{padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.btn-sim:hover{background:#243459;}
-.btn-auto{padding:7px 14px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-sim{padding:7px 12px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-sim:hover{background:#F0EEF8;}
+.btn-auto{padding:7px 12px;background:var(--surface);color:var(--mist);border:0.5px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .btn-auto:hover{background:#F0EEF8;}
+.btn-cam-primary{display:flex;align-items:center;gap:7px;padding:8px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.btn-cam-primary:hover{background:#243459;}
 
 /* PO status footer */
 .po-footer{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
@@ -117,8 +119,6 @@ select.nav-sel option{background:var(--navy);}
 .cam-status.found{color:var(--green);font-weight:600;}
 .cam-status.error{color:var(--red);}
 .cam-hint{font-size:11px;color:var(--mist);text-align:center;margin-top:6px;line-height:1.5;}
-.btn-cam-scan{display:flex;align-items:center;gap:6px;padding:7px 12px;background:rgba(200,146,42,.12);border:0.5px solid var(--gold);color:var(--amber);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
-.btn-cam-scan:hover{background:rgba(200,146,42,.22);}
 
 /* ── MOBILE ──────────────────────────────────────────────── */
 @media (max-width:600px) {
@@ -202,12 +202,12 @@ select.nav-sel option{background:var(--navy);}
         </div>
         <div class="sim-bar">
           <input class="sim-input" id="scan-input" placeholder="Enter NDC or lot number…" onkeydown="if(event.key==='Enter')processScan()">
-          <button class="btn-cam-scan" onclick="openCameraScanner()" title="Scan barcode with camera">
+          <button class="btn-auto" onclick="autoScanNext()" title="Auto-fill next pending item">Auto-fill</button>
+          <button class="btn-sim" onclick="processScan()" title="Submit typed value">Enter</button>
+          <button class="btn-cam-primary" onclick="openCameraScanner()" title="Scan barcode with camera">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7V4a1 1 0 0 1 1-1h3"/><path d="M18 3h3a1 1 0 0 1 1 1v3"/><path d="M22 17v3a1 1 0 0 1-1 1h-3"/><path d="M7 21H4a1 1 0 0 1-1-1v-3"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="13" y1="8" x2="13" y2="16"/><line x1="16" y1="8" x2="16" y2="16"/></svg>
-            Camera
+            Scan Barcode
           </button>
-          <button class="btn-auto" onclick="autoScanNext()">Auto-scan next</button>
-          <button class="btn-sim" onclick="processScan()">Scan →</button>
         </div>
       </div>
 
