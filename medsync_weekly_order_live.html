@@ -94,6 +94,7 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 .qty-btn:hover{background:#F0EEF8;}
 .qty-num{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;min-width:24px;text-align:center;color:var(--navy);}
 .q-price{font-family:'DM Mono',monospace;font-size:12px;text-align:center;color:var(--slate);}
+.qty-unit{font-size:10px;color:var(--mist);margin-left:2px;white-space:nowrap;}
 .q-remove{background:none;border:none;color:var(--mist);cursor:pointer;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .12s;}
 .q-remove:hover{color:var(--red);background:var(--red-bg);}
 
@@ -529,41 +530,60 @@ async function loadQueue() {
 
     // Load products + on-hand from lots
     const [prodsRes, lotsRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max&order=name', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit&order=name', { headers: H }),
       fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
     ]);
     const products = await prodsRes.json();
     const lots     = await lotsRes.json();
 
+    // on_hand is in Vetspire dispensing units (capsules, mL, tablets, etc.)
     const onHand = {};
     if (Array.isArray(lots)) lots.forEach(l => { onHand[l.product_id] = (onHand[l.product_id]||0) + (l.qty_remaining||0); });
+
+    // Build a lookup of Vetspire-tracked product IDs (qty_min set)
+    const vetspireTracked = new Set(
+      (Array.isArray(products) ? products : []).filter(p => p.qty_min != null).map(p => p.id)
+    );
+
+    // Remove any existing queued items that aren't Vetspire-tracked (cleanup from before filter)
+    const staleIds = existing.filter(i => i.product_id && !vetspireTracked.has(i.product_id) && i.auto_flagged).map(i => i.id);
+    if (staleIds.length > 0) {
+      // Delete stale auto-flagged items silently
+      staleIds.forEach(id => {
+        fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${id}`, { method: 'DELETE', headers: H }).catch(()=>{});
+      });
+      existing = existing.filter(i => !staleIds.includes(i.id));
+    }
 
     // Auto-flag below-min items not already queued
     const queued = new Set(existing.map(i => i.product_id).filter(Boolean));
     const autoAdd = [];
     if (Array.isArray(products)) {
       for (const p of products) {
-        // Only auto-recommend products with a real Vetspire min/max — skip white goods & non-integrated items
+        // Only auto-recommend Vetspire-tracked products (qty_min set)
         if (p.qty_min == null) continue;
+        // on_hand is in dispensing units; qty_min is also in dispensing units
         const oh  = onHand[p.id] || 0;
         const min = p.qty_min;
         if (oh < min && !queued.has(p.id)) {
-          const max   = p.qty_max || min * 2;
-          const orderQty = Math.max(1, Math.ceil(max - oh));
-          const unit  = getPrice(p.name);
-          const gpo   = Math.round(unit * 0.88 * 100) / 100;
+          const max          = p.qty_max || min * 2;
+          const pkgSize      = p.package_size || 1;
+          // Order qty is in Vetcove purchase units (bottles, boxes, etc.)
+          const orderQty     = Math.max(1, Math.ceil((max - oh) / pkgSize));
+          const unit         = getPrice(p.name);
+          const gpo          = Math.round(unit * 0.88 * 100) / 100;
           autoAdd.push({
-            location_id: state.locationId,
-            product_id:  p.id,
-            product_name: p.name,
-            vendor:       p.vendor || inferVendor(p.name),
-            qty_ordered:  orderQty,
-            unit_price:   unit,
-            gpo_price:    gpo,
-            on_hand:      oh,
-            week_start:   weekStart,
-            status:       'queued',
-            auto_flagged: true,
+            location_id:    state.locationId,
+            product_id:     p.id,
+            product_name:   p.name,
+            vendor:         p.vendor || inferVendor(p.name),
+            qty_ordered:    orderQty,
+            unit_price:     unit,
+            gpo_price:      gpo,
+            on_hand:        oh,
+            week_start:     weekStart,
+            status:         'queued',
+            auto_flagged:   true,
           });
         }
       }
@@ -581,24 +601,37 @@ async function loadQueue() {
       } catch(e) { /* table may not exist yet — use demo */ }
     }
 
-    state.queue = existing.map(item => ({
-      id:          item.id,
-      productId:   item.product_id,
-      productName: item.product_name,
-      vendor:      item.vendor || inferVendor(item.product_name),
-      onHand:      item.on_hand || 0,
-      orderQty:    item.qty_ordered || 1,
-      unitPrice:   item.unit_price  || getPrice(item.product_name),
-      gpoPrice:    item.gpo_price   || Math.round(getPrice(item.product_name)*0.88*100)/100,
-      autoFlagged: item.auto_flagged,
-    }));
+    // Build product lookup for unit info
+    const prodLookup = {};
+    if (Array.isArray(products)) products.forEach(p => { prodLookup[p.id] = p; });
+
+    state.queue = existing.map(item => {
+      const prod = prodLookup[item.product_id] || {};
+      return {
+        id:              item.id,
+        productId:       item.product_id,
+        productName:     item.product_name,
+        vendor:          item.vendor || inferVendor(item.product_name),
+        onHand:          item.on_hand || 0,
+        dispensingUnit:  prod.dispensing_unit || '',   // Vetspire unit (capsules, mL…)
+        purchaseUnit:    prod.purchase_unit   || '',   // Vetcove unit (bottle, box…)
+        packageSize:     prod.package_size    || 1,
+        orderQty:        item.qty_ordered || 1,
+        unitPrice:       item.unit_price  || getPrice(item.product_name),
+        gpoPrice:        item.gpo_price   || Math.round(getPrice(item.product_name)*0.88*100)/100,
+        autoFlagged:     item.auto_flagged,
+      };
+    });
 
     // Store all products for modal search
     state.allProducts = Array.isArray(products) ? products.map(p => ({
-      id:      p.id,
-      name:    p.name,
-      vendor:  inferVendor(p.name),
-      onHand:  onHand[p.id] || 0,
+      id:           p.id,
+      name:         p.name,
+      vendor:       p.vendor || inferVendor(p.name),
+      onHand:       onHand[p.id] || 0,
+      dispensingUnit: p.dispensing_unit || '',
+      purchaseUnit:   p.purchase_unit   || '',
+      packageSize:    p.package_size    || 1,
     })) : [];
 
     // If po_items table doesn't exist yet, fall back to demo queue
@@ -707,9 +740,13 @@ function renderQueueView() {
 
 function buildQueueTable(items) {
   const rows = items.map(item => {
-    const idx     = state.queue.indexOf(item);
-    const isLow   = item.onHand < getMin(item.productName);
-    const lineEst = (item.gpoPrice * item.orderQty).toFixed(2);
+    const idx      = state.queue.indexOf(item);
+    const isLow    = item.onHand < getMin(item.productName);
+    const lineEst  = (item.gpoPrice * item.orderQty).toFixed(2);
+    // On hand: Vetspire dispensing units (capsules, mL, tablets…)
+    const ohLabel  = item.dispensingUnit ? `${item.onHand} ${item.dispensingUnit}` : item.onHand;
+    // Order qty: Vetcove purchase units (bottle, box, case…)
+    const puLabel  = item.purchaseUnit || '';
     return `
       <div class="q-row">
         <div class="q-name-cell" onclick="switchView('build')" title="View in Build PO">
@@ -719,11 +756,12 @@ function buildQueueTable(items) {
           </div>
           <i class="ti ti-chevron-right q-name-arrow"></i>
         </div>
-        <div class="q-onhand ${isLow ? 'low' : ''}">${item.onHand}</div>
+        <div class="q-onhand ${isLow ? 'low' : ''}">${ohLabel}</div>
         <div class="qty-ctrl">
           <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
           <span class="qty-num" id="qnum-${idx}">${item.orderQty}</span>
           <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+          ${puLabel ? `<span class="qty-unit">${puLabel}</span>` : ''}
         </div>
         <div class="q-price" id="qprice-${idx}">$${lineEst}</div>
         <button class="q-remove" onclick="removeItem(${idx})" title="Remove from queue"><i class="ti ti-x"></i></button>
