@@ -152,6 +152,8 @@ function closeMobileMenu() {
 function signOut() {
   localStorage.removeItem('medsync_session');
   localStorage.removeItem('medsync_user');
+  sessionStorage.removeItem('medsync_session');
+  sessionStorage.removeItem('medsync_user');
   window.location.href = 'medsync_login.html';
 }
 

@@ -528,17 +528,43 @@ async function loadQueue() {
     let existing = await qRes.json();
     if (!Array.isArray(existing)) existing = [];
 
-    // Load products + on-hand from lots
-    const [prodsRes, lotsRes] = await Promise.all([
+    // Load products + on-hand from Vetspire inventory_snapshots (dispensing units)
+    // Falls back to lots table if no snapshot data exists for this location
+    const [prodsRes, snapRes, lotsRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year&order=name', { headers: H }),
+      fetch(SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,on_hand&location_name=eq.${encodeURIComponent(state.locationName)}&snapshot_date=eq.${new Date().toISOString().slice(0,10)}&order=product_name`, { headers: H }),
       fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
     ]);
-    const products = await prodsRes.json();
-    const lots     = await lotsRes.json();
+    const products  = await prodsRes.json();
+    const snapshots = await snapRes.json();
+    const lots      = await lotsRes.json();
 
-    // on_hand is in Vetspire dispensing units (capsules, mL, tablets, etc.)
+    // Primary: Vetspire on-hand by product name (dispensing units — mL, tablets, capsules…)
+    // This is the same unit Vetspire uses for min/max, so comparisons are apples-to-apples
+    const snapOnHand = {};
+    if (Array.isArray(snapshots)) {
+      snapshots.forEach(s => { snapOnHand[s.product_name.toLowerCase()] = s.on_hand; });
+    }
+
+    // Fallback: lot-based on-hand by product_id (Vetcove receiving units — use only if no snapshot)
+    const lotsOnHand = {};
+    if (Array.isArray(lots)) lots.forEach(l => { lotsOnHand[l.product_id] = (lotsOnHand[l.product_id]||0) + (l.qty_remaining||0); });
+
+    // Resolve on-hand per product: prefer Vetspire snapshot, fall back to lots
     const onHand = {};
-    if (Array.isArray(lots)) lots.forEach(l => { onHand[l.product_id] = (onHand[l.product_id]||0) + (l.qty_remaining||0); });
+    const onHandSource = {}; // track which source was used for display
+    if (Array.isArray(products)) {
+      products.forEach(p => {
+        const snapVal = snapOnHand[p.name.toLowerCase()];
+        if (snapVal != null) {
+          onHand[p.id] = snapVal;
+          onHandSource[p.id] = 'vetspire';
+        } else if (lotsOnHand[p.id] != null) {
+          onHand[p.id] = lotsOnHand[p.id];
+          onHandSource[p.id] = 'lots';
+        }
+      });
+    }
 
     // Build a lookup of Vetspire-tracked product IDs (qty_min set)
     const vetspireTracked = new Set(
@@ -602,12 +628,18 @@ async function loadQueue() {
       } catch(e) { /* table may not exist yet — use demo */ }
     }
 
-    // Build product lookup for unit info
+    // Build product lookup by ID and by name (name lookup catches old items without product_id)
     const prodLookup = {};
-    if (Array.isArray(products)) products.forEach(p => { prodLookup[p.id] = p; });
+    const prodByName = {};
+    if (Array.isArray(products)) products.forEach(p => {
+      prodLookup[p.id] = p;
+      prodByName[p.name.toLowerCase()] = p;
+    });
 
     state.queue = existing.map(item => {
-      const prod = prodLookup[item.product_id] || {};
+      const prod = prodLookup[item.product_id]
+                || prodByName[(item.product_name || '').toLowerCase()]
+                || {};
       return {
         id:              item.id,
         productId:       item.product_id,
