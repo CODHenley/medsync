@@ -530,7 +530,7 @@ async function loadQueue() {
 
     // Load products + on-hand from lots
     const [prodsRes, lotsRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit&order=name', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year&order=name', { headers: H }),
       fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
     ]);
     const products = await prodsRes.json();
@@ -570,7 +570,8 @@ async function loadQueue() {
           const pkgSize      = p.package_size || 1;
           // Order qty is in Vetcove purchase units (bottles, boxes, etc.)
           const orderQty     = Math.max(1, Math.ceil((max - oh) / pkgSize));
-          const unit         = getPrice(p.name);
+          // Use verified Vetcove historical price; fall back to hardcoded estimate
+          const unit         = p.unit_price || getPrice(p.name);
           const gpo          = Math.round(unit * 0.88 * 100) / 100;
           autoAdd.push({
             location_id:    state.locationId,
@@ -618,7 +619,8 @@ async function loadQueue() {
         packageSize:     prod.package_size    || 1,
         orderQty:        item.qty_ordered || 1,
         unitPrice:       item.unit_price  || getPrice(item.product_name),
-        gpoPrice:        item.gpo_price   || Math.round(getPrice(item.product_name)*0.88*100)/100,
+        gpoPrice:        item.gpo_price   || Math.round((prod.unit_price || getPrice(item.product_name))*0.88*100)/100,
+        priceYear:       prod.price_year  || null,
         autoFlagged:     item.auto_flagged,
       };
     });
@@ -763,7 +765,10 @@ function buildQueueTable(items) {
           <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
           ${puLabel ? `<span class="qty-unit">${puLabel}</span>` : ''}
         </div>
-        <div class="q-price" id="qprice-${idx}">$${lineEst}</div>
+        <div class="q-price" id="qprice-${idx}">
+          $${lineEst}
+          ${item.priceYear ? `<div style="font-size:9px;color:var(--mist);margin-top:1px;">${item.priceYear} price</div>` : ''}
+        </div>
         <button class="q-remove" onclick="removeItem(${idx})" title="Remove from queue"><i class="ti ti-x"></i></button>
       </div>`;
   }).join('');
