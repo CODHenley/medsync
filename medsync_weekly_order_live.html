@@ -529,7 +529,7 @@ async function loadQueue() {
 
     // Load products + on-hand from lots
     const [prodsRes, lotsRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category&order=name', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max&order=name', { headers: H }),
       fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
     ]);
     const products = await prodsRes.json();
@@ -543,17 +543,21 @@ async function loadQueue() {
     const autoAdd = [];
     if (Array.isArray(products)) {
       for (const p of products) {
+        // Only auto-recommend products with a real Vetspire min/max — skip white goods & non-integrated items
+        if (p.qty_min == null) continue;
         const oh  = onHand[p.id] || 0;
-        const min = getMin(p.name);
+        const min = p.qty_min;
         if (oh < min && !queued.has(p.id)) {
+          const max   = p.qty_max || min * 2;
+          const orderQty = Math.max(1, Math.ceil(max - oh));
           const unit  = getPrice(p.name);
           const gpo   = Math.round(unit * 0.88 * 100) / 100;
           autoAdd.push({
             location_id: state.locationId,
             product_id:  p.id,
             product_name: p.name,
-            vendor:       inferVendor(p.name),
-            qty_ordered:  1,
+            vendor:       p.vendor || inferVendor(p.name),
+            qty_ordered:  orderQty,
             unit_price:   unit,
             gpo_price:    gpo,
             on_hand:      oh,

@@ -19,9 +19,12 @@ import argparse
 import pandas as pd
 import urllib.request
 import urllib.error
+import urllib.parse
 
 # ── Config ────────────────────────────────────────────────────────────────────
 VETSPIRE_URL  = 'https://api.vetspire.com/graphql'
+SUPA_URL      = 'https://aemkdummdrmxtwrkggjw.supabase.co'
+SUPA_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s'
 SPREADSHEET   = '/Users/meganhenley/Downloads/medsync_deploy/Demand_Forecasting_Spreadsheet_2026_v4 (2).xlsx'
 
 # Vetspire product name → Supabase/MedSync name mapping
@@ -190,6 +193,41 @@ def load_location_rop(location_name, keyword):
     return (peak_rop, peak_max) if is_peak_season() else (off_rop, off_max)
 
 # ── Main ─────────────────────────────────────────────────────────────────────
+def update_supabase_minmax(product_name_fragment, qty_min, qty_max, dry_run=False):
+    """Write qty_min / qty_max to the MedSync products table for Vetspire-tracked products.
+    Matches by partial product name (case-insensitive ILIKE).
+    """
+    if dry_run:
+        print(f'    [dry-run] Would update Supabase: {product_name_fragment} min={qty_min} max={qty_max}')
+        return True
+    try:
+        # Find matching product IDs first
+        search_url = (f'{SUPA_URL}/rest/v1/products'
+                      f'?select=id,name&name=ilike.*{urllib.parse.quote(product_name_fragment)}*&limit=10')
+        req = urllib.request.Request(search_url, headers={
+            'apikey': SUPA_KEY, 'Authorization': f'Bearer {SUPA_KEY}'
+        })
+        with urllib.request.urlopen(req, timeout=10) as r:
+            matches = json.loads(r.read())
+        if not matches:
+            print(f'    [Supabase] No product match for: {product_name_fragment}')
+            return False
+        for m in matches:
+            patch_url = f'{SUPA_URL}/rest/v1/products?id=eq.{m["id"]}'
+            body = json.dumps({'qty_min': qty_min, 'qty_max': qty_max}).encode()
+            req = urllib.request.Request(patch_url, data=body, method='PATCH', headers={
+                'apikey': SUPA_KEY, 'Authorization': f'Bearer {SUPA_KEY}',
+                'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+            })
+            with urllib.request.urlopen(req, timeout=10) as r:
+                pass
+            print(f'    [Supabase] Updated: {m["name"]} → min={qty_min} max={qty_max}')
+        return True
+    except Exception as e:
+        print(f'    [Supabase] Error updating {product_name_fragment}: {e}')
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--token',          required=False, help='Vetspire API token')
@@ -260,6 +298,9 @@ def main():
             print(f'  {loc_name}: min={threshold} max={reorder_qty} → {status}')
             if success:
                 ok += 1
+                # Mirror min/max to Supabase products table so weekly order
+                # recommendations only fire for Vetspire-tracked items
+                update_supabase_minmax(vs_name_fragment, threshold, reorder_qty, args.dry_run)
             else:
                 fail += 1
 
