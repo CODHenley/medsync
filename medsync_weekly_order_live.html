@@ -110,10 +110,15 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 .v-name{font-size:13px;font-weight:600;color:var(--navy);flex:1;}
 .v-meta{font-size:11px;color:var(--mist);margin-right:8px;}
 .v-subtotal{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--navy);margin-right:12px;}
+.v-btn-group{display:flex;align-items:center;gap:6px;}
 .v-print-btn{padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;color:#fff;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;height:30px;transition:opacity .12s;white-space:nowrap;}
 .v-print-btn:hover{opacity:.85;}
 .v-print-btn.done{background:var(--green-bg)!important;color:var(--green)!important;cursor:default;}
 .v-print-btn.done:hover{opacity:1;}
+.v-gen-btn{padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:var(--navy);color:#fff;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;height:30px;transition:opacity .12s;white-space:nowrap;}
+.v-gen-btn:hover{opacity:.85;}
+.v-gen-btn.done{background:var(--green-bg)!important;color:var(--green)!important;cursor:default;}
+.v-gen-btn.done:hover{opacity:1;}
 
 .v-item-hdr{display:grid;grid-template-columns:1fr 70px 80px 80px;padding:7px 16px;background:#F7F6FC;border-bottom:0.5px solid var(--border);}
 .v-item-hdr span{font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;}
@@ -326,7 +331,8 @@ const state = {
   view:         'queue',   // 'queue' | 'build'
   queue:        [],        // { id, productId, productName, vendor, onHand, orderQty, unitPrice, gpoPrice, autoFlagged }
   allProducts:  [],        // for modal search
-  submitted:    new Set(), // vendor names already submitted this session
+  submitted:    new Set(), // vendor names printed this session
+  generated:    new Set(), // vendor names pushed to receiving this session
 };
 
 // ── Vendor config ────────────────────────────────────────────────────────────
@@ -765,9 +771,17 @@ function renderBuildView() {
         shippingHtml = `<div class="shipping-bar none"><i class="ti ti-truck"></i> Free shipping at $${vc.threshold} · Currently $${subtotal.toFixed(2)}</div>`;
       }
 
+      const isGenerated = state.generated && state.generated.has(vendor);
       const printBtnHtml = isDone
-        ? `<button class="v-print-btn done"><i class="ti ti-check"></i> Submitted</button>`
-        : `<button class="v-print-btn" style="background:${vc.color};" onclick="printVendorPO('${vendor}')"><i class="ti ti-printer"></i> Print PO</button>`;
+        ? `<div class="v-btn-group">
+             <button class="v-print-btn done"><i class="ti ti-printer"></i> Printed</button>
+             ${isGenerated
+               ? `<button class="v-gen-btn done"><i class="ti ti-check"></i> PO in Receiving</button>`
+               : `<button class="v-gen-btn" onclick="generatePO('${vendor}')"><i class="ti ti-file-plus"></i> Generate PO →</button>`}
+           </div>`
+        : `<div class="v-btn-group">
+             <button class="v-print-btn" style="background:${vc.color};" onclick="printVendorPO('${vendor}')"><i class="ti ti-printer"></i> Print PO</button>
+           </div>`;
 
       const itemRows = items.map(item => `
         <div class="v-item-row">
@@ -911,6 +925,38 @@ function printVendorPO(vendor) {
   logPOActivity(vendor, items, total, ref);
   state.submitted.add(vendor);
   renderBuildView();
+}
+
+async function generatePO(vendor) {
+  const items = state.queue.filter(i => i.vendor === vendor);
+  if (!items.length) return;
+
+  const now = new Date();
+  const ref = 'PO-' + now.toISOString().slice(0,10).replace(/-/g,'') + '-'
+    + vendor.replace(/\s/g,'').slice(0,3).toUpperCase() + '-'
+    + (state.locationName||'LOC').replace(/\s/g,'').toUpperCase().slice(0,4);
+
+  const weekStart = now.toISOString().slice(0,10);
+
+  // Update each queued po_item to status 'submitted' with the PO ref
+  const updates = items.map(item =>
+    fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${item.id}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: 'submitted', po_number: ref, week_start: weekStart })
+    })
+  );
+
+  try {
+    await Promise.all(updates);
+    state.generated.add(vendor);
+    showToast(`✓ PO ${ref} sent to Receiving`);
+    renderBuildView();
+    // Reload queue so submitted items drop off the queued list
+    await loadQueue();
+  } catch(e) {
+    showToast('Error generating PO — try again');
+  }
 }
 
 function printAllPOs() {
