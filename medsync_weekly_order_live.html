@@ -553,9 +553,29 @@ async function loadQueue() {
     // Resolve on-hand per product: prefer Vetspire snapshot, fall back to lots
     const onHand = {};
     const onHandSource = {}; // track which source was used for display
+    // Fuzzy snapshot lookup: Vetspire names (snapshots) ≠ Vetcove names (products table).
+    // Jaccard token overlap bridges "Catalyst ALT: 12 Count" ↔ "Catalyst Alkaline Aminotransferase (ALT)"
+    function tokenize(s) {
+      return new Set(s.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2));
+    }
+    function bestSnapMatch(productName) {
+      const lower = productName.toLowerCase();
+      if (snapOnHand[lower] != null) return snapOnHand[lower]; // exact match
+      const pToks = tokenize(productName);
+      let bestScore = 0, bestVal = null;
+      for (const [snapName, val] of Object.entries(snapOnHand)) {
+        const sToks = tokenize(snapName);
+        let inter = 0;
+        for (const t of pToks) { if (sToks.has(t)) inter++; }
+        const score = inter / (pToks.size + sToks.size - inter);
+        if (score > bestScore) { bestScore = score; bestVal = val; }
+      }
+      return bestScore >= 0.25 ? bestVal : null;
+    }
+
     if (Array.isArray(products)) {
       products.forEach(p => {
-        const snapVal = snapOnHand[p.name.toLowerCase()];
+        const snapVal = bestSnapMatch(p.name);
         if (snapVal != null) {
           onHand[p.id] = snapVal;
           onHandSource[p.id] = 'vetspire';
