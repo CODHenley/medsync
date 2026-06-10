@@ -664,16 +664,28 @@ async function loadQueue() {
       const prod = prodLookup[item.product_id]
                 || prodByName[(item.product_name || '').toLowerCase()]
                 || {};
+      // For auto-flagged items: always recalculate from fresh snapshot data.
+      // Stored on_hand/qty_ordered may be stale (written before snapshot fixes were deployed).
+      const freshOH = (item.auto_flagged && onHand[item.product_id] != null)
+        ? onHand[item.product_id]
+        : (item.on_hand || 0);
+      const freshOrderQty = (() => {
+        if (!item.auto_flagged) return item.qty_ordered || 1;
+        const max2  = prod.qty_max || ((prod.qty_min || 0) * 2);
+        if (!max2) return item.qty_ordered || 1;
+        const pkg2  = prod.package_size || 1;
+        return Math.max(1, Math.ceil((max2 - freshOH) / pkg2));
+      })();
       return {
         id:              item.id,
         productId:       item.product_id,
         productName:     item.product_name,
         vendor:          item.vendor || inferVendor(item.product_name),
-        onHand:          item.on_hand || 0,
+        onHand:          freshOH,
         dispensingUnit:  prod.dispensing_unit || '',   // Vetspire unit (capsules, mL…)
         purchaseUnit:    prod.purchase_unit   || '',   // Vetcove unit (bottle, box…)
         packageSize:     prod.package_size    || 1,
-        orderQty:        item.qty_ordered || 1,
+        orderQty:        freshOrderQty,
         unitPrice:       item.unit_price  || getPrice(item.product_name),
         gpoPrice:        item.gpo_price   || Math.round((prod.unit_price || getPrice(item.product_name))*0.88*100)/100,
         priceYear:       prod.price_year  || null,
