@@ -1157,7 +1157,7 @@ async function generatePO(vendor) {
     fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${item.id}`, {
       method: 'PATCH',
       headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ status: 'submitted', po_number: ref, week_start: weekStart })
+      body: JSON.stringify({ status: 'submitted', po_number: ref, week_start: weekStart, submitted_at: now.toISOString() })
     })
   );
 
