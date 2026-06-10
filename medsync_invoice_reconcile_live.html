@@ -176,7 +176,7 @@ function onLocationChange() {
 // ── Load invoices from Supabase ───────────────────────────────────────────────
 async function loadInvoices() {
   if (!state.locationId) return;
-  const data = await supa('GET', `/rest/v1/invoices?location_id=eq.${encodeURIComponent(state.locationName)}&order=uploaded_at.desc&limit=50`);
+  const data = await supa('GET', `/rest/v1/invoices?location_name=eq.${encodeURIComponent(state.locationName)}&order=uploaded_at.desc&limit=50`);
   state.invoices = Array.isArray(data) ? data : [];
   renderSidebar();
   // Check for un-invoiced POs
@@ -581,7 +581,6 @@ async function saveInvoice(parsed, reconciledItems, fileName) {
   const flags = reconciledItems.filter(i => ['price_discrepancy','qty_mismatch','not_on_po'].includes(i.matchStatus));
   const invoiceStatus = flags.length > 0 ? 'discrepancy' : reconciledItems.length > 0 ? 'reconciled' : 'pending';
   const [inv] = await supa('POST', '/rest/v1/invoices', {
-    location_id:    state.locationName,
     location_name:  state.locationName,
     vendor:         parsed.vendor,
     invoice_number: parsed.invoiceNumber,
