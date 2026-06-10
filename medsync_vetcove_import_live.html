@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync · Vetcove Import</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#DDD9EC;--bg:#F5F3FA;--amber:#C8922A;--purple:#5B3FA8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
+.topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tb-title{font-size:15px;font-weight:600;color:#fff;}
+.tb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
+.shell{max-width:900px;margin:0 auto;padding:24px 20px 60px;display:flex;flex-direction:column;gap:20px;}
+
+/* Steps */
+.steps{display:flex;align-items:center;gap:0;margin-bottom:4px;}
+.step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--mist);padding:8px 0;}
+.step.active{color:var(--navy);}
+.step.done{color:var(--green);}
+.step-num{width:22px;height:22px;border-radius:50%;background:#E4E0F0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--mist);flex-shrink:0;}
+.step.active .step-num{background:var(--navy);color:#fff;}
+.step.done .step-num{background:var(--green);color:#fff;}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 10px;}
+
+/* Cards */
+.card{background:#fff;border:0.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.card-head{padding:16px 20px;border-bottom:0.5px solid var(--border);}
+.card-title{font-size:14px;font-weight:600;}
+.card-sub{font-size:11px;color:var(--mist);margin-top:3px;}
+.card-body{padding:20px;}
+
+/* Upload zone */
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA;}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--navy);background:#F0EEF8;}
+.upload-zone.has-file{border-color:var(--green);background:#F0FBF4;}
+.uz-icon{font-size:36px;margin-bottom:10px;}
+.uz-title{font-size:14px;font-weight:600;margin-bottom:4px;}
+.uz-sub{font-size:11px;color:var(--mist);}
+.uz-filename{font-size:12px;font-weight:500;color:var(--green);margin-top:6px;}
+#file-input{display:none;}
+
+/* Field row */
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
+.field select,.field input{padding:9px 11px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
+
+/* Template banner */
+.template-banner{background:#F5F3FA;border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-top:16px;}
+.tb-icon{font-size:20px;}
+.tb-body{flex:1;}
+.tb-title2{font-size:12px;font-weight:600;}
+.tb-sub2{font-size:11px;color:var(--mist);margin-top:2px;}
+.btn-link{background:none;border:none;color:var(--navy);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;padding:0;}
+
+/* Preview table */
+.preview-table{width:100%;border-collapse:collapse;font-size:12px;}
+.preview-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;border-bottom:0.5px solid var(--border);background:#FAFAFA;}
+.preview-table td{padding:9px 10px;border-bottom:0.5px solid #F5F3FA;vertical-align:middle;}
+.preview-table tr:last-child td{border-bottom:none;}
+.preview-table tr.skip td{opacity:.4;}
+.match-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
+.match-ok{background:#E8F5EE;color:var(--green);}
+.match-warn{background:#FEF3E2;color:var(--amber);}
+.match-none{background:#FEF2F2;color:var(--red);}
+.skip-toggle{background:none;border:none;cursor:pointer;font-size:18px;line-height:1;color:var(--mist);padding:0;}
+.skip-toggle:hover{color:var(--red);}
+.cat-select{padding:4px 7px;border:0.5px solid var(--border);border-radius:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:#fff;}
+.prod-name{font-weight:500;}
+.prod-matched{font-size:10px;color:var(--mist);margin-top:1px;}
+
+/* Summary bar */
+.summary-bar{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.summary-stats{display:flex;gap:20px;}
+.stat{text-align:center;}
+.stat-v{font-size:16px;font-weight:700;}
+.stat-l{font-size:10px;color:var(--mist);margin-top:1px;}
+.btn-primary{padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-primary:hover{opacity:.9;}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-secondary{padding:9px 18px;background:#fff;color:var(--navy);border:0.5px solid var(--border);border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+
+/* Results */
+.result-card{border:0.5px solid var(--border);border-radius:12px;padding:16px 20px;background:#fff;display:flex;align-items:center;gap:14px;}
+.result-icon{font-size:28px;flex-shrink:0;}
+.result-title{font-size:15px;font-weight:600;}
+.result-sub{font-size:12px;color:var(--mist);margin-top:3px;}
+.result-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:#F5F3FA;border-radius:7px;font-size:12px;}
+.result-row.error{background:#FEF2F2;}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s;}
+.toast.show{opacity:1;}
+
+@media(max-width:768px){
+  .shell{padding:16px 12px 40px;}
+  .field-row{grid-template-columns:1fr;}
+  .preview-table th:nth-child(3),.preview-table td:nth-child(3),
+  .preview-table th:nth-child(5),.preview-table td:nth-child(5){display:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="tb-title">Import from Vetcove</div>
+    <div class="tb-sub">Returns &amp; credits → Goods Lost</div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="step-1"><div class="step-num" id="sn-1">1</div> Upload file</div>
+    <div class="step-line"></div>
+    <div class="step" id="step-2"><div class="step-num" id="sn-2">2</div> Review &amp; match</div>
+    <div class="step-line"></div>
+    <div class="step" id="step-3"><div class="step-num" id="sn-3">3</div> Import</div>
+  </div>
+
+  <!-- STEP 1: Upload -->
+  <div id="s1">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Upload Vetcove export</div>
+        <div class="card-sub">Upload your Vetcove order history CSV. Returns and credits will be identified automatically.</div>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+             ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+          <div class="uz-icon" id="uz-icon">📂</div>
+          <div class="uz-title" id="uz-title">Drop your CSV here or click to browse</div>
+          <div class="uz-sub" id="uz-sub">Vetcove order history export (.csv)</div>
+          <div class="uz-filename" id="uz-filename"></div>
+        </div>
+        <input type="file" id="file-input" accept=".csv,.tsv,.txt" onchange="onFileSelect(event)">
+
+        <div class="field-row">
+          <div class="field">
+            <label>Default location (if not in CSV)</label>
+            <select id="loc-select"><option value="">Loading locations…</option></select>
+          </div>
+          <div class="field">
+            <label>Filter: show only</label>
+            <select id="status-filter">
+              <option value="returns">Returns &amp; credits only</option>
+              <option value="all">All rows</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="template-banner">
+          <div class="tb-icon">📋</div>
+          <div class="tb-body">
+            <div class="tb-title2">Expected CSV columns</div>
+            <div class="tb-sub2">Date · Product Name · NDC (optional) · Vendor · Qty · Unit Price · Status · Return Reason · Location (optional)</div>
+          </div>
+          <button class="btn-link" onclick="downloadTemplate()">↓ Template</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+      <button class="btn-primary" id="btn-parse" onclick="parseCSV()" disabled>Review rows →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Preview -->
+  <div id="s2" style="display:none;">
+    <div class="card">
+      <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div class="card-title" id="preview-title">Reviewing rows</div>
+          <div class="card-sub" id="preview-sub">Matched against your product catalog. Review and adjust before importing.</div>
+        </div>
+        <button class="btn-secondary" onclick="goStep1()">← Back</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th style="width:30px;"></th>
+              <th>Product</th>
+              <th>Date</th>
+              <th>Qty</th>
+              <th>Value</th>
+              <th>Category</th>
+              <th>Match</th>
+            </tr>
+          </thead>
+          <tbody id="preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="summary-bar" id="summary-bar">
+      <div class="summary-stats">
+        <div class="stat"><div class="stat-v" id="stat-rows">0</div><div class="stat-l">rows</div></div>
+        <div class="stat"><div class="stat-v" id="stat-matched" style="color:var(--green);">0</div><div class="stat-l">matched</div></div>
+        <div class="stat"><div class="stat-v" id="stat-unmatched" style="color:var(--amber);">0</div><div class="stat-l">unmatched</div></div>
+        <div class="stat"><div class="stat-v" id="stat-value">$0</div><div class="stat-l">total value</div></div>
+      </div>
+      <button class="btn-primary" id="btn-import" onclick="doImport()">Import losses →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Results -->
+  <div id="s3" style="display:none;">
+    <div class="result-card" id="result-card">
+      <div class="result-icon" id="result-icon">✅</div>
+      <div>
+        <div class="result-title" id="result-title">Import complete</div>
+        <div class="result-sub" id="result-sub">All records logged to Goods Lost.</div>
+      </div>
+    </div>
+    <div class="result-list" id="result-list"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn-secondary" onclick="goStep1()">Import another file</button>
+      <button class="btn-primary" onclick="nav('goods')">View Goods Lost →</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+
+let ALL_PRODUCTS  = [];   // {id, name, normalized}
+let ALL_LOCATIONS = [];   // {id, name}
+let parsedRows    = [];   // parsed + matched rows
+
+// ── Boot ─────────────────────────────────────────────────────────
+(async function boot() {
+  try {
+    const [pRes, lRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/products?select=id,name&order=name', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H })
+    ]);
+    ALL_PRODUCTS  = (await pRes.json()).map(p => ({ ...p, normalized: norm(p.name) }));
+    ALL_LOCATIONS = await lRes.json();
+
+    const sel = document.getElementById('loc-select');
+    sel.innerHTML = '<option value="">Select location…</option>' +
+      ALL_LOCATIONS.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+
+    // Pre-select manager's location
+    try {
+      const mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+      if (mu.role === 'manager' && mu.locations && mu.locations[0]) {
+        const locName = mu.locations[0].name;
+        const match = ALL_LOCATIONS.find(l => l.name === locName);
+        if (match) sel.value = match.id;
+      }
+    } catch(e) {}
+  } catch(e) {
+    showToast('Could not load product/location data');
+  }
+})();
+
+// ── CSV utilities ────────────────────────────────────────────────
+function norm(s) { return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
+
+function parseCSVText(text) {
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+  // Handle quoted fields
+  function splitRow(line) {
+    const fields = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; continue; }
+      if ((c === ',' || c === '\t') && !inQ) { fields.push(cur.trim()); cur = ''; continue; }
+      cur += c;
+    }
+    fields.push(cur.trim());
+    return fields;
+  }
+  const headers = splitRow(lines[0]).map(h => h.replace(/"/g,'').trim().toLowerCase());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = splitRow(lines[i]);
+    const row = {};
+    headers.forEach((h,idx) => { row[h] = (vals[idx] || '').replace(/"/g,'').trim(); });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function colVal(row, ...keys) {
+  for (const k of keys) {
+    for (const rk of Object.keys(row)) {
+      if (rk.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(rk.toLowerCase())) {
+        if (row[rk] !== '' && row[rk] !== undefined) return row[rk];
+      }
+    }
+  }
+  return '';
+}
+
+function isReturn(row) {
+  const status = colVal(row, 'status','type','action').toLowerCase();
+  const reason = colVal(row, 'reason','return reason','note').toLowerCase();
+  return /return|credit|refund|void|cancel|reject|return/.test(status + ' ' + reason);
+}
+
+function mapCategory(row) {
+  const reason = (colVal(row, 'reason','return reason','note') + ' ' +
+                  colVal(row, 'category','type')).toLowerCase();
+  if (/expir/.test(reason))            return 'Expired product';
+  if (/damage|spill|broken|crush/.test(reason)) return 'Damaged / Spilled';
+  if (/waste|medication|med waste/.test(reason)) return 'Medication waste';
+  if (/duplicate|diag/.test(reason))   return 'Diagnostic duplicate';
+  return 'Vendor return / credit';
+}
+
+function matchProduct(name) {
+  const n = norm(name);
+  if (!n) return null;
+  // Exact
+  let m = ALL_PRODUCTS.find(p => p.normalized === n);
+  if (m) return { product: m, score: 1.0 };
+  // Contains
+  m = ALL_PRODUCTS.find(p => p.normalized.includes(n) || n.includes(p.normalized));
+  if (m) return { product: m, score: 0.8 };
+  // First significant word
+  const word = n.split(' ')[0];
+  if (word.length >= 4) {
+    m = ALL_PRODUCTS.find(p => p.normalized.startsWith(word));
+    if (m) return { product: m, score: 0.5 };
+  }
+  return null;
+}
+
+function resolveLocation(row) {
+  const locName = colVal(row, 'location','clinic','site','branch');
+  if (locName) {
+    const m = ALL_LOCATIONS.find(l => norm(l.name).includes(norm(locName)) || norm(locName).includes(norm(l.name)));
+    if (m) return m;
+  }
+  const defId = document.getElementById('loc-select').value;
+  return ALL_LOCATIONS.find(l => l.id === defId) || null;
+}
+
+// ── File handling ────────────────────────────────────────────────
+function onDrag(e, entering) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.toggle('drag', entering);
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function onFileSelect(e) { if (e.target.files[0]) processFile(e.target.files[0]); }
+
+let _csvText = '';
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    _csvText = e.target.result;
+    document.getElementById('uz-icon').textContent = '✅';
+    document.getElementById('uz-title').textContent = 'File ready';
+    document.getElementById('uz-sub').textContent = file.name;
+    document.getElementById('uz-filename').textContent = Math.round(file.size/1024) + ' KB · ' + file.name.split('.').pop().toUpperCase();
+    document.getElementById('upload-zone').classList.add('has-file');
+    document.getElementById('btn-parse').disabled = false;
+  };
+  reader.readAsText(file);
+}
+
+// ── Parse & build preview ─────────────────────────────────────────
+function parseCSV() {
+  if (!_csvText) return;
+  const rows = parseCSVText(_csvText);
+  const filterReturns = document.getElementById('status-filter').value === 'returns';
+  const filtered = filterReturns ? rows.filter(isReturn) : rows;
+
+  if (!filtered.length) {
+    showToast(filterReturns ? 'No returns/credits found — try "All rows"' : 'No rows found in CSV');
+    return;
+  }
+
+  parsedRows = filtered.map((raw, i) => {
+    const productName = colVal(raw, 'product name','product','item','description','sku');
+    const qty   = parseFloat(colVal(raw, 'qty','quantity','units','count')) || 1;
+    const price = parseFloat(colVal(raw, 'unit price','unit cost','price','cost').replace(/[$,]/g,'')) || 0;
+    const value = qty * price;
+    const dateRaw = colVal(raw, 'date','order date','return date','created');
+    const cat   = mapCategory(raw);
+    const loc   = resolveLocation(raw);
+    const match = matchProduct(productName);
+    return { i, raw, productName, qty, price, value, dateRaw, cat, loc, match, skip: false };
+  });
+
+  renderPreview();
+  goStep2();
+}
+
+function renderPreview() {
+  const tbody = document.getElementById('preview-tbody');
+  const filterReturns = document.getElementById('status-filter').value === 'returns';
+
+  const cats = ['Vendor return / credit','Expired product','Damaged / Spilled','Medication waste','Diagnostic duplicate'];
+  const catOpts = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  tbody.innerHTML = parsedRows.map((row, idx) => {
+    const matchTag = row.match
+      ? `<span class="match-tag ${row.match.score >= 0.8 ? 'match-ok' : 'match-warn'}">${row.match.score >= 0.8 ? '✓' : '~'} ${row.match.product.name.substring(0,22)}${row.match.product.name.length>22?'…':''}</span>`
+      : `<span class="match-tag match-none">✗ no match</span>`;
+
+    const catSel = `<select class="cat-select" data-idx="${idx}" onchange="updateCat(this)">` +
+      cats.map(c => `<option value="${c}"${c === row.cat ? ' selected' : ''}>${c}</option>`).join('') +
+      '</select>';
+
+    const dateDisp = row.dateRaw ? new Date(row.dateRaw).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+
+    return `<tr id="row-${idx}" class="${row.skip ? 'skip' : ''}">
+      <td><button class="skip-toggle" data-idx="${idx}" onclick="toggleSkip(this)" title="${row.skip ? 'Include' : 'Skip'}">${row.skip ? '⊕' : '⊖'}</button></td>
+      <td><div class="prod-name">${row.productName || '—'}</div><div class="prod-matched">${row.loc ? row.loc.name : '<span style="color:var(--red);">no location</span>'}</div></td>
+      <td>${dateDisp}</td>
+      <td>${row.qty}</td>
+      <td>$${row.value.toFixed(2)}</td>
+      <td>${catSel}</td>
+      <td>${matchTag}</td>
+    </tr>`;
+  }).join('');
+
+  updateSummary();
+}
+
+function toggleSkip(btn) {
+  const idx = parseInt(btn.dataset.idx);
+  parsedRows[idx].skip = !parsedRows[idx].skip;
+  btn.textContent = parsedRows[idx].skip ? '⊕' : '⊖';
+  btn.title = parsedRows[idx].skip ? 'Include' : 'Skip';
+  document.getElementById('row-' + idx).classList.toggle('skip', parsedRows[idx].skip);
+  updateSummary();
+}
+
+function updateCat(sel) {
+  const idx = parseInt(sel.dataset.idx);
+  parsedRows[idx].cat = sel.value;
+}
+
+function updateSummary() {
+  const active = parsedRows.filter(r => !r.skip);
+  const matched = active.filter(r => r.match);
+  const total = active.reduce((s,r) => s + r.value, 0);
+  document.getElementById('stat-rows').textContent      = active.length;
+  document.getElementById('stat-matched').textContent   = matched.length;
+  document.getElementById('stat-unmatched').textContent = active.length - matched.length;
+  document.getElementById('stat-value').textContent     = '$' + total.toFixed(0);
+  document.getElementById('btn-import').disabled = active.length === 0;
+}
+
+// ── Import ───────────────────────────────────────────────────────
+async function doImport() {
+  const toImport = parsedRows.filter(r => !r.skip);
+  if (!toImport.length) return;
+
+  document.getElementById('btn-import').disabled = true;
+  document.getElementById('btn-import').textContent = 'Importing…';
+
+  const results = [];
+  for (const row of toImport) {
+    if (!row.loc) {
+      results.push({ ok: false, name: row.productName, reason: 'No location assigned' });
+      continue;
+    }
+    try {
+      const body = {
+        location_id:  row.loc.id,
+        product_id:   row.match ? row.match.product.id : null,
+        product_name: row.productName || (row.match ? row.match.product.name : null),
+        category:     row.cat,
+        qty_lost:     row.qty,
+        value_lost:   row.value,
+        notes:        'Imported from Vetcove export' +
+                      (row.dateRaw ? ' · ' + row.dateRaw : '') +
+                      (colVal(row.raw, 'order','order number','order #') ? ' · Order ' + colVal(row.raw,'order','order number','order #') : ''),
+      };
+      if (row.dateRaw) {
+        const d = new Date(row.dateRaw);
+        if (!isNaN(d)) body.created_at = d.toISOString();
+      }
+      const res = await fetch(SUPA_URL + '/rest/v1/goods_lost', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      results.push({ ok: true, name: row.productName, value: row.value });
+    } catch(e) {
+      results.push({ ok: false, name: row.productName, reason: e.message.substring(0,80) });
+    }
+  }
+
+  showResults(results);
+}
+
+function showResults(results) {
+  const ok  = results.filter(r => r.ok);
+  const err = results.filter(r => !r.ok);
+  const total = ok.reduce((s,r) => s + (r.value||0), 0);
+
+  document.getElementById('result-icon').textContent  = err.length ? '⚠️' : '✅';
+  document.getElementById('result-title').textContent = err.length
+    ? `${ok.length} imported, ${err.length} failed`
+    : `${ok.length} records imported`;
+  document.getElementById('result-sub').textContent   = `$${total.toFixed(2)} total losses logged to Goods Lost`;
+
+  document.getElementById('result-list').innerHTML =
+    ok.slice(0,8).map(r => `<div class="result-row">
+      <span>${r.name||'—'}</span><span style="color:var(--green);font-weight:500;">$${(r.value||0).toFixed(2)} ✓</span>
+    </div>`).join('') +
+    (ok.length > 8 ? `<div class="result-row"><span>…and ${ok.length-8} more</span><span style="color:var(--green);">✓</span></div>` : '') +
+    err.map(r => `<div class="result-row error"><span>${r.name||'—'}</span><span style="color:var(--red);">${r.reason}</span></div>`).join('');
+
+  goStep3();
+}
+
+// ── Navigation ───────────────────────────────────────────────────
+function goStep1() {
+  show('s1'); hide('s2'); hide('s3');
+  setStepState(1);
+  _csvText = '';
+  parsedRows = [];
+  document.getElementById('btn-parse').disabled = true;
+  document.getElementById('uz-icon').textContent = '📂';
+  document.getElementById('uz-title').textContent = 'Drop your CSV here or click to browse';
+  document.getElementById('uz-sub').textContent = 'Vetcove order history export (.csv)';
+  document.getElementById('uz-filename').textContent = '';
+  document.getElementById('upload-zone').classList.remove('has-file','drag');
+  document.getElementById('file-input').value = '';
+}
+function goStep2() { hide('s1'); show('s2'); hide('s3'); setStepState(2); }
+function goStep3() { hide('s1'); hide('s2'); show('s3'); setStepState(3); }
+
+function show(id) { document.getElementById(id).style.display = ''; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+function setStepState(active) {
+  [1,2,3].forEach(n => {
+    const el = document.getElementById('step-'+n);
+    const sn = document.getElementById('sn-'+n);
+    el.className = 'step' + (n < active ? ' done' : n === active ? ' active' : '');
+    sn.textContent = n < active ? '✓' : n;
+  });
+}
+
+function nav(screen) {
+  if (window.self !== window.top) window.parent.postMessage({ type:'navigate', screen }, '*');
+}
+
+// ── Template download ────────────────────────────────────────────
+function downloadTemplate() {
+  const csv = [
+    'Date,Product Name,NDC,Vendor,Qty,Unit Price,Status,Return Reason,Location',
+    '2026-06-01,Maropitant 10mg/mL 20mL,61106-0006-01,MWI Animal Health,2,24.50,Returned,Expired product,Wheaton',
+    '2026-06-03,Dexmedetomidine 0.5mg/mL,07054-0003-01,Covetrus,1,18.00,Credited,Damaged / Spilled,Old Orchard',
+  ].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'vetcove_import_template.csv' });
+  document.body.appendChild(a); a.click(); setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 500);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

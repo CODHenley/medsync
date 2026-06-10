@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cycle','invoices','quarterly','users','newlocation','regions','settings'];
+var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -852,6 +852,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
   <div class="asb-item" id="asb-cycle" onclick="closeMobileMenu();showScreen('cycle')">🔄 Cycle Count</div>
   <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
+  <div class="asb-item" id="asb-vcimport" onclick="closeMobileMenu();showScreen('vcimport')" style="padding-left:28px;font-size:12px;">↑ Import from Vetcove</div>
   <div class="asb-item" id="asb-invoices" onclick="closeMobileMenu();showScreen('invoices')">🧾 Invoice Reconciliation</div>
   <div class="asb-item" id="asb-users" onclick="closeMobileMenu();showScreen('users')">👥 Manage Users</div>
   <div class="asb-item" id="asb-newlocation" onclick="closeMobileMenu();showScreen('newlocation')">🏗️ New Location Setup</div>
@@ -1161,6 +1162,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_goods_lost_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Goods Lost">
+  </iframe>
+</div>
+<div id="ms-vcimport" class="ms-screen" style="display:none;">
+  <iframe src="medsync_vetcove_import_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Import from Vetcove">
   </iframe>
 </div>
 <div id="ms-invoices" class="ms-screen" style="display:none;">
