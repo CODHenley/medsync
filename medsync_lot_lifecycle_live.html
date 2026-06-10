@@ -395,7 +395,8 @@ if (window.self !== window.top) {
       </div>
       <div class="tb-right">
         <button class="btn" onclick="openScanModal()">⊡ Scan / Look up lot</button>
-        <button class="btn" onclick="showToast('Lot report exported')">↓ Export</button>
+        <button class="btn" onclick="exportLotsCSV()">↓ CSV</button>
+        <button class="btn" onclick="exportLotsPDF()">↓ PDF</button>
       </div>
     </div>
 
@@ -1016,6 +1017,46 @@ async function loadLocationFilter() {
 })();
 loadLocationFilter();
 loadLots();
+
+// ── Export ────────────────────────────────────────────────────
+function _getFilteredLots() {
+  // Re-apply the same filter logic currently used in filterTable()
+  const search = (document.getElementById('lot-search')||{}).value?.toLowerCase() || '';
+  const loc    = (document.getElementById('loc-filter')||{}).value || 'all';
+  const csF    = (document.getElementById('cs-filter')||{}).value || 'all';
+  return ALL_LOTS.filter(lot => {
+    if (statusFilter !== 'all' && lot.status !== statusFilter) return false;
+    if (loc !== 'all' && lot.loc !== loc) return false;
+    if (csF === 'cs' && !lot.cs) return false;
+    if (csF === 'rx' && lot.cs) return false;
+    if (search && !lot.id.toLowerCase().includes(search) &&
+        !lot.name.toLowerCase().includes(search) &&
+        !lot.ndc.includes(search)) return false;
+    return true;
+  });
+}
+
+function exportLotsCSV() {
+  const lots = _getFilteredLots();
+  if (!lots.length) { showToast('No lots to export'); return; }
+  MedSyncExport.csv(
+    'lots_' + new Date().toISOString().slice(0,10) + '.csv',
+    ['Lot #', 'Product', 'Location', 'Vendor', 'Received', 'Expiration', 'Qty In', 'Qty Remaining', 'Status', 'DEA'],
+    lots.map(l => [l.id, l.name, l.loc, l.vendor, l.received, l.exp, l.qtyIn, l.qtyRem, l.status, l.cs ? 'Yes (Sch '+l.deaSched.replace('Schedule ','')+')' : ''])
+  );
+}
+
+function exportLotsPDF() {
+  const lots = _getFilteredLots();
+  if (!lots.length) { showToast('No lots to export'); return; }
+  MedSyncExport.pdf(
+    'Lot Lifecycle Report',
+    'Scout Veterinary · ' + new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),
+    ['Lot #', 'Product', 'Location', 'Received', 'Expiration', 'Qty Rem.', 'Status'],
+    lots.map(l => [l.id, l.name, l.loc, l.received || '—', l.exp || '—', l.qtyRem, l.status])
+  );
+}
 </script>
+<script src="medsync_export.js"></script>
 </body>
 </html>

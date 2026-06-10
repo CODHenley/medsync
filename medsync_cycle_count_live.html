@@ -227,6 +227,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <span class="timer-label">Elapsed</span>
       <span class="timer-val" id="timer-val">00:00</span>
     </div>
+    <button onclick="exportCCCSV()" style="padding:5px 11px;border:0.5px solid rgba(255,255,255,.3);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;font-family:'DM Sans',sans-serif;">↓ CSV</button>
+    <button onclick="exportCCPDF()" style="padding:5px 11px;border:0.5px solid rgba(255,255,255,.3);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;font-family:'DM Sans',sans-serif;">↓ PDF</button>
   </div>
 </div>
 
@@ -948,6 +950,51 @@ async function init() {
 }
 
 init();
+
+// ── Export ────────────────────────────────────────────────────
+function _getCCExportRows() {
+  const cats = ['A','B','C','D'];
+  const rows = [];
+  cats.forEach(cat => {
+    (products[cat] || []).forEach(p => {
+      const diff = p.actual !== null ? (p.actual - p.expected) : null;
+      const pct  = (diff !== null && p.expected > 0) ? ((diff / p.expected) * 100).toFixed(0) + '%' : '—';
+      const variance = diff !== null ? (diff >= 0 ? '+' : '') + diff + ' (' + pct + ')' : '—';
+      rows.push([
+        'CAT ' + cat,
+        p.name || '—',
+        p.unit || '—',
+        p.expected ?? '—',
+        p.actual !== null ? p.actual : '—',
+        variance,
+        p.actual === null ? 'Pending' : Math.abs(diff / (p.expected||1)) > 0.25 ? 'Discrepancy' : Math.abs(diff / (p.expected||1)) > 0.10 ? 'Warning' : 'OK',
+      ]);
+    });
+  });
+  return rows;
+}
+
+function exportCCCSV() {
+  const rows = _getCCExportRows();
+  if (!rows.length) { alert('No cycle count data to export yet.'); return; }
+  MedSyncExport.csv(
+    'cycle_count_' + (currentLocation||'').replace(/\s/g,'-').toLowerCase() + '_' + new Date().toISOString().slice(0,10) + '.csv',
+    ['Category', 'Product', 'Unit', 'Expected', 'Actual Count', 'Variance', 'Status'],
+    rows
+  );
+}
+
+function exportCCPDF() {
+  const rows = _getCCExportRows();
+  if (!rows.length) { alert('No cycle count data to export yet.'); return; }
+  MedSyncExport.pdf(
+    'Cycle Count Report',
+    (currentLocation || 'All locations') + ' · ' + new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),
+    ['Category', 'Product', 'Unit', 'Expected', 'Actual', 'Variance', 'Status'],
+    rows
+  );
+}
 </script>
+<script src="medsync_export.js"></script>
 </body>
 </html>

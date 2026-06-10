@@ -1011,6 +1011,19 @@ async function loadData() {
     document.getElementById('ov-comp').textContent = compRate + '%';
     document.getElementById('ov-lots').textContent = expiring.length + ' flagged';
 
+    // Cache for export
+    const staticCOGSExport = [
+      ['Lincoln Park','7.6%'],['Old Orchard','9.8%'],['West Loop','7.9%'],['Wheaton','8.1%']
+    ].filter(([name]) => loc === 'all' || name === (LOC_NAMES[LOC_IDS[loc]] || ''));
+    _analyticsCache = {
+      period:       document.getElementById('period-label').textContent,
+      totalGL,
+      totalSav,
+      expiringCount: expiring.length,
+      glByCategory:  Object.entries(byCategory).sort((a,b) => b[1]-a[1]),
+      cogsRows:      staticCOGSExport,
+    };
+
   } catch(err) {
     console.error('Supabase error:', err);
     showToast('⚠ Could not load data — check connection');
@@ -1128,10 +1141,42 @@ function sp(name,el){
   });
 }
 
-// ── Export toast ─────────────────────────────────────────────
+// ── Export ───────────────────────────────────────────────────
+let _analyticsCache = null;
 let toastTimer = null;
+
 function exp(type){
-  showToast('✓ ' + type + ' exported — ' + (RANGE_LABELS[document.getElementById('dr').value] || 'Month to date'));
+  if (!_analyticsCache) { showToast('⚠ Load data first'); return; }
+  const d = _analyticsCache;
+  if (type === 'CSV') {
+    const headers = ['Section', 'Detail', 'Value'];
+    const rows = [
+      ['Summary', 'Period', d.period],
+      ['Summary', 'GPO Savings', fmt$(d.totalSav)],
+      ['Summary', 'Goods Lost', fmt$(d.totalGL)],
+      ['Summary', 'Expiring Lots', d.expiringCount + ' flagged'],
+      ['', '', ''],
+      ...d.glByCategory.map(([cat, amt]) => ['Goods Lost by Category', cat, '$' + amt.toFixed(2)]),
+      ['', '', ''],
+      ...d.cogsRows.map(([loc, pct]) => ['COGs by Location', loc, pct]),
+    ];
+    MedSyncExport.csv('medsync_analytics_' + new Date().toISOString().slice(0,10) + '.csv', headers, rows);
+  } else if (type === 'PDF') {
+    const headers = ['Metric', 'Value'];
+    const rows = [
+      ['Period', d.period],
+      ['GPO Savings (est.)', fmt$(d.totalSav)],
+      ['Total Goods Lost', fmt$(d.totalGL)],
+      ['Expiring Lots', d.expiringCount + ' flagged'],
+      ['', ''],
+      ...d.glByCategory.map(([cat, amt]) => ['GL — ' + cat, '$' + amt.toFixed(2)]),
+      ['', ''],
+      ...d.cogsRows.map(([loc, pct]) => ['COGs — ' + loc, pct]),
+    ];
+    MedSyncExport.pdf('Analytics Summary', d.period, headers, rows);
+  } else {
+    showToast('✓ ' + type + ' exported — ' + d.period);
+  }
 }
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -1206,5 +1251,6 @@ window.addEventListener('message', function(e) {
   }
 })();
 </script>
+<script src="medsync_export.js"></script>
 </body>
 </html>

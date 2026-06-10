@@ -251,9 +251,13 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
     <div class="tb-title">Goods Lost</div>
     <div class="tb-sub" id="tb-loc">Loading…</div>
   </div>
-  <select id="loc-select" onchange="onLocChange()" style="width:180px;">
-    <option value="">Select location…</option>
-  </select>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <select id="loc-select" onchange="onLocChange()" style="width:160px;">
+      <option value="">Select location…</option>
+    </select>
+    <button onclick="exportGLCSV()" style="padding:5px 11px;border:0.5px solid #DDD9EC;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;color:#1C2B4A;font-family:'DM Sans',sans-serif;">↓ CSV</button>
+    <button onclick="exportGLPDF()" style="padding:5px 11px;border:0.5px solid #DDD9EC;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;color:#1C2B4A;font-family:'DM Sans',sans-serif;">↓ PDF</button>
+  </div>
 </div>
 
 <div class="content" id="main-content">
@@ -708,6 +712,57 @@ window.addEventListener('message', function(e) {
     }
   }
 });
+
+// ── Export ────────────────────────────────────────────────────
+async function _fetchGLForExport() {
+  if (!state.locationId) { showToast('Select a location first'); return null; }
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  try {
+    const res = await fetch(
+      SUPA_URL + `/rest/v1/goods_lost?select=value_lost,category,created_at,products(name)&location_id=eq.${state.locationId}&order=created_at.desc&limit=500`,
+      { headers: H }
+    );
+    return await res.json();
+  } catch(e) { showToast('⚠ Could not fetch export data'); return null; }
+}
+
+async function exportGLCSV() {
+  showToast('Preparing export…');
+  const rows = await _fetchGLForExport();
+  if (!rows) return;
+  MedSyncExport.csv(
+    'goods_lost_' + (state.locationName||'all').replace(/\s/g,'-').toLowerCase() + '_' + new Date().toISOString().slice(0,10) + '.csv',
+    ['Date', 'Product', 'Category', 'Value ($)'],
+    rows.map(r => [
+      new Date(r.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}),
+      r.products?.name || '—',
+      r.category || '—',
+      Number(r.value_lost||0).toFixed(2),
+    ])
+  );
+}
+
+async function exportGLPDF() {
+  showToast('Preparing export…');
+  const rows = await _fetchGLForExport();
+  if (!rows) return;
+  const total = rows.reduce((s,r) => s + Number(r.value_lost||0), 0);
+  MedSyncExport.pdf(
+    'Goods Lost Report',
+    (state.locationName || 'All locations') + ' · ' + new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'}),
+    ['Date', 'Product', 'Category', 'Value ($)'],
+    [
+      ...rows.map(r => [
+        new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+        r.products?.name || '—',
+        r.category || '—',
+        '$' + Number(r.value_lost||0).toFixed(2),
+      ]),
+      ['', '', 'TOTAL', '$' + total.toFixed(2)],
+    ]
+  );
+}
 </script>
+<script src="medsync_export.js"></script>
 </body>
 </html>
