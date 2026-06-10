@@ -531,7 +531,7 @@ async function loadQueue() {
     // Load products + on-hand from Vetspire inventory_snapshots (dispensing units)
     // Falls back to lots table if no snapshot data exists for this location
     const [prodsRes, snapRes, lotsRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year,vetspire_product_id,vetspire_product_name&order=name', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year,vetspire_product_id,vetspire_product_name,supply_type&order=name', { headers: H }),
       fetch(SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,on_hand,snapshot_date&location_name=eq.${encodeURIComponent(state.locationName)}&order=snapshot_date.desc,product_name&limit=600`, { headers: H }),
       fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
     ]);
@@ -653,6 +653,9 @@ async function loadQueue() {
       if (!vetspireTracked.has(i.product_id)) return true;
       // Remove non-representative Vetcove variants (duplicates within same Vetspire group)
       if (vsNonRep.has(i.product_id)) return true;
+      // Remove hospital/white-goods supplies — never auto-order these
+      const iProd = prodLookupEarly[i.product_id];
+      if (iProd?.supply_type === 'hospital') return true;
       const prod = prodLookupEarly[i.product_id];
       if (!prod) return true;
       const freshOH = onHand[i.product_id] != null ? onHand[i.product_id] : (i.on_hand || 0);
@@ -675,6 +678,8 @@ async function loadQueue() {
       for (const p of products) {
         // Only auto-recommend Vetspire-tracked products (qty_min set)
         if (p.qty_min == null) continue;
+        // Never auto-order hospital/white-goods supplies (no Vetspire stock tracking)
+        if (p.supply_type === 'hospital') continue;
         // Skip products with no Vetspire snapshot — can't order what we can't count
         if (onHandSource[p.id] !== 'vetspire') continue;
         // Skip non-representative Vetcove variants for this Vetspire product
