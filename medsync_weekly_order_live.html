@@ -618,6 +618,32 @@ async function loadQueue() {
     const prodLookupEarly = {};
     if (Array.isArray(products)) products.forEach(p => { prodLookupEarly[p.id] = p; });
 
+    // Group Vetcove products by Vetspire product ID.
+    // Multiple Vetcove variants (e.g. Gabapentin 250ml, 400ml, 480ml) map to a single
+    // Vetspire product — they share the same on-hand snapshot, so we must show/order only ONE.
+    // Representative = largest package_size (fewest purchase units to order); tie-break = lowest price.
+    const vsGroupRep = {};  // vetspire_product_id → representative product
+    if (Array.isArray(products)) {
+      products.forEach(p => {
+        if (!p.vetspire_product_id) return;
+        const key = String(p.vetspire_product_id);
+        const cur = vsGroupRep[key];
+        if (!cur) { vsGroupRep[key] = p; return; }
+        const betterSize     = (p.package_size || 1) > (cur.package_size || 1);
+        const sameSizeCheaper = (p.package_size || 1) === (cur.package_size || 1)
+                              && (p.unit_price || 9999) < (cur.unit_price || 9999);
+        if (betterSize || sameSizeCheaper) vsGroupRep[key] = p;
+      });
+    }
+    // IDs of non-representative variants — skip in auto-add and stale-removal
+    const vsNonRep = new Set();
+    if (Array.isArray(products)) {
+      products.forEach(p => {
+        if (!p.vetspire_product_id) return;
+        if (vsGroupRep[String(p.vetspire_product_id)]?.id !== p.id) vsNonRep.add(p.id);
+      });
+    }
+
     // Remove auto-flagged items that are no longer below minimum:
     //   (a) product no longer Vetspire-tracked, OR
     //   (b) fresh on-hand is now >= qty_min (thresholds changed since item was queued)
@@ -625,6 +651,8 @@ async function loadQueue() {
       if (!i.auto_flagged) return false;
       if (!i.product_id) return true;
       if (!vetspireTracked.has(i.product_id)) return true;
+      // Remove non-representative Vetcove variants (duplicates within same Vetspire group)
+      if (vsNonRep.has(i.product_id)) return true;
       const prod = prodLookupEarly[i.product_id];
       if (!prod) return true;
       const freshOH = onHand[i.product_id] != null ? onHand[i.product_id] : (i.on_hand || 0);
@@ -649,6 +677,9 @@ async function loadQueue() {
         if (p.qty_min == null) continue;
         // Skip products with no Vetspire snapshot — can't order what we can't count
         if (onHandSource[p.id] !== 'vetspire') continue;
+        // Skip non-representative Vetcove variants for this Vetspire product
+        // (prevents duplicate rows when multiple sizes/flavors map to the same Vetspire ID)
+        if (vsNonRep.has(p.id)) continue;
         // on_hand is in dispensing units; qty_min is also in dispensing units
         const oh  = onHand[p.id] || 0;
         const min = p.qty_min;
@@ -660,10 +691,12 @@ async function loadQueue() {
           // Use verified Vetcove historical price; fall back to hardcoded estimate
           const unit         = p.unit_price || getPrice(p.name);
           const gpo          = Math.round(unit * 0.88 * 100) / 100;
+          // Display name: Vetspire canonical name if mapped, otherwise Vetcove name
+          const displayName  = p.vetspire_product_name || p.name;
           autoAdd.push({
             location_id:    state.locationId,
             product_id:     p.id,
-            product_name:   p.name,
+            product_name:   displayName,
             vendor:         p.vendor || inferVendor(p.name),
             qty_ordered:    orderQty,
             unit_price:     unit,
@@ -719,10 +752,12 @@ async function loadQueue() {
         if (!max2) return item.qty_ordered || 1;
         return Math.max(1, Math.ceil((max2 - freshOH) / pkg2));
       })();
+      // Show Vetspire canonical name when available (hides Vetcove variant naming)
+      const displayName = prod.vetspire_product_name || item.product_name;
       return {
         id:              item.id,
         productId:       item.product_id,
-        productName:     item.product_name,
+        productName:     displayName,
         vendor:          item.vendor || inferVendor(item.product_name),
         onHand:          freshOH,
         dispensingUnit:  prod.dispensing_unit || '',   // Vetspire unit (capsules, mL…)
