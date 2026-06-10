@@ -36,6 +36,7 @@ import datetime
 import argparse
 import urllib.request
 import urllib.error
+import urllib.parse
 
 # ── Config ────────────────────────────────────────────────────────────────────
 VETSPIRE_URL = 'https://api.vetspire.com/graphql'
@@ -112,6 +113,7 @@ def get_products_at_location(token, location_id):
       ) {
         id
         name
+        units
         inventoryLevels(locationId: $locationId) {
           stock
           locationId
@@ -142,6 +144,7 @@ def get_products_at_location(token, location_id):
             all_products.append({
                 'id':    p['id'],
                 'name':  p['name'],
+                'units': p.get('units') or '',
                 'stock': stock,
             })
 
@@ -208,7 +211,7 @@ def supa_request(method, path, body=None):
         return None
 
 
-def store_snapshot(vs_location_id, location_name, vs_product_id, product_name, stock):
+def store_snapshot(vs_location_id, location_name, vs_product_id, product_name, stock, units=''):
     """Insert a daily on-hand snapshot into inventory_snapshots."""
     today = datetime.date.today().isoformat()
     supa_request('POST', '/rest/v1/inventory_snapshots', {
@@ -219,6 +222,7 @@ def store_snapshot(vs_location_id, location_name, vs_product_id, product_name, s
         'on_hand':              stock,
         'snapshot_date':        today,
     })
+    # dispensing_unit sync is handled once per unique product in run_sync()
 
 
 def get_snapshot_history(vs_location_id, vs_product_id, days=35):
@@ -297,6 +301,7 @@ def run_sync(token, dry_run=False, location_filter=None):
     total_updated = 0
     total_skipped = 0
     total_errors  = 0
+    units_seen = {}  # product_name -> units (deduped across locations)
 
     for loc_name, vs_loc_id in locations.items():
         print(f'\n📍 {loc_name} (Vetspire ID: {vs_loc_id})')
@@ -314,6 +319,11 @@ def run_sync(token, dry_run=False, location_filter=None):
             stock       = p['stock']
             vs_prod_id  = p['id']
             prod_name   = p['name']
+            prod_units  = p.get('units') or ''
+
+            # Track unique product units for deduped sync at end
+            if prod_units and prod_name not in units_seen:
+                units_seen[prod_name] = prod_units
 
             # 1. Store today's snapshot
             store_snapshot(vs_loc_id, loc_name, vs_prod_id, prod_name, stock)
@@ -347,6 +357,19 @@ def run_sync(token, dry_run=False, location_filter=None):
             else:
                 print(f'    ❌ Write failed')
                 total_errors += 1
+
+    # Sync dispensing_unit from Vetspire → Supabase (once per unique product)
+    if units_seen:
+        print(f'\nSyncing dispensing units for {len(units_seen)} products...')
+        unit_ok = 0
+        for prod_name, units in units_seen.items():
+            result = supa_request('PATCH',
+                f'/rest/v1/products?name=ilike.{urllib.parse.quote("%" + prod_name[:35] + "%")}',
+                {'dispensing_unit': units}
+            )
+            if result is not None:
+                unit_ok += 1
+        print(f'  Units synced: {unit_ok}/{len(units_seen)}')
 
     print(f'\n{"=" * 60}')
     print(f'Sync complete  |  updated={total_updated}  skipped={total_skipped}  errors={total_errors}')

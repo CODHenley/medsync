@@ -1,0 +1,169 @@
+drug_group,product_name,dispensing_unit,qty_min,qty_max,tracked,issue
+amoxicillin,Clavamox Drops: 15ml,,,,no,⚠  SOME NOT TRACKED
+amoxicillin,"Clavamox Drops: 15ml, 12 Count",,,,no,⚠  SOME NOT TRACKED
+apoquel,"Apoquel Chewable Tablets: 16mg, 250 Count",,,,no,⚠  SOME NOT TRACKED
+apoquel,"Apoquel Chewable Tablets: 3.6mg, 250 Count",,,,no,⚠  SOME NOT TRACKED
+apoquel,"Apoquel Chewable Tablets: 5.4mg, 250 Count",,,,no,⚠  SOME NOT TRACKED
+apoquel,"Apoquel Tablets: 16mg, 250 Count",,,,no,⚠  SOME NOT TRACKED
+apoquel,"Apoquel Tablets: 3.6mg, 250 Count",,,,no,⚠  SOME NOT TRACKED
+apoquel,"Apoquel Tablets: 5.4mg, 250 Count",,,,no,⚠  SOME NOT TRACKED
+atipamezole,Antisedan: 10ml (5mg/ml),,,,no,⚠  SOME NOT TRACKED
+atipamezole,"Atipamezole Hydrochloride Injectable Solution 5Mg/Ml, 10Ml",mL,,,no,⚠  SOME NOT TRACKED
+atipamezole,Atipamezole Injection: 10mL (5mg/mL),mL,,,no,⚠  SOME NOT TRACKED
+atipamezole,"Medication Label: ""ANTISEDAN _mg"" White with Red Text, 1-1/4"" x 5/16""",,,,no,⚠  SOME NOT TRACKED
+azithromycin,Azithromycin Oral Suspension:  30Ml (40Mg/Ml),,,,no,⚠  SOME NOT TRACKED
+azithromycin,"Azithromycin Tablets: 250Mg, 30 Count",,,,no,⚠  SOME NOT TRACKED
+buprenorphine,"Anesthesia Label: Buprenorphine mg/mL,  1.5"" x 0.5"", Each",,,,no,⚠  SOME NOT TRACKED
+buprenorphine,Buprenorphine 0.3mg/ml,mL,5,20,yes,⚠  SOME NOT TRACKED
+buprenorphine,"Buprenorphine HCl Injection: 1ml (0.3mg/ml), 5 Count",mL,,,no,⚠  SOME NOT TRACKED
+butorphanol,"Butorphanol Label: Yellow, 760 Per Roll, Each",mL,,,no,⚠  SOME NOT TRACKED
+butorphanol,Butorphanol Tartrate Injection 10mg/ml C4,mL,50,150,yes,⚠  SOME NOT TRACKED
+carprofen,Carprofen 50mg tabs,tablets,30,180,yes,⚠  SOME NOT TRACKED
+carprofen,"Carprofen Caplets: 100mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprofen Caplets: 25mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprofen Caplets: 75mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (carprofen tablets) Caplets: 100mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (Carprofen Tablets) Caplets: 25Mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (Carprofen) Chewable Tablets: 100Mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (Carprofen) Chewable Tablets: 25Mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (carprofen) Chewable Tablets: 25mg, 30 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (Carprofen) Chewable Tablets: 75Mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (carprofen) Flavored Tablets: 100mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Carprovet® (carprofen) Flavored Tablets: 25mg, 180 Count",tablets,,,no,⚠  SOME NOT TRACKED
+carprofen,"Rimadyl Chewable Tablets: 100mg, 180 Count",,,,no,⚠  SOME NOT TRACKED
+carprofen,"Rimadyl Chewable Tablets: 25mg, 180 Count",,,,no,⚠  SOME NOT TRACKED
+carprofen,"Rimadyl Chewable Tablets: 75mg, 180 Count",,,,no,⚠  SOME NOT TRACKED
+clindamycin,"Clindamycin Hcl Capsules: 150Mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+clindamycin,"Clindamycin HCl Capsules: 150mg, 500 Count",,,,no,⚠  SOME NOT TRACKED
+clindamycin,"Clindamycin Hcl Capsules: 75Mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+clindamycin,Clindamycin HCl Oral Drops: 20ml (25mg/ml),,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 10mg (Up to 10lb), 1 Vial (Ordered in Multiples of 10)",,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 10mg (Up to 10lb), 1 Vial (Ordered in Multiples of 5)",,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 20mg (10.1-20lb), 1 Vial (Ordered in Multiples of 10)",,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 20mg (10.1-20lb), 1 Vial (Ordered in Multiples of 5)",,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 30mg (20.1-30lb), 1 Vial (Ordered in Multiples of 10)",,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 30mg (20.1-30lb), 1 Vial (Ordered in Multiples of 5)",,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 40mg (30.1-40lb), 1 Vial (Ordered in Multiples of 10)",,,,no,⚠  SOME NOT TRACKED
+cytopoint,"Cytopoint: 40mg (30.1-40lb), 1 Vial (Ordered in Multiples of 5)",,,,no,⚠  SOME NOT TRACKED
+dexamethasone,"Dexamethasone SP Injection: 1ml (4mg/ml), 25 Count",,,,no,⚠  SOME NOT TRACKED
+dexamethasone,Dexium-SP (dexamethasone sodium phosphate) Injection: 100ml (4mg/ml),,,,no,⚠  SOME NOT TRACKED
+dexmedetomidine,Dexdomitor: 10ml (0.5mg/ml),,,,no,⚠  SOME NOT TRACKED
+dexmedetomidine,Dexmedetomidine 0.5mg/ml,mL,10,40,yes,⚠  SOME NOT TRACKED
+dexmedetomidine,Dexmedetomidine Injection: 10Ml (0.5Mg/Ml),mL,10,40,yes,⚠  SOME NOT TRACKED
+dexmedetomidine,"Medication Label: ""Dexdomitor"", 1-1/4"" x 5/16"" (610 Count Roll)",,,,no,⚠  SOME NOT TRACKED
+diphenhydramine,"Diphenhydramine Capsules: 25mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+diphenhydramine,"Diphenhydramine Capsules: 50mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+diphenhydramine,"Diphenhydramine Elixir:  Cherry Flavor, 4Oz (12.5Mg/5Ml)",,,,no,⚠  SOME NOT TRACKED
+diphenhydramine,Diphenhydramine Injection: 10ml (50mg/ml),,,,no,⚠  SOME NOT TRACKED
+diphenhydramine,"Diphenhydramine Injection: 1ml (50mg/ml), 25 Count",,,,no,⚠  SOME NOT TRACKED
+diphenhydramine,"Diphenhydramine Injection: 1Ml (50Mg/Ml), 5 Count",,,,no,⚠  SOME NOT TRACKED
+diphenhydramine,"Diphenhydramine Injection: 50 mg/Ml, 10Ml, Each",,,,no,⚠  SOME NOT TRACKED
+doxycycline,"Doxycycline (as Hyclate) Oral Oil Suspension: 100 mg/ml, 100 ml",,,,no,⚠  SOME NOT TRACKED
+doxycycline,"Doxycycline (as Hyclate) Oral Oil Suspension: 100 mg/ml, 120 ml",,,,no,⚠  SOME NOT TRACKED
+doxycycline,"Doxycycline (as Hyclate) Oral Oil Suspension: 100 mg/ml, 240 ml",,,,no,⚠  SOME NOT TRACKED
+doxycycline,"Doxycycline Hyclate Capsules: 100Mg, 500 Count",capsules,,,no,⚠  SOME NOT TRACKED
+doxycycline,"Doxycycline Hyclate Tablets: 100Mg, 500 Count",tablets,,,no,⚠  SOME NOT TRACKED
+enrofloxacin,Baytril Otic Emulsion: 15 mL x 12 Count,,,,no,⚠  SOME NOT TRACKED
+enrofloxacin,"Enrofloxacin Flavored Tablets: 136mg, 50 Count",,,,no,⚠  SOME NOT TRACKED
+famotidine,Famotidine Injection: 20ml (10mg/ml),,,,no,⚠  SOME NOT TRACKED
+famotidine,"Famotidine Injection: 20Ml (10Mg/Ml), 10 Count",,,,no,⚠  SOME NOT TRACKED
+famotidine,"Famotidine Tablets: 10Mg, 30 Count",,,,no,⚠  SOME NOT TRACKED
+famotidine,"Famotidine Tablets: 10Mg, 60 Count",,,,no,⚠  SOME NOT TRACKED
+famotidine,"Famotidine Tablets: 20Mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+furosemide,Furosemide 1% Oral Syrup: 60ml (10mg/ml),,,,no,⚠  SOME NOT TRACKED
+furosemide,Furosemide 5% Injection: 100ml (50mg/ml),,,,no,⚠  SOME NOT TRACKED
+furosemide,"Furosemide Tablets: 12.5mg, 500 Count",,,,no,⚠  SOME NOT TRACKED
+furosemide,"Furosemide Tablets: 20Mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+furosemide,Salix 5% Injection: 50ml (50mg/mL),,,,no,⚠  SOME NOT TRACKED
+gabapentin,Gabapentin 100mg caps,capsules,30,100,yes,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Capsules: 100Mg, 500 Count",capsules,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Capsules: 300mg, 500 Count",capsules,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 100 mg/ml, 250 ml, Fish",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 100 mg/ml, 400 ml, Chicken-Marshmallow",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 100 mg/ml, 480 ml",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 100 mg/ml, 480 ml, Chicken",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 100 mg/ml, 480 ml, Chicken-Marshmallow",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 100 mg/ml, 480 ml, Marshmallow",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 400 mg/ml, 100 ml",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Oil Suspension: 400 mg/ml, 480 ml",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Oral Suspension: 50 mg/ml, 500 ml, Chicken-Marshmallow",,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Quad tab: 100 mg/tab, 100 Tablet, Chicken",tablets,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Quad tab: 100 mg/tab, 145 Tablet, Chicken",tablets,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Quad tab: 100 mg/tab, 150 Tablet, Chicken",tablets,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Quad tab: 100 mg/tab, 30 Tablet, Chicken",tablets,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Quad tab: 100 mg/tab, 45 Tablet, Chicken",tablets,,,no,⚠  SOME NOT TRACKED
+gabapentin,"Gabapentin Quad tab: 100 mg/tab, 60 Tablet, Chicken",tablets,,,no,⚠  SOME NOT TRACKED
+hydromorphone,Hydromorphone 2mg/ml,mL,10,40,yes,
+hydromorphone,Hydromorphone Injectable: 20ml (2mg/ml),mL,10,40,yes,
+insulin,"Carepoint Insulin Syringe: 29g x 0.5"", U-100, 100 Count",units,,,no,⚠  SOME NOT TRACKED
+insulin,"Insulin Syringe with Needle: 0.3ml, U-100, 29g x 1/2"", (10pks) 100 Count",each,,,no,⚠  SOME NOT TRACKED
+insulin,"Insulin Syringe with Ultra Fine Needle: 0.3ml, U-100, 30g x 0.5"", 100 Count",each,,,no,⚠  SOME NOT TRACKED
+ketamine,Ketamine HCl 10mg/ml,mL,50,200,yes,⚠  SOME NOT TRACKED
+ketamine,Ketamine Hcl Injection: 10Ml (100Mg/Ml),mL,,,no,⚠  SOME NOT TRACKED
+ketamine,Ketaset Ketamine Injection: 10ml (100mg/ml),mL,,,no,⚠  SOME NOT TRACKED
+ketamine,"Medication Label: ""Ketamine Strength ____ mg/mL Exp. Dt./Tm. ____ "", 1-1/2"" x 1/2"" (610 Count Roll)",mL,,,no,⚠  SOME NOT TRACKED
+lactulose,"Constulose (Lactulose Solution, USP): 10 g/15 mL, Unflavored 946 mL Bottle",,,,no,⚠  SOME NOT TRACKED
+lactulose,"Constulose Lactulose Solution: 10g/15ml, 946 ml",,,,no,⚠  SOME NOT TRACKED
+lactulose,Lactulose Solution: 32oz (10g/15ml),,,,no,⚠  SOME NOT TRACKED
+levetiracetam,Levetiracetam Solution: 473ml (100mg/ml),,,,no,⚠  SOME NOT TRACKED
+levetiracetam,"Levetiracetam Tablets: 250mg, 120 Count",,,,no,⚠  SOME NOT TRACKED
+levetiracetam,"Levetiracetam Tablets: 750mg, 120 Count",,,,no,⚠  SOME NOT TRACKED
+marbofloxacin,"Marboquin® (Marbofloxacin) Tablets: 100Mg, 50 Count",,,,no,⚠  SOME NOT TRACKED
+marbofloxacin,"Marboquin® (Marbofloxacin) Tablets: 25Mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+maropitant,Cerenia Injectable Solution: 20ml,tablets,,,no,⚠  MIN/MAX MISMATCH
+maropitant,"Cerenia Tablets: 16mg,  10 x 4 Tablets",tablets,,,no,⚠  MIN/MAX MISMATCH
+maropitant,"Cerenia Tablets: 24mg, 10 x 4 Tablets",tablets,,,no,⚠  MIN/MAX MISMATCH
+maropitant,"Cerenia Tablets: 60mg, 10 x 4 Tablets",tablets,,,no,⚠  MIN/MAX MISMATCH
+maropitant,Emeprev® (maropitant citrate) Injectable Solution: 20 mL (10mg/ml),tablets,,,no,⚠  MIN/MAX MISMATCH
+maropitant,"Emeprev® (maropitant citrate) Tablets: 16mg, 4 count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,"Emeprev® (maropitant citrate) Tablets: 24mg, 4 count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,"Emeprev® (maropitant citrate) Tablets: 60mg, 4 count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,Maropitant Citrate 10mg/ml,mL,10,40,yes,⚠  MIN/MAX MISMATCH
+maropitant,"Maropitant Citrate Antiemetic Tablets for Dogs: 60mg, 4 Count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,Maropitant Citrate Tablets for Dogs: 16 mg 4 Count,tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,"Maropitant Citrate Tablets for Dogs: 24 mg, 4 Count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,"Maropitant Citrate Tablets: 16mg, 4 Count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,"Maropitant Citrate Tablets: 24mg, 4 Count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+maropitant,"Maropitant Citrate Tablets: 60mg, 4 Count",tablets,8,32,yes,⚠  MIN/MAX MISMATCH
+meloxicam,Meloxicam 5mg/ml inj,mL,20,80,yes,⚠  SOME NOT TRACKED
+meloxicam,Meloxicam Oral Suspension for Dogs: 10ml (1.5mg/ml),,,,no,⚠  SOME NOT TRACKED
+meloxicam,Metacam® Oral Suspension: 10ml (1.5mg/ml),,,,no,⚠  SOME NOT TRACKED
+meloxicam,Metacam® Oral Suspension: 15ml (0.5mg/ml),,,,no,⚠  SOME NOT TRACKED
+methadone,"Medication Label: ""Methadone Strength ____ mg/mL Exp. Dt./Tm. ____"", 1-1/2"" x 1/2"" (610 Count Roll)",,,,no,⚠  SOME NOT TRACKED
+methadone,Methadone Hci Injection: 20Ml (10Mg/Ml),,,,no,⚠  SOME NOT TRACKED
+methimazole,"FELIMAZOLE® Coated Tablets (methimazole tablets): 5mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+methimazole,"Methimazole Tablets: 5Mg, 100 Count",,,,no,⚠  SOME NOT TRACKED
+metronidazole,"Metronidazole (as Benzoate) Oral Suspension: 100 mg/ml, 460 ml, Chicken Pot Pie",,,,no,⚠  SOME NOT TRACKED
+metronidazole,"Metronidazole (as Benzoate) Oral Suspension: 200 mg/ml, 960 ml",,,,no,⚠  SOME NOT TRACKED
+metronidazole,"Metronidazole (as Benzoate) Oral Suspension: 50 mg/ml, 460 ml, Chicken Pot Pie",,,,no,⚠  SOME NOT TRACKED
+metronidazole,"Metronidazole (as Benzoate) Tiny Tabs: 50 mg/tab, 100 Tablet",tablets,,,no,⚠  SOME NOT TRACKED
+metronidazole,"Metronidazole (as Benzoate) Tiny Tabs: 50 mg/tab, 200 Tablet",tablets,,,no,⚠  SOME NOT TRACKED
+metronidazole,"Metronidazole Tablets: 250Mg, 500 Count",tablets,,,no,⚠  SOME NOT TRACKED
+metronidazole,"Metronidazole Tablets: 500Mg, 500 Count",tablets,,,no,⚠  SOME NOT TRACKED
+nitenpyram,"Capstar Tablets Blue: 11.4mg (Dogs 2-25lbs), 6 Count",,,,no,⚠  SOME NOT TRACKED
+nitenpyram,"Capstar Tablets Blue: 11.4mg (Small Dogs 2-25lbs), 10 x 6 Doses",,,,no,⚠  SOME NOT TRACKED
+ondansetron,Ondansetron 2mg/ml inj,mL,,,no,⚠  SOME NOT TRACKED
+ondansetron,Ondansetron Hcl Injection: 20Ml (2Mg/Ml),mL,,,no,⚠  SOME NOT TRACKED
+ondansetron,"Ondansetron Tablets: 4Mg, 30 Count",,,,no,⚠  SOME NOT TRACKED
+ondansetron,"Ondansetron Tablets: 8Mg, 30 Count",,,,no,⚠  SOME NOT TRACKED
+praziquantel,"Drontal Plus for Large Dogs (45+ lbs): 136mg, 30 Count",,,,no,⚠  SOME NOT TRACKED
+praziquantel,"Drontal Plus for Medium Sized Dogs (26-60 lbs): 68mg, 50 Count",,,,no,⚠  SOME NOT TRACKED
+praziquantel,"Drontal Plus for Puppies and Small Dogs (2-25 lbs): 22.7mg, 50 Count",,,,no,⚠  SOME NOT TRACKED
+praziquantel,Drontal Tablets Feline: 50 Count,,,,no,⚠  SOME NOT TRACKED
+prednisone,"Prednis Prednisolone Tablets: 5Mg, 1000 Count",tablets,,,no,⚠  SOME NOT TRACKED
+prednisone,"Prednisolone Acetate Ophthalmic Suspension: 1% , 5Ml",,,,no,⚠  SOME NOT TRACKED
+prednisone,"Prednisolone Acetate Ophthalmic Suspension: 1%, 10Ml",,,,no,⚠  SOME NOT TRACKED
+prednisone,"Prednisolone Sodium Phosphate Oral Solution 15mg/5mL, 237mL",,,,no,⚠  SOME NOT TRACKED
+prednisone,"Prednisolone Sodium Phosphate Oral Solution: Alcohol Free/Dye Free, 15mg/5ml, 237ml",,,,no,⚠  SOME NOT TRACKED
+prednisone,Prednisolone Syrup: 237Ml (15Mg/5Ml),,,,no,⚠  SOME NOT TRACKED
+prednisone,"Prednisone Tablets: 10Mg, 100 Count",tablets,,,no,⚠  SOME NOT TRACKED
+prednisone,"Prednisone Tablets: 10mg, 500 Count",tablets,,,no,⚠  SOME NOT TRACKED
+propofol,"Propofol Injectable: 20Ml (10Mg/Ml), 25 Count",mL,40,160,yes,⚠  SOME NOT TRACKED
+propofol,"Propofol Label: mg/ml, Yellow , 1.5"" x .5"", Each",mL,,,no,⚠  SOME NOT TRACKED
+sarolaner,"Simparica TRIO Chewable Tablets: Caramel, 11.1-22.0lb, 5 x 6 Dose",,,,no,⚠  SOME NOT TRACKED
+sarolaner,"Simparica TRIO Chewable Tablets: Teal/Blue, 22.1-44.0lb, 5 x 6 Dose",,,,no,⚠  SOME NOT TRACKED
+selamectin,"Revolution Plus for Cats: Gold (2.8-5.5lbs), 5 x 6 Doses",,,,no,⚠  SOME NOT TRACKED
+selamectin,"Revolution Plus for Cats: Green (11.1 - 22lbs), 5 x 6 Doses",,,,no,⚠  SOME NOT TRACKED
+selamectin,"Revolution Plus for Cats: Orange (5.6-11lbs), 5 x 6 Doses",,,,no,⚠  SOME NOT TRACKED
+selamectin,"Revolution Puppy/Kitten: Mauve (up to 5lbs), 10 x 3 Dose",,,,no,⚠  SOME NOT TRACKED
+selamectin,"Revolution Puppy/Kitten: up to 5lbs (Mauve), 1 x 3 Doses",,,,no,⚠  SOME NOT TRACKED

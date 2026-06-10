@@ -1,0 +1,101 @@
+=== Product type fields ===
+  ageRestriction: Numrange
+  alternativeName: String
+  applicationType: ProductApplicationType
+  *** buyingQuantity: Int
+  cityTaxedLocations: Location
+  code: String
+  *** coerceIntegerQuantity: Boolean
+  controlledDrugSchedule: ScheduledDrugType
+  countyTaxedLocations: Location
+  createdBy: Provider
+  cubexEnabledAt: Boolean
+  cubexEnabledLocations: Location
+  defaultRoute: RouteType
+  defaultSig: String
+  defaultSite: String
+  description: String
+  diagnosticCode: String
+  diagnosticCodeOrgLabType: OrgLabType
+  diagnosticCodeOrgLabTypeMetadata: OrgLabTypeMetadata
+  disabled: Boolean
+  disabledLocations: Location
+  dischargeInstructions: String
+  dispenseFee: Decimal
+  enabledAt: Boolean
+  enabledLocationTags: LocationTag
+  enabledLocations: Location
+  fixed: Boolean
+  fulfillmentSources: FulfillmentSource
+  historicalId: String
+  id: ID
+  *** inStock: Decimal
+  insertedAt: NaiveDateTime
+  *** inventoryLevels: InventoryLevel
+  *** inventoryStockLocation: String
+  invoiceBlurb: String
+  isControlledDrug: Boolean
+  isEuthanasia: Boolean
+  isNeuter: Boolean
+  isNonCompensated: Boolean
+  lastUsedDate: NaiveDateTime
+  linkedProducts: Product
+  locationMarkup: Decimal
+  lotNumbers: String
+  *** lowStockThresholds: LowStockThreshold
+  manufacturer: ProductManufacturer
+  masterProducts: MasterProduct
+  *** maxDailyLinks: Int
+  *** maxOrderLimit: Int
+  metadataFields: ProductMetadataField
+  *** minimumPrice: Decimal
+  *** minimumUnitPrice: Decimal
+  monograph: Monograph
+  name: String
+  ndc: String
+  note: String
+  *** onlyInventory: Boolean
+  orderItems: OrderItem
+  packageOnly: Boolean
+  packageOnlyLocations: Location
+  parentProduct: Product
+  parentProductId: ID
+  price: ProductPrice
+  priceLocked: Boolean
+  prices: ProductPrice
+  productCategories: ProductCategory
+  productConfig: ProductConfig
+  productManufacturers: ProductManufacturer
+  productType: ProductType
+  productTypeId: ID
+  promptsTip: Boolean
+  *** quantitySold: Decimal
+  realUnitCost: Decimal
+  restrictToOnlyNonNeutered: Boolean
+  revenueCenter: RevenueCenter
+  *** sellingQuantity: Int
+  sku: String
+  speciesRestrictions: String
+  stateTaxedLocations: Location
+  *** stockLocationSource: String
+  suggestedProducts: Product
+  taxedLocations: Location
+  *** trackInventory: Boolean
+  undeletable: Boolean
+  unitCost: Decimal
+  unitDurationDays: String
+  unitFixedPrice: Decimal
+  unitMarkupPercent: Decimal
+  unitPrice: Decimal
+  units: String
+  updatedAt: NaiveDateTime
+  url: String
+  useDefault: Boolean
+  vetsourceId: String
+  weightRestriction: Numrange
+
+=== Query type — look for threshold/inventory queries ===
+Traceback (most recent call last):
+  File "/Users/meganhenley/Downloads/medsync_deploy/vetspire_introspect.py", line 44, in <module>
+    qfields = r2.get('data', {}).get('__type', {}).get('fields', [])
+AttributeError: 'NoneType' object has no attribute 'get'
