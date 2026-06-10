@@ -332,10 +332,11 @@ async function deleteInvoice(invoiceId) {
 
 // ── Un-invoiced PO check ──────────────────────────────────────────────────────
 async function checkUnInvoicedPOs() {
+  try {
   // Flag POs submitted >5 days ago with no matching invoice
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 5);
   const cutoffStr = cutoff.toISOString().split('T')[0];
-  const pos = await supa('GET', `/rest/v1/po_items?location_id=eq.${encodeURIComponent(state.locationName)}&status=eq.submitted&week_start=lte.${cutoffStr}&select=id,product_name,vendor,week_start`);
+  const pos = await supa('GET', `/rest/v1/po_items?location_name=eq.${encodeURIComponent(state.locationName)}&status=eq.submitted&week_start=lte.${cutoffStr}&select=id,product_name,vendor,week_start`);
   if (!Array.isArray(pos) || pos.length === 0) return;
   const banner = document.createElement('div');
   banner.className = 'alert alert-warn';
@@ -343,6 +344,7 @@ async function checkUnInvoicedPOs() {
   banner.innerHTML = `<i class="ti ti-alert-triangle"></i><div><strong>${pos.length} PO${pos.length>1?'s':''} submitted &gt;5 days ago with no invoice uploaded.</strong><div style="margin-top:4px;font-size:12px;">${pos.slice(0,3).map(p=>`${p.product_name} (${p.vendor||'unknown vendor'})`).join(' · ')}${pos.length>3?` · +${pos.length-3} more`:''}</div></div>`;
   const nav = document.querySelector('.vp-nav');
   nav.insertAdjacentElement('afterend', banner);
+  } catch(e) { /* ignore banner errors */ }
 }
 
 // ── Drag & drop ───────────────────────────────────────────────────────────────
@@ -539,10 +541,24 @@ function extractLineItemsLoose(lines) {
 
 // ── PO matching ───────────────────────────────────────────────────────────────
 async function fetchRecentPOItems() {
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
-  const data = await supa('GET', `/rest/v1/po_items?location_id=eq.${encodeURIComponent(state.locationName)}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,unit_price,status`);
-  return Array.isArray(data) ? data : [];
+  try {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    // Try location_name first, fall back to location (used by some older po_items schemas)
+    let data = null;
+    const fields = ['location_name', 'location', 'location_id'];
+    for (const field of fields) {
+      try {
+        data = await supa('GET', `/rest/v1/po_items?${field}=eq.${encodeURIComponent(state.locationName)}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,unit_price,status`);
+        if (Array.isArray(data) && data.length > 0) break;
+        if (Array.isArray(data)) break; // 0 results is still a valid response
+      } catch(e) { /* try next field */ }
+    }
+    return Array.isArray(data) ? data : [];
+  } catch(e) {
+    console.warn('PO lookup failed (will proceed without PO matching):', e.message);
+    return [];
+  }
 }
 
 function tokenize(s) {
