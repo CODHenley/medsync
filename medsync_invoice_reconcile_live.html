@@ -422,10 +422,14 @@ function parseInvoice(text) {
 
 function detectVendor(text) {
   const t = text.toLowerCase();
-  if (t.includes('mwi ') || t.includes('mwi animal') || t.includes('mwivet')) return 'MWI';
-  if (t.includes('patterson') || t.includes('pattersonvet')) return 'Patterson';
-  if (t.includes('covetrus') || t.includes('henry schein')) return 'Covetrus';
-  if (t.includes('wedgewood') || t.includes('wedgewood pharmacy')) return 'Wedgewood Pharmacy';
+  if (t.includes('mwi animal health') || t.includes('mwi veterinary')) return 'MWI';
+  if (t.includes('midwest veterinary')) return 'Midwest';
+  if (t.includes('covetrus')) return 'Covetrus';
+  if (t.includes('patterson veterinary') || t.includes('patterson vet')) return 'Patterson';
+  if (t.includes('medline')) return 'Medline';
+  if (t.includes('amatheon')) return 'Amatheon';
+  if (t.includes('wedgewood')) return 'Wedgewood Pharmacy';
+  if (t.includes('vetcove')) return 'Vetcove';
   if (t.includes('zoetis')) return 'Zoetis';
   if (t.includes('dechra')) return 'Dechra';
   if (t.includes('merck')) return 'Merck';
@@ -433,35 +437,52 @@ function detectVendor(text) {
 }
 
 function extractInvoiceNumber(text) {
-  // MWI: invoice number is a standalone 8-digit number following the INVOICE NUMBER header
+  if (/amatheon/i.test(text)) {
+    const m = text.match(/#?(INV\d{6,})/i); if (m) return m[1].toUpperCase();
+  }
+  if (/wedgewood/i.test(text)) {
+    const m = text.match(/Invoice\s+Number:\s*(\S+)/i); if (m) return m[1];
+  }
+  if (/covetrus/i.test(text)) {
+    const m = text.match(/INVOICE\s+(?:NUMBER\s+)?(?:\*+\s*REPRINT\s+)?([A-Z]{2}\d{4,})/i)
+           || text.match(/\b([A-Z]{2}\d{5,7})\b/); if (m) return m[1];
+  }
   if (/mwi animal health/i.test(text)) {
-    const m = text.match(/INVOICE\s+NUMBER[\s\S]{0,30}?(\d{8,10})/i)
-           || text.match(/\b(\d{8})\b/);
+    const m = text.match(/INVOICE\s+NUMBER[\s\S]{0,30}?(\d{8,10})/i) || text.match(/\b(\d{8})\b/);
     if (m) return m[1];
   }
+  if (/midwest veterinary/i.test(text)) {
+    const m = text.match(/INVOICE\s+NO\.?\s*[\r\n\s]*(\d[\d\-]+)/i); if (m) return m[1];
+  }
   const patterns = [
-    /invoice\s*#\s*([A-Z0-9\-]{4,20})/i,
-    /invoice\s+number\s*:?\s*([A-Z0-9\-]{4,20})/i,
-    /inv\.?\s*#?\s*:?\s*([A-Z0-9\-]{4,20})/i,
+    /Invoice\s*#\s*([A-Z0-9\-]{4,20})/i,
+    /Invoice\s+Number\s*:?\s*([A-Z0-9\-]{4,20})/i,
+    /\b([A-Z]{2}\d{5,10})\b/,
+    /\b(\d{8,12})\b/,
   ];
   for (const p of patterns) { const m = text.match(p); if (m) return m[1].trim(); }
   return null;
 }
 
 function extractDate(text) {
-  const patterns = [
-    /invoice\s+date\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-    /date\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-    /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/,
+  // Text month: "June 05, 2026"
+  const MO = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  const tm = text.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}),?\s+(\d{4})/i);
+  if (tm) { const mo = MO[tm[1].toLowerCase()]; return `${tm[3]}-${String(mo).padStart(2,'0')}-${tm[2].padStart(2,'0')}`; }
+  // MM-DD-YYYY (Patterson)
+  const dash = text.match(/\b(\d{2})-(\d{2})-(\d{4})\b/);
+  if (dash) return `${dash[3]}-${dash[1]}-${dash[2]}`;
+  // Slash formats
+  const slashPats = [
+    /(?:invoice\s+date|ship\s+date)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+    /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/,
+    /\b(\d{1,2}\/\d{1,2}\/\d{2})\b/,
   ];
-  for (const p of patterns) {
+  for (const p of slashPats) {
     const m = text.match(p);
     if (m) {
-      const parts = m[1].split(/[\/\-]/);
-      if (parts.length === 3) {
-        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-        return `${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
-      }
+      const pts = m[1].split('/'), yr = pts[2].length===2 ? '20'+pts[2] : pts[2];
+      return `${yr}-${pts[0].padStart(2,'0')}-${pts[1].padStart(2,'0')}`;
     }
   }
   return new Date().toISOString().split('T')[0];
@@ -469,8 +490,8 @@ function extractDate(text) {
 
 function extractTotal(text) {
   const patterns = [
-    /(?:invoice total|total amount|amount due|total due|grand total|order total)\s*:?\s*\$?([\d,]+\.?\d*)/i,
-    /\bTOTAL\s+([\d,]+\.\d{2})\s*$/im,
+    /(?:invoice total|total amount|amount due|total due|grand total|order total|balance due)\s*:?\s*\$?\s*([\d,]+\.?\d*)/i,
+    /\bTOTAL\s+\$?\s*([\d,]+\.\d{2})\b/im,
     /total\s*:?\s*\$\s*([\d,]+\.\d{2})/i,
   ];
   for (const p of patterns) {
@@ -494,90 +515,242 @@ const GLOBAL_SKIP = [
 
 function extractLineItems(text, vendor) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-  if (vendor === 'MWI') return extractMWILineItems(lines);
-
-  const items = [];
-  const skuPattern = /^([A-Z0-9\-]{4,20})\s+(.{5,50})\s+(\d+)\s+\$?([\d,]+\.\d{2})\s+\$?([\d,]+\.\d{2})/;
-  const rowPattern = /^(.{5,60}?)\s{2,}(\d+(?:\.\d+)?)\s{2,}\$?([\d,]+\.\d{2,4})\s{2,}\$?([\d,]+\.\d{2})\s*$/;
-
-  let lineNum = 0;
-  for (const line of lines) {
-    if (GLOBAL_SKIP.some(p => p.test(line))) continue;
-    if (line.length < 10) continue;
-    let m = line.match(skuPattern);
-    if (m) {
-      lineNum++;
-      items.push({ lineNumber: lineNum, sku: m[1], productName: m[2].trim(), qtyInvoiced: parseFloat(m[3]), unitPriceInvoiced: parseFloat(m[4].replace(/,/g,'')), totalInvoiced: parseFloat(m[5].replace(/,/g,'')) });
-      continue;
-    }
-    m = line.match(rowPattern);
-    if (m) {
-      const qty = parseFloat(m[2]), unit = parseFloat(m[3].replace(/,/g,'')), total = parseFloat(m[4].replace(/,/g,''));
-      if (Math.abs(qty * unit - total) < total * 0.15 + 0.05) {
-        lineNum++;
-        items.push({ lineNumber: lineNum, sku: null, productName: m[1].trim(), qtyInvoiced: qty, unitPriceInvoiced: unit, totalInvoiced: total });
-      }
-    }
+  switch (vendor) {
+    case 'MWI':               return extractMWILineItems(lines);
+    case 'Midwest':           return extractMidwestLineItems(lines);
+    case 'Covetrus':          return extractCovetrusLineItems(lines);
+    case 'Patterson':         return extractPattersonLineItems(lines);
+    case 'Medline':           return extractMedlineLineItems(lines);
+    case 'Amatheon':          return extractAmatheonLineItems(lines);
+    case 'Wedgewood Pharmacy':
+    case 'Vetcove':           return extractWedgewoodLineItems(lines);
+    default:                  return extractGenericLineItems(lines);
   }
-  return items.length ? items : extractLineItemsLoose(lines);
 }
 
+// ── MWI ───────────────────────────────────────────────────────────────────────
+// Row: "20 015763 IV REGULATOR BAG SPIKE EACH PRACT Y 2.27 45.40"
 function extractMWILineItems(lines) {
-  // MWI noise patterns (in addition to GLOBAL_SKIP)
-  const mwiSkip = [
-    /processing fee/i, /credit card/i, /surcharge/i, /distribution expenses/i,
-    /standard delivery/i, /fedex/i, /dmr\d+/i, /^z\s*$/i,
-    /state route/i, /chicago il/i, /lebanon in/i, /winnetka/i,
-    /online:\s*www/i, /billing:/i, /orders:/i, /kathryn monick/i,
-    /scout vet/i, /naperville/i, /thurlow/i, /walnut st/i,
-    /shipped from/i, /shipping terms/i,
-  ];
-  // MWI product line: QTY  ITEMNO(5-7 digits)  DESCRIPTION  PKGTYPE  VENDORNAME  [YN]  UNITPRICE  EXTENDED
-  // e.g.: "20 015763 IV REGULATOR BAG SPIKE EACH PRACT Y 2.27 45.40"
-  const mwiRow = /^(\d{1,4})\s+(\d{5,7})\s+(.+?)\s+(EACH|BOX|CASE|VIAL|PKG|BTL|KIT|TUBE|SYR|TAB|VL|EA|CS|BX|EACH)\s+\S+\s+[YN]\s+([\d.]+)\s+([\d.]+)\s*$/i;
-  // Looser MWI fallback: QTY  ITEMNO  DESCRIPTION  UNITPRICE  EXTENDED (without pkgtype/vendor columns)
-  const mwiLoose = /^(\d{1,4})\s+(\d{5,7})\s+(.+?)\s+([\d]+\.\d{2,4})\s+([\d]+\.\d{2})\s*$/;
-
-  const items = [];
-  let lineNum = 0;
+  const skip = [/processing fee/i,/credit card/i,/surcharge/i,/distribution expenses/i,
+    /standard delivery/i,/fedex/i,/dmr\d+/i,/shipped from/i,/shipping terms/i,
+    /state route/i,/chicago il/i,/lebanon in/i,/online:/i,/billing:/i,/orders:/i];
+  const full = /^(\d{1,4})\s+(\d{5,7})\s+(.+?)\s+(?:EACH|BOX|CASE|VIAL|PKG|BTL|KIT|TUBE|SYR|TAB|VL|EA|CS|BX)\s+\S+\s+[YN]\s+([\d.]+)\s+([\d.]+)\s*$/i;
+  const loose = /^(\d{1,4})\s+(\d{5,7})\s+(.+?)\s+([\d]+\.\d{2,4})\s+([\d]+\.\d{2})\s*$/;
+  const items = []; let n = 0;
   for (const line of lines) {
-    if (GLOBAL_SKIP.some(p => p.test(line))) continue;
-    if (mwiSkip.some(p => p.test(line))) continue;
-    if (line.length < 8) continue;
-
-    let m = line.match(mwiRow);
-    if (!m) m = line.match(mwiLoose);
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || skip.some(p=>p.test(line))) continue;
+    let m = line.match(full) || line.match(loose);
     if (m) {
-      const qty  = parseFloat(m[1]);
-      const sku  = m[2];
-      const name = m[3].trim();
-      const unit = parseFloat(m[m.length - 2]);
-      const ext  = parseFloat(m[m.length - 1]);
-      // Sanity: qty * unit should be close to extended
-      if (Math.abs(qty * unit - ext) > ext * 0.25 + 1) continue;
-      lineNum++;
-      items.push({ lineNumber: lineNum, sku, productName: name, qtyInvoiced: qty, unitPriceInvoiced: unit, totalInvoiced: ext });
+      const qty=parseFloat(m[1]), unit=parseFloat(m[m.length-2]), ext=parseFloat(m[m.length-1]);
+      if (Math.abs(qty*unit-ext) <= ext*0.25+1) { n++; items.push({lineNumber:n,sku:m[2],productName:m[3].trim(),qtyInvoiced:qty,unitPriceInvoiced:unit,totalInvoiced:ext}); }
     }
   }
   return items;
 }
 
-function extractLineItemsLoose(lines) {
-  const items = [];
-  let lineNum = 0;
-  const priceRx = /\$?([\d,]+\.\d{2})/g;
-  const qtyRx   = /\b(\d{1,4})\b/;
+// ── Midwest Veterinary ────────────────────────────────────────────────────────
+// Item# format: NNN.NNNNN.N (e.g. 001.14242.2)
+// Row: "2  EA  001.14242.2  GLOVES EXAM NITRILE LG 100ct  Y  5.620  11.24"
+function extractMidwestLineItems(lines) {
+  const skip = [/GL\s*Code/i,/Finance\s*Charge/i,/tracelink/i,/processing\s*fee/i,
+    /^TAXABLE/i,/NONTAXABLE/i,/HANDLING/i,/MISC\./i,/BILLING\s*(TERMS|DUE)/i,
+    /ORDER\s*DATE/i,/INVOICE\s*DATE/i,/Thank\s*You/i,/Remit\s*to/i,/Minneapolis/i,
+    /Lakeville/i,/Fort\s*Wayne/i,/PO\s*Box/i,/MIDWEST\s*VET/i,/T2\s*documents/i,/^Total:/i];
+  // Full row with item# in middle
+  const fullRow = /^(?:(\d+)\s+)?(?:\d+\s+)?(?:EA|BX|GL|CS)\s+(\d{3}\.\d{5}\.\d)\s+(.+?)\s+[YN]\s+([\d.]+)\s+([\d.]+)\s*$/i;
+  const items = []; let n = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || skip.some(p=>p.test(line))) continue;
+    // Try full row
+    let m = line.match(fullRow);
+    if (m) { n++; items.push({lineNumber:n,sku:m[2],productName:m[3].trim(),qtyInvoiced:parseFloat(m[1]||1),unitPriceInvoiced:parseFloat(m[4]),totalInvoiced:parseFloat(m[5])}); continue; }
+    // Item# at start of line: "001.14242.2 GLOVES EXAM NITRILE LG..."
+    const itemStart = line.match(/^(\d{3}\.\d{5}\.\d)\s+(.+)/);
+    if (itemStart) {
+      const sku=itemStart[1], desc=itemStart[2];
+      // Prices may be at end of this line
+      const priceEnd = desc.match(/^(.+?)\s+([\d.]+)\s+([\d.]+)\s*$/);
+      if (priceEnd) {
+        n++; items.push({lineNumber:n,sku,productName:priceEnd[1].trim(),qtyInvoiced:1,unitPriceInvoiced:parseFloat(priceEnd[2]),totalInvoiced:parseFloat(priceEnd[3])});
+      } else {
+        // Look ahead for unit price + extended on near lines
+        let unit=null, ext=null;
+        for (let j=i+1; j<Math.min(i+5,lines.length); j++) {
+          const pm=lines[j].match(/^([\d.]+)\s+([\d.]+)\s*$/);
+          if (pm) { unit=parseFloat(pm[1]); ext=parseFloat(pm[2]); break; }
+        }
+        if (unit!==null) { n++; items.push({lineNumber:n,sku,productName:desc.trim(),qtyInvoiced:1,unitPriceInvoiced:unit,totalInvoiced:ext}); }
+      }
+    }
+  }
+  return items;
+}
+
+// ── Covetrus ──────────────────────────────────────────────────────────────────
+// Row: "1  0  057954  PROVIABLE-FORTE PASTE/CAP KIT 5X15ML  Y  EA  84.50  84.50"
+// Skip B/O-only items (qty shipped = 0, B/O > 0)
+function extractCovetrusLineItems(lines) {
+  const skip = [/Mfr\s*Catalog/i,/NDC\s*#/i,/from\s*lot/i,/GL\s*CODE/i,/Agency\s*items/i,
+    /shipped.*billed.*manufacturer/i,/Other\s*Charges/i,/Freight\s*Charge/i,/Track.Trace/i,
+    /printable\s*SDS/i,/myCovetrus/i,/^\*{2,}/,/^Please\s*(note|remit)/i,/^GL\s*CODE/i,
+    /GL\s*CODING/i,/REGULAR\s*PRICE/i,/^NONE\b/i,/^TOTAL\b/i,/Grimes/i,/Chicago.*60673/i,
+    /800.*1877/,/^\d{1,2}\/\d{1,2}\/\d{2,4}$/];
+  // QTY_SHIPPED B.O_QTY PRODUCT# DESCRIPTION [Y/N] UOM UNIT_PRICE EXTENDED
+  const row = /^(\d+)\s+(\d+)\s+(\d{4,7}\+*)\s+(.+?)\s+[YN]\s+(?:EA|BX|CS|TB|VL|ML|GM)\s+([\d.]+)\s+([\d.]+)\s*$/i;
+  const items = []; let n = 0;
   for (const line of lines) {
-    if (line.length < 8 || GLOBAL_SKIP.some(p => p.test(line))) continue;
-    const prices = [...line.matchAll(priceRx)].map(m => parseFloat(m[1].replace(/,/g,'')));
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || skip.some(p=>p.test(line))) continue;
+    const m = line.match(row);
+    if (m) {
+      const shipped=parseInt(m[1]), bo=parseInt(m[2]);
+      if (shipped===0 && bo>0) continue; // ordered but not shipped
+      n++; items.push({lineNumber:n,sku:m[3].replace(/\++$/,''),productName:m[4].trim(),qtyInvoiced:shipped||parseFloat(m[1]),unitPriceInvoiced:parseFloat(m[5]),totalInvoiced:parseFloat(m[6])});
+    }
+  }
+  return items;
+}
+
+// ── Patterson ─────────────────────────────────────────────────────────────────
+// Row: "78933726 2.000 2.000 EA WVG 2420879535 NEO POLY B DEX OPHTH OINT... $4.09 $8.18 T"
+function extractPattersonLineItems(lines) {
+  const skip = [/^NDC\s*:/i,/^Compliance\s*Data/i,/^Customer:/i,/^Practitioner:/i,
+    /^RX\s*LICENSE/i,/^Branch:/i,/^Fulfillment\s*Ctr/i,/^FC\s*STATE/i,/^BRANCH\s*STATE/i,
+    /TraceLink/i,/Spring\s*Savings/i,/manual\s*checks/i,/Patterson\s*Logistics/i];
+  // 8-digit product# + ordered + shipped + UOM + vendor + vendor# + description + $unit + $amt + [T/N]
+  const row = /^(\d{8})\s+([\d.]+)\s+([\d.]+)\s+(?:EA|BX|CS|TB|VL|PKG|ML|EA)\s+\w+\s+\d+\s+(.+?)\s+\$\s*([\d.]+)\s+\$\s*([\d.]+)\s*[TN]?\s*$/;
+  const items = []; let n = 0;
+  for (const line of lines) {
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || skip.some(p=>p.test(line))) continue;
+    const m = line.match(row);
+    if (m) { n++; items.push({lineNumber:n,sku:m[1],productName:m[4].trim(),qtyInvoiced:parseFloat(m[3]),unitPriceInvoiced:parseFloat(m[5]),totalInvoiced:parseFloat(m[6])}); }
+  }
+  return items;
+}
+
+// ── Medline ───────────────────────────────────────────────────────────────────
+// Row: "20  2.00 BX  2.00  B-D367283Z  8296997469  131.41  262.82"
+// Description on NEXT line starting with "/"
+function extractMedlineLineItems(lines) {
+  const skip = [/HCPCS\s*Code/i,/GROSS/i,/TAX\s*AMOUNT/i,/FREIGHT/i,/REMITTANCE/i,
+    /Billing\s*Inquiries/i,/CUSTOMER\s*SHALL/i,/EXPORT\s*PROHIBITED/i,/INTEREST\s*WILL/i,
+    /MEDLINE\s*INDUSTRIES/i,/PAID\s*BY\s*CREDIT/i,/NO\s*REMITTANCE/i,/Palatine/i,
+    /A\/R\s*Svcs/i,/^Page\s*\d/i];
+  // LINE# ORDER_QTY U/M INVOICE_QTY SKU DELIVERY# UNIT_PRICE AMOUNT
+  const row = /^(\d{2,3})\s+([\d.]+)\s+(?:BX|EA|CS|PK|BG|TU|EA)\s+([\d.]+)\s+([A-Z0-9\-]{4,15})\s+\d{8,10}\s+([\d.]+)\s+([\d.]+)\s*$/i;
+  const items = []; let n = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || skip.some(p=>p.test(line))) continue;
+    const m = line.match(row);
+    if (m) {
+      // Description is on next line(s) starting with "/"
+      let desc = '';
+      for (let j=i+1; j<Math.min(i+3,lines.length); j++) {
+        if (lines[j].startsWith('/')) { desc = lines[j].substring(1).trim(); break; }
+        if (lines[j].match(/^[A-Z\s,\-]+$/) && lines[j].length > 4) { desc = lines[j].trim(); break; }
+      }
+      n++; items.push({lineNumber:n,sku:m[4],productName:desc||m[4],qtyInvoiced:parseFloat(m[3]),unitPriceInvoiced:parseFloat(m[5]),totalInvoiced:parseFloat(m[6])});
+    }
+  }
+  return items;
+}
+
+// ── Amatheon ──────────────────────────────────────────────────────────────────
+// Header: "1  1  0  27808-0265-01"
+// Desc line: "LEVETIRACETAM 750MG 120 TABS"
+// Price line: "B2510071,C2-H3(1)  $6.45  $6.45"
+function extractAmatheonLineItems(lines) {
+  const skip = [/Tracking\s*Number/i,/Transaction\s*Statement/i,/Seller\s*has\s*complied/i,
+    /For\s*more\s*information/i,/traceability/i,/restocking\s*fee/i,/amatheon\.com/i,
+    /FDCA\s*Sec/i,/claims\s*for\s*defects/i,/Billing\s*errors/i,/Past\s*due/i,
+    /lspedia/i,/Global\s*Location/i];
+  // NDC-style item number: NNNNN-NNNN-NN
+  const ndcHdr = /^(\d+)\s+(\d+)\s+(\d+)\s+(\d{5}-\d{4}-\d{2})\s*$/;
+  // Or item on same line as description
+  const ndcFull = /^(\d+)\s+(\d+)\s+(\d+)\s+(\d{5}-\d{4}-\d{2})\s+(.+?)\s+[\w,\-]+\s+\$([\d.]+)\s+\$([\d.]+)\s*$/;
+  // Price line: lot info + $price $total
+  const priceLine = /\$([\d.]+)\s+\$([\d.]+)\s*$/;
+  const items = []; let n = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || skip.some(p=>p.test(line))) continue;
+    // Try all-in-one line
+    let m = line.match(ndcFull);
+    if (m) { n++; items.push({lineNumber:n,sku:m[4],productName:m[5].trim(),qtyInvoiced:parseFloat(m[2]),unitPriceInvoiced:parseFloat(m[6]),totalInvoiced:parseFloat(m[7])}); continue; }
+    // Try multi-line header
+    m = line.match(ndcHdr);
+    if (m) {
+      const shipped=parseFloat(m[2]), sku=m[4];
+      let desc='', unit=null, ext=null;
+      for (let j=i+1; j<Math.min(i+4,lines.length); j++) {
+        if (!desc && /^[A-Z][A-Z\s\d,\.]+$/.test(lines[j])) { desc=lines[j].trim(); continue; }
+        const pm=lines[j].match(priceLine);
+        if (pm) { unit=parseFloat(pm[1]); ext=parseFloat(pm[2]); break; }
+      }
+      if (unit!==null) { n++; items.push({lineNumber:n,sku,productName:desc||sku,qtyInvoiced:shipped,unitPriceInvoiced:unit,totalInvoiced:ext}); }
+    }
+  }
+  return items;
+}
+
+// ── Wedgewood / Vetcove ───────────────────────────────────────────────────────
+// Row: "1  Gabapentin Quad tab: 100 mg/tab, 30 Tablet, Chicken  1  $38.25  $38.25"
+// SKU on next line: "Wedgewood Pharmacy · GABAPEQTB0070VC"
+function extractWedgewoodLineItems(lines) {
+  const skip = [/Subtotal:/i,/^Tax:/i,/^Total:/i,/Payment\s*(Terms|upon)/i,
+    /auto-generated/i,/Page\s*\d/i,/Swedesboro/i,/Heron\s*Dr/i,/Balance\s*Due:/i,
+    /Invoice\s*(Number|Date|#)/i,/Order\s*(Number|Number:)/i,/PO\s*Number/i,/Ship\s*To/i,
+    /Bill\s*To/i,/Kathryn\s*Monick/i,/Wheaton/i,/Naperville/i];
+  // Row: line# description qty $unitprice $total
+  const row = /^(\d+)\s+(.+?)\s+(\d+)\s+\$([\d.]+)\s+\$([\d.]+)\s*$/;
+  const items = []; let n = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || skip.some(p=>p.test(line))) continue;
+    const m = line.match(row);
+    if (m) {
+      let sku = null;
+      // Next line may have "Vendor · SKU_CODE"
+      if (i+1 < lines.length) {
+        const skuM = lines[i+1].match(/·\s*([A-Z0-9]+)\s*$/);
+        if (skuM) sku = skuM[1];
+      }
+      n++; items.push({lineNumber:n,sku,productName:m[2].trim(),qtyInvoiced:parseFloat(m[3]),unitPriceInvoiced:parseFloat(m[4]),totalInvoiced:parseFloat(m[5])});
+    }
+  }
+  return items;
+}
+
+// ── Generic fallback ──────────────────────────────────────────────────────────
+function extractGenericLineItems(lines) {
+  const items = [];
+  const skuPat = /^([A-Z0-9\-]{4,20})\s+(.{5,50})\s+(\d+)\s+\$?([\d,]+\.\d{2})\s+\$?([\d,]+\.\d{2})/;
+  const rowPat = /^(.{5,60}?)\s{2,}(\d+(?:\.\d+)?)\s{2,}\$?([\d,]+\.\d{2,4})\s{2,}\$?([\d,]+\.\d{2})\s*$/;
+  let n = 0;
+  for (const line of lines) {
+    if (GLOBAL_SKIP.some(p=>p.test(line)) || line.length < 10) continue;
+    let m = line.match(skuPat);
+    if (m) { n++; items.push({lineNumber:n,sku:m[1],productName:m[2].trim(),qtyInvoiced:parseFloat(m[3]),unitPriceInvoiced:parseFloat(m[4].replace(/,/g,'')),totalInvoiced:parseFloat(m[5].replace(/,/g,''))}); continue; }
+    m = line.match(rowPat);
+    if (m) {
+      const qty=parseFloat(m[2]),unit=parseFloat(m[3].replace(/,/g,'')),total=parseFloat(m[4].replace(/,/g,''));
+      if (Math.abs(qty*unit-total)<total*0.15+0.05) { n++; items.push({lineNumber:n,sku:null,productName:m[1].trim(),qtyInvoiced:qty,unitPriceInvoiced:unit,totalInvoiced:total}); }
+    }
+  }
+  return items.length ? items : extractLooseFallback(lines);
+}
+
+function extractLooseFallback(lines) {
+  const items = []; let n = 0;
+  const priceRx = /\$?([\d,]+\.\d{2})/g, qtyRx = /\b(\d{1,4})\b/;
+  for (const line of lines) {
+    if (line.length < 8 || GLOBAL_SKIP.some(p=>p.test(line))) continue;
+    const prices = [...line.matchAll(priceRx)].map(m=>parseFloat(m[1].replace(/,/g,'')));
     const qtyM = line.match(qtyRx);
     if (prices.length >= 1 && qtyM) {
       const name = line.replace(/\$[\d,]+\.\d{2}/g,'').replace(/\b\d+\b/g,'').replace(/\s+/g,' ').trim().substring(0,60);
-      if (name.length > 3) {
-        lineNum++;
-        items.push({ lineNumber: lineNum, sku: null, productName: name, qtyInvoiced: parseInt(qtyM[1]), unitPriceInvoiced: prices[0], totalInvoiced: prices[prices.length-1] });
-      }
+      if (name.length > 3) { n++; items.push({lineNumber:n,sku:null,productName:name,qtyInvoiced:parseInt(qtyM[1]),unitPriceInvoiced:prices[0],totalInvoiced:prices[prices.length-1]}); }
     }
   }
   return items;
