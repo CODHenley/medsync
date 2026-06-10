@@ -157,6 +157,24 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 const LOC_NAMES = { '23083':'Lincoln Park','24356':'West Loop','27390':'Old Orchard','28253':'Wheaton' };
 
+// Address fingerprints for each location — used to detect if the invoice is for the wrong location
+const LOC_FINGERPRINTS = {
+  'Lincoln Park': ['2369 n lincoln','60614','lincoln ave','lincoln park'],
+  'West Loop':    ['west loop','60661','60606','1 n dearborn','fulton'],
+  'Old Orchard':  ['9410','skokie','60077','old orchard'],
+  'Wheaton':      ['wheaton','1962','60189','naperville rd'],
+};
+
+function detectInvoiceLocation(text) {
+  const t = text.toLowerCase();
+  let bestMatch = null, bestScore = 0;
+  for (const [loc, fingerprints] of Object.entries(LOC_FINGERPRINTS)) {
+    const score = fingerprints.filter(f => t.includes(f)).length;
+    if (score > bestScore) { bestScore = score; bestMatch = loc; }
+  }
+  return bestScore > 0 ? bestMatch : null;
+}
+
 let state = { locationId: '', locationName: '', invoices: [], activeInvoiceId: null };
 
 // ── Supabase helpers ──────────────────────────────────────────────────────────
@@ -359,6 +377,18 @@ async function processFile(file) {
   showParsing('Extracting text from PDF…');
   try {
     const text = await extractPDFText(file);
+    // ── Location mismatch check ───────────────────────────────────────────────
+    const detectedLoc = detectInvoiceLocation(text);
+    if (detectedLoc && detectedLoc !== state.locationName) {
+      hideParsing();
+      const proceed = confirm(
+        `⚠️ Location mismatch\n\n` +
+        `You have "${state.locationName}" selected, but this invoice appears to be for ${detectedLoc}.\n\n` +
+        `Press OK to upload anyway, or Cancel to go back and select the correct location.`
+      );
+      if (!proceed) return;
+      showParsing('Detecting vendor and parsing line items…');
+    }
     showParsing('Detecting vendor and parsing line items…');
     const parsed = parseInvoice(text);
     showParsing('Matching against purchase orders…');
