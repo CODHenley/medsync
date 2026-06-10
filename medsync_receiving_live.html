@@ -419,6 +419,8 @@ async function selectPOGroup(idx) {
     name:        i.product_name || '—',
     ndc:         '—',
     qtyOrdered:  i.qty_ordered || 1,
+    unitPrice:   Number(i.unit_price) || 0,
+    vendor:      i.vendor || '',
     qtyReceived: 0,
     lotNum: null, expDate: null,
     status: 'pending'
@@ -458,10 +460,32 @@ function renderItems() {
       </div>
       ${lossExpanded ? `
         <div class="loss-expand">
-          <input id="rloss-note-${i}" class="loss-note" type="text" placeholder="Optional note (lot #, condition)…">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:12px;font-weight:600;color:var(--amber);">⚠ Report loss — ${l.name}</span>
+            <span style="font-size:11px;color:var(--mist);">Unit price: $${l.unitPrice.toFixed(2)}</span>
+          </div>
+          <div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-end;">
+            <div>
+              <div style="font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Qty lost</div>
+              <input id="rloss-qty-${i}" type="number" min="1" max="${l.qtyOrdered}" value="${l.qtyOrdered}"
+                     class="loss-note" style="width:72px;text-align:center;" oninput="updateLossValue(${i})">
+            </div>
+            <div>
+              <div style="font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Value lost</div>
+              <div id="rloss-val-${i}" style="font-size:14px;font-weight:700;color:var(--red);padding:7px 0;">
+                $${(l.qtyOrdered * l.unitPrice).toFixed(2)}
+              </div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Note (optional)</div>
+              <input id="rloss-note-${i}" class="loss-note" type="text" placeholder="Lot #, condition, vendor ref…">
+            </div>
+          </div>
           <div class="loss-btns">
-            <button class="loss-opt loss-opt-exp" onclick="logReceivingLoss(${i},'Expired product')">⏰ Expired</button>
-            <button class="loss-opt loss-opt-dmg" onclick="logReceivingLoss(${i},'Damaged / Spilled')">💧 Damaged</button>
+            <button class="loss-opt loss-opt-exp"  onclick="logReceivingLoss(${i},'Expired product')">Expired</button>
+            <button class="loss-opt loss-opt-dmg"  onclick="logReceivingLoss(${i},'Damaged / Spilled')">Damaged</button>
+            <button class="loss-opt" style="background:#FEF0F8;border-color:#E0A0C0;color:#8B1A4A;" onclick="logReceivingLoss(${i},'Vendor return / credit')">Vendor return</button>
+            <button class="loss-opt" style="background:#F0EEF8;border-color:#C8AAEA;color:#5B3FA8;" onclick="logReceivingLoss(${i},'Medication waste')">Med waste</button>
             <button class="loss-opt loss-opt-cancel" onclick="state.activeGoodsLine=null;renderItems()">Cancel</button>
           </div>
         </div>
@@ -475,27 +499,48 @@ function showReceivingLoss(idx) {
   renderItems();
 }
 
+function updateLossValue(idx) {
+  const line = state.lines[idx];
+  const qtyEl = document.getElementById('rloss-qty-' + idx);
+  const valEl = document.getElementById('rloss-val-' + idx);
+  if (qtyEl && valEl) {
+    const qty = Math.min(Math.max(1, parseInt(qtyEl.value) || 1), line.qtyOrdered);
+    qtyEl.value = qty;
+    valEl.textContent = '$' + (qty * line.unitPrice).toFixed(2);
+  }
+}
+
 async function logReceivingLoss(idx, category) {
   const line = state.lines[idx];
   const noteEl = document.getElementById('rloss-note-' + idx);
+  const qtyEl  = document.getElementById('rloss-qty-'  + idx);
   const note = noteEl ? noteEl.value.trim() : '';
+  const qty  = qtyEl  ? Math.min(Math.max(1, parseInt(qtyEl.value) || 1), line.qtyOrdered) : line.qtyOrdered;
+  const value = qty * (line.unitPrice || 0);
+
   state.lines[idx].status = 'lost';
   state.activeGoodsLine = null;
   renderItems();
   updateStatus();
-  showToast('⚠ ' + line.name + ' logged as ' + category);
-  const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
-  const _H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+  showToast('⚠ ' + line.name + ' · $' + value.toFixed(2) + ' logged as ' + category);
+
+  const poRef = state.selectedOrder ? state.selectedOrder.ref : '';
   fetch(SUPA_URL + '/rest/v1/goods_lost', {
-    method: 'POST', headers: _H,
+    method: 'POST',
+    headers: { ...H, 'Prefer': 'return=minimal' },
     body: JSON.stringify({
       location_id:  state.locationId,
       category:     category,
-      qty_lost:     1,
-      value_lost:   0,
+      qty_lost:     qty,
+      value_lost:   value,
       product_id:   line.productId,
       product_name: line.name,
-      notes:        line.name + (note ? ' · ' + note : '') + ' · Logged via PO Receiving',
+      notes: [
+        'Logged during receiving',
+        poRef    ? 'PO: ' + poRef          : null,
+        line.vendor ? 'Vendor: ' + line.vendor : null,
+        note     ? note                    : null,
+      ].filter(Boolean).join(' · '),
     })
   }).catch(() => {});
 }
