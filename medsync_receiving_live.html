@@ -547,15 +547,18 @@ async function logReceivingLoss(idx, category) {
 
 function updateStatus() {
   const confirmed = state.lines.filter(l => l.status === 'confirmed').length;
+  const lost = state.lines.filter(l => l.status === 'lost').length;
   const total = state.lines.length;
   const hasDisc = state.lines.some(l => l.status === 'discrepancy');
   document.getElementById('scan-status').textContent = confirmed + ' of ' + total + ' confirmed';
   document.getElementById('pf-status').innerHTML =
     `<strong>${confirmed} of ${total} confirmed</strong>` +
+    (lost > 0 ? ` · <span style="color:var(--amber);">${lost} lost</span>` : '') +
     (hasDisc ? ' · <span style="color:var(--red);">1 discrepancy</span>' : '');
   const btn = document.getElementById('complete-btn');
-  btn.disabled = confirmed === 0;
-  if (confirmed === total) {
+  const accounted = confirmed + lost;
+  btn.disabled = accounted === 0;
+  if (accounted === total) {
     btn.style.background = 'var(--green)';
     btn.textContent = 'Complete receiving →';
   }
