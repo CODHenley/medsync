@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync — Quarterly Report</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1C2B4A;--navy-mid:#243459;
+  --gold:#C8922A;--gold-light:#E8B84B;--gold-pale:#FDF8EE;
+  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --bg:#F5F3FA;--surface:#fff;
+  --green:#0F6E56;--green-bg:#E1F5EE;
+  --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
+  --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
+  --purple:#534AB7;--purple-bg:#EEEDFE;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;line-height:1.5;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.tb-left{display:flex;align-items:center;gap:10px;}
+.tb-title{font-size:14px;font-weight:600;color:var(--navy);}
+.tb-right{display:flex;gap:6px;align-items:center;}
+select{padding:5px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);cursor:pointer;outline:none;height:30px;}
+select:focus{border-color:var(--navy);}
+.btn{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;height:30px;}
+.btn:hover{background:#F0EEF8;}
+.btn-primary{background:var(--navy);color:#fff;border-color:var(--navy);}
+.btn-primary:hover{background:var(--navy-mid);}
+
+/* PERIOD LABEL */
+.period-bar{background:var(--navy);padding:7px 20px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.period-text{font-size:11px;color:rgba(255,255,255,.7);}
+.period-name{font-size:12px;font-weight:600;color:#fff;}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:13px 15px;}
+.kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;font-weight:500;}
+.kpi-v{font-size:22px;font-weight:500;line-height:1.1;}
+.kpi-s{font-size:10px;color:var(--mist);margin-top:4px;}
+.cg{color:var(--green);} .ca{color:var(--amber);} .cr{color:var(--red);} .cm{color:var(--mist);} .cp{color:var(--purple);}
+
+/* SECTION CARD */
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
+.card-head{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:12px;font-weight:600;}
+.card-sub{font-size:11px;color:var(--mist);}
+
+/* QUARTERLY TABLE */
+.q-table{width:100%;border-collapse:collapse;}
+.q-table thead tr{background:#F8F7FC;}
+.q-table th{padding:9px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);}
+.q-table th.right,.q-table td.right{text-align:right;}
+.q-table td{padding:12px 14px;font-size:12px;border-bottom:0.5px solid #F5F3FA;}
+.q-table tr:last-child td{border-bottom:none;}
+.q-table tr.total-row{background:#F8F7FC;font-weight:600;}
+.q-table tr.total-row td{border-top:0.5px solid var(--border);border-bottom:none;}
+.q-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+.q-badge.q1{background:#EEF2FE;color:#3B5BDB;}
+.q-badge.q2{background:#E1F5EE;color:var(--green);}
+.q-badge.q3{background:#FDF8EE;color:var(--gold);}
+.q-badge.q4{background:#F0EEF8;color:var(--purple);}
+.q-badge.current{box-shadow:0 0 0 1.5px currentColor;}
+.mono{font-family:'DM Mono',monospace;font-size:11px;}
+
+/* TREND BARS */
+.trend-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 16px;}
+.trend-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.trend-bars{display:flex;gap:5px;align-items:flex-end;height:80px;width:100%;}
+.trend-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.trend-bar{width:100%;border-radius:4px 4px 0 0;transition:height .4s ease;min-height:2px;}
+.trend-bar.spend{background:var(--navy);}
+.trend-bar.loss{background:var(--red-bg);border:0.5px solid var(--red-border);}
+.trend-val{font-size:10px;color:var(--mist);font-family:'DM Mono',monospace;}
+.trend-label{font-size:11px;font-weight:600;color:var(--navy);}
+.trend-sub{font-size:10px;color:var(--mist);}
+.trend-empty{color:var(--mist);font-size:11px;font-style:italic;}
+
+/* LEGEND */
+.legend{display:flex;gap:14px;padding:0 16px 12px;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate);}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+/* TOP SKUs TABLE */
+.sku-table{width:100%;border-collapse:collapse;}
+.sku-table thead tr{background:#F8F7FC;}
+.sku-table th{padding:9px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);}
+.sku-table th.right,.sku-table td.right{text-align:right;}
+.sku-table td{padding:10px 14px;font-size:12px;border-bottom:0.5px solid #F5F3FA;}
+.sku-table tr:last-child td{border-bottom:none;}
+.sku-rank{font-size:10px;font-weight:700;color:var(--mist);font-family:'DM Mono',monospace;width:24px;display:inline-block;}
+.sku-spend-bar{height:4px;border-radius:2px;background:var(--navy);opacity:.35;margin-top:3px;}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--mist);font-size:12px;gap:8px;}
+.spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* MOBILE */
+@media(max-width:700px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .trend-grid{grid-template-columns:repeat(2,1fr);}
+  .topbar{padding:0 12px;}
+  .content{padding:12px;}
+  .q-table th:nth-child(4),.q-table td:nth-child(4),
+  .q-table th:nth-child(5),.q-table td:nth-child(5){display:none;}
+}
+
+#toast{position:fixed;bottom:16px;right:16px;background:var(--navy);color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:999;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-title">📊 Quarterly Inventory Report</div>
+    <select id="year-sel" onchange="load()"></select>
+    <select id="loc-sel" onchange="load()">
+      <option value="all">All locations</option>
+    </select>
+  </div>
+  <div class="tb-right">
+    <button class="btn" onclick="doExport('csv')">↓ CSV</button>
+    <button class="btn" onclick="doExport('pdf')">↓ PDF</button>
+  </div>
+</div>
+
+<div class="period-bar">
+  <span class="period-text">Showing</span>
+  <span class="period-name" id="period-name">Loading…</span>
+  <span class="period-text" id="period-loc-label"></span>
+</div>
+
+<div class="content" id="content">
+  <div class="loading"><div class="spin"></div> Loading report data…</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session')||'{}'); } catch(e){ return {}; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+(_sess.access_token||SUPA_KEY) };
+
+// ── State ─────────────────────────────────────────────────────
+let _reportData = null; // cached for export
+let _locations  = [];   // [{id, name}]
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmt$(n){ return '$'+(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+function fmtN(n){ return (Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+function pct(a,b){ return b>0 ? ((a/b)*100).toFixed(1)+'%' : '—'; }
+
+function quarterOf(dateStr) {
+  const m = new Date(dateStr).getMonth(); // 0-based
+  return Math.floor(m / 3) + 1;          // 1-4
+}
+
+function quarterRange(year, q) {
+  const starts = ['01-01','04-01','07-01','10-01'];
+  const ends   = ['03-31','06-30','09-30','12-31'];
+  return { from: year+'-'+starts[q-1], to: year+'-'+ends[q-1] };
+}
+
+function currentQuarter() {
+  return Math.floor(new Date().getMonth() / 3) + 1;
+}
+
+let toastT = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.opacity = '1';
+  if (toastT) clearTimeout(toastT);
+  toastT = setTimeout(() => el.style.opacity = '0', 2800);
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+async function boot() {
+  // Populate year selector (current year + 2 back)
+  const now = new Date().getFullYear();
+  const ySel = document.getElementById('year-sel');
+  for (let y = now; y >= now - 2; y--) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y; ySel.appendChild(o);
+  }
+
+  // Load locations
+  try {
+    const r = await fetch(SUPA_URL+'/rest/v1/locations?select=id,name&order=name', { headers: H });
+    _locations = await r.json();
+    const lSel = document.getElementById('loc-sel');
+    _locations.forEach(l => {
+      const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; lSel.appendChild(o);
+    });
+  } catch(e) { /* locations optional */ }
+
+  await load();
+}
+
+// ── Main data load ─────────────────────────────────────────────
+async function load() {
+  const year   = parseInt(document.getElementById('year-sel').value);
+  const locSel = document.getElementById('loc-sel');
+  const locId  = locSel.value;
+  const locName= locId === 'all' ? 'All locations' : (locSel.options[locSel.selectedIndex]||{}).text || 'All locations';
+
+  document.getElementById('period-name').textContent = 'Full Year ' + year;
+  document.getElementById('period-loc-label').textContent = '· ' + locName;
+  document.getElementById('content').innerHTML = '<div class="loading"><div class="spin"></div> Loading report data…</div>';
+
+  const locFilter = locId === 'all' ? '' : `&location_id=eq.${locId}`;
+
+  try {
+    // ── 1. PO Items for the year ──────────────────────────────
+    const poRes = await fetch(
+      SUPA_URL+`/rest/v1/po_items?select=product_name,vendor,qty_ordered,unit_price,week_start,status${locFilter}&week_start=gte.${year}-01-01&week_start=lte.${year}-12-31&status=in.(submitted,received)&limit=5000`,
+      { headers: H }
+    );
+    const poItems = await poRes.json();
+
+    // ── 2. Goods lost for the year ────────────────────────────
+    const glRes = await fetch(
+      SUPA_URL+`/rest/v1/goods_lost?select=value_lost,category,created_at${locFilter}&created_at=gte.${year}-01-01T00:00:00&created_at=lte.${year}-12-31T23:59:59&limit=5000`,
+      { headers: H }
+    );
+    const glItems = await glRes.json();
+
+    // ── 3. Active lots count ──────────────────────────────────
+    const lotsRes = await fetch(
+      SUPA_URL+`/rest/v1/lots?select=id,status,qty_remaining${locFilter}&status=neq.Disposed`,
+      { headers: H }
+    );
+    const lots = await lotsRes.json();
+
+    // ── Group by quarter ──────────────────────────────────────
+    const quarters = [1,2,3,4].map(q => {
+      const { from, to } = quarterRange(year, q);
+      return { q, label:'Q'+q, year, from, to, spend:0, units:0, glTotal:0, skus:{}, glCats:{} };
+    });
+
+    poItems.forEach(i => {
+      if (!i.week_start) return;
+      const q = quarterOf(i.week_start);
+      const qd = quarters[q-1];
+      const val = (Number(i.unit_price)||0) * (Number(i.qty_ordered)||1);
+      qd.spend += val;
+      qd.units += Number(i.qty_ordered)||1;
+      const key = i.product_name || 'Unknown';
+      if (!qd.skus[key]) qd.skus[key] = { name: key, vendor: i.vendor||'—', qty:0, spend:0 };
+      qd.skus[key].qty   += Number(i.qty_ordered)||1;
+      qd.skus[key].spend += val;
+    });
+
+    glItems.forEach(r => {
+      if (!r.created_at) return;
+      const q = quarterOf(r.created_at);
+      const qd = quarters[q-1];
+      qd.glTotal += Number(r.value_lost)||0;
+      const cat = r.category || 'Other';
+      qd.glCats[cat] = (qd.glCats[cat]||0) + (Number(r.value_lost)||0);
+    });
+
+    // Year totals
+    const totalSpend  = quarters.reduce((s,q) => s+q.spend, 0);
+    const totalSav    = totalSpend * 0.12;
+    const totalGL     = quarters.reduce((s,q) => s+q.glTotal, 0);
+    const totalUnits  = quarters.reduce((s,q) => s+q.units, 0);
+    const activeLots  = lots.filter(l => l.status === 'Active').length;
+    const expiringLots= lots.filter(l => l.status === 'Expiring soon' || l.status === 'Expired').length;
+
+    // Top SKUs across full year
+    const skuMap = {};
+    poItems.forEach(i => {
+      const key = i.product_name || 'Unknown';
+      if (!skuMap[key]) skuMap[key] = { name: key, vendor: i.vendor||'—', qty:0, spend:0 };
+      skuMap[key].qty   += Number(i.qty_ordered)||1;
+      skuMap[key].spend += (Number(i.unit_price)||0) * (Number(i.qty_ordered)||1);
+    });
+    const topSKUs = Object.values(skuMap).sort((a,b) => b.spend - a.spend).slice(0, 10);
+
+    // Cache for export
+    _reportData = { year, locName, quarters, totalSpend, totalSav, totalGL, totalUnits, activeLots, expiringLots, topSKUs };
+
+    render(_reportData);
+
+  } catch(err) {
+    console.error(err);
+    document.getElementById('content').innerHTML = '<div class="loading" style="color:var(--red);">⚠ Could not load report data — check connection</div>';
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function render(d) {
+  const cq = currentQuarter();
+  const maxSpend = Math.max(...d.quarters.map(q => q.spend), 1);
+
+  // Quarter badge colors
+  const qClass = ['q1','q2','q3','q4'];
+
+  // ── KPI row ───────────────────────────────────────────────
+  const kpiHtml = `
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-l">Total Spend</div>
+        <div class="kpi-v ${d.totalSpend > 0 ? 'cm' : 'cm'}">${fmt$(d.totalSpend)}</div>
+        <div class="kpi-s">${fmtN(d.totalUnits)} units ordered</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Est. GPO Savings</div>
+        <div class="kpi-v cg">${fmt$(d.totalSav)}</div>
+        <div class="kpi-s">12% GPO capture rate</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Goods Lost</div>
+        <div class="kpi-v ${d.totalGL > 0 ? 'cr' : 'cg'}">${fmt$(d.totalGL)}</div>
+        <div class="kpi-s">${d.totalSpend > 0 ? pct(d.totalGL, d.totalSpend) + ' of spend' : 'No losses recorded'}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Active Lots</div>
+        <div class="kpi-v cm">${fmtN(d.activeLots)}</div>
+        <div class="kpi-s">current snapshot</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Expiring / Expired</div>
+        <div class="kpi-v ${d.expiringLots > 0 ? 'ca' : 'cg'}">${fmtN(d.expiringLots)}</div>
+        <div class="kpi-s">lots flagged</div>
+      </div>
+    </div>`;
+
+  // ── Quarterly breakdown table ──────────────────────────────
+  const qRows = d.quarters.map(q => {
+    const savings = q.spend * 0.12;
+    const glPct   = q.spend > 0 ? ((q.glTotal / q.spend) * 100).toFixed(1) : '0.0';
+    const glCls   = parseFloat(glPct) > 5 ? 'cr' : parseFloat(glPct) > 2 ? 'ca' : 'cg';
+    const isCurrent = q.q === cq && q.year === new Date().getFullYear();
+    const hasData = q.spend > 0 || q.glTotal > 0;
+    return `<tr class="${!hasData ? 'opacity:0.4;' : ''}">
+      <td><span class="q-badge ${qClass[q.q-1]}${isCurrent ? ' current' : ''}">
+        ${q.label}${isCurrent ? ' ·  now' : ''}
+      </span></td>
+      <td class="right mono">${hasData ? fmt$(q.spend) : '<span style="color:var(--mist)">—</span>'}</td>
+      <td class="right mono cg">${hasData ? fmt$(savings) : '<span style="color:var(--mist)">—</span>'}</td>
+      <td class="right mono ${hasData && q.glTotal > 0 ? 'cr' : 'cg'}">${hasData ? fmt$(q.glTotal) : '<span style="color:var(--mist)">—</span>'}</td>
+      <td class="right mono ${glCls}">${hasData ? glPct + '%' : '—'}</td>
+      <td class="right mono">${hasData ? fmtN(q.units) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const totalRow = `<tr class="total-row">
+    <td style="font-weight:700;">Full Year ${d.year}</td>
+    <td class="right mono">${fmt$(d.totalSpend)}</td>
+    <td class="right mono cg">${fmt$(d.totalSav)}</td>
+    <td class="right mono ${d.totalGL > 0 ? 'cr' : 'cg'}">${fmt$(d.totalGL)}</td>
+    <td class="right mono ${d.totalSpend > 0 && (d.totalGL/d.totalSpend) > 0.05 ? 'cr' : 'cg'}">${pct(d.totalGL, d.totalSpend)}</td>
+    <td class="right mono">${fmtN(d.totalUnits)}</td>
+  </tr>`;
+
+  const tableHtml = `
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Quarterly Breakdown</div>
+        <div class="card-sub">${d.year} · ${d.locName}</div>
+      </div>
+      <table class="q-table">
+        <thead><tr>
+          <th>Quarter</th>
+          <th class="right">Spend</th>
+          <th class="right">GPO Savings</th>
+          <th class="right">Goods Lost</th>
+          <th class="right">GL %</th>
+          <th class="right">Units</th>
+        </tr></thead>
+        <tbody>${qRows}${totalRow}</tbody>
+      </table>
+    </div>`;
+
+  // ── Trend bars ─────────────────────────────────────────────
+  const maxGL = Math.max(...d.quarters.map(q => q.glTotal), 1);
+  const trendCols = d.quarters.map(q => {
+    const spendH = maxSpend > 0 ? Math.round((q.spend / maxSpend) * 74) : 0;
+    const lossH  = maxSpend > 0 ? Math.round((q.glTotal / maxSpend) * 74) : 0;
+    const hasData = q.spend > 0 || q.glTotal > 0;
+    return `<div class="trend-col">
+      <div class="trend-bars">
+        <div class="trend-bar-wrap">
+          <div class="trend-val">${hasData ? fmt$(q.spend) : ''}</div>
+          <div class="trend-bar spend" style="height:${spendH}px;"></div>
+        </div>
+        <div class="trend-bar-wrap">
+          <div class="trend-val">${hasData && q.glTotal > 0 ? fmt$(q.glTotal) : ''}</div>
+          <div class="trend-bar loss" style="height:${lossH}px;"></div>
+        </div>
+      </div>
+      <div class="trend-label">${q.label}</div>
+      <div class="trend-sub">${hasData ? pct(q.glTotal, q.spend) + ' loss rate' : '<span style="font-style:italic;">no data</span>'}</div>
+    </div>`;
+  }).join('');
+
+  const trendsHtml = `
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Spend vs. Goods Lost — Quarter over Quarter</div>
+        <div class="card-sub">Bar height proportional to spend</div>
+      </div>
+      <div class="trend-grid">${trendCols}</div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--navy);"></div> Procurement spend</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--red-bg);border:0.5px solid var(--red-border);"></div> Goods lost</div>
+      </div>
+    </div>`;
+
+  // ── Top SKUs ───────────────────────────────────────────────
+  const maxSkuSpend = d.topSKUs.length > 0 ? d.topSKUs[0].spend : 1;
+  const skuRows = d.topSKUs.length > 0
+    ? d.topSKUs.map((s, i) => {
+        const barW = Math.round((s.spend / maxSkuSpend) * 120);
+        const avgPrice = s.qty > 0 ? (s.spend / s.qty) : 0;
+        return `<tr>
+          <td><span class="sku-rank">#${i+1}</span></td>
+          <td>
+            <div style="font-weight:500;">${s.name}</div>
+            <div class="sku-spend-bar" style="width:${barW}px;"></div>
+          </td>
+          <td style="color:var(--mist);font-size:11px;">${s.vendor}</td>
+          <td class="right mono">${fmtN(s.qty)}</td>
+          <td class="right mono">${fmt$(s.spend)}</td>
+          <td class="right mono" style="color:var(--mist);">${fmt$(avgPrice)}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--mist);font-size:12px;">No order data for this period.</td></tr>';
+
+  const skuHtml = `
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Top 10 Products by Spend</div>
+        <div class="card-sub">Full year ${d.year} · ${d.locName}</div>
+      </div>
+      <table class="sku-table">
+        <thead><tr>
+          <th>#</th><th>Product</th><th>Vendor</th>
+          <th class="right">Units</th><th class="right">Total Spend</th><th class="right">Avg. Price</th>
+        </tr></thead>
+        <tbody>${skuRows}</tbody>
+      </table>
+    </div>`;
+
+  // ── Goods lost by category breakdown ──────────────────────
+  const catMap = {};
+  d.quarters.forEach(q => Object.entries(q.glCats).forEach(([cat, amt]) => {
+    catMap[cat] = (catMap[cat]||0) + amt;
+  }));
+  const catEntries = Object.entries(catMap).sort((a,b) => b[1]-a[1]);
+  const catHtml = catEntries.length > 0 ? `
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Goods Lost by Category</div>
+        <div class="card-sub">${d.year} · ${fmt$(d.totalGL)} total</div>
+      </div>
+      <table class="q-table">
+        <thead><tr><th>Category</th><th class="right">Total</th><th class="right">% of Losses</th></tr></thead>
+        <tbody>${catEntries.map(([cat, amt]) => `
+          <tr>
+            <td>${cat}</td>
+            <td class="right mono cr">${fmt$(amt)}</td>
+            <td class="right mono" style="color:var(--mist);">${pct(amt, d.totalGL)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '';
+
+  document.getElementById('content').innerHTML = kpiHtml + tableHtml + trendsHtml + skuHtml + catHtml;
+}
+
+// ── Export ─────────────────────────────────────────────────────
+function doExport(type) {
+  if (!_reportData) { toast('Load data first'); return; }
+  const d = _reportData;
+  const headers = ['Quarter', 'Spend', 'GPO Savings (est.)', 'Goods Lost', 'GL % of Spend', 'Units Ordered'];
+  const rows = [
+    ...d.quarters.map(q => [
+      q.label + ' ' + q.year,
+      q.spend.toFixed(2),
+      (q.spend * 0.12).toFixed(2),
+      q.glTotal.toFixed(2),
+      q.spend > 0 ? ((q.glTotal/q.spend)*100).toFixed(2)+'%' : '0%',
+      q.units,
+    ]),
+    ['TOTAL '+d.year, d.totalSpend.toFixed(2), d.totalSav.toFixed(2), d.totalGL.toFixed(2),
+      d.totalSpend > 0 ? ((d.totalGL/d.totalSpend)*100).toFixed(2)+'%' : '0%', d.totalUnits],
+    ['','','','','',''],
+    ['Top SKUs by Spend','','','','',''],
+    ['Product','Vendor','Total Units','Total Spend','Avg Unit Price',''],
+    ...d.topSKUs.map(s => [s.name, s.vendor, s.qty, s.spend.toFixed(2), s.qty>0?(s.spend/s.qty).toFixed(2):'—', '']),
+  ];
+  if (type === 'csv') {
+    MedSyncExport.csv(`quarterly_report_${d.year}_${d.locName.replace(/\s/g,'-').toLowerCase()}.csv`, headers, rows);
+  } else {
+    MedSyncExport.pdf(
+      `Quarterly Inventory Report — ${d.year}`,
+      `${d.locName} · Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`,
+      headers,
+      rows
+    );
+  }
+}
+
+boot();
+</script>
+<script src="medsync_export.js"></script>
+</body>
+</html>

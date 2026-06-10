@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cycle','invoices','users','newlocation','regions','settings'];
+var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cycle','invoices','quarterly','users','newlocation','regions','settings'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -843,6 +843,7 @@ function deepDiveLoc(locCode) {
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Admin Dashboard</div>
   <div class="asb-item" id="asb-portfolio" onclick="closeMobileMenu();showScreen('portfolio')">▪ Portfolio</div>
   <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 MedSync Analytics</div>
+  <div class="asb-item" id="asb-quarterly" onclick="closeMobileMenu();showScreen('quarterly')">📋 Quarterly Report</div>
   <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
   <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">📋 Activity Log</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
@@ -1166,6 +1167,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_invoice_reconcile_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Invoice Reconciliation">
+  </iframe>
+</div>
+<div id="ms-quarterly" class="ms-screen" style="display:none;">
+  <iframe src="medsync_quarterly_report_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Quarterly Report">
   </iframe>
 </div>
 <div id="ms-users" class="ms-screen">
