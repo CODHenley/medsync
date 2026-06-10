@@ -595,10 +595,23 @@ async function loadQueue() {
       (Array.isArray(products) ? products : []).filter(p => p.qty_min != null).map(p => p.id)
     );
 
-    // Remove any existing queued items that aren't Vetspire-tracked (cleanup from before filter)
-    const staleIds = existing.filter(i => i.product_id && !vetspireTracked.has(i.product_id) && i.auto_flagged).map(i => i.id);
+    // Build product lookup early (needed for threshold check below)
+    const prodLookupEarly = {};
+    if (Array.isArray(products)) products.forEach(p => { prodLookupEarly[p.id] = p; });
+
+    // Remove auto-flagged items that are no longer below minimum:
+    //   (a) product no longer Vetspire-tracked, OR
+    //   (b) fresh on-hand is now >= qty_min (thresholds changed since item was queued)
+    const staleIds = existing.filter(i => {
+      if (!i.auto_flagged) return false;
+      if (!i.product_id) return true;
+      if (!vetspireTracked.has(i.product_id)) return true;
+      const prod = prodLookupEarly[i.product_id];
+      if (!prod) return true;
+      const freshOH = onHand[i.product_id] != null ? onHand[i.product_id] : (i.on_hand || 0);
+      return freshOH >= (prod.qty_min || 0);  // adequately stocked → remove from queue
+    }).map(i => i.id);
     if (staleIds.length > 0) {
-      // Delete stale auto-flagged items silently
       staleIds.forEach(id => {
         fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${id}`, { method: 'DELETE', headers: H }).catch(()=>{});
       });
