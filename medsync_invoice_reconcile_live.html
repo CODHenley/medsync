@@ -433,10 +433,16 @@ function detectVendor(text) {
 }
 
 function extractInvoiceNumber(text) {
+  // MWI: invoice number is a standalone 8-digit number following the INVOICE NUMBER header
+  if (/mwi animal health/i.test(text)) {
+    const m = text.match(/INVOICE\s+NUMBER[\s\S]{0,30}?(\d{8,10})/i)
+           || text.match(/\b(\d{8})\b/);
+    if (m) return m[1];
+  }
   const patterns = [
-    /invoice\s*#?\s*:?\s*([A-Z0-9\-]{4,20})/i,
+    /invoice\s*#\s*([A-Z0-9\-]{4,20})/i,
+    /invoice\s+number\s*:?\s*([A-Z0-9\-]{4,20})/i,
     /inv\.?\s*#?\s*:?\s*([A-Z0-9\-]{4,20})/i,
-    /order\s*#?\s*:?\s*([A-Z0-9\-]{6,20})/i,
   ];
   for (const p of patterns) { const m = text.match(p); if (m) return m[1].trim(); }
   return null;
@@ -463,7 +469,8 @@ function extractDate(text) {
 
 function extractTotal(text) {
   const patterns = [
-    /(?:invoice total|total amount|amount due|total due|grand total)\s*:?\s*\$?([\d,]+\.?\d*)/i,
+    /(?:invoice total|total amount|amount due|total due|grand total|order total)\s*:?\s*\$?([\d,]+\.?\d*)/i,
+    /\bTOTAL\s+([\d,]+\.\d{2})\s*$/im,
     /total\s*:?\s*\$\s*([\d,]+\.\d{2})/i,
   ];
   for (const p of patterns) {
@@ -473,46 +480,85 @@ function extractTotal(text) {
   return null;
 }
 
+// Lines that are never product rows (any vendor)
+const GLOBAL_SKIP = [
+  /^---/,/^page\s+\d/i,/^date\b/i,/^due date/i,/^po number/i,/^order number/i,
+  /^invoice number/i,/^dea number/i,/^vendor reference/i,/^customer number/i,
+  /^sales agent/i,/^qty\b/i,/^ship\b/i,/^item no/i,/^description\b/i,
+  /^pkg\s*type/i,/^unit\s*price/i,/^extended/i,/^subtotal/i,/^shipping\b/i,
+  /^tax\b/i,/^total\b/i,/^remit\s*payment/i,/^sold\s*to/i,/^ship\s*to/i,
+  /^bill\s*to/i,/^from\b/i,/^payment\s*(terms|date|method|type)/i,
+  /^thank\s*you/i,/^confidential/i,/^unless\s*otherwise/i,/^©/,
+  /collections center/i,/mwiah\.com/i,/terms.of.sale/i,/^visit\s+www/i,
+];
+
 function extractLineItems(text, vendor) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const items = [];
 
-  // Generic table row pattern: Description ... qty ... price ... extended
-  // Pattern: text that looks like a product line with qty and price columns
-  const rowPattern = /^(.{5,60?}?)\s{2,}(\d+(?:\.\d+)?)\s{2,}\$?([\d,]+\.\d{2,4})\s{2,}\$?([\d,]+\.\d{2})\s*$/;
-  // Simpler pattern for lines with SKU
+  if (vendor === 'MWI') return extractMWILineItems(lines);
+
+  const items = [];
   const skuPattern = /^([A-Z0-9\-]{4,20})\s+(.{5,50})\s+(\d+)\s+\$?([\d,]+\.\d{2})\s+\$?([\d,]+\.\d{2})/;
+  const rowPattern = /^(.{5,60}?)\s{2,}(\d+(?:\.\d+)?)\s{2,}\$?([\d,]+\.\d{2,4})\s{2,}\$?([\d,]+\.\d{2})\s*$/;
 
   let lineNum = 0;
   for (const line of lines) {
-    // Skip obvious non-data lines
-    if (/^(invoice|bill|ship|sold|date|page|total|subtotal|tax|thank|please|remit|account|terms|due|po#|order#|---)/i.test(line)) continue;
+    if (GLOBAL_SKIP.some(p => p.test(line))) continue;
     if (line.length < 10) continue;
-
-    // Try SKU pattern first
     let m = line.match(skuPattern);
     if (m) {
       lineNum++;
       items.push({ lineNumber: lineNum, sku: m[1], productName: m[2].trim(), qtyInvoiced: parseFloat(m[3]), unitPriceInvoiced: parseFloat(m[4].replace(/,/g,'')), totalInvoiced: parseFloat(m[5].replace(/,/g,'')) });
       continue;
     }
-    // Try generic row pattern
     m = line.match(rowPattern);
     if (m) {
-      lineNum++;
-      const qty = parseFloat(m[2]);
-      const unit = parseFloat(m[3].replace(/,/g,''));
-      const total = parseFloat(m[4].replace(/,/g,''));
-      // Sanity check: qty * unit ≈ total
-      if (Math.abs(qty * unit - total) < total * 0.15 || total > 1) {
+      const qty = parseFloat(m[2]), unit = parseFloat(m[3].replace(/,/g,'')), total = parseFloat(m[4].replace(/,/g,''));
+      if (Math.abs(qty * unit - total) < total * 0.15 + 0.05) {
+        lineNum++;
         items.push({ lineNumber: lineNum, sku: null, productName: m[1].trim(), qtyInvoiced: qty, unitPriceInvoiced: unit, totalInvoiced: total });
       }
     }
   }
+  return items.length ? items : extractLineItemsLoose(lines);
+}
 
-  // If we got very few items, try a looser pass
-  if (items.length < 2) {
-    return extractLineItemsLoose(lines);
+function extractMWILineItems(lines) {
+  // MWI noise patterns (in addition to GLOBAL_SKIP)
+  const mwiSkip = [
+    /processing fee/i, /credit card/i, /surcharge/i, /distribution expenses/i,
+    /standard delivery/i, /fedex/i, /dmr\d+/i, /^z\s*$/i,
+    /state route/i, /chicago il/i, /lebanon in/i, /winnetka/i,
+    /online:\s*www/i, /billing:/i, /orders:/i, /kathryn monick/i,
+    /scout vet/i, /naperville/i, /thurlow/i, /walnut st/i,
+    /shipped from/i, /shipping terms/i,
+  ];
+  // MWI product line: QTY  ITEMNO(5-7 digits)  DESCRIPTION  PKGTYPE  VENDORNAME  [YN]  UNITPRICE  EXTENDED
+  // e.g.: "20 015763 IV REGULATOR BAG SPIKE EACH PRACT Y 2.27 45.40"
+  const mwiRow = /^(\d{1,4})\s+(\d{5,7})\s+(.+?)\s+(EACH|BOX|CASE|VIAL|PKG|BTL|KIT|TUBE|SYR|TAB|VL|EA|CS|BX|EACH)\s+\S+\s+[YN]\s+([\d.]+)\s+([\d.]+)\s*$/i;
+  // Looser MWI fallback: QTY  ITEMNO  DESCRIPTION  UNITPRICE  EXTENDED (without pkgtype/vendor columns)
+  const mwiLoose = /^(\d{1,4})\s+(\d{5,7})\s+(.+?)\s+([\d]+\.\d{2,4})\s+([\d]+\.\d{2})\s*$/;
+
+  const items = [];
+  let lineNum = 0;
+  for (const line of lines) {
+    if (GLOBAL_SKIP.some(p => p.test(line))) continue;
+    if (mwiSkip.some(p => p.test(line))) continue;
+    if (line.length < 8) continue;
+
+    let m = line.match(mwiRow);
+    if (!m) m = line.match(mwiLoose);
+    if (m) {
+      const qty  = parseFloat(m[1]);
+      const sku  = m[2];
+      const name = m[3].trim();
+      const unit = parseFloat(m[m.length - 2]);
+      const ext  = parseFloat(m[m.length - 1]);
+      // Sanity: qty * unit should be close to extended
+      if (Math.abs(qty * unit - ext) > ext * 0.25 + 1) continue;
+      lineNum++;
+      items.push({ lineNumber: lineNum, sku, productName: name, qtyInvoiced: qty, unitPriceInvoiced: unit, totalInvoiced: ext });
+    }
   }
   return items;
 }
@@ -520,18 +566,16 @@ function extractLineItems(text, vendor) {
 function extractLineItemsLoose(lines) {
   const items = [];
   let lineNum = 0;
-  // Look for lines that have a dollar amount and a quantity near each other
   const priceRx = /\$?([\d,]+\.\d{2})/g;
   const qtyRx   = /\b(\d{1,4})\b/;
   for (const line of lines) {
-    if (line.length < 8 || /^(total|tax|ship|invoice|date|page|---)/i.test(line)) continue;
+    if (line.length < 8 || GLOBAL_SKIP.some(p => p.test(line))) continue;
     const prices = [...line.matchAll(priceRx)].map(m => parseFloat(m[1].replace(/,/g,'')));
     const qtyM = line.match(qtyRx);
     if (prices.length >= 1 && qtyM) {
-      lineNum++;
-      // Assume product name is the first substantial text before numbers
       const name = line.replace(/\$[\d,]+\.\d{2}/g,'').replace(/\b\d+\b/g,'').replace(/\s+/g,' ').trim().substring(0,60);
       if (name.length > 3) {
+        lineNum++;
         items.push({ lineNumber: lineNum, sku: null, productName: name, qtyInvoiced: parseInt(qtyM[1]), unitPriceInvoiced: prices[0], totalInvoiced: prices[prices.length-1] });
       }
     }
