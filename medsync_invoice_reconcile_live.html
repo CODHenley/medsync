@@ -157,7 +157,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 const LOC_NAMES = { '23083':'Lincoln Park','24356':'West Loop','27390':'Old Orchard','28253':'Wheaton' };
 
-let state = { locationId: '', invoices: [], activeInvoiceId: null };
+let state = { locationId: '', locationName: '', invoices: [], activeInvoiceId: null };
 
 // ── Supabase helpers ──────────────────────────────────────────────────────────
 async function supa(method, path, body) {
@@ -168,14 +168,15 @@ async function supa(method, path, body) {
 
 // ── Location ──────────────────────────────────────────────────────────────────
 function onLocationChange() {
-  state.locationId = document.getElementById('loc-select').value;
+  state.locationId   = document.getElementById('loc-select').value;
+  state.locationName = LOC_NAMES[state.locationId] || '';
   if (state.locationId) loadInvoices();
 }
 
 // ── Load invoices from Supabase ───────────────────────────────────────────────
 async function loadInvoices() {
   if (!state.locationId) return;
-  const data = await supa('GET', `/rest/v1/invoices?location_id=eq.${state.locationId}&order=uploaded_at.desc&limit=50`);
+  const data = await supa('GET', `/rest/v1/invoices?location_id=eq.${encodeURIComponent(state.locationName)}&order=uploaded_at.desc&limit=50`);
   state.invoices = Array.isArray(data) ? data : [];
   renderSidebar();
   // Check for un-invoiced POs
@@ -228,7 +229,7 @@ function renderDetail(inv, items) {
             ${inv.invoice_date   ? `<div class="detail-meta-item"><strong>${inv.invoice_date}</strong>Invoice date</div>` : ''}
             ${inv.total_amount   ? `<div class="detail-meta-item"><strong>$${Number(inv.total_amount).toFixed(2)}</strong>Total</div>` : ''}
             <div class="detail-meta-item"><strong>${items.length}</strong>Line items</div>
-            <div class="detail-meta-item"><strong>${LOC_NAMES[inv.location_id] || inv.location_id}</strong>Location</div>
+            <div class="detail-meta-item"><strong>${inv.location_name || inv.location_id}</strong>Location</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -334,7 +335,7 @@ async function checkUnInvoicedPOs() {
   // Flag POs submitted >5 days ago with no matching invoice
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 5);
   const cutoffStr = cutoff.toISOString().split('T')[0];
-  const pos = await supa('GET', `/rest/v1/po_items?location_id=eq.${state.locationId}&status=eq.submitted&week_start=lte.${cutoffStr}&select=id,product_name,vendor,week_start`);
+  const pos = await supa('GET', `/rest/v1/po_items?location_id=eq.${encodeURIComponent(state.locationName)}&status=eq.submitted&week_start=lte.${cutoffStr}&select=id,product_name,vendor,week_start`);
   if (!Array.isArray(pos) || pos.length === 0) return;
   const banner = document.createElement('div');
   banner.className = 'alert alert-warn';
@@ -540,7 +541,7 @@ function extractLineItemsLoose(lines) {
 async function fetchRecentPOItems() {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
   const cutoffStr = cutoff.toISOString().split('T')[0];
-  const data = await supa('GET', `/rest/v1/po_items?location_id=eq.${state.locationId}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,unit_price,status`);
+  const data = await supa('GET', `/rest/v1/po_items?location_id=eq.${encodeURIComponent(state.locationName)}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,unit_price,status`);
   return Array.isArray(data) ? data : [];
 }
 
@@ -580,8 +581,8 @@ async function saveInvoice(parsed, reconciledItems, fileName) {
   const flags = reconciledItems.filter(i => ['price_discrepancy','qty_mismatch','not_on_po'].includes(i.matchStatus));
   const invoiceStatus = flags.length > 0 ? 'discrepancy' : reconciledItems.length > 0 ? 'reconciled' : 'pending';
   const [inv] = await supa('POST', '/rest/v1/invoices', {
-    location_id:    state.locationId,
-    location_name:  LOC_NAMES[state.locationId] || '',
+    location_id:    state.locationName,
+    location_name:  state.locationName,
     vendor:         parsed.vendor,
     invoice_number: parsed.invoiceNumber,
     invoice_date:   parsed.invoiceDate,
@@ -615,7 +616,8 @@ async function saveInvoice(parsed, reconciledItems, fileName) {
 window.addEventListener('message', e => {
   if (e.data?.locationId) {
     document.getElementById('loc-select').value = e.data.locationId;
-    state.locationId = e.data.locationId;
+    state.locationId   = e.data.locationId;
+    state.locationName = LOC_NAMES[state.locationId] || e.data.locationId;
     loadInvoices();
   }
 });
