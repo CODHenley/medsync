@@ -531,7 +531,7 @@ async function loadQueue() {
     // Load products + on-hand from Vetspire inventory_snapshots (dispensing units)
     // Falls back to lots table if no snapshot data exists for this location
     const [prodsRes, snapRes, lotsRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year&order=name', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year,vetspire_product_id,vetspire_product_name&order=name', { headers: H }),
       fetch(SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,on_hand,snapshot_date&location_name=eq.${encodeURIComponent(state.locationName)}&order=snapshot_date.desc,product_name&limit=600`, { headers: H }),
       fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
     ]);
@@ -565,14 +565,23 @@ async function loadQueue() {
     // Resolve on-hand per product: prefer Vetspire snapshot, fall back to lots
     const onHand = {};
     const onHandSource = {}; // track which source was used for display
-    // Fuzzy snapshot lookup: Vetspire names (snapshots) ≠ Vetcove names (products table).
-    // Jaccard token overlap bridges "Catalyst ALT: 12 Count" ↔ "Catalyst Alkaline Aminotransferase (ALT)"
+    // Snapshot lookup strategy:
+    //   1. Exact match on vetspire_product_name (stored in DB — authoritative Vetspire name)
+    //   2. Exact match on p.name lowercased (catches any perfect name matches)
+    //   3. Jaccard fuzzy match (fallback for unmapped products)
     function tokenize(s) {
       return new Set(s.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2));
     }
-    function bestSnapMatch(productName) {
+    function bestSnapMatch(productName, vetspireName) {
+      // 1. Exact match on canonical Vetspire name (most reliable)
+      if (vetspireName) {
+        const vsKey = vetspireName.toLowerCase();
+        if (snapOnHand[vsKey] != null) return { val: snapOnHand[vsKey], raw: snapRaw[vsKey], key: vsKey };
+      }
+      // 2. Exact match on Vetcove product name
       const lower = productName.toLowerCase();
       if (snapOnHand[lower] != null) return { val: snapOnHand[lower], raw: snapRaw[lower], key: lower };
+      // 3. Jaccard fuzzy fallback
       const pToks = tokenize(productName);
       let bestScore = 0, bestKey = null;
       for (const snapName of Object.keys(snapOnHand)) {
@@ -588,7 +597,7 @@ async function loadQueue() {
 
     if (Array.isArray(products)) {
       products.forEach(p => {
-        const match = bestSnapMatch(p.name);
+        const match = bestSnapMatch(p.name, p.vetspire_product_name);
         if (match != null) {
           onHand[p.id] = match.val;
           onHandSource[p.id] = 'vetspire';
