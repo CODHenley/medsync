@@ -527,15 +527,22 @@ async function loadHistory() {
     container.innerHTML = '<div style="padding:16px;color:var(--mist);font-size:12px;text-align:center;">No submissions yet this month.</div>';
     return;
   }
-  container.innerHTML = rows.map(r => `
-    <div class="history-row">
+  container.innerHTML = rows.map(r => {
+    const isReturn = r.category === 'Vendor return / credit';
+    const printBtn = isReturn
+      ? `<button onclick='printGLReturn(${JSON.stringify({id:r.id,product_name:r.product_name,qty_lost:r.qty_lost,value_lost:r.value_lost,notes:r.notes,created_at:r.created_at,location:state.locationName})})' style="font-size:10px;padding:3px 8px;border:0.5px solid #C8922A;color:#C8922A;background:none;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;white-space:nowrap;">🖨 Print</button>`
+      : '';
+    return `<div class="history-row">
       <div class="hr-left">
-        <div class="hr-prod">${r.products?.name || '—'}</div>
+        <div class="hr-prod">${r.product_name || r.products?.name || '—'}</div>
         <div class="hr-meta">${r.category} · ${new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
       </div>
-      <div class="hr-amt">$${Number(r.value_lost||0).toFixed(2)}</div>
-    </div>
-  `).join('');
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${printBtn}
+        <div class="hr-amt">$${Number(r.value_lost||0).toFixed(2)}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function onLocChange() {
@@ -724,6 +731,65 @@ function setStep(n) {
     if (i < n) el.classList.add('done');
     else if (i === n) el.classList.add('active');
   });
+}
+
+// ── Print return document from Goods Lost history ─────────────
+function printGLReturn(r) {
+  const now = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+  // Extract vendor from notes (e.g. "Vendor: Zoetis")
+  const vendorMatch = (r.notes||'').match(/Vendor:\s*([^·\n]+)/i);
+  const vendor = vendorMatch ? vendorMatch[1].trim() : '—';
+  const poMatch = (r.notes||'').match(/PO:\s*([^·\n]+)/i);
+  const poRef = poMatch ? poMatch[1].trim() : '—';
+  const isBI = vendor.toLowerCase().includes('boehringer');
+  const contact = isBI ? '1-800-325-9167' : vendor.toLowerCase().includes('zoetis') ? '1-888-963-8471 (M–F 9 AM–6:30 PM EST)' : '—';
+
+  const w = window.open('','_blank','width=720,height=960');
+  w.document.write(`<!DOCTYPE html><html><head><title>Vendor Return Document</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#1C2B4A;padding:40px;max-width:640px;margin:0 auto;}
+    h1{font-size:18px;border-bottom:2px solid #1C2B4A;padding-bottom:8px;margin-bottom:4px;}
+    .sub{font-size:11px;color:#888;margin-bottom:20px;}
+    h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#4A5568;margin:20px 0 6px;}
+    table{width:100%;border-collapse:collapse;margin:4px 0 12px;}
+    td{padding:6px 8px;border:0.5px solid #DDD9EC;font-size:11px;}
+    td:first-child{font-weight:600;width:38%;background:#F8F7FC;}
+    .contact-box{background:#E1F5EE;border:0.5px solid #A0D4C0;border-radius:6px;padding:10px 14px;margin:6px 0 12px;font-size:12px;}
+    ul{margin:4px 0 12px;padding-left:18px;}li{font-size:11px;margin-bottom:4px;}
+    .sig{margin-top:40px;display:flex;gap:40px;}
+    .sig-block{flex:1;border-top:1px solid #CCC;padding-top:6px;font-size:11px;color:#666;}
+    @media print{body{padding:20px;}}
+  </style></head><body>
+  <h1>Scout Veterinary — Vendor Return Document</h1>
+  <div class="sub">Generated ${now} · ${r.location||'—'} · Logged ${dateStr}</div>
+  <h2>Return Details</h2>
+  <table>
+    <tr><td>Product</td><td>${r.product_name||'—'}</td></tr>
+    <tr><td>Category</td><td>${r.category||'Vendor return / credit'}</td></tr>
+    <tr><td>Qty Returned</td><td>${r.qty_lost||'—'} units</td></tr>
+    <tr><td>Credit Value</td><td>$${Number(r.value_lost||0).toFixed(2)}</td></tr>
+    <tr><td>Vendor</td><td>${vendor}</td></tr>
+    <tr><td>PO Reference</td><td>${poRef}</td></tr>
+    <tr><td>Location</td><td>${r.location||'—'}</td></tr>
+    <tr><td>Notes</td><td>${r.notes||'—'}</td></tr>
+  </table>
+  ${contact !== '—' ? `<h2>Vendor Contact</h2><div class="contact-box"><strong>${vendor}</strong> Customer Service: <strong>${contact}</strong></div>` : ''}
+  <h2>Shipping Notes</h2>
+  <ul>
+    <li>Include this document inside the return shipment.</li>
+    <li>Obtain a pre-paid return label from the vendor when scheduling the return.</li>
+    <li>Tracking #: _______________________________</li>
+    <li>Credit expected within 30 days of return initiation.</li>
+  </ul>
+  <div class="sig">
+    <div class="sig-block">Prepared by: ___________________________<br>Date: _______________</div>
+    <div class="sig-block">Credit confirmed by: ___________________<br>Date: _______________</div>
+  </div>
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
 }
 
 let toastT = null;

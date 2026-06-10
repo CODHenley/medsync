@@ -188,6 +188,21 @@ tr:last-child td{border-bottom:none;}
 .disposal-row:last-child{border-bottom:none;}
 .modal-actions{padding:14px 22px 18px;border-top:0.5px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
 
+/* VACCINE RETURN PANEL */
+.vax-panel{background:#F0F8F5;border:0.5px solid #A0D4C0;border-radius:9px;padding:12px 14px;}
+.vax-vendor{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px;}
+.vax-contact{font-size:11px;color:var(--slate);background:rgba(255,255,255,.7);border:0.5px solid #B0DDD0;border-radius:6px;padding:6px 10px;margin-bottom:10px;}
+.vax-steps{display:flex;flex-direction:column;gap:2px;margin-bottom:8px;}
+.vax-step{font-size:11px;color:var(--slate);padding:4px 0;border-bottom:0.5px solid rgba(0,100,80,.07);display:flex;gap:8px;}
+.vax-step:last-child{border-bottom:none;}
+.vax-step-num{font-weight:700;color:var(--green);flex-shrink:0;width:16px;}
+.vax-inv{font-size:10px;color:var(--slate);margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,.6);border-radius:5px;}
+.vax-btns{display:flex;gap:8px;}
+.btn-vax-print{padding:7px 14px;background:var(--green);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-vax-print:hover{background:#0a5c47;}
+.btn-vax-log{padding:7px 14px;background:var(--surface);color:var(--amber);border:0.5px solid var(--amber-border);border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-vax-log:hover{background:var(--amber-bg);}
+
 /* SCAN MODAL */
 .scan-modal{background:var(--surface);border-radius:14px;width:420px;padding:24px;text-align:center;}
 .scan-title{font-size:15px;font-weight:600;margin-bottom:6px;}
@@ -577,6 +592,12 @@ if (window.self !== window.top) {
         </div>
       </div>
 
+      <!-- Vaccine return panel (shown when expired + Zoetis or BI vendor) -->
+      <div class="mb-section" id="m-vax-section" style="display:none;">
+        <div class="mb-sec-title">Return for credit</div>
+        <div class="vax-panel" id="m-vax-panel"></div>
+      </div>
+
       <!-- Audit trail -->
       <div class="mb-section">
         <div class="mb-sec-title">Audit trail</div>
@@ -645,6 +666,7 @@ async function loadLots() {
       ndc:        r.products?.ndc || '—',
       vendor:     r.vendor || r.products?.vendor || '—',
       loc:        r.locations?.name || '—',
+      locationId: r.location_id || null,
       recvBy:     r.users?.full_name || '—',
       received:   r.received_date || '',
       exp:        r.expiration_date || '',
@@ -861,6 +883,55 @@ async function openLot(dbId) {
     ds.style.display = 'none';
   }
 
+  // Vaccine return section
+  const VACCINE_VENDORS = {
+    zoetis: {
+      name: 'Zoetis',
+      contact: '📞 1-888-963-8471 · M–F 9 AM–6:30 PM EST',
+      steps: [
+        'Call Zoetis to initiate the return and request a pre-paid shipping label.',
+        'Pack product securely — refrigeration is NOT required for return shipment.',
+        'Include this return document inside the box.',
+        'Ship to Zoetis U.S. Logistics Returns Center via the pre-paid label.',
+        'Zoetis will destroy the product and issue credit to your clinic account.',
+      ],
+      note: 'Option B: Notify Zoetis, dispose on-site via medical waste, retain destruction record — Zoetis issues credit upon confirmation.'
+    },
+    boehringer: {
+      name: 'Boehringer Ingelheim',
+      contact: '📞 1-800-325-9167',
+      steps: [
+        'Call BI Animal Health Customer Service to initiate the expired product claim.',
+        'Provide: product name, lot number, expiration date, quantity, and proof of purchase (invoice).',
+        'Follow BI\'s instructions — they will direct a return shipment or on-site destruction.',
+        'If on-site: dispose via medical waste stream and document on Expired Vaccine Log.',
+        'Retain all records. BI will confirm reimbursement to the clinic account.',
+      ],
+      note: '⚠ BI requires proof of purchase. Credit applies even if the vaccine tray was opened.'
+    }
+  };
+  const vendorKey = (lot.vendor || '').toLowerCase();
+  const vKey = vendorKey.includes('zoetis') ? 'zoetis' : vendorKey.includes('boehringer') || vendorKey.includes(' bi ') ? 'boehringer' : null;
+  const vaxSec = document.getElementById('m-vax-section');
+  if (lot.status === 'Expired' && vKey) {
+    vaxSec.style.display = '';
+    const v = VACCINE_VENDORS[vKey];
+    document.getElementById('m-vax-panel').innerHTML = `
+      <div class="vax-vendor">↩ ${v.name} — Return for Credit</div>
+      <div class="vax-contact">${v.contact}</div>
+      <div class="vax-steps">${v.steps.map((s,i)=>`<div class="vax-step"><span class="vax-step-num">${i+1}.</span><span>${s}</span></div>`).join('')}</div>
+      <div class="vax-inv" id="m-vax-inv">🔍 Searching for linked invoice…</div>
+      <div class="vax-btns">
+        <button class="btn-vax-print" onclick="printReturnDoc()">🖨 Print Return Document</button>
+        <button class="btn-vax-log" onclick="logVaccineReturn()">Log as Vendor Return</button>
+      </div>
+      <div style="font-size:10px;color:var(--mist);margin-top:10px;font-style:italic;">${v.note}</div>
+    `;
+    fetchLinkedInvoice(lot);
+  } else {
+    vaxSec.style.display = 'none';
+  }
+
   // Timeline — pull from activity_log for this lot
   const tl = document.getElementById('m-timeline');
   tl.innerHTML = '<div style="color:var(--mist);font-size:11px;padding:8px 0;">Loading history…</div>';
@@ -915,6 +986,145 @@ async function openLot(dbId) {
   ab.onclick = () => logDisposal(lot.dbId);
 
   document.getElementById('detail-modal').classList.add('open');
+}
+
+// ── Vaccine return helpers ────────────────────────────────────
+let _activeLot = null;
+let _linkedInvoice = null;
+
+async function fetchLinkedInvoice(lot) {
+  _activeLot = lot;
+  _linkedInvoice = null;
+  const invEl = document.getElementById('m-vax-inv');
+  if (!invEl) return;
+  try {
+    const vendor = encodeURIComponent(lot.vendor.split(' ')[0]); // first word e.g. "Zoetis"
+    const loc = encodeURIComponent(lot.loc);
+    const res = await fetch(
+      SUPA_URL + `/rest/v1/invoices?select=id,invoice_number,invoice_date,vendor,total_amount,invoice_items(product_name,qty_invoiced,unit_price_invoiced)&vendor=ilike.*${vendor}*&location_name=ilike.*${loc}*&order=invoice_date.desc&limit=5`,
+      { headers: H }
+    );
+    const invs = await res.json();
+    if (Array.isArray(invs) && invs.length > 0) {
+      const lname = lot.name.toLowerCase();
+      let best = null;
+      for (const inv of invs) {
+        const items = inv.invoice_items || [];
+        const match = items.find(it => it.product_name && it.product_name.toLowerCase().includes(lname.split(' ')[0]));
+        if (match) { best = { inv, item: match }; break; }
+      }
+      if (!best) best = { inv: invs[0], item: null };
+      _linkedInvoice = best;
+      const dateStr = best.inv.invoice_date ? new Date(best.inv.invoice_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      invEl.innerHTML = `📄 Invoice on file: <strong>${best.inv.invoice_number || 'No #'}</strong> · ${best.inv.vendor} · ${dateStr}` +
+        (best.item ? ` · ${best.item.product_name} @ $${Number(best.item.unit_price_invoiced||0).toFixed(2)}/unit` : '');
+    } else {
+      invEl.textContent = 'No invoice on file — attach proof of purchase for BI claims.';
+    }
+  } catch(e) {
+    invEl.textContent = 'Could not fetch invoice data.';
+  }
+}
+
+function printReturnDoc() {
+  const lot = _activeLot;
+  if (!lot) return;
+  const inv = _linkedInvoice;
+  const now = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const vendorKey = (lot.vendor||'').toLowerCase();
+  const isBI = vendorKey.includes('boehringer');
+  const contact = isBI ? '1-800-325-9167' : '1-888-963-8471 (M–F 9 AM–6:30 PM EST)';
+  const invBlock = inv
+    ? `<table><tr><td>Invoice #</td><td>${inv.inv.invoice_number||'N/A'}</td></tr>
+         <tr><td>Invoice date</td><td>${inv.inv.invoice_date||'—'}</td></tr>
+         <tr><td>Vendor</td><td>${inv.inv.vendor||lot.vendor}</td></tr>
+         ${inv.item ? `<tr><td>Line item</td><td>${inv.item.product_name} · Qty ${inv.item.qty_invoiced} · $${Number(inv.item.unit_price_invoiced||0).toFixed(2)}/unit</td></tr>` : ''}
+       </table>`
+    : '<p style="color:#888;font-style:italic;">No invoice on file — attach proof of purchase for BI claims.</p>';
+
+  const w = window.open('','_blank','width=720,height=960');
+  w.document.write(`<!DOCTYPE html><html><head><title>Vaccine Return Document</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#1C2B4A;padding:40px;max-width:640px;margin:0 auto;}
+    h1{font-size:18px;border-bottom:2px solid #1C2B4A;padding-bottom:8px;margin-bottom:4px;}
+    .sub{font-size:11px;color:#888;margin-bottom:20px;}
+    h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#4A5568;margin:20px 0 6px;}
+    table{width:100%;border-collapse:collapse;margin:4px 0 12px;}
+    td{padding:6px 8px;border:0.5px solid #DDD9EC;font-size:11px;}
+    td:first-child{font-weight:600;width:38%;background:#F8F7FC;}
+    .contact-box{background:#E1F5EE;border:0.5px solid #A0D4C0;border-radius:6px;padding:10px 14px;margin:6px 0 12px;font-size:12px;}
+    .warn{background:#FFF8E8;border:0.5px solid #F0D070;border-radius:6px;padding:8px 12px;font-size:11px;color:#A06020;margin-bottom:12px;}
+    ul{margin:4px 0 12px;padding-left:18px;}
+    li{font-size:11px;margin-bottom:4px;}
+    .sig{margin-top:40px;display:flex;gap:40px;}
+    .sig-block{flex:1;border-top:1px solid #CCC;padding-top:6px;font-size:11px;color:#666;}
+    @media print{body{padding:20px;}}
+  </style></head><body>
+  <h1>Scout Veterinary — Vaccine Return for Credit</h1>
+  <div class="sub">Generated ${now} · ${lot.loc}</div>
+  <h2>Product &amp; Lot Information</h2>
+  <table>
+    <tr><td>Product</td><td>${lot.name}</td></tr>
+    <tr><td>Lot Number</td><td>${lot.id}</td></tr>
+    <tr><td>Expiration Date</td><td>${lot.exp}</td></tr>
+    <tr><td>Qty for Return</td><td>${lot.qtyRem} units</td></tr>
+    <tr><td>Manufacturer</td><td>${lot.mfr}</td></tr>
+    <tr><td>Vendor</td><td>${lot.vendor}</td></tr>
+    <tr><td>Location</td><td>${lot.loc}</td></tr>
+  </table>
+  <h2>Linked Purchase Invoice</h2>
+  ${invBlock}
+  <h2>Vendor Contact</h2>
+  <div class="contact-box"><strong>${lot.vendor}</strong> Customer Service: <strong>${contact}</strong></div>
+  ${isBI ? '<div class="warn">⚠ Boehringer Ingelheim requires proof of purchase. Reference or attach the invoice above when calling.</div>' : ''}
+  <h2>Shipping Notes</h2>
+  <ul>
+    <li>Refrigeration is <strong>NOT</strong> required for return shipment of expired vaccines.</li>
+    <li>Do not mix vaccines from different vendors in the same shipment.</li>
+    <li>Include this document inside the return box.</li>
+    <li>Tracking #: _______________________________</li>
+  </ul>
+  <div class="sig">
+    <div class="sig-block">Prepared by: ___________________________<br>Date: _______________</div>
+    <div class="sig-block">Credit confirmed by: ___________________<br>Date: _______________</div>
+  </div>
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
+}
+
+async function logVaccineReturn() {
+  const lot = _activeLot;
+  if (!lot) return;
+  const inv = _linkedInvoice;
+  const unitPrice = inv?.item ? Number(inv.item.unit_price_invoiced||0) : 0;
+  const value = unitPrice * lot.qtyRem;
+  try {
+    await fetch(SUPA_URL + '/rest/v1/goods_lost', {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        location_id:  lot.locationId || null,
+        category:     'Vendor return / credit',
+        qty_lost:     lot.qtyRem,
+        value_lost:   value,
+        product_name: lot.name,
+        notes: [
+          'Vaccine return — expired lot',
+          'Lot: ' + lot.id,
+          'Exp: ' + lot.exp,
+          'Vendor: ' + lot.vendor,
+          inv ? 'Invoice: ' + (inv.inv.invoice_number || 'on file') : null,
+        ].filter(Boolean).join(' · '),
+      })
+    });
+    showToast('✓ Logged as vendor return in Goods Lost');
+    closeModal();
+    loadLots();
+  } catch(e) {
+    showToast('⚠ Could not log return');
+  }
 }
 
 // ── Log disposal — updates lot status in Supabase ────────────

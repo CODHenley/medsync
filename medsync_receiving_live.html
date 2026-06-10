@@ -485,6 +485,7 @@ function renderItems() {
             <button class="loss-opt loss-opt-exp"  onclick="logReceivingLoss(${i},'Expired product')">Expired</button>
             <button class="loss-opt loss-opt-dmg"  onclick="logReceivingLoss(${i},'Damaged / Spilled')">Damaged</button>
             <button class="loss-opt" style="background:#FEF0F8;border-color:#E0A0C0;color:#8B1A4A;" onclick="logReceivingLoss(${i},'Vendor return / credit')">Vendor return</button>
+            <button class="loss-opt" style="background:#FEF0F8;border-color:#E0A0C0;color:#8B1A4A;flex:0;padding:7px 10px;" title="Print return document" onclick="printReceivingReturn(${i})">🖨</button>
             <button class="loss-opt" style="background:#F0EEF8;border-color:#C8AAEA;color:#5B3FA8;" onclick="logReceivingLoss(${i},'Medication waste')">Med waste</button>
             <button class="loss-opt loss-opt-cancel" onclick="state.activeGoodsLine=null;renderItems()">Cancel</button>
           </div>
@@ -508,6 +509,67 @@ function updateLossValue(idx) {
     qtyEl.value = qty;
     valEl.textContent = '$' + (qty * line.unitPrice).toFixed(2);
   }
+}
+
+function printReceivingReturn(idx) {
+  const line = state.lines[idx];
+  const noteEl = document.getElementById('rloss-note-' + idx);
+  const qtyEl  = document.getElementById('rloss-qty-'  + idx);
+  const qty    = qtyEl ? parseInt(qtyEl.value)||1 : 1;
+  const note   = noteEl ? noteEl.value.trim() : '';
+  const now    = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const poRef  = state.selectedOrder ? state.selectedOrder.ref : '—';
+  const vendor = line.vendor || '—';
+  const isBI   = vendor.toLowerCase().includes('boehringer');
+  const isZoetis = vendor.toLowerCase().includes('zoetis');
+  const contact  = isBI ? '1-800-325-9167' : isZoetis ? '1-888-963-8471 (M–F 9 AM–6:30 PM EST)' : '—';
+  const value  = (qty * line.unitPrice).toFixed(2);
+
+  const w = window.open('','_blank','width=720,height=960');
+  w.document.write(`<!DOCTYPE html><html><head><title>Vendor Return Document</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#1C2B4A;padding:40px;max-width:640px;margin:0 auto;}
+    h1{font-size:18px;border-bottom:2px solid #1C2B4A;padding-bottom:8px;margin-bottom:4px;}
+    .sub{font-size:11px;color:#888;margin-bottom:20px;}
+    h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#4A5568;margin:20px 0 6px;}
+    table{width:100%;border-collapse:collapse;margin:4px 0 12px;}
+    td{padding:6px 8px;border:0.5px solid #DDD9EC;font-size:11px;}
+    td:first-child{font-weight:600;width:38%;background:#F8F7FC;}
+    .contact-box{background:#E1F5EE;border:0.5px solid #A0D4C0;border-radius:6px;padding:10px 14px;margin:6px 0 12px;}
+    ul{margin:4px 0 12px;padding-left:18px;}li{font-size:11px;margin-bottom:4px;}
+    .sig{margin-top:40px;display:flex;gap:40px;}
+    .sig-block{flex:1;border-top:1px solid #CCC;padding-top:6px;font-size:11px;color:#666;}
+    @media print{body{padding:20px;}}
+  </style></head><body>
+  <h1>Scout Veterinary — Vendor Return Document</h1>
+  <div class="sub">Generated ${now} · Logged during receiving</div>
+  <h2>Return Details</h2>
+  <table>
+    <tr><td>Product</td><td>${line.name}</td></tr>
+    <tr><td>Category</td><td>Vendor return / credit</td></tr>
+    <tr><td>Qty Returned</td><td>${qty} units</td></tr>
+    <tr><td>Credit Value</td><td>$${value}</td></tr>
+    <tr><td>Unit Price</td><td>$${line.unitPrice.toFixed(2)}</td></tr>
+    <tr><td>Vendor</td><td>${vendor}</td></tr>
+    <tr><td>PO Reference</td><td>${poRef}</td></tr>
+    ${note ? `<tr><td>Notes</td><td>${note}</td></tr>` : ''}
+  </table>
+  ${contact !== '—' ? `<h2>Vendor Contact</h2><div class="contact-box"><strong>${vendor}</strong> Customer Service: <strong>${contact}</strong></div>` : ''}
+  <h2>Shipping Notes</h2>
+  <ul>
+    <li>Include this document inside the return shipment.</li>
+    <li>Obtain a pre-paid return label from the vendor when scheduling pickup.</li>
+    <li>Tracking #: _______________________________</li>
+    <li>Credit expected within 30 days of return initiation.</li>
+  </ul>
+  <div class="sig">
+    <div class="sig-block">Prepared by: ___________________________<br>Date: _______________</div>
+    <div class="sig-block">Credit confirmed by: ___________________<br>Date: _______________</div>
+  </div>
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
 }
 
 async function logReceivingLoss(idx, category) {
