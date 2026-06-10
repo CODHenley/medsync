@@ -542,13 +542,21 @@ async function loadQueue() {
     // Primary: Vetspire on-hand by product name (dispensing units — mL, tablets, capsules…)
     // This is the same unit Vetspire uses for min/max, so comparisons are apples-to-apples
     // Dedupe: results are ordered snapshot_date DESC, so first occurrence per product_name = most recent
+    // Track raw (unclamped) values so we can flag products Vetspire shows as negative
     const snapOnHand = {};
+    const snapRaw    = {};  // raw Vetspire value before clamp — negative means count discrepancy
     if (Array.isArray(snapshots)) {
       snapshots.forEach(s => {
         const key = s.product_name.toLowerCase();
-        if (!(key in snapOnHand)) snapOnHand[key] = Math.max(0, s.on_hand || 0); // clamp negatives to 0
+        if (!(key in snapOnHand)) {
+          const raw = s.on_hand != null ? s.on_hand : 0;
+          snapRaw[key]    = raw;
+          snapOnHand[key] = Math.max(0, raw); // clamp negatives to 0 for order calculation
+        }
       });
     }
+    // Track which product IDs have a negative Vetspire count (needs reconciliation)
+    const negativeCount = {};  // product_id -> raw negative value
 
     // Fallback: lot-based on-hand by product_id (Vetcove receiving units — use only if no snapshot)
     const lotsOnHand = {};
@@ -564,25 +572,27 @@ async function loadQueue() {
     }
     function bestSnapMatch(productName) {
       const lower = productName.toLowerCase();
-      if (snapOnHand[lower] != null) return snapOnHand[lower]; // exact match
+      if (snapOnHand[lower] != null) return { val: snapOnHand[lower], raw: snapRaw[lower], key: lower };
       const pToks = tokenize(productName);
-      let bestScore = 0, bestVal = null;
-      for (const [snapName, val] of Object.entries(snapOnHand)) {
+      let bestScore = 0, bestKey = null;
+      for (const snapName of Object.keys(snapOnHand)) {
         const sToks = tokenize(snapName);
         let inter = 0;
         for (const t of pToks) { if (sToks.has(t)) inter++; }
         const score = inter / (pToks.size + sToks.size - inter);
-        if (score > bestScore) { bestScore = score; bestVal = val; }
+        if (score > bestScore) { bestScore = score; bestKey = snapName; }
       }
-      return bestScore >= 0.25 ? bestVal : null;
+      if (bestScore >= 0.25 && bestKey) return { val: snapOnHand[bestKey], raw: snapRaw[bestKey], key: bestKey };
+      return null;
     }
 
     if (Array.isArray(products)) {
       products.forEach(p => {
-        const snapVal = bestSnapMatch(p.name);
-        if (snapVal != null) {
-          onHand[p.id] = snapVal;
+        const match = bestSnapMatch(p.name);
+        if (match != null) {
+          onHand[p.id] = match.val;
           onHandSource[p.id] = 'vetspire';
+          if (match.raw < 0) negativeCount[p.id] = match.raw;  // flag negative raw count
         } else if (lotsOnHand[p.id] != null) {
           onHand[p.id] = lotsOnHand[p.id];
           onHandSource[p.id] = 'lots';
@@ -687,11 +697,17 @@ async function loadQueue() {
       const freshOH = (item.auto_flagged && onHand[item.product_id] != null)
         ? onHand[item.product_id]
         : (item.on_hand || 0);
+      const isNegativeCount = negativeCount[item.product_id] != null;
       const freshOrderQty = (() => {
         if (!item.auto_flagged) return item.qty_ordered || 1;
+        const pkg2  = prod.package_size || 1;
+        if (isNegativeCount) {
+          // Count is unreliable — order conservatively to qty_min only, not qty_max
+          const min2 = prod.qty_min || 0;
+          return Math.max(1, Math.ceil(min2 / pkg2));
+        }
         const max2  = prod.qty_max || ((prod.qty_min || 0) * 2);
         if (!max2) return item.qty_ordered || 1;
-        const pkg2  = prod.package_size || 1;
         return Math.max(1, Math.ceil((max2 - freshOH) / pkg2));
       })();
       return {
@@ -707,7 +723,9 @@ async function loadQueue() {
         unitPrice:       item.unit_price  || getPrice(item.product_name),
         gpoPrice:        item.gpo_price   || Math.round((prod.unit_price || getPrice(item.product_name))*0.88*100)/100,
         priceYear:       prod.price_year  || null,
-        autoFlagged:     item.auto_flagged,
+        autoFlagged:        item.auto_flagged,
+        needsCountReview:   isNegativeCount,
+        rawVetspireCount:   negativeCount[item.product_id] ?? null,
       };
     });
 
@@ -813,9 +831,19 @@ function renderQueueView() {
       <div class="empty-sub">All stock is above minimum. Use "Add item" to manually queue a product.</div>
     </div>`;
   } else {
-    if (autoItems.length > 0) {
-      html += `<div class="sec-label"><span class="sec-text">Auto-flagged below min</span><span class="sec-count">${autoItems.length}</span></div>`;
-      html += buildQueueTable(autoItems);
+    const reviewItems  = autoItems.filter(i => i.needsCountReview);
+    const normalAutos  = autoItems.filter(i => !i.needsCountReview);
+    if (reviewItems.length > 0) {
+      html += `<div class="sec-label" style="background:rgba(234,88,12,0.08);border-left:3px solid #ea580c;padding-left:10px;">
+        <span class="sec-text" style="color:#ea580c;"><i class="ti ti-alert-triangle" style="margin-right:4px;"></i>Review count on hand</span>
+        <span class="sec-count" style="background:#ea580c;">${reviewItems.length}</span>
+      </div>
+      <div style="font-size:11px;color:var(--mist);margin:-4px 0 8px 4px;">Vetspire shows negative stock — reconcile count before ordering</div>`;
+      html += buildQueueTable(reviewItems);
+    }
+    if (normalAutos.length > 0) {
+      html += `<div class="sec-label" style="margin-top:${reviewItems.length?'16px':'0'};"><span class="sec-text">Auto-flagged below min</span><span class="sec-count">${normalAutos.length}</span></div>`;
+      html += buildQueueTable(normalAutos);
     }
     if (manualItems.length > 0) {
       html += `<div class="sec-label" style="margin-top:${autoItems.length?'12px':'0'};"><span class="sec-text">Manually added</span><span class="sec-count">${manualItems.length}</span></div>`;
@@ -844,7 +872,11 @@ function buildQueueTable(items) {
           </div>
           <i class="ti ti-chevron-right q-name-arrow"></i>
         </div>
-        <div class="q-onhand ${isLow ? 'low' : ''}">${ohLabel}</div>
+        <div class="q-onhand ${isLow ? 'low' : ''}">
+          ${item.needsCountReview
+            ? `<span style="color:#ea580c;font-weight:600;" title="Vetspire shows ${item.rawVetspireCount} — count needs reconciliation">${item.rawVetspireCount} ${item.dispensingUnit||''} ⚠️</span>`
+            : ohLabel}
+        </div>
         <div class="qty-ctrl">
           <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
           <span class="qty-num" id="qnum-${idx}">${item.orderQty}</span>
