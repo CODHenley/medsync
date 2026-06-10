@@ -410,12 +410,12 @@ if (window.self !== window.top) {
           <div class="kpi-s cm">across all locations</div>
         </div>
         <div class="kpi kpi-warn">
-          <div class="kpi-l">Expiring ≤30 days</div>
+          <div class="kpi-l" id="kpi-soon30-label">Expiring ≤30 days</div>
           <div class="kpi-v ca" id="kpi-soon30">8</div>
           <div class="kpi-s ca">action required</div>
         </div>
         <div class="kpi kpi-warn">
-          <div class="kpi-l">Expiring 31–60 days</div>
+          <div class="kpi-l" id="kpi-soon60-label">Expiring 31–60 days</div>
           <div class="kpi-v ca" id="kpi-soon60">14</div>
           <div class="kpi-s cm">monitor closely</div>
         </div>
@@ -620,6 +620,7 @@ const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY) };
 
 const TODAY = new Date();
+const EXP_DAYS = (function(){try{return parseInt(JSON.parse(localStorage.getItem('medsync_settings')||'{}').exp_days)||30;}catch(e){return 30;}})();
 
 // All lots loaded from Supabase — kept in memory for filtering/search
 let ALL_LOTS = [];
@@ -670,16 +671,18 @@ async function loadLots() {
 // ── KPI cards ────────────────────────────────────────────────
 function updateKPIs() {
   const active      = ALL_LOTS.filter(l => l.status === 'Active').length;
-  const soon30      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) <= 30).length;
-  const soon60      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) > 30).length;
+  const soon30      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) <= EXP_DAYS).length;
+  const soon60      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) > EXP_DAYS).length;
   const expired     = ALL_LOTS.filter(l => l.status === 'Expired').length;
   const cs          = ALL_LOTS.filter(l => l.cs).length;
 
-    document.getElementById('kpi-active').textContent  = active;
-    document.getElementById('kpi-soon30').textContent  = soon30;
-    document.getElementById('kpi-soon60').textContent  = soon60;
-    document.getElementById('kpi-expired').textContent = expired;
-    document.getElementById('kpi-cs').textContent      = cs;
+    document.getElementById('kpi-active').textContent      = active;
+    document.getElementById('kpi-soon30').textContent      = soon30;
+    document.getElementById('kpi-soon60').textContent      = soon60;
+    document.getElementById('kpi-expired').textContent     = expired;
+    document.getElementById('kpi-cs').textContent          = cs;
+    document.getElementById('kpi-soon30-label').textContent = `Expiring ≤${EXP_DAYS} days`;
+    document.getElementById('kpi-soon60-label').textContent = `Expiring ${EXP_DAYS+1}–${EXP_DAYS*2} days`;
 }
 
 // ── Priority alert strip ─────────────────────────────────────

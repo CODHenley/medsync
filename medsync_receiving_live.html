@@ -327,7 +327,7 @@ async function onLocChange() {
   await loadOrders();
 }
 
-const OVERDUE_DAYS = 3;
+const OVERDUE_DAYS = (function(){try{return parseInt(JSON.parse(localStorage.getItem('medsync_settings')||'{}').unreceived_days)||3;}catch(e){return 3;}})();
 
 async function loadOrders() {
   document.getElementById('tb-sub').textContent = 'Receiving · ' + state.locationName;

@@ -256,18 +256,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           </div>
         </div>
         <div class="thresh-row">
-          <div><div class="thresh-label">Goods lost threshold</div><div class="thresh-sub">Alert when monthly goods lost exceeds this amount</div></div>
+          <div><div class="thresh-label">Goods lost % threshold</div><div class="thresh-sub">Alert when a location's GL exceeds this % of COGS</div></div>
           <div class="thresh-ctrl">
-            <span class="thresh-unit">$</span>
-            <input class="thresh-input" type="number" id="gl-thresh" value="3000" style="width:90px;">
-            <span class="thresh-unit">/ month</span>
+            <input class="thresh-input" type="number" id="gl-pct-thresh" value="10" min="0" max="100">
+            <span class="thresh-unit">% of COGS</span>
           </div>
         </div>
         <div class="thresh-row">
           <div><div class="thresh-label">Expiry alert window</div><div class="thresh-sub">Flag lots expiring within this many days</div></div>
           <div class="thresh-ctrl">
-            <input class="thresh-input" type="number" id="exp-days" value="30">
+            <input class="thresh-input" type="number" id="exp-days" value="30" min="1">
             <span class="thresh-unit">days</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Unreceived PO window</div><div class="thresh-sub">Flag POs not received within this many days of submission</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="unreceived-days" value="3" min="1">
+            <span class="thresh-unit">days</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Minimum stock alerts</div><div class="thresh-sub">Show alerts when on-hand falls below minimum thresholds</div></div>
+          <div class="thresh-ctrl">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="min-stock-enabled" checked style="width:16px;height:16px;cursor:pointer;accent-color:var(--navy);">
+              <span class="thresh-unit" id="min-stock-label">Enabled</span>
+            </label>
           </div>
         </div>
         <div class="thresh-row">
@@ -370,12 +385,14 @@ function saveKey(type) {
 
 function saveSettings() {
   var settings = {
-    cogs_min:   document.getElementById('cogs-min').value,
-    cogs_max:   document.getElementById('cogs-max').value,
-    gl_thresh:  document.getElementById('gl-thresh').value,
-    exp_days:   document.getElementById('exp-days').value,
-    wg_thresh:  document.getElementById('wg-thresh').value,
-    cutoff:     document.getElementById('cutoff-time').value,
+    cogs_min:         document.getElementById('cogs-min').value,
+    cogs_max:         document.getElementById('cogs-max').value,
+    gl_pct_thresh:    document.getElementById('gl-pct-thresh').value,
+    exp_days:         document.getElementById('exp-days').value,
+    unreceived_days:  document.getElementById('unreceived-days').value,
+    min_stock_enabled: document.getElementById('min-stock-enabled').checked,
+    wg_thresh:        document.getElementById('wg-thresh').value,
+    cutoff:           document.getElementById('cutoff-time').value,
   };
   localStorage.setItem('medsync_settings', JSON.stringify(settings));
   showToast('✓ Settings saved');
@@ -403,12 +420,17 @@ function showToast(msg) {
   } catch(e) {}
   try {
     var s = JSON.parse(localStorage.getItem('medsync_settings') || '{}');
-    if (s.cogs_min) document.getElementById('cogs-min').value = s.cogs_min;
-    if (s.cogs_max) document.getElementById('cogs-max').value = s.cogs_max;
-    if (s.gl_thresh) document.getElementById('gl-thresh').value = s.gl_thresh;
-    if (s.exp_days) document.getElementById('exp-days').value = s.exp_days;
+    if (s.cogs_min)        document.getElementById('cogs-min').value = s.cogs_min;
+    if (s.cogs_max)        document.getElementById('cogs-max').value = s.cogs_max;
+    if (s.gl_pct_thresh)   document.getElementById('gl-pct-thresh').value = s.gl_pct_thresh;
+    if (s.exp_days)        document.getElementById('exp-days').value = s.exp_days;
+    if (s.unreceived_days) document.getElementById('unreceived-days').value = s.unreceived_days;
+    if (typeof s.min_stock_enabled !== 'undefined') {
+      document.getElementById('min-stock-enabled').checked = s.min_stock_enabled;
+      document.getElementById('min-stock-label').textContent = s.min_stock_enabled ? 'Enabled' : 'Disabled';
+    }
     if (s.wg_thresh) document.getElementById('wg-thresh').value = s.wg_thresh;
-    if (s.cutoff) document.getElementById('cutoff-time').value = s.cutoff;
+    if (s.cutoff)    document.getElementById('cutoff-time').value = s.cutoff;
   } catch(e) {}
   // Check for saved keys
   if (localStorage.getItem('medsync_vc_key')) {
@@ -418,6 +440,11 @@ function showToast(msg) {
     document.getElementById('vs-key').placeholder = '••••••• (saved)';
   }
 })();
+
+// Toggle label sync
+document.getElementById('min-stock-enabled').addEventListener('change', function() {
+  document.getElementById('min-stock-label').textContent = this.checked ? 'Enabled' : 'Disabled';
+});
 
 // Handle postMessage nav from parent
 window.addEventListener('message', function(e) {
