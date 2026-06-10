@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Invoice Reconciliation</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #1C2B4A; font-size: 14px; }
+
+/* ── Nav ── */
+.vp-nav { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#fff; border-bottom:1px solid #e5e7eb; }
+.vp-nav h1 { font-size:16px; font-weight:700; color:#1C2B4A; }
+.loc-select { padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; background:#fff; color:#1C2B4A; cursor:pointer; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .15s; }
+.btn-primary { background:#1C2B4A; color:#fff; }
+.btn-primary:hover { background:#2d4270; }
+.btn-outline { background:#fff; color:#1C2B4A; border:1px solid #d1d5db; }
+.btn-outline:hover { background:#f3f4f6; }
+.btn-sm { padding:4px 10px; font-size:12px; }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600; }
+.badge-pending     { background:#f3f4f6; color:#6b7280; }
+.badge-matched     { background:#dcfce7; color:#166534; }
+.badge-discrepancy { background:#fef2f2; color:#dc2626; }
+.badge-mismatch    { background:#fef9c3; color:#854d0e; }
+.badge-not-on-po   { background:#fff7ed; color:#c2410c; }
+.badge-approved    { background:#eff6ff; color:#1d4ed8; }
+
+/* ── Layout ── */
+.page { display:flex; height:calc(100vh - 53px); overflow:hidden; }
+.sidebar { width:320px; min-width:320px; background:#fff; border-right:1px solid #e5e7eb; display:flex; flex-direction:column; overflow:hidden; }
+.main { flex:1; overflow-y:auto; padding:20px; }
+
+/* ── Sidebar ── */
+.sidebar-header { padding:14px 16px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; }
+.sidebar-header h2 { font-size:13px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+.invoice-list { flex:1; overflow-y:auto; }
+.invoice-row { padding:12px 16px; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .1s; }
+.invoice-row:hover { background:#f9fafb; }
+.invoice-row.active { background:#eff6ff; border-left:3px solid #1C2B4A; }
+.invoice-row-vendor { font-weight:600; font-size:13px; }
+.invoice-row-meta { font-size:11px; color:#9ca3af; margin-top:2px; }
+.invoice-row-footer { display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
+
+/* ── Upload zone ── */
+.upload-zone { border:2px dashed #d1d5db; border-radius:10px; padding:32px 20px; text-align:center; cursor:pointer; transition:all .15s; background:#fafafa; }
+.upload-zone:hover, .upload-zone.drag-over { border-color:#1C2B4A; background:#f0f4ff; }
+.upload-zone i { font-size:32px; color:#9ca3af; }
+.upload-zone p { margin-top:8px; color:#6b7280; font-size:13px; }
+.upload-zone strong { color:#1C2B4A; }
+#file-input { display:none; }
+
+/* ── Invoice detail ── */
+.detail-header { background:#fff; border-radius:10px; padding:16px 20px; margin-bottom:16px; border:1px solid #e5e7eb; }
+.detail-title { font-size:18px; font-weight:700; }
+.detail-meta { display:flex; gap:20px; margin-top:8px; flex-wrap:wrap; }
+.detail-meta-item { font-size:12px; color:#6b7280; }
+.detail-meta-item strong { color:#1C2B4A; display:block; font-size:13px; }
+.summary-chips { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.chip { padding:4px 12px; border-radius:99px; font-size:12px; font-weight:600; }
+.chip-red  { background:#fef2f2; color:#dc2626; }
+.chip-yellow { background:#fef9c3; color:#854d0e; }
+.chip-green { background:#dcfce7; color:#166534; }
+.chip-gray  { background:#f3f4f6; color:#6b7280; }
+
+/* ── Line items table ── */
+.card { background:#fff; border-radius:10px; border:1px solid #e5e7eb; overflow:hidden; }
+.card-header { padding:12px 16px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; }
+.card-header h3 { font-size:14px; font-weight:700; }
+table { width:100%; border-collapse:collapse; }
+th { background:#f9fafb; padding:9px 12px; text-align:left; font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+td { padding:10px 12px; border-bottom:1px solid #f3f4f6; font-size:13px; vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#fafafa; }
+.variance-pos { color:#dc2626; font-weight:600; }
+.variance-neg { color:#166534; font-weight:600; }
+.match-name { font-size:11px; color:#9ca3af; }
+
+/* ── Empty / loading states ── */
+.empty-state { text-align:center; padding:60px 20px; color:#9ca3af; }
+.empty-state i { font-size:40px; display:block; margin-bottom:12px; }
+.spinner { display:inline-block; width:18px; height:18px; border:2px solid #e5e7eb; border-top-color:#1C2B4A; border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.parsing-overlay { position:fixed; inset:0; background:rgba(255,255,255,.85); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:100; }
+.parsing-overlay p { font-size:15px; font-weight:600; color:#1C2B4A; }
+
+/* ── PO not invoiced banner ── */
+.alert { padding:12px 16px; border-radius:8px; margin-bottom:16px; display:flex; align-items:flex-start; gap:10px; }
+.alert-warn { background:#fff7ed; border:1px solid #fed7aa; color:#c2410c; }
+.alert i { flex-shrink:0; font-size:16px; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<div class="vp-nav">
+  <i class="ti ti-file-invoice" style="font-size:20px;color:#C8922A;"></i>
+  <h1>Invoice Reconciliation</h1>
+  <select class="loc-select" id="loc-select" onchange="onLocationChange()">
+    <option value="">— Select location —</option>
+    <option value="23083">Lincoln Park</option>
+    <option value="24356">West Loop</option>
+    <option value="27390">Old Orchard</option>
+    <option value="28253">Wheaton</option>
+  </select>
+  <div style="flex:1"></div>
+  <label class="btn btn-primary" for="file-input">
+    <i class="ti ti-upload"></i> Upload Invoice PDF
+  </label>
+  <input type="file" id="file-input" accept=".pdf" onchange="handleFileSelect(event)"/>
+</div>
+
+<!-- Page layout -->
+<div class="page">
+  <!-- Sidebar: invoice list -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Invoices</h2>
+      <span id="invoice-count" class="badge badge-pending">0</span>
+    </div>
+    <div class="invoice-list" id="invoice-list">
+      <div class="empty-state">
+        <i class="ti ti-file-off"></i>
+        <p>No invoices yet.<br>Select a location and upload a PDF.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main" id="main-content">
+    <div class="upload-zone" id="upload-zone"
+         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)"
+         onclick="document.getElementById('file-input').click()">
+      <i class="ti ti-file-invoice"></i>
+      <p><strong>Upload a vendor invoice PDF</strong></p>
+      <p style="margin-top:4px">Drag & drop here or click to browse</p>
+      <p style="margin-top:8px;font-size:11px;color:#9ca3af">Supports MWI · Patterson · Covetrus · Wedgewood · most vendor formats</p>
+    </div>
+  </div>
+</div>
+
+<!-- Parsing overlay -->
+<div class="parsing-overlay" id="parsing-overlay" style="display:none">
+  <div class="spinner" style="width:36px;height:36px;border-width:3px;"></div>
+  <p id="parsing-msg">Extracting text from PDF…</p>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const LOC_NAMES = { '23083':'Lincoln Park','24356':'West Loop','27390':'Old Orchard','28253':'Wheaton' };
+
+let state = { locationId: '', invoices: [], activeInvoiceId: null };
+
+// ── Supabase helpers ──────────────────────────────────────────────────────────
+async function supa(method, path, body) {
+  const res = await fetch(SUPA_URL + path, { method, headers: H, body: body ? JSON.stringify(body) : undefined });
+  if (!res.ok) { const t = await res.text(); throw new Error(t); }
+  return res.json().catch(() => null);
+}
+
+// ── Location ──────────────────────────────────────────────────────────────────
+function onLocationChange() {
+  state.locationId = document.getElementById('loc-select').value;
+  if (state.locationId) loadInvoices();
+}
+
+// ── Load invoices from Supabase ───────────────────────────────────────────────
+async function loadInvoices() {
+  if (!state.locationId) return;
+  const data = await supa('GET', `/rest/v1/invoices?location_id=eq.${state.locationId}&order=uploaded_at.desc&limit=50`);
+  state.invoices = Array.isArray(data) ? data : [];
+  renderSidebar();
+  // Check for un-invoiced POs
+  checkUnInvoicedPOs();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('invoice-list');
+  document.getElementById('invoice-count').textContent = state.invoices.length;
+  if (!state.invoices.length) {
+    list.innerHTML = `<div class="empty-state"><i class="ti ti-file-off"></i><p>No invoices for this location.</p></div>`;
+    return;
+  }
+  list.innerHTML = state.invoices.map(inv => {
+    const statusBadge = { pending:'badge-pending', reconciled:'badge-matched', discrepancy:'badge-discrepancy', approved:'badge-approved' }[inv.status] || 'badge-pending';
+    return `<div class="invoice-row${state.activeInvoiceId === inv.id ? ' active' : ''}" onclick="openInvoice('${inv.id}')">
+      <div class="invoice-row-vendor">${inv.vendor || 'Unknown Vendor'}</div>
+      <div class="invoice-row-meta">${inv.invoice_number ? '#' + inv.invoice_number + ' · ' : ''}${inv.invoice_date || ''}</div>
+      <div class="invoice-row-footer">
+        <span class="badge ${statusBadge}">${inv.status || 'pending'}</span>
+        <span style="font-size:12px;color:#6b7280;">${inv.total_amount ? '$' + Number(inv.total_amount).toFixed(2) : ''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Open invoice detail ───────────────────────────────────────────────────────
+async function openInvoice(id) {
+  state.activeInvoiceId = id;
+  renderSidebar();
+  const inv = state.invoices.find(i => i.id === id);
+  if (!inv) return;
+  const items = await supa('GET', `/rest/v1/invoice_items?invoice_id=eq.${id}&order=line_number`);
+  renderDetail(inv, Array.isArray(items) ? items : []);
+}
+
+function renderDetail(inv, items) {
+  const counts = { matched:0, price_discrepancy:0, qty_mismatch:0, not_on_po:0, unmatched:0, approved:0 };
+  items.forEach(i => { if (counts[i.match_status] !== undefined) counts[i.match_status]++; else counts.unmatched++; });
+  const flags = counts.price_discrepancy + counts.qty_mismatch + counts.not_on_po;
+
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="detail-header">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div class="detail-title">${inv.vendor || 'Invoice'}</div>
+          <div class="detail-meta">
+            ${inv.invoice_number ? `<div class="detail-meta-item"><strong>#${inv.invoice_number}</strong>Invoice #</div>` : ''}
+            ${inv.invoice_date   ? `<div class="detail-meta-item"><strong>${inv.invoice_date}</strong>Invoice date</div>` : ''}
+            ${inv.total_amount   ? `<div class="detail-meta-item"><strong>$${Number(inv.total_amount).toFixed(2)}</strong>Total</div>` : ''}
+            <div class="detail-meta-item"><strong>${items.length}</strong>Line items</div>
+            <div class="detail-meta-item"><strong>${LOC_NAMES[inv.location_id] || inv.location_id}</strong>Location</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${flags > 0 ? `<button class="btn btn-outline btn-sm" onclick="approveAll('${inv.id}')"><i class="ti ti-check"></i> Approve all</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="deleteInvoice('${inv.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <div class="summary-chips">
+        ${counts.matched        ? `<span class="chip chip-green">✓ ${counts.matched} matched</span>` : ''}
+        ${counts.price_discrepancy ? `<span class="chip chip-red">⚠ ${counts.price_discrepancy} price discrepancy</span>` : ''}
+        ${counts.qty_mismatch   ? `<span class="chip chip-yellow">⚠ ${counts.qty_mismatch} qty mismatch</span>` : ''}
+        ${counts.not_on_po      ? `<span class="chip chip-red">✕ ${counts.not_on_po} not on PO</span>` : ''}
+        ${counts.approved       ? `<span class="chip chip-green">✓ ${counts.approved} approved</span>` : ''}
+        ${counts.unmatched      ? `<span class="chip chip-gray">? ${counts.unmatched} unmatched</span>` : ''}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Line Items</h3>
+        <span style="font-size:12px;color:#9ca3af;">Invoice vs. Purchase Order</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>SKU</th>
+              <th style="text-align:right;">Qty Invoiced</th>
+              <th style="text-align:right;">Unit Price</th>
+              <th style="text-align:right;">PO Qty</th>
+              <th style="text-align:right;">PO Price</th>
+              <th style="text-align:right;">Price Variance</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.length ? items.map(item => renderItemRow(item)).join('') : `<tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:24px;">No line items extracted.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderItemRow(item) {
+  const statusMap = {
+    matched:           `<span class="badge badge-matched"><i class="ti ti-check"></i> Matched</span>`,
+    price_discrepancy: `<span class="badge badge-discrepancy"><i class="ti ti-alert-circle"></i> Price diff</span>`,
+    qty_mismatch:      `<span class="badge badge-mismatch"><i class="ti ti-alert-triangle"></i> Qty diff</span>`,
+    not_on_po:         `<span class="badge badge-not-on-po"><i class="ti ti-x"></i> Not on PO</span>`,
+    approved:          `<span class="badge badge-approved"><i class="ti ti-circle-check"></i> Approved</span>`,
+    unmatched:         `<span class="badge badge-pending">? Unmatched</span>`,
+  };
+  const badge = statusMap[item.match_status] || statusMap.unmatched;
+  const pv = item.price_variance;
+  const pvCell = pv != null
+    ? `<span class="${pv > 0.005 ? 'variance-pos' : pv < -0.005 ? 'variance-neg' : ''}">${pv > 0 ? '+' : ''}$${Number(pv).toFixed(4)}</span>`
+    : `<span style="color:#9ca3af">—</span>`;
+  const approveBtn = ['price_discrepancy','qty_mismatch','not_on_po','unmatched'].includes(item.match_status)
+    ? `<button class="btn btn-outline btn-sm" onclick="approveItem('${item.id}')">Approve</button>`
+    : '';
+  return `<tr>
+    <td style="color:#9ca3af;">${item.line_number || ''}</td>
+    <td>
+      <div style="font-weight:500;">${item.product_name || '—'}</div>
+      ${item.po_product_name ? `<div class="match-name">PO: ${item.po_product_name}</div>` : ''}
+    </td>
+    <td style="color:#9ca3af;font-size:11px;">${item.sku || '—'}</td>
+    <td style="text-align:right;">${item.qty_invoiced ?? '—'}</td>
+    <td style="text-align:right;">${item.unit_price_invoiced != null ? '$' + Number(item.unit_price_invoiced).toFixed(2) : '—'}</td>
+    <td style="text-align:right;color:#6b7280;">${item.qty_ordered ?? '—'}</td>
+    <td style="text-align:right;color:#6b7280;">${item.unit_price_ordered != null ? '$' + Number(item.unit_price_ordered).toFixed(2) : '—'}</td>
+    <td style="text-align:right;">${pvCell}</td>
+    <td>${badge}</td>
+    <td>${approveBtn}</td>
+  </tr>`;
+}
+
+// ── Approve ───────────────────────────────────────────────────────────────────
+async function approveItem(itemId) {
+  await supa('PATCH', `/rest/v1/invoice_items?id=eq.${itemId}`, { match_status: 'approved' });
+  openInvoice(state.activeInvoiceId);
+}
+async function approveAll(invoiceId) {
+  await supa('PATCH', `/rest/v1/invoice_items?invoice_id=eq.${invoiceId}&match_status=neq.matched`, { match_status: 'approved' });
+  await supa('PATCH', `/rest/v1/invoices?id=eq.${invoiceId}`, { status: 'approved' });
+  await loadInvoices();
+  openInvoice(invoiceId);
+}
+async function deleteInvoice(invoiceId) {
+  if (!confirm('Delete this invoice and all its line items?')) return;
+  await supa('DELETE', `/rest/v1/invoice_items?invoice_id=eq.${invoiceId}`).catch(()=>{});
+  await supa('DELETE', `/rest/v1/invoices?id=eq.${invoiceId}`).catch(()=>{});
+  state.activeInvoiceId = null;
+  document.getElementById('main-content').innerHTML = `<div class="upload-zone" onclick="document.getElementById('file-input').click()"><i class="ti ti-file-invoice"></i><p><strong>Upload a vendor invoice PDF</strong></p></div>`;
+  await loadInvoices();
+}
+
+// ── Un-invoiced PO check ──────────────────────────────────────────────────────
+async function checkUnInvoicedPOs() {
+  // Flag POs submitted >5 days ago with no matching invoice
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 5);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const pos = await supa('GET', `/rest/v1/po_items?location_id=eq.${state.locationId}&status=eq.submitted&week_start=lte.${cutoffStr}&select=id,product_name,vendor,week_start`);
+  if (!Array.isArray(pos) || pos.length === 0) return;
+  const banner = document.createElement('div');
+  banner.className = 'alert alert-warn';
+  banner.style.margin = '0 20px 0 0';
+  banner.innerHTML = `<i class="ti ti-alert-triangle"></i><div><strong>${pos.length} PO${pos.length>1?'s':''} submitted &gt;5 days ago with no invoice uploaded.</strong><div style="margin-top:4px;font-size:12px;">${pos.slice(0,3).map(p=>`${p.product_name} (${p.vendor||'unknown vendor'})`).join(' · ')}${pos.length>3?` · +${pos.length-3} more`:''}</div></div>`;
+  const nav = document.querySelector('.vp-nav');
+  nav.insertAdjacentElement('afterend', banner);
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+function onDragOver(e)  { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
+function onDragLeave(e) { document.getElementById('upload-zone').classList.remove('drag-over'); }
+function onDrop(e)      { e.preventDefault(); onDragLeave(e); const f = e.dataTransfer.files[0]; if (f) processFile(f); }
+function handleFileSelect(e) { const f = e.target.files[0]; if (f) processFile(f); e.target.value=''; }
+
+// ── PDF parsing ───────────────────────────────────────────────────────────────
+async function processFile(file) {
+  if (!state.locationId) { alert('Please select a location first.'); return; }
+  showParsing('Extracting text from PDF…');
+  try {
+    const text = await extractPDFText(file);
+    showParsing('Detecting vendor and parsing line items…');
+    const parsed = parseInvoice(text);
+    showParsing('Matching against purchase orders…');
+    const poItems = await fetchRecentPOItems();
+    const reconciled = reconcileItems(parsed.items, poItems);
+    showParsing('Saving to database…');
+    await saveInvoice(parsed, reconciled, file.name);
+    hideParsing();
+    await loadInvoices();
+    // Open the newly saved invoice
+    const newest = state.invoices[0];
+    if (newest) openInvoice(newest.id);
+  } catch(err) {
+    hideParsing();
+    alert('Error processing PDF: ' + err.message);
+    console.error(err);
+  }
+}
+
+function showParsing(msg) {
+  document.getElementById('parsing-msg').textContent = msg;
+  document.getElementById('parsing-overlay').style.display = 'flex';
+}
+function hideParsing() {
+  document.getElementById('parsing-overlay').style.display = 'none';
+}
+
+async function extractPDFText(file) {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let fullText = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    // Preserve rough layout by sorting items by Y then X
+    const items = content.items.sort((a,b) => {
+      const dy = Math.round(b.transform[5]/4)*4 - Math.round(a.transform[5]/4)*4;
+      return dy !== 0 ? dy : a.transform[4] - b.transform[4];
+    });
+    let lastY = null;
+    for (const item of items) {
+      const y = Math.round(item.transform[5]/4)*4;
+      if (lastY !== null && lastY !== y) fullText += '\n';
+      fullText += item.str + ' ';
+      lastY = y;
+    }
+    fullText += '\n\n--- PAGE BREAK ---\n\n';
+  }
+  return fullText;
+}
+
+// ── Invoice parser ────────────────────────────────────────────────────────────
+function parseInvoice(text) {
+  const vendor  = detectVendor(text);
+  const invNum  = extractInvoiceNumber(text);
+  const invDate = extractDate(text);
+  const total   = extractTotal(text);
+  const items   = extractLineItems(text, vendor);
+  return { vendor, invoiceNumber: invNum, invoiceDate: invDate, totalAmount: total, items };
+}
+
+function detectVendor(text) {
+  const t = text.toLowerCase();
+  if (t.includes('mwi ') || t.includes('mwi animal') || t.includes('mwivet')) return 'MWI';
+  if (t.includes('patterson') || t.includes('pattersonvet')) return 'Patterson';
+  if (t.includes('covetrus') || t.includes('henry schein')) return 'Covetrus';
+  if (t.includes('wedgewood') || t.includes('wedgewood pharmacy')) return 'Wedgewood Pharmacy';
+  if (t.includes('zoetis')) return 'Zoetis';
+  if (t.includes('dechra')) return 'Dechra';
+  if (t.includes('merck')) return 'Merck';
+  return 'Unknown';
+}
+
+function extractInvoiceNumber(text) {
+  const patterns = [
+    /invoice\s*#?\s*:?\s*([A-Z0-9\-]{4,20})/i,
+    /inv\.?\s*#?\s*:?\s*([A-Z0-9\-]{4,20})/i,
+    /order\s*#?\s*:?\s*([A-Z0-9\-]{6,20})/i,
+  ];
+  for (const p of patterns) { const m = text.match(p); if (m) return m[1].trim(); }
+  return null;
+}
+
+function extractDate(text) {
+  const patterns = [
+    /invoice\s+date\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+    /date\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+    /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) {
+      const parts = m[1].split(/[\/\-]/);
+      if (parts.length === 3) {
+        const yr = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+        return `${yr}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+      }
+    }
+  }
+  return new Date().toISOString().split('T')[0];
+}
+
+function extractTotal(text) {
+  const patterns = [
+    /(?:invoice total|total amount|amount due|total due|grand total)\s*:?\s*\$?([\d,]+\.?\d*)/i,
+    /total\s*:?\s*\$\s*([\d,]+\.\d{2})/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return parseFloat(m[1].replace(/,/g,''));
+  }
+  return null;
+}
+
+function extractLineItems(text, vendor) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const items = [];
+
+  // Generic table row pattern: Description ... qty ... price ... extended
+  // Pattern: text that looks like a product line with qty and price columns
+  const rowPattern = /^(.{5,60?}?)\s{2,}(\d+(?:\.\d+)?)\s{2,}\$?([\d,]+\.\d{2,4})\s{2,}\$?([\d,]+\.\d{2})\s*$/;
+  // Simpler pattern for lines with SKU
+  const skuPattern = /^([A-Z0-9\-]{4,20})\s+(.{5,50})\s+(\d+)\s+\$?([\d,]+\.\d{2})\s+\$?([\d,]+\.\d{2})/;
+
+  let lineNum = 0;
+  for (const line of lines) {
+    // Skip obvious non-data lines
+    if (/^(invoice|bill|ship|sold|date|page|total|subtotal|tax|thank|please|remit|account|terms|due|po#|order#|---)/i.test(line)) continue;
+    if (line.length < 10) continue;
+
+    // Try SKU pattern first
+    let m = line.match(skuPattern);
+    if (m) {
+      lineNum++;
+      items.push({ lineNumber: lineNum, sku: m[1], productName: m[2].trim(), qtyInvoiced: parseFloat(m[3]), unitPriceInvoiced: parseFloat(m[4].replace(/,/g,'')), totalInvoiced: parseFloat(m[5].replace(/,/g,'')) });
+      continue;
+    }
+    // Try generic row pattern
+    m = line.match(rowPattern);
+    if (m) {
+      lineNum++;
+      const qty = parseFloat(m[2]);
+      const unit = parseFloat(m[3].replace(/,/g,''));
+      const total = parseFloat(m[4].replace(/,/g,''));
+      // Sanity check: qty * unit ≈ total
+      if (Math.abs(qty * unit - total) < total * 0.15 || total > 1) {
+        items.push({ lineNumber: lineNum, sku: null, productName: m[1].trim(), qtyInvoiced: qty, unitPriceInvoiced: unit, totalInvoiced: total });
+      }
+    }
+  }
+
+  // If we got very few items, try a looser pass
+  if (items.length < 2) {
+    return extractLineItemsLoose(lines);
+  }
+  return items;
+}
+
+function extractLineItemsLoose(lines) {
+  const items = [];
+  let lineNum = 0;
+  // Look for lines that have a dollar amount and a quantity near each other
+  const priceRx = /\$?([\d,]+\.\d{2})/g;
+  const qtyRx   = /\b(\d{1,4})\b/;
+  for (const line of lines) {
+    if (line.length < 8 || /^(total|tax|ship|invoice|date|page|---)/i.test(line)) continue;
+    const prices = [...line.matchAll(priceRx)].map(m => parseFloat(m[1].replace(/,/g,'')));
+    const qtyM = line.match(qtyRx);
+    if (prices.length >= 1 && qtyM) {
+      lineNum++;
+      // Assume product name is the first substantial text before numbers
+      const name = line.replace(/\$[\d,]+\.\d{2}/g,'').replace(/\b\d+\b/g,'').replace(/\s+/g,' ').trim().substring(0,60);
+      if (name.length > 3) {
+        items.push({ lineNumber: lineNum, sku: null, productName: name, qtyInvoiced: parseInt(qtyM[1]), unitPriceInvoiced: prices[0], totalInvoiced: prices[prices.length-1] });
+      }
+    }
+  }
+  return items;
+}
+
+// ── PO matching ───────────────────────────────────────────────────────────────
+async function fetchRecentPOItems() {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const data = await supa('GET', `/rest/v1/po_items?location_id=eq.${state.locationId}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,unit_price,status`);
+  return Array.isArray(data) ? data : [];
+}
+
+function tokenize(s) {
+  return new Set(s.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2));
+}
+function jaccard(a, b) {
+  const ta = tokenize(a), tb = tokenize(b);
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0; for (const t of ta) { if (tb.has(t)) inter++; }
+  return inter / (ta.size + tb.size - inter);
+}
+
+function reconcileItems(invoiceItems, poItems) {
+  return invoiceItems.map(item => {
+    let bestScore = 0, bestPO = null;
+    for (const po of poItems) {
+      const score = jaccard(item.productName, po.product_name);
+      if (score > bestScore) { bestScore = score; bestPO = po; }
+    }
+    if (bestScore < 0.30 || !bestPO) {
+      return { ...item, matchStatus: 'not_on_po', matchScore: bestScore };
+    }
+    const priceVar = item.unitPriceInvoiced != null && bestPO.unit_price != null
+      ? Math.round((item.unitPriceInvoiced - bestPO.unit_price) * 10000) / 10000 : null;
+    const qtyVar = item.qtyInvoiced != null && bestPO.qty_ordered != null
+      ? item.qtyInvoiced - bestPO.qty_ordered : null;
+    let status = 'matched';
+    if (priceVar != null && Math.abs(priceVar) > 0.005) status = 'price_discrepancy';
+    else if (qtyVar != null && qtyVar !== 0) status = 'qty_mismatch';
+    return { ...item, matchStatus: status, matchScore: bestScore, poItemId: bestPO.id, poProdName: bestPO.product_name, qtyOrdered: bestPO.qty_ordered, unitPriceOrdered: bestPO.unit_price, priceVariance: priceVar, qtyVariance: qtyVar };
+  });
+}
+
+// ── Save to Supabase ──────────────────────────────────────────────────────────
+async function saveInvoice(parsed, reconciledItems, fileName) {
+  const flags = reconciledItems.filter(i => ['price_discrepancy','qty_mismatch','not_on_po'].includes(i.matchStatus));
+  const invoiceStatus = flags.length > 0 ? 'discrepancy' : reconciledItems.length > 0 ? 'reconciled' : 'pending';
+  const [inv] = await supa('POST', '/rest/v1/invoices', {
+    location_id:    state.locationId,
+    location_name:  LOC_NAMES[state.locationId] || '',
+    vendor:         parsed.vendor,
+    invoice_number: parsed.invoiceNumber,
+    invoice_date:   parsed.invoiceDate,
+    total_amount:   parsed.totalAmount,
+    status:         invoiceStatus,
+    notes:          `Parsed from: ${fileName}`,
+  });
+  if (!inv?.id) throw new Error('Failed to save invoice header');
+  const itemRows = reconciledItems.map(i => ({
+    invoice_id:           inv.id,
+    line_number:          i.lineNumber,
+    product_name:         i.productName,
+    sku:                  i.sku || null,
+    qty_invoiced:         i.qtyInvoiced,
+    unit_price_invoiced:  i.unitPriceInvoiced,
+    total_invoiced:       i.totalInvoiced,
+    po_item_id:           i.poItemId || null,
+    po_product_name:      i.poProdName || null,
+    match_status:         i.matchStatus || 'unmatched',
+    qty_ordered:          i.qtyOrdered ?? null,
+    unit_price_ordered:   i.unitPriceOrdered ?? null,
+    price_variance:       i.priceVariance ?? null,
+    qty_variance:         i.qtyVariance ?? null,
+    match_score:          i.matchScore ?? null,
+  }));
+  if (itemRows.length > 0) await supa('POST', '/rest/v1/invoice_items', itemRows);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Auto-select location from parent frame if available
+window.addEventListener('message', e => {
+  if (e.data?.locationId) {
+    document.getElementById('loc-select').value = e.data.locationId;
+    state.locationId = e.data.locationId;
+    loadInvoices();
+  }
+});
+</script>
+</body>
+</html>
