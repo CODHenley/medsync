@@ -510,7 +510,7 @@ function openOrgDetail(orgId) {
     ? users.map(u => `<tr><td>${u.full_name||'—'}</td><td style="font-size:11px;color:var(--mist);">${u.email||'—'}</td><td><span style="font-size:10px;background:#F0EEF8;padding:2px 7px;border-radius:10px;">${u.role||'—'}</span></td></tr>`).join('')
     : '<tr><td colspan="3" style="color:var(--mist);">No users yet</td></tr>';
 
-  document.getElementById('detail-section').style.display = '';
+  document.getElementById('detail-section').style.display = 'block';
   document.getElementById('detail-section').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
