@@ -871,15 +871,22 @@ async function showPlanModal() {
       + (orgData&&orgData.contact_email ? row('Email', orgData.contact_email) : '')
       + (orgData&&orgData.notes ? row('Notes', orgData.notes) : '');
 
-    var upgradeNote = (!unlimited && remaining !== null && remaining <= 2)
-      ? '<div style="margin-top:14px;padding:11px 14px;background:#FFF3CD;border:0.5px solid #f0d070;border-radius:9px;font-size:11px;color:#856404;line-height:1.6;">Need more locations? Contact MedSync to upgrade.<br><strong>hello@medsync.vet</strong></div>' : '';
+    var upgradeNote = (!unlimited && remaining !== null && remaining <= 0)
+      ? '<div style="margin-top:14px;padding:11px 14px;background:#FFF3CD;border:0.5px solid #f0d070;border-radius:9px;font-size:11px;color:#856404;line-height:1.6;">You've used all your location slots. Contact MedSync to upgrade.<br><strong>hello@medsync.vet</strong></div>' : '';
+
+    // CTA: use a slot if slots remain, otherwise just "Got it"
+    var canAdd = unlimited || (remaining !== null && remaining > 0);
+    var ctaButtons = canAdd
+      ? '<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Use a slot — set up new location →</button>'
+        + '<button onclick="closePlanModal()" style="margin-top:8px;width:100%;padding:9px;background:none;border:none;font-size:12px;color:#8A93A8;cursor:pointer;font-family:sans-serif;">Maybe later</button>'
+      : '<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Got it</button>';
 
     box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">'
       +'<div style="font-size:15px;font-weight:600;color:#1C2B4A;">Your Plan</div>'
       +'<button onclick="closePlanModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8A93A8;line-height:1;">×</button></div>'
       +'<div style="border:0.5px solid #DDD9EC;border-radius:10px;overflow:hidden;margin-bottom:4px;">'+details+'</div>'
       +upgradeNote
-      +'<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Got it</button>';
+      +ctaButtons;
   } catch(e) {
     var box = document.getElementById('plan-modal-box');
     if (box) box.innerHTML += '<div style="color:#a33030;font-size:11px;margin-top:8px;">Could not load plan details.</div>';
