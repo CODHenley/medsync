@@ -397,6 +397,7 @@ async function doLogin() {
     document.getElementById('app').style.display = 'flex';
     loadDashboard();
   } catch(e) {
+    errEl.textContent = e.message || 'Invalid credentials or insufficient permissions.';
     errEl.style.display = 'block';
   }
 }
