@@ -379,9 +379,9 @@ async function doLogin() {
     console.log('Auth response:', JSON.stringify(data).substring(0, 200));
     if (!data.access_token) throw new Error('Auth failed — ' + (data.error_description || data.msg || 'no token'));
 
-    // Verify superadmin role — use anon key so RLS doesn't block the lookup
+    // Verify superadmin role — look up by email (avoids auth UUID vs public.users UUID mismatch)
     const userRes = await fetch(
-      SUPA_URL + `/rest/v1/users?select=id,full_name,role,email&id=eq.${data.user.id}`,
+      SUPA_URL + `/rest/v1/users?select=id,full_name,role,email&email=eq.${encodeURIComponent(email)}`,
       { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
     );
     const users = await userRes.json();
