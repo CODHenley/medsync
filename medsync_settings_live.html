@@ -130,6 +130,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         <div><div class="card-title">Billing information</div><div class="card-sub">Contact and payment details for your MedSync subscription</div></div>
       </div>
       <div class="card-body">
+        <!-- Contact info -->
         <div class="profile-row">
           <div class="field"><label>Billing contact name</label><input id="bb-billing-name" type="text" placeholder="e.g. Dr. Jane Smith"></div>
           <div class="field"><label>Billing email</label><input id="bb-billing-email" type="email" placeholder="e.g. billing@yourpractice.com"></div>
@@ -143,17 +144,69 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
             </div>
           </div>
         </div>
-        <div class="profile-row">
-          <div class="field" style="grid-column:span 2;">
-            <label>Current plan</label>
-            <div id="bb-plan-display" style="padding:12px 16px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);line-height:1.7;">Loading…</div>
-            <div style="margin-top:8px;padding:12px 16px;background:#E8F4EE;border:0.5px solid #b0ddd0;border-radius:9px;font-size:12px;color:#1a5c3a;line-height:1.7;">
-              <strong>Enrollment fee:</strong> $500 one-time (non-refundable). Covers on-site physical count and 30-day supported launch.<br>
-              <strong>90-day money-back guarantee:</strong> Cancel within 90 days of your start date for a full refund, returned within 60 days of your cancellation date.
+
+        <!-- ACH (primary — mandatory) -->
+        <div style="margin-top:20px;padding-top:16px;border-top:0.5px solid var(--border);">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">ACH Bank Transfer <span style="background:#1C2B4A;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:6px;">PRIMARY · REQUIRED</span></div>
+          <div style="font-size:11px;color:var(--mist);margin-bottom:14px;">Monthly subscription payments are debited via ACH on the 1st of each month. Your bank details are stored securely and used only for MedSync subscription billing.</div>
+          <div class="profile-row">
+            <div class="field"><label>Bank name</label><input id="bb-ach-bank" type="text" placeholder="e.g. Chase, Wells Fargo"></div>
+            <div class="field"><label>Account holder name</label><input id="bb-ach-holder" type="text" placeholder="Name on bank account"></div>
+          </div>
+          <div class="profile-row">
+            <div class="field"><label>Routing number</label><input id="bb-ach-routing" type="text" placeholder="9-digit routing number" maxlength="9"></div>
+            <div class="field"><label>Account number</label><input id="bb-ach-account" type="text" placeholder="Account number"></div>
+          </div>
+          <div class="profile-row">
+            <div class="field">
+              <label>Account type</label>
+              <select id="bb-ach-type">
+                <option value="">Select type…</option>
+                <option value="checking">Checking</option>
+                <option value="savings">Savings</option>
+              </select>
+            </div>
+            <div class="field"></div>
+          </div>
+        </div>
+
+        <!-- Credit card (backup) -->
+        <div style="margin-top:20px;padding-top:16px;border-top:0.5px solid var(--border);">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">Credit Card <span style="background:#C8922A;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:6px;">BACKUP</span></div>
+          <div style="font-size:11px;color:var(--mist);margin-bottom:14px;">Used only if an ACH payment fails. We will notify you before charging your card. Visa, Mastercard, and Amex accepted.</div>
+          <div class="profile-row">
+            <div class="field"><label>Cardholder name</label><input id="bb-cc-holder" type="text" placeholder="Name on card"></div>
+            <div class="field">
+              <label>Card type</label>
+              <select id="bb-cc-brand">
+                <option value="">Select…</option>
+                <option value="visa">Visa</option>
+                <option value="mastercard">Mastercard</option>
+                <option value="amex">American Express</option>
+              </select>
+            </div>
+          </div>
+          <div class="profile-row">
+            <div class="field"><label>Last 4 digits</label><input id="bb-cc-last4" type="text" placeholder="e.g. 4242" maxlength="4"></div>
+            <div class="field"><label>Expiration (MM/YY)</label><input id="bb-cc-exp" type="text" placeholder="MM/YY" maxlength="5"></div>
+          </div>
+        </div>
+
+        <!-- Current plan -->
+        <div style="margin-top:20px;padding-top:16px;border-top:0.5px solid var(--border);">
+          <div class="profile-row">
+            <div class="field" style="grid-column:span 2;">
+              <label>Current plan</label>
+              <div id="bb-plan-display" style="padding:12px 16px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);line-height:1.7;">Loading…</div>
+              <div style="margin-top:8px;padding:12px 16px;background:#E8F4EE;border:0.5px solid #b0ddd0;border-radius:9px;font-size:12px;color:#1a5c3a;line-height:1.7;">
+                <strong>Enrollment fee:</strong> $500 one-time (non-refundable). Covers on-site physical count and 30-day supported launch.<br>
+                <strong>90-day money-back guarantee:</strong> Cancel within 90 days of your start date for a full refund, returned within 60 days of your cancellation date.
+              </div>
             </div>
           </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button class="save-btn" onclick="saveBillingInfo()">Save billing info</button>
         </div>
       </div>
@@ -427,7 +480,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const _settSess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
+const _settSess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
 const _settH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
 let _settOrgId = null;
 
@@ -435,13 +488,19 @@ async function loadBillingBranding() {
   try {
     // Try session user ID first, fall back to medsync_user stored at login
     const userId = _settSess.user?.id || _settSess.user_id;
-    const _mu = (function(){ try{return JSON.parse(localStorage.getItem('medsync_user')||'{}');}catch(e){return{};} })();
+    const _mu = (function(){ try{return JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');}catch(e){return{};} })();
 
+    const userEmail = _settSess.user?.email || _settSess.email || _mu.email || null;
     let orgId = null;
     if (userId) {
       const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:_settH});
       const users = await ur.json();
       orgId = (Array.isArray(users) && users[0]) ? users[0].organization_id : null;
+    }
+    if (!orgId && userEmail) {
+      const ur2 = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&email=eq.'+encodeURIComponent(userEmail), {headers:_settH});
+      const users2 = await ur2.json();
+      orgId = (Array.isArray(users2) && users2[0]) ? users2[0].organization_id : null;
     }
     if (!orgId && _mu.organization_id) orgId = _mu.organization_id;
     if (!orgId) {
@@ -449,7 +508,7 @@ async function loadBillingBranding() {
       return;
     }
     _settOrgId = orgId;
-    const or = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,logo_url,billing_contact_name,billing_email,billing_phone,payment_terms&id=eq.'+_settOrgId, {headers:_settH});
+    const or = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,logo_url,billing_contact_name,billing_email,billing_phone,payment_terms,ach_bank_name,ach_account_holder,ach_routing_number,ach_account_number,ach_account_type,cc_holder_name,cc_last4,cc_brand,cc_exp&id=eq.'+_settOrgId, {headers:_settH});
     const orgs = await or.json();
     if (!Array.isArray(orgs)||!orgs[0]) return;
     const org = orgs[0];
@@ -465,6 +524,17 @@ async function loadBillingBranding() {
     if (org.billing_email)        document.getElementById('bb-billing-email').value = org.billing_email;
     if (org.billing_phone)        document.getElementById('bb-billing-phone').value = org.billing_phone;
     if (org.payment_terms)        document.getElementById('bb-payment-terms').value = org.payment_terms;
+    // ACH fields
+    if (org.ach_bank_name)       document.getElementById('bb-ach-bank').value = org.ach_bank_name;
+    if (org.ach_account_holder)  document.getElementById('bb-ach-holder').value = org.ach_account_holder;
+    if (org.ach_routing_number)  document.getElementById('bb-ach-routing').value = org.ach_routing_number;
+    if (org.ach_account_number)  document.getElementById('bb-ach-account').value = org.ach_account_number;
+    if (org.ach_account_type)    document.getElementById('bb-ach-type').value = org.ach_account_type;
+    // CC backup fields
+    if (org.cc_holder_name) document.getElementById('bb-cc-holder').value = org.cc_holder_name;
+    if (org.cc_last4)       document.getElementById('bb-cc-last4').value = org.cc_last4;
+    if (org.cc_brand)       document.getElementById('bb-cc-brand').value = org.cc_brand;
+    if (org.cc_exp)         document.getElementById('bb-cc-exp').value = org.cc_exp;
     // Plan display
     const lc = await fetch(SUPA_URL+'/rest/v1/locations?select=id&organization_id=eq.'+_settOrgId, {headers:_settH});
     const locs = await lc.json();
@@ -519,6 +589,15 @@ async function saveBillingInfo() {
     billing_email:        document.getElementById('bb-billing-email').value.trim() || null,
     billing_phone:        document.getElementById('bb-billing-phone').value.trim() || null,
     payment_terms:        document.getElementById('bb-payment-terms').value || null,
+    ach_bank_name:        document.getElementById('bb-ach-bank').value.trim() || null,
+    ach_account_holder:   document.getElementById('bb-ach-holder').value.trim() || null,
+    ach_routing_number:   document.getElementById('bb-ach-routing').value.trim() || null,
+    ach_account_number:   document.getElementById('bb-ach-account').value.trim() || null,
+    ach_account_type:     document.getElementById('bb-ach-type').value || null,
+    cc_holder_name:       document.getElementById('bb-cc-holder').value.trim() || null,
+    cc_last4:             document.getElementById('bb-cc-last4').value.trim() || null,
+    cc_brand:             document.getElementById('bb-cc-brand').value.trim() || null,
+    cc_exp:               document.getElementById('bb-cc-exp').value.trim() || null,
   };
   await fetch(SUPA_URL+'/rest/v1/organizations?id=eq.'+_settOrgId, {
     method:'PATCH', headers:_settH, body:JSON.stringify(patch)
