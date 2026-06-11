@@ -231,7 +231,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
   <div class="tab-bar">
     <div class="tab-item active" id="tab-orgs" onclick="switchTab('orgs')">Organizations</div>
-    <div class="tab-item" id="tab-billing" onclick="switchTab('billing')">Billing</div>
+    <div class="tab-item" id="tab-billing" onclick="switchTab('billing')">Billing <span id="billing-badge" style="display:none;background:#E74C3C;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle;">0</span></div>
     <div class="tab-item" id="tab-admins" onclick="switchTab('admins')">Super Admins</div>
     <div class="tab-item" id="tab-growth" onclick="switchTab('growth')">Growth</div>
   </div>
@@ -359,6 +359,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           </table>
         </div>
 
+        <!-- Billing Change History -->
+        <div id="detail-billing-changes-wrap" style="display:none;">
+          <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Billing Change History</div>
+          <table class="sub-table">
+            <thead><tr><th>Date</th><th>Changed by</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="detail-billing-changes"></tbody>
+          </table>
+        </div>
+
       </div>
     </div>
   </div><!-- /content -->
@@ -374,6 +383,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div class="bill-stat"><div class="bill-stat-label">Annual Run Rate</div><div class="bill-stat-val" id="b-arr">$—</div><div class="bill-stat-sub">MRR × 12</div></div>
       <div class="bill-stat"><div class="bill-stat-label">Next billing run</div><div class="bill-stat-val" id="b-next">Jul 1</div><div class="bill-stat-sub">Auto on 1st of month</div></div>
       <div class="bill-stat"><div class="bill-stat-label">Orgs current</div><div class="bill-stat-val" id="b-current">—</div><div class="bill-stat-sub" id="b-overdue-sub">— overdue</div></div>
+    </div>
+
+    <!-- Billing change notifications -->
+    <div class="section" id="billing-changes-section" style="display:none;">
+      <div class="section-head">
+        <div class="section-title">⚠️ Pending Billing Changes</div>
+        <span id="billing-changes-count" style="font-size:11px;color:#E74C3C;font-weight:700;"></span>
+      </div>
+      <table class="bill-table">
+        <thead><tr>
+          <th>Organization</th><th>Changed by</th><th>Date &amp; time</th><th>Status</th><th>Action</th>
+        </tr></thead>
+        <tbody id="billing-changes-tbody"></tbody>
+      </table>
     </div>
 
     <!-- Billing table -->
@@ -853,6 +876,8 @@ async function loadDashboard() {
     document.getElementById('stat-users').textContent  = ALL_USERS.length;
 
     renderOrgTable();
+    // Load billing change badge in background
+    loadBillingChanges();
   } catch(e) {
     showToast('⚠ Could not load data');
   }
@@ -925,6 +950,8 @@ function openOrgDetail(orgId) {
 
   // Payment history
   renderPaymentHistory(orgId);
+  // Billing change history
+  renderOrgBillingChanges(orgId);
   // Flags
   renderFlags(orgId);
 }
@@ -970,6 +997,35 @@ function renderPaymentHistory(orgId) {
       <td style="font-size:11px;color:var(--mist);">${r.note||'—'}</td>
     </tr>`;
   }).join('');
+}
+
+async function renderOrgBillingChanges(orgId) {
+  const wrap = document.getElementById('detail-billing-changes-wrap');
+  const tbody = document.getElementById('detail-billing-changes');
+  if (!wrap || !tbody) return;
+  try {
+    const res = await fetch(SUPA_URL+'/rest/v1/billing_change_log?org_id=eq.'+orgId+'&order=changed_at.desc&limit=20', {headers:H});
+    const rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    tbody.innerHTML = rows.map(r => {
+      const dt = r.changed_at ? new Date(r.changed_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+      const statusBadge = r.reviewed
+        ? `<span style="background:#2E8B57;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">Verified</span>`
+        : `<span style="background:#E74C3C;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">Pending</span>`;
+      const actionBtn = r.reviewed
+        ? `<span style="font-size:10px;color:var(--mist);">by ${r.reviewed_by||'admin'}</span>`
+        : `<button onclick="markBillingChangeReviewed('${r.id}')" style="background:#1C2B4A;color:#fff;border:none;border-radius:7px;padding:3px 10px;font-size:10px;cursor:pointer;font-weight:600;">✓ Verify</button>`;
+      return `<tr>
+        <td style="font-size:11px;">${dt}</td>
+        <td style="font-size:11px;color:var(--mist);">${r.changed_by_email||'—'}</td>
+        <td>${statusBadge}</td>
+        <td>${actionBtn}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    wrap.style.display = 'none';
+  }
 }
 
 // ── Flags (stored in localStorage per org for demo; real impl = DB table) ──
@@ -1359,7 +1415,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('panel-'+tab).classList.add('active');
-  if (tab === 'billing') renderBillingTab();
+  if (tab === 'billing') { renderBillingTab(); loadBillingChanges(); }
   if (tab === 'admins') loadSuperAdmins();
   if (tab === 'growth') renderGrowthTab();
 }
@@ -1371,6 +1427,76 @@ const MOCK_BILLING = [
   { name:'Lakeside Veterinary Partners', tier:'solo', tierLabel:'Solo', monthly:149, locs:1, status:'trial', nextCharge:'Jul 15, 2026', billingContact:'Dr. Kevin Park', billingEmail:'kpark@lakesidevetpartners.com', enrolled: false },
   { name:'Summit Pet Care Network', tier:'large_group', tierLabel:'Large Group', monthly:449, locs:9, status:'pending', nextCharge:'Jul 1, 2026', billingContact:'Jamie Okonkwo', billingEmail:'jamie@summitpetcare.com', enrolled: true },
 ];
+
+async function loadBillingChanges() {
+  const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+  try {
+    const res = await fetch(SUPA_URL+'/rest/v1/billing_change_log?select=*&order=changed_at.desc&limit=50', {headers:H});
+    const rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) {
+      document.getElementById('billing-changes-section').style.display = 'none';
+      document.getElementById('billing-badge').style.display = 'none';
+      return;
+    }
+    const unreviewed = rows.filter(r => !r.reviewed);
+    // Update badge
+    const badge = document.getElementById('billing-badge');
+    if (unreviewed.length) {
+      badge.textContent = unreviewed.length;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+    // Show section
+    const section = document.getElementById('billing-changes-section');
+    section.style.display = '';
+    const countEl = document.getElementById('billing-changes-count');
+    countEl.textContent = unreviewed.length ? unreviewed.length + ' unreviewed' : 'All reviewed';
+    countEl.style.color = unreviewed.length ? '#E74C3C' : '#2E8B57';
+    const tbody = document.getElementById('billing-changes-tbody');
+    tbody.innerHTML = rows.map(r => {
+      const dt = r.changed_at ? new Date(r.changed_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+      const statusBadge = r.reviewed
+        ? `<span style="background:#2E8B57;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">Verified</span>`
+        : `<span style="background:#E74C3C;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">Pending</span>`;
+      const actionBtn = r.reviewed
+        ? `<span style="font-size:11px;color:var(--mist);">Verified ${r.reviewed_at ? new Date(r.reviewed_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : ''}</span>`
+        : `<button onclick="markBillingChangeReviewed('${r.id}')" style="background:#1C2B4A;color:#fff;border:none;border-radius:7px;padding:4px 11px;font-size:11px;cursor:pointer;font-weight:600;">✓ Mark Verified</button>`;
+      return `<tr>
+        <td style="font-weight:500;">${r.org_name || r.org_id || '—'}</td>
+        <td style="font-size:11px;color:var(--mist);">${r.changed_by_email || '—'}</td>
+        <td style="font-size:11px;">${dt}</td>
+        <td>${statusBadge}</td>
+        <td>${actionBtn}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    console.warn('loadBillingChanges:', e);
+  }
+}
+
+async function markBillingChangeReviewed(id) {
+  const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  // Get current admin email from session
+  let reviewedBy = '';
+  try {
+    const s = JSON.parse(sessionStorage.getItem('medsync_admin_session') || '{}');
+    reviewedBy = s.email || '';
+  } catch(e) {}
+  await fetch(SUPA_URL+'/rest/v1/billing_change_log?id=eq.'+id, {
+    method: 'PATCH',
+    headers: H,
+    body: JSON.stringify({ reviewed: true, reviewed_at: new Date().toISOString(), reviewed_by: reviewedBy })
+  });
+  // Reload the list
+  loadBillingChanges();
+  // Show toast if available
+  showToast('✓ Billing change marked as verified');
+}
 
 function renderBillingTab() {
   const mrr = MOCK_BILLING.filter(o => o.status !== 'trial').reduce((s,o) => s+o.monthly, 0);
