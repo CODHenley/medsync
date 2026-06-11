@@ -135,7 +135,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
+const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
 const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
 
 let planInfo = null; // set by checkLocationLimit, read by render()
@@ -896,7 +896,7 @@ async function checkLocationLimit() {
     // Try user ID first, then email fallback (handles different session storage formats)
     const userId = _sess.user?.id || _sess.user_id;
     const userEmail = _sess.user?.email || _sess.email ||
-      (function(){ try{return JSON.parse(localStorage.getItem('medsync_user')||'{}').email;}catch(e){return null;} })();
+      (function(){ try{return JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}').email;}catch(e){return null;} })();
 
     let orgId = null;
     if (userId) {
