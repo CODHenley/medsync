@@ -146,6 +146,7 @@ let state = {
   screen: 'type',
   locationType: null,
   practiceType: null,
+  practiceType: null,
   pimsType: null,
   locationName: '',
   address: '',
@@ -365,12 +366,24 @@ function renderTypeScreen() {
         })()}
       </div>
     </div>
+    <div style="margin:18px 0 4px;">
+      <div style="font-size:11px;font-weight:700;color:#1C2B4A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">What type of practice is this location?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${['urgent_care','emergency','specialty','general'].map(t => {
+          const labels = {urgent_care:'🚨 Urgent Care',emergency:'🏥 Emergency (ER)',specialty:'🔬 Specialty',general:'🐾 General Practice'};
+          const sel = state.practiceType === t;
+          return `<div onclick="selectPracticeType('${t}')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid ${sel?'#1C2B4A':'#DDD9EC'};border-radius:9px;cursor:pointer;font-size:12px;font-weight:${sel?700:500};background:${sel?'#E8F0FE':'#fff'};color:${sel?'#1C2B4A':'#4A5568'};transition:all .15s;">${labels[t]}</div>`;
+        }).join('')}
+      </div>
+      ${!state.practiceType ? '<div style="font-size:10px;color:#a0700a;margin-top:6px;">Select a practice type to continue</div>' : ''}
+    </div>
     <div class="btn-row">
-      <button class="btn-primary" onclick="nextFromType()" ${!state.locationType?'disabled':''}>Continue →</button>
+      <button class="btn-primary" onclick="nextFromType()" ${(!state.locationType||!state.practiceType)?'disabled':''}>Continue →</button>
     </div>`;
 }
 
 function selectType(t) { state.locationType = t; render(); }
+function selectPracticeType(t) { state.practiceType = t; render(); }
 
 function nextFromType() {
   if (!state.locationType) return;
@@ -609,7 +622,7 @@ async function submitOrder() {
       regionId = Array.isArray(rd) ? rd[0]?.id : rd?.id;
     }
     // Save location
-    var payload = {name: state.locationName, address: state.address};
+    var payload = {name: state.locationName, address: state.address, practice_type: state.practiceType || null};
     if (regionId) payload.region_id = regionId;
     var locRes = await fetch(SUPA_URL+'/rest/v1/locations', {
       method:'POST', headers:{...H,'Prefer':'return=representation'},

@@ -674,6 +674,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <label class="form-label">Notes (optional)</label>
           <input class="form-input" id="prov-notes" type="text" placeholder="e.g. Referral from Vetcove, 6-month pilot">
         </div>
+        <div class="form-group">
+          <label class="form-label">Practice type(s) <span style="font-weight:400;color:var(--mist);">— select all that apply</span></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;" id="prov-practice-types">
+            <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s;" id="pt-label-urgent_care">
+              <input type="checkbox" id="pt-urgent_care" value="urgent_care" onchange="togglePracticeTypeLabel('urgent_care')"> 🚨 Urgent Care
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s;" id="pt-label-emergency">
+              <input type="checkbox" id="pt-emergency" value="emergency" onchange="togglePracticeTypeLabel('emergency')"> 🏥 Emergency (ER)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s;" id="pt-label-specialty">
+              <input type="checkbox" id="pt-specialty" value="specialty" onchange="togglePracticeTypeLabel('specialty')"> 🔬 Specialty
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s;" id="pt-label-general">
+              <input type="checkbox" id="pt-general" value="general" onchange="togglePracticeTypeLabel('general')"> 🐾 General Practice
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- Step 2: Admin user -->
@@ -932,6 +949,11 @@ function openOrgDetail(orgId) {
   document.getElementById('detail-grid').innerHTML = `
     <div class="dg-cell"><div class="dg-l">Tier</div><div class="dg-v">${tierLabel(org.tier)}</div></div>
     <div class="dg-cell"><div class="dg-l">Status</div><div class="dg-v">${org.status}</div></div>
+    <div class="dg-cell" style="grid-column:span 2;"><div class="dg-l">Practice type(s)</div><div class="dg-v">${
+      (Array.isArray(org.practice_types) && org.practice_types.length)
+        ? org.practice_types.map(t => ({'urgent_care':'🚨 Urgent Care','emergency':'🏥 Emergency (ER)','specialty':'🔬 Specialty','general':'🐾 General Practice'}[t]||t)).join(' · ')
+        : '<span style="color:var(--mist);">Not set</span>'
+    }</div></div>
     <div class="dg-cell"><div class="dg-l">Location limit</div><div class="dg-v">${limit}</div></div>
     <div class="dg-cell"><div class="dg-l">Locations used</div><div class="dg-v">${locs.length}</div></div>
     <div class="dg-cell"><div class="dg-l">Contact</div><div class="dg-v">${org.contact_name || '—'}</div></div>
@@ -1204,6 +1226,11 @@ function openProvision() {
   document.getElementById('prov-next-btn').textContent = 'Next →';
   document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 1 of 4';
   // Clear fields
+  ['urgent_care','emergency','specialty','general'].forEach(t => {
+    const cb = document.getElementById('pt-' + t);
+    if (cb) cb.checked = false;
+    togglePracticeTypeLabel(t);
+  });
   ['prov-org-name','prov-contact-name','prov-contact-email','prov-notes','prov-admin-name','prov-admin-email'].forEach(id => {
     document.getElementById(id).value = '';
   });
@@ -1214,6 +1241,26 @@ function openProvision() {
 
 function closeProvision() {
   document.getElementById('provision-modal').classList.remove('open');
+}
+
+function togglePracticeTypeLabel(type) {
+  const cb = document.getElementById('pt-' + type);
+  const lbl = document.getElementById('pt-label-' + type);
+  if (!lbl) return;
+  if (cb && cb.checked) {
+    lbl.style.background = '#E8F0FE';
+    lbl.style.borderColor = '#1C2B4A';
+    lbl.style.color = '#1C2B4A';
+  } else {
+    lbl.style.background = '';
+    lbl.style.borderColor = 'var(--border)';
+    lbl.style.color = '';
+  }
+}
+
+function getSelectedPracticeTypes() {
+  return ['urgent_care','emergency','specialty','general']
+    .filter(t => { const el = document.getElementById('pt-' + t); return el && el.checked; });
 }
 
 function selectTier(el) {
@@ -1271,6 +1318,7 @@ async function provNext() {
           contact_name:   document.getElementById('prov-contact-name').value.trim() || null,
           contact_email:  document.getElementById('prov-contact-email').value.trim() || null,
           notes:          document.getElementById('prov-notes').value.trim() || null,
+          practice_types: getSelectedPracticeTypes(),
         })
       });
       const orgsRaw = await orgRes.text();
