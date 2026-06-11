@@ -138,6 +138,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
 const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
 
+let planInfo = null; // set by checkLocationLimit, read by render()
 let state = {
   screen: 'type',
   locationType: null,
@@ -298,10 +299,31 @@ const CAT_COLORS = {
   'Prescription Diets':'#8A93A8','Dermatology':'#A06020',
 };
 
+function renderPlanBanner() {
+  if (!planInfo) return '';
+  const { tier, count, limit, label } = planInfo;
+  const unlimited = limit === 999;
+  const remaining = unlimited ? null : limit - count;
+  const pct = unlimited ? 0 : count / limit;
+  const color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
+  const bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
+  const border= unlimited ? '#b0ddd0' : pct >= 1 ? '#f0a0a0' : pct >= 0.8 ? '#f0d070' : '#b0ddd0';
+  const usageText = unlimited
+    ? 'Unlimited locations'
+    : `${count} of ${limit} location${limit===1?'':'s'} used &nbsp;·&nbsp; <strong>${remaining} remaining</strong>`;
+  return `<div style="background:${bg};border:0.5px solid ${border};border-radius:10px;padding:11px 16px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;font-size:12px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="background:${color};color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;">${label}</span>
+      <span style="color:${color};">${usageText}</span>
+    </div>
+    ${!unlimited && remaining === 1 ? '<span style="font-size:11px;color:'+color+';">⚠ Last available slot</span>' : ''}
+  </div>`;
+}
+
 function render() {
   const shell = document.getElementById('shell');
   switch(state.screen) {
-    case 'type':    shell.innerHTML = renderTypeScreen(); break;
+    case 'type':    shell.innerHTML = renderPlanBanner() + renderTypeScreen(); break;
     case 'config':  shell.innerHTML = renderConfigScreen(); break;
     case 'order':   shell.innerHTML = renderOrderScreen(); break;
     case 'existing':shell.innerHTML = renderExistingScreen(); break;
@@ -800,7 +822,7 @@ async function checkLocationLimit() {
     const userRes = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&id=eq.${userId}`, { headers: H });
     const users = await userRes.json();
     const orgId = Array.isArray(users) && users[0] ? users[0].organization_id : null;
-    if (!orgId) { render(); return; } // Legacy/Scout — no limit
+    if (!orgId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; } // Legacy/Scout — no limit
 
     const [orgRes, locRes] = await Promise.all([
       fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit&id=eq.${orgId}`, { headers: H }),
@@ -814,6 +836,9 @@ async function checkLocationLimit() {
     const limit = org.location_limit;
     const count = Array.isArray(locs) ? locs.length : 0;
     const TIER_LABELS = { solo:'Solo',small_group:'Small Group',mid_group:'Mid Group',large_group:'Large Group',enterprise:'Enterprise',internal:'Internal' };
+
+    // Store for banner use in render()
+    planInfo = { tier: org.tier, count, limit, label: TIER_LABELS[org.tier] || org.tier };
 
     // Inject limit bar into topbar area
     const topbarSub = document.querySelector('.tb-sub');
