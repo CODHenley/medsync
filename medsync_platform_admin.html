@@ -346,8 +346,46 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         </div>
       </div>
 
-      <!-- Step 3: Confirm + credentials -->
+      <!-- Step 3: Billing & Branding -->
       <div id="prov-step-3" style="display:none;">
+        <div style="font-size:12px;color:var(--slate);margin-bottom:14px;">Upload the organization's logo and collect billing details. You can skip and add these later from the org detail panel.</div>
+        <div class="form-group">
+          <label class="form-label">Organization logo</label>
+          <div id="prov-logo-preview" style="display:none;margin-bottom:8px;">
+            <img id="prov-logo-img" style="max-height:60px;max-width:180px;border:0.5px solid var(--border);border-radius:8px;padding:6px;background:#fff;" alt="Logo preview">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="file" id="prov-logo-file" accept="image/*" onchange="previewProvLogo(this)" style="font-size:12px;flex:1;">
+            <button class="btn" onclick="clearProvLogo()" style="font-size:11px;padding:6px 10px;">Clear</button>
+          </div>
+          <div style="font-size:10px;color:var(--mist);margin-top:4px;">PNG or SVG recommended. Max 500KB. Will appear in the customer's portal header.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing contact name</label>
+          <input class="form-input" id="prov-billing-name" type="text" placeholder="e.g. Dr. Jane Smith">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing email</label>
+          <input class="form-input" id="prov-billing-email" type="email" placeholder="e.g. billing@riversideah.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing phone</label>
+          <input class="form-input" id="prov-billing-phone" type="tel" placeholder="e.g. (312) 555-0100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment terms</label>
+          <select class="form-input" id="prov-payment-terms">
+            <option value="">Select…</option>
+            <option value="net30">Invoice — Net 30</option>
+            <option value="net15">Invoice — Net 15</option>
+            <option value="credit_card">Credit card on file</option>
+            <option value="ach">ACH / bank transfer</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Step 4: Confirm + credentials -->
+      <div id="prov-step-4" style="display:none;">
         <div class="creds-box" id="prov-creds"></div>
       </div>
 
@@ -589,9 +627,10 @@ function openProvision() {
   document.getElementById('prov-step-1').style.display = '';
   document.getElementById('prov-step-2').style.display = 'none';
   document.getElementById('prov-step-3').style.display = 'none';
+  document.getElementById('prov-step-4').style.display = 'none';
   document.getElementById('prov-back-btn').style.display = 'none';
   document.getElementById('prov-next-btn').textContent = 'Next →';
-  document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 1 of 3';
+  document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 1 of 4';
   // Clear fields
   ['prov-org-name','prov-contact-name','prov-contact-email','prov-notes','prov-admin-name','prov-admin-email'].forEach(id => {
     document.getElementById(id).value = '';
@@ -635,7 +674,7 @@ async function provNext() {
     document.getElementById('prov-step-1').style.display = 'none';
     document.getElementById('prov-step-2').style.display = '';
     document.getElementById('prov-back-btn').style.display = '';
-    document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 2 of 3';
+    document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 2 of 4';
 
   } else if (provStep === 2) {
     const adminName  = document.getElementById('prov-admin-name').value.trim();
@@ -692,24 +731,21 @@ async function provNext() {
         });
       }
 
-      // Step 3 — show credentials
+      // Step 3 — billing & branding
       provStep = 3;
       document.getElementById('prov-step-2').style.display = 'none';
       document.getElementById('prov-step-3').style.display = '';
-      document.getElementById('prov-back-btn').style.display = 'none';
-      document.getElementById('prov-next-btn').textContent = 'Done';
+      document.getElementById('prov-back-btn').style.display = '';
+      document.getElementById('prov-next-btn').textContent = 'Finish →';
       document.getElementById('prov-next-btn').disabled = false;
-      document.getElementById('prov-modal-title').textContent = '✓ Customer provisioned';
-
-      const tierLbl = {solo:'Solo — 1 location',small_group:'Small Group — up to 3 locations',mid_group:'Mid Group — up to 6 locations',large_group:'Large Group — up to 12 locations',enterprise:'Enterprise — unlimited'}[provTier.tier] || provTier.tier;
-      document.getElementById('prov-creds').innerHTML = `
-        <div class="creds-title">Login credentials — share with customer</div>
-        <div class="creds-row"><span class="creds-key">URL</span><span class="creds-val">medsync.vet</span></div>
-        <div class="creds-row"><span class="creds-key">Email</span><span class="creds-val">${adminEmail}</span></div>
-        <div class="creds-row"><span class="creds-key">Temp password</span><span class="creds-val">${adminPass}</span></div>
-        <div class="creds-row"><span class="creds-key">Tier</span><span class="creds-val">${tierLbl}</span></div>
-        <div class="creds-note">⚠ Copy and send these credentials to the customer now. The password is not stored and cannot be retrieved.</div>
-      `;
+      document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 3 of 4';
+      // Pre-fill billing contact from primary contact
+      const contactName2  = document.getElementById('prov-contact-name').value.trim();
+      const contactEmail2 = document.getElementById('prov-contact-email').value.trim();
+      if (contactName2 && !document.getElementById('prov-billing-name').value)
+        document.getElementById('prov-billing-name').value = contactName2;
+      if (contactEmail2 && !document.getElementById('prov-billing-email').value)
+        document.getElementById('prov-billing-email').value = contactEmail2;
       loadDashboard();
 
     } catch(e) {
@@ -719,6 +755,48 @@ async function provNext() {
     }
 
   } else if (provStep === 3) {
+    // Save billing & branding to org, then show credentials
+    const btn = document.getElementById('prov-next-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const logoData = document.getElementById('prov-logo-img').src || null;
+      const billingPatch = {
+        billing_contact_name: document.getElementById('prov-billing-name').value.trim() || null,
+        billing_email:        document.getElementById('prov-billing-email').value.trim() || null,
+        billing_phone:        document.getElementById('prov-billing-phone').value.trim() || null,
+        payment_terms:        document.getElementById('prov-payment-terms').value || null,
+        logo_url:             (logoData && logoData !== window.location.href) ? logoData : null,
+      };
+      await fetch(SUPA_URL + '/rest/v1/organizations?id=eq.' + provOrgId, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(billingPatch)
+      });
+    } catch(e) { /* non-fatal */ }
+
+    const adminEmail = document.getElementById('prov-admin-email').value.trim();
+    const adminPass  = document.getElementById('prov-admin-pass').value;
+    const tierLbl = {solo:'Solo — 1 location',small_group:'Small Group — up to 3 locations',mid_group:'Mid Group — up to 6 locations',large_group:'Large Group — up to 12 locations',enterprise:'Enterprise — unlimited'}[provTier.tier] || provTier.tier;
+
+    provStep = 4;
+    document.getElementById('prov-step-3').style.display = 'none';
+    document.getElementById('prov-step-4').style.display = '';
+    document.getElementById('prov-back-btn').style.display = 'none';
+    document.getElementById('prov-next-btn').textContent = 'Done';
+    document.getElementById('prov-next-btn').disabled = false;
+    document.getElementById('prov-modal-title').textContent = '✓ Customer provisioned';
+    document.getElementById('prov-creds').innerHTML = `
+      <div class="creds-title">Login credentials — share with customer</div>
+      <div class="creds-row"><span class="creds-key">URL</span><span class="creds-val">medsync.vet</span></div>
+      <div class="creds-row"><span class="creds-key">Email</span><span class="creds-val">${adminEmail}</span></div>
+      <div class="creds-row"><span class="creds-key">Temp password</span><span class="creds-val">${adminPass}</span></div>
+      <div class="creds-row"><span class="creds-key">Tier</span><span class="creds-val">${tierLbl}</span></div>
+      <div class="creds-note">⚠ Copy and send these credentials to the customer now. The password is not stored and cannot be retrieved.</div>
+    `;
+    loadDashboard();
+
+  } else if (provStep === 4) {
     closeProvision();
   }
 }
@@ -729,9 +807,33 @@ function provBack() {
     document.getElementById('prov-step-2').style.display = 'none';
     document.getElementById('prov-step-1').style.display = '';
     document.getElementById('prov-back-btn').style.display = 'none';
-    document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 1 of 3';
+    document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 1 of 4';
+    document.getElementById('prov-next-btn').textContent = 'Next →';
+  } else if (provStep === 3) {
+    provStep = 2;
+    document.getElementById('prov-step-3').style.display = 'none';
+    document.getElementById('prov-step-2').style.display = '';
+    document.getElementById('prov-modal-title').textContent = 'Provision new customer — Step 2 of 4';
     document.getElementById('prov-next-btn').textContent = 'Next →';
   }
+}
+
+function previewProvLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 512000) { alert('Logo must be under 500KB'); input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('prov-logo-img').src = e.target.result;
+    document.getElementById('prov-logo-preview').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearProvLogo() {
+  document.getElementById('prov-logo-file').value = '';
+  document.getElementById('prov-logo-img').src = '';
+  document.getElementById('prov-logo-preview').style.display = 'none';
 }
 
 function openEditOrg() {

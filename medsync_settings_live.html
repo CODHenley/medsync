@@ -106,6 +106,60 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     </div>
   </div>
 
+
+  <!-- ── Billing & Branding ────────────────────────────────────── -->
+  <div>
+    <div class="section-title">Billing &amp; Branding</div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Organization logo</div><div class="card-sub">Appears in your portal header. PNG or SVG recommended, max 500KB.</div></div>
+      </div>
+      <div class="card-body">
+        <div id="bb-logo-preview" style="margin-bottom:12px;display:none;">
+          <img id="bb-logo-img" style="max-height:64px;max-width:200px;border:0.5px solid var(--border);border-radius:8px;padding:8px;background:#fff;" alt="Logo preview">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="bb-logo-file" accept="image/*" onchange="previewBBLogo(this)" style="font-size:12px;flex:1;min-width:180px;">
+          <button class="save-btn" onclick="saveBBLogo()" style="padding:8px 16px;font-size:12px;">Upload logo</button>
+          <button onclick="clearBBLogo()" style="padding:8px 14px;font-size:12px;border:0.5px solid var(--border);background:#fff;color:var(--navy);border-radius:8px;cursor:pointer;">Remove</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px;">
+      <div class="card-head">
+        <div><div class="card-title">Billing information</div><div class="card-sub">Contact and payment details for your MedSync subscription</div></div>
+      </div>
+      <div class="card-body">
+        <div class="profile-row">
+          <div class="field"><label>Billing contact name</label><input id="bb-billing-name" type="text" placeholder="e.g. Dr. Jane Smith"></div>
+          <div class="field"><label>Billing email</label><input id="bb-billing-email" type="email" placeholder="e.g. billing@yourpractice.com"></div>
+        </div>
+        <div class="profile-row">
+          <div class="field"><label>Billing phone</label><input id="bb-billing-phone" type="tel" placeholder="e.g. (312) 555-0100"></div>
+          <div class="field">
+            <label>Payment terms</label>
+            <select id="bb-payment-terms">
+              <option value="">Select…</option>
+              <option value="net30">Invoice — Net 30</option>
+              <option value="net15">Invoice — Net 15</option>
+              <option value="credit_card">Credit card on file</option>
+              <option value="ach">ACH / bank transfer</option>
+            </select>
+          </div>
+        </div>
+        <div class="profile-row">
+          <div class="field" style="grid-column:span 2;">
+            <label>Current plan</label>
+            <div id="bb-plan-display" style="padding:10px 14px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);">Loading…</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="save-btn" onclick="saveBillingInfo()">Save billing info</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Integrations ──────────────────────────────────────────── -->
   <div>
     <div class="section-title">Integrations &amp; Roadmap</div>
@@ -370,6 +424,99 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 <div class="toast" id="toast"></div>
 
 <script>
+
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const _settSess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
+const _settH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+let _settOrgId = null;
+
+async function loadBillingBranding() {
+  try {
+    const userId = _settSess.user?.id;
+    if (!userId) return;
+    const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:_settH});
+    const users = await ur.json();
+    if (!Array.isArray(users)||!users[0]||!users[0].organization_id) {
+      document.getElementById('bb-plan-display').textContent = 'Internal plan — unlimited locations';
+      return;
+    }
+    _settOrgId = users[0].organization_id;
+    const or = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,logo_url,billing_contact_name,billing_email,billing_phone,payment_terms&id=eq.'+_settOrgId, {headers:_settH});
+    const orgs = await or.json();
+    if (!Array.isArray(orgs)||!orgs[0]) return;
+    const org = orgs[0];
+    const TIER_LABELS = {solo:'Solo — 1 location',small_group:'Small Group — up to 3',mid_group:'Mid Group — up to 6',large_group:'Large Group — up to 12',enterprise:'Enterprise',internal:'Internal'};
+
+    // Logo
+    if (org.logo_url) {
+      document.getElementById('bb-logo-img').src = org.logo_url;
+      document.getElementById('bb-logo-preview').style.display = '';
+    }
+    // Billing fields
+    if (org.billing_contact_name) document.getElementById('bb-billing-name').value = org.billing_contact_name;
+    if (org.billing_email)        document.getElementById('bb-billing-email').value = org.billing_email;
+    if (org.billing_phone)        document.getElementById('bb-billing-phone').value = org.billing_phone;
+    if (org.payment_terms)        document.getElementById('bb-payment-terms').value = org.payment_terms;
+    // Plan display
+    const lc = await fetch(SUPA_URL+'/rest/v1/locations?select=id&organization_id=eq.'+_settOrgId, {headers:_settH});
+    const locs = await lc.json();
+    const count = Array.isArray(locs) ? locs.length : 0;
+    const limit = org.location_limit;
+    const label = TIER_LABELS[org.tier] || org.tier;
+    const planText = limit === 999 ? label+' — unlimited locations' : label+' — '+count+' of '+limit+' locations used';
+    document.getElementById('bb-plan-display').textContent = planText;
+  } catch(e) { console.error('loadBillingBranding:', e); }
+}
+
+function previewBBLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 512000) { showToast('Logo must be under 500KB'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('bb-logo-img').src = e.target.result;
+    document.getElementById('bb-logo-preview').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveBBLogo() {
+  if (!_settOrgId) { showToast('No organization linked to this account'); return; }
+  const img = document.getElementById('bb-logo-img');
+  if (!img.src || img.src === window.location.href) { showToast('Please select a logo file first'); return; }
+  await fetch(SUPA_URL+'/rest/v1/organizations?id=eq.'+_settOrgId, {
+    method:'PATCH', headers:_settH, body:JSON.stringify({logo_url: img.src})
+  });
+  showToast('✓ Logo saved');
+}
+
+async function clearBBLogo() {
+  document.getElementById('bb-logo-file').value = '';
+  document.getElementById('bb-logo-img').src = '';
+  document.getElementById('bb-logo-preview').style.display = 'none';
+  if (_settOrgId) {
+    await fetch(SUPA_URL+'/rest/v1/organizations?id=eq.'+_settOrgId, {
+      method:'PATCH', headers:_settH, body:JSON.stringify({logo_url: null})
+    });
+    showToast('Logo removed');
+  }
+}
+
+async function saveBillingInfo() {
+  if (!_settOrgId) { showToast('No organization linked to this account'); return; }
+  const patch = {
+    billing_contact_name: document.getElementById('bb-billing-name').value.trim() || null,
+    billing_email:        document.getElementById('bb-billing-email').value.trim() || null,
+    billing_phone:        document.getElementById('bb-billing-phone').value.trim() || null,
+    payment_terms:        document.getElementById('bb-payment-terms').value || null,
+  };
+  await fetch(SUPA_URL+'/rest/v1/organizations?id=eq.'+_settOrgId, {
+    method:'PATCH', headers:_settH, body:JSON.stringify(patch)
+  });
+  showToast('✓ Billing info saved');
+}
+
 function nav(screen) {
   if (window.self !== window.top) {
     window.parent.postMessage({type:'navigate',screen:screen},'*');
@@ -439,6 +586,7 @@ function showToast(msg) {
   if (localStorage.getItem('medsync_vs_key')) {
     document.getElementById('vs-key').placeholder = '••••••• (saved)';
   }
+  loadBillingBranding();
 })();
 
 // Toggle label sync
