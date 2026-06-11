@@ -172,8 +172,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
         <!-- Credit card (backup) -->
         <div style="margin-top:20px;padding-top:16px;border-top:0.5px solid var(--border);">
-          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">Credit Card <span style="background:#C8922A;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:6px;">BACKUP</span></div>
-          <div style="font-size:11px;color:var(--mist);margin-bottom:14px;">Used only if an ACH payment fails. We will notify you before charging your card. Visa, Mastercard, and Amex accepted.</div>
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">Credit Card <span style="background:#C8922A;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:6px;">BACKUP · REQUIRED</span></div>
+          <div style="font-size:11px;color:var(--mist);margin-bottom:14px;">Required as a backup payment method. If an ACH payment fails or is returned, your card will be automatically charged within 24 hours. If both payment methods fail, a <strong style="color:#C0392B;">$35 late fee</strong> will be added to the following month's invoice. Visa, Mastercard, and Amex accepted.</div>
           <div class="profile-row">
             <div class="field"><label>Cardholder name</label><input id="bb-cc-holder" type="text" placeholder="Name on card"></div>
             <div class="field">
@@ -484,25 +484,31 @@ const _settSess = (function(){ try{return JSON.parse(localStorage.getItem('medsy
 const _settH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
 let _settOrgId = null;
 
+function _sGetMu(){ try{return JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');}catch(e){return{};} }
+function _sJwtSub(tok){ try{ return JSON.parse(atob(tok.split('.')[1])).sub; }catch(e){ return null; } }
+
 async function loadBillingBranding() {
   try {
-    // Try session user ID first, fall back to medsync_user stored at login
-    const userId = _settSess.user?.id || _settSess.user_id;
-    const _mu = (function(){ try{return JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');}catch(e){return{};} })();
+    const _mu = _sGetMu();
+    // Fast path: org_id stored at login
+    let orgId = _mu.organization_id || null;
 
-    const userEmail = _settSess.user?.email || _settSess.email || _mu.email || null;
-    let orgId = null;
-    if (userId) {
-      const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:_settH});
-      const users = await ur.json();
-      orgId = (Array.isArray(users) && users[0]) ? users[0].organization_id : null;
+    if (!orgId) {
+      // Fallback: query users table
+      const userId = _settSess.user?.id || _settSess.user_id || _sJwtSub(_settSess.access_token);
+      const userEmail = _settSess.user?.email || _settSess.email || _mu.email || null;
+      const Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+      if (userId) {
+        const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:Hanon});
+        const users = await ur.json();
+        orgId = (Array.isArray(users) && users[0]) ? users[0].organization_id : null;
+      }
+      if (!orgId && userEmail) {
+        const ur2 = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&email=eq.'+encodeURIComponent(userEmail), {headers:Hanon});
+        const users2 = await ur2.json();
+        orgId = (Array.isArray(users2) && users2[0]) ? users2[0].organization_id : null;
+      }
     }
-    if (!orgId && userEmail) {
-      const ur2 = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&email=eq.'+encodeURIComponent(userEmail), {headers:_settH});
-      const users2 = await ur2.json();
-      orgId = (Array.isArray(users2) && users2[0]) ? users2[0].organization_id : null;
-    }
-    if (!orgId && _mu.organization_id) orgId = _mu.organization_id;
     if (!orgId) {
       document.getElementById('bb-plan-display').innerHTML = '<strong>Internal plan</strong> — unlimited locations';
       return;
