@@ -238,10 +238,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;">
         <div class="detail-grid" id="detail-grid"></div>
         <div>
-          <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Locations</div>
+          <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+            Locations
+            <button class="btn" id="link-locs-btn" onclick="openLinkLocs()" style="font-size:10px;padding:3px 10px;">+ Link existing</button>
+          </div>
           <table class="sub-table"><thead><tr><th>Name</th><th>Added</th></tr></thead>
             <tbody id="detail-locs"></tbody>
           </table>
+          <!-- Link locations panel -->
+          <div id="link-locs-panel" style="display:none;margin-top:10px;border:0.5px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Select unassigned locations to link to this org:</div>
+            <div id="link-locs-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:10px;"></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-new" style="font-size:12px;padding:7px 14px;" onclick="confirmLinkLocs()">Link selected</button>
+              <button class="btn" style="font-size:12px;" onclick="closeLinkLocs()">Cancel</button>
+            </div>
+          </div>
         </div>
         <div>
           <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Users</div>
@@ -500,6 +512,48 @@ function openOrgDetail(orgId) {
 
   document.getElementById('detail-section').style.display = '';
   document.getElementById('detail-section').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function openLinkLocs() {
+  const unassigned = ALL_LOCS.filter(l => !l.organization_id);
+  const panel = document.getElementById('link-locs-panel');
+  const list  = document.getElementById('link-locs-list');
+  if (!unassigned.length) {
+    showToast('No unassigned locations found');
+    return;
+  }
+  list.innerHTML = unassigned.map(l => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+      <input type="checkbox" value="${l.id}" style="cursor:pointer;">
+      ${l.name}
+    </label>
+  `).join('');
+  panel.style.display = '';
+}
+
+function closeLinkLocs() {
+  document.getElementById('link-locs-panel').style.display = 'none';
+}
+
+async function confirmLinkLocs() {
+  if (!selectedOrgId) return;
+  const checked = [...document.querySelectorAll('#link-locs-list input:checked')].map(el => el.value);
+  if (!checked.length) { showToast('Select at least one location'); return; }
+  try {
+    await Promise.all(checked.map(locId =>
+      fetch(SUPA_URL + `/rest/v1/locations?id=eq.${locId}`, {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ organization_id: selectedOrgId })
+      })
+    ));
+    showToast(`✓ Linked ${checked.length} location${checked.length > 1 ? 's' : ''}`);
+    closeLinkLocs();
+    loadDashboard();
+    openOrgDetail(selectedOrgId);
+  } catch(e) {
+    showToast('⚠ Could not link locations');
+  }
 }
 
 async function suspendOrg() {
