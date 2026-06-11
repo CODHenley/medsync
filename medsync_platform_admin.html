@@ -648,10 +648,10 @@ async function provNext() {
     btn.textContent = 'Creating…';
 
     try {
-      // 1. Create org
+      // 1. Create org — use anon key so RLS write policy applies correctly
       const orgRes = await fetch(SUPA_URL + '/rest/v1/organizations', {
         method: 'POST',
-        headers: { ...H, 'Prefer': 'return=representation' },
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify({
           name:           document.getElementById('prov-org-name').value.trim(),
           tier:           provTier.tier,
@@ -662,8 +662,9 @@ async function provNext() {
           notes:          document.getElementById('prov-notes').value.trim() || null,
         })
       });
-      const orgs = await orgRes.json();
-      if (!Array.isArray(orgs) || !orgs[0]) throw new Error('Could not create org');
+      const orgsRaw = await orgRes.text();
+      let orgs; try { orgs = JSON.parse(orgsRaw); } catch(e) { throw new Error('Org create failed: ' + orgsRaw); }
+      if (!Array.isArray(orgs) || !orgs[0]) throw new Error('Org create failed: ' + orgsRaw);
       provOrgId = orgs[0].id;
 
       // 2. Create Supabase Auth user
