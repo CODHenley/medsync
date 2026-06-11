@@ -381,14 +381,17 @@ def run_sync(token, dry_run=False, location_filter=None):
 # ── CLI ───────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MedSync → Vetspire daily usage sync')
-    parser.add_argument('--token',    required=True, help='Vetspire API token')
+    parser.add_argument('--token',    required=False, default=None, help='Vetspire API token')
     parser.add_argument('--dry-run',  action='store_true', help='Preview changes without writing')
     parser.add_argument('--location', default=None,
                         help='Run for one location only (e.g. "Old Orchard")')
     args = parser.parse_args()
 
+    resolved_token = args.token or os.environ.get('VETSPIRE_API_TOKEN', '')
+    if not resolved_token:
+        raise SystemExit('ERROR: VETSPIRE_API_TOKEN not set')
     run_sync(
-        token=args.token,
+        token=resolved_token,
         dry_run=args.dry_run,
         location_filter=args.location,
     )
