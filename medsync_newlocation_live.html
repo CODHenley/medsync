@@ -816,7 +816,7 @@ function showToast(msg) {
 async function checkLocationLimit() {
   try {
     const userId = _sess.user?.id;
-    if (!userId) { render(); return; }
+    if (!userId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; }
 
     const userRes = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&id=eq.${userId}`, { headers: H });
     const users = await userRes.json();
