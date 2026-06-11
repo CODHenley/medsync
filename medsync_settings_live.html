@@ -490,17 +490,29 @@ function _sJwtSub(tok){ try{ return JSON.parse(atob(tok.split('.')[1])).sub; }ca
 async function loadBillingBranding() {
   try {
     const _mu = _sGetMu();
-    // Fast path: org_id stored at login
-    let orgId = _mu.organization_id || null;
+    // Gather email from every source — including JWT payload as last resort
+    let userEmail = _settSess.user?.email || _settSess.email || _mu.email;
+    if (!userEmail && _settSess.access_token) {
+      try { userEmail = JSON.parse(atob(_settSess.access_token.split('.')[1])).email; } catch(e) {}
+    }
+    userEmail = (userEmail || '').trim().toLowerCase();
 
-    const userEmail = _settSess.user?.email || _settSess.email || _mu.email || null;
     const settAccessToken = _settSess.access_token || SUPA_KEY;
     const Sett_Hauth = {'apikey':SUPA_KEY,'Authorization':'Bearer '+settAccessToken,'Content-Type':'application/json'};
     const Sett_Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
 
-    // 2. contact_email lookup — try auth token then anon
+    // 0. Fast path: @scoutcare.com — skip network lookups
+    let orgId = null;
+    if (userEmail.endsWith('@scoutcare.com')) {
+      orgId = 'ce27c4f4-7352-4128-86ff-b1891b50933c';
+    }
+
+    // 1. Stored at login
+    if (!orgId) orgId = _mu.organization_id || null;
+
+    // 2. contact_email lookup (anon first — works with anon_all policy)
     if (!orgId && userEmail) {
-      for (const hdrs of [Sett_Hauth, Sett_Hanon]) {
+      for (const hdrs of [Sett_Hanon, Sett_Hauth]) {
         const ro = await fetch(SUPA_URL+'/rest/v1/organizations?select=id&contact_email=eq.'+encodeURIComponent(userEmail), {headers:hdrs});
         const orgsE = await ro.json();
         orgId = (Array.isArray(orgsE) && orgsE[0]) ? orgsE[0].id : null;
@@ -508,10 +520,10 @@ async function loadBillingBranding() {
       }
     }
 
-    // 3. Users table — try auth token then anon
+    // 3. Users table lookup
     if (!orgId) {
       const userId = _settSess.user?.id || _settSess.user_id || _sJwtSub(_settSess.access_token);
-      for (const hdrs of [Sett_Hauth, Sett_Hanon]) {
+      for (const hdrs of [Sett_Hanon, Sett_Hauth]) {
         if (!orgId && userId) {
           const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:hdrs});
           const u = await ur.json();
@@ -526,10 +538,6 @@ async function loadBillingBranding() {
       }
     }
 
-    // 4. Hardcoded fallback for Scout internal account
-    if (!orgId && userEmail && userEmail.endsWith('@scoutcare.com')) {
-      orgId = 'ce27c4f4-7352-4128-86ff-b1891b50933c';
-    }
     if (!orgId) {
       document.getElementById('bb-plan-display').innerHTML = '<strong>Internal plan</strong> — unlimited locations';
       return;

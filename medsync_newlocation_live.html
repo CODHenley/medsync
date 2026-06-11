@@ -897,18 +897,30 @@ function _getMu(){ try{return JSON.parse(localStorage.getItem('medsync_user')||s
 async function checkLocationLimit() {
   try {
     const _mu2 = _getMu();
-    const userEmail = _sess.user?.email || _sess.email || _mu2.email;
+    // Gather email from every source — including JWT payload as last resort
+    let userEmail = _sess.user?.email || _sess.email || _mu2.email;
+    if (!userEmail && _sess.access_token) {
+      try { userEmail = JSON.parse(atob(_sess.access_token.split('.')[1])).email; } catch(e) {}
+    }
+    userEmail = (userEmail || '').trim().toLowerCase();
+
     const accessToken = _sess.access_token || SUPA_KEY;
-    // Use user's token when available — hits authenticated RLS policies
     const Hauth = {'apikey':SUPA_KEY,'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'};
+    // Anon headers: orgs table only has anon_all RLS — user JWT returns [] without authenticated role policy
     const Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
 
-    // 1. Fast path: stored at login
-    let orgId = _mu2.organization_id || null;
+    // 0. Fast path: @scoutcare.com — skip network lookups, go straight to known org
+    let orgId = null;
+    if (userEmail.endsWith('@scoutcare.com')) {
+      orgId = 'ce27c4f4-7352-4128-86ff-b1891b50933c';
+    }
 
-    // 2. Lookup by contact_email (try both auth and anon headers)
+    // 1. Stored at login
+    if (!orgId) orgId = _mu2.organization_id || null;
+
+    // 2. Lookup by contact_email (anon first — works with anon_all policy)
     if (!orgId && userEmail) {
-      for (const hdrs of [Hauth, Hanon]) {
+      for (const hdrs of [Hanon, Hauth]) {
         const r = await fetch(SUPA_URL + `/rest/v1/organizations?select=id&contact_email=eq.${encodeURIComponent(userEmail)}`, { headers: hdrs });
         const d = await r.json();
         orgId = Array.isArray(d) && d[0] ? d[0].id : null;
@@ -916,10 +928,10 @@ async function checkLocationLimit() {
       }
     }
 
-    // 3. Users table by id or email (try both token types)
+    // 3. Users table by id or email
     if (!orgId) {
       const userId = _sess.user?.id || _sess.user_id || _jwtSub(_sess.access_token);
-      for (const hdrs of [Hauth, Hanon]) {
+      for (const hdrs of [Hanon, Hauth]) {
         if (!orgId && userId) {
           const r = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&id=eq.${userId}`, { headers: hdrs });
           const d = await r.json();
@@ -934,16 +946,13 @@ async function checkLocationLimit() {
       }
     }
 
-    // 4. Hardcoded fallback for Scout internal account
-    if (!orgId && userEmail && userEmail.endsWith('@scoutcare.com')) {
-      orgId = 'ce27c4f4-7352-4128-86ff-b1891b50933c';
-    }
-    if (!orgId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; } // Legacy/Scout — no limit
-    _orgIdCache = orgId; // cache for plan modal
+    if (!orgId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; }
+    _orgIdCache = orgId;
 
+    // Use anon headers for final fetch — orgs table has anon_all policy, not authenticated policy
     const [orgRes, locRes] = await Promise.all([
-      fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit&id=eq.${orgId}`, { headers: H }),
-      fetch(SUPA_URL + `/rest/v1/locations?select=id&organization_id=eq.${orgId}`, { headers: H }),
+      fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit&id=eq.${orgId}`, { headers: Hanon }),
+      fetch(SUPA_URL + `/rest/v1/locations?select=id&organization_id=eq.${orgId}`, { headers: Hanon }),
     ]);
     const orgs = await orgRes.json();
     const locs = await locRes.json();
