@@ -493,29 +493,42 @@ async function loadBillingBranding() {
     // Fast path: org_id stored at login
     let orgId = _mu.organization_id || null;
 
-    const Sett_Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
     const userEmail = _settSess.user?.email || _settSess.email || _mu.email || null;
+    const settAccessToken = _settSess.access_token || SUPA_KEY;
+    const Sett_Hauth = {'apikey':SUPA_KEY,'Authorization':'Bearer '+settAccessToken,'Content-Type':'application/json'};
+    const Sett_Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
 
-    // 2. Lookup by contact_email on organizations table (bypasses users RLS)
+    // 2. contact_email lookup — try auth token then anon
     if (!orgId && userEmail) {
-      const ro = await fetch(SUPA_URL+'/rest/v1/organizations?select=id&contact_email=eq.'+encodeURIComponent(userEmail), {headers:Sett_Hanon});
-      const orgsE = await ro.json();
-      orgId = (Array.isArray(orgsE) && orgsE[0]) ? orgsE[0].id : null;
+      for (const hdrs of [Sett_Hauth, Sett_Hanon]) {
+        const ro = await fetch(SUPA_URL+'/rest/v1/organizations?select=id&contact_email=eq.'+encodeURIComponent(userEmail), {headers:hdrs});
+        const orgsE = await ro.json();
+        orgId = (Array.isArray(orgsE) && orgsE[0]) ? orgsE[0].id : null;
+        if (orgId) break;
+      }
     }
 
-    // 3. Last resort: users table
+    // 3. Users table — try auth token then anon
     if (!orgId) {
       const userId = _settSess.user?.id || _settSess.user_id || _sJwtSub(_settSess.access_token);
-      if (userId) {
-        const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:Sett_Hanon});
-        const users = await ur.json();
-        orgId = (Array.isArray(users) && users[0]) ? users[0].organization_id : null;
+      for (const hdrs of [Sett_Hauth, Sett_Hanon]) {
+        if (!orgId && userId) {
+          const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:hdrs});
+          const u = await ur.json();
+          orgId = (Array.isArray(u) && u[0]) ? u[0].organization_id : null;
+        }
+        if (!orgId && userEmail) {
+          const ur2 = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&email=eq.'+encodeURIComponent(userEmail), {headers:hdrs});
+          const u2 = await ur2.json();
+          orgId = (Array.isArray(u2) && u2[0]) ? u2[0].organization_id : null;
+        }
+        if (orgId) break;
       }
-      if (!orgId && userEmail) {
-        const ur2 = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&email=eq.'+encodeURIComponent(userEmail), {headers:Sett_Hanon});
-        const users2 = await ur2.json();
-        orgId = (Array.isArray(users2) && users2[0]) ? users2[0].organization_id : null;
-      }
+    }
+
+    // 4. Hardcoded fallback for Scout internal account
+    if (!orgId && userEmail && userEmail.endsWith('@scoutcare.com')) {
+      orgId = 'ce27c4f4-7352-4128-86ff-b1891b50933c';
     }
     if (!orgId) {
       document.getElementById('bb-plan-display').innerHTML = '<strong>Internal plan</strong> — unlimited locations';
