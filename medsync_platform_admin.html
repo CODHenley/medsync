@@ -403,7 +403,7 @@ async function doLogin() {
     }
 
     SESSION = data;
-    H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token, 'Content-Type': 'application/json' };
+    H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
     document.getElementById('tb-user').textContent = users[0].full_name || email;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
