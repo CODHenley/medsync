@@ -1161,13 +1161,13 @@ function renderBillingTab() {
   document.getElementById('b-overdue-sub').textContent = overdue ? overdue+' overdue' : 'All accounts current';
 
   const tbody = document.getElementById('bill-tbody');
-  tbody.innerHTML = MOCK_BILLING.map(org => {
+  tbody.innerHTML = MOCK_BILLING.map((org, idx) => {
     const badge = {current:'pay-current',pending:'pay-pending',overdue:'pay-overdue',trial:'pay-trial'}[org.status];
     const label = {current:'Current',pending:'Pending',overdue:'Overdue',trial:'Trial'}[org.status];
     const enrollBadge = org.enrolled
       ? '<span style="color:#0F6E56;font-size:10px;">✓ Paid</span>'
       : '<span style="color:#a0700a;font-size:10px;">Pending</span>';
-    return `<tr>
+    return `<tr onclick="openBillingOrgDetail(${idx})" style="cursor:pointer;">
       <td><div style="font-weight:500;">${org.name}</div><div style="font-size:10px;color:var(--mist);">${org.locs} location${org.locs!==1?'s':''}</div></td>
       <td><span class="tier-badge tier-${org.tier}" style="font-size:10px;">${org.tierLabel}</span></td>
       <td style="font-weight:600;">$${org.monthly}<span style="font-weight:400;color:var(--mist);">/mo</span></td>
@@ -1177,6 +1177,60 @@ function renderBillingTab() {
       <td><div>${org.billingContact}</div><div style="font-size:10px;color:var(--mist);">${org.billingEmail}</div></td>
     </tr>`;
   }).join('');
+}
+
+// ── Click org row in billing tab → switch to orgs tab + open detail ──────
+function openBillingOrgDetail(idx) {
+  const mock = MOCK_BILLING[idx];
+  // Try to find matching real org by name
+  const realOrg = ALL_ORGS && ALL_ORGS.find(o => o.name === mock.name);
+  if (realOrg) {
+    switchTab('orgs');
+    setTimeout(() => openOrgDetail(realOrg.id), 200);
+  } else {
+    // Show a billing-only detail modal for mock orgs
+    showBillingDetailModal(mock);
+  }
+}
+
+function showBillingDetailModal(org) {
+  const existing = document.getElementById('bill-detail-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'bill-detail-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+  const payments = getPayments(org.name);
+  const flags = typeof loadFlags === 'function' ? loadFlags(org.name) : [];
+  const payRows = payments.length
+    ? payments.map(p => `<tr><td style="font-size:11px;padding:6px 10px;">${p.date}</td><td style="padding:6px 10px;font-weight:600;">$${p.amount}</td><td style="font-size:11px;color:#8A93A8;padding:6px 10px;">${p.method}</td><td style="padding:6px 10px;"><span style="background:${p.status==='paid'?'#2E8B57':'#C0392B'};color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">${p.status.toUpperCase()}</span></td></tr>`).join('')
+    : '<tr><td colspan="4" style="padding:10px;color:#8A93A8;font-size:12px;">No payment history</td></tr>';
+  const flagsHtml = flags.length
+    ? flags.map(f => `<div style="font-size:11px;padding:6px 10px;background:#FFF8F8;border-radius:6px;margin-bottom:4px;color:#C0392B;">⚠ ${f.type} ${f.note ? '— '+f.note : ''}</div>`).join('')
+    : '<div style="font-size:12px;color:#8A93A8;padding:4px 0;">No flags</div>';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);" onclick="event.stopPropagation()">
+      <div style="padding:18px 22px 12px;border-bottom:0.5px solid #DDD9EC;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:15px;font-weight:600;">${org.name}</div><div style="font-size:11px;color:#8A93A8;margin-top:2px;">${org.tierLabel} · $${org.monthly}/mo · ${org.locs} location${org.locs!==1?'s':''}</div></div>
+        <button onclick="document.getElementById('bill-detail-overlay').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#8A93A8;line-height:1;">×</button>
+      </div>
+      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Billing contact</div>
+          <div style="font-size:13px;font-weight:500;">${org.billingContact}</div>
+          <div style="font-size:11px;color:#8A93A8;">${org.billingEmail}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Account flags</div>
+          ${flagsHtml}
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Payment history</div>
+          <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#F8F7FC;"><th style="padding:6px 10px;font-size:10px;color:#8A93A8;text-align:left;">Date</th><th style="padding:6px 10px;font-size:10px;color:#8A93A8;text-align:left;">Amount</th><th style="padding:6px 10px;font-size:10px;color:#8A93A8;text-align:left;">Method</th><th style="padding:6px 10px;font-size:10px;color:#8A93A8;text-align:left;">Status</th></tr></thead><tbody>${payRows}</tbody></table>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
 }
 
 // ── Run billing cycle modal ───────────────────────────────────
