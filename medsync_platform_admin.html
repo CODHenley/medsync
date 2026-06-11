@@ -376,7 +376,8 @@ async function doLogin() {
       body: JSON.stringify({ email, password: pass })
     });
     const data = await res.json();
-    if (!data.access_token) throw new Error('Auth failed');
+    console.log('Auth response:', JSON.stringify(data).substring(0, 200));
+    if (!data.access_token) throw new Error('Auth failed — ' + (data.error_description || data.msg || 'no token'));
 
     // Verify superadmin role — use anon key so RLS doesn't block the lookup
     const userRes = await fetch(
@@ -384,8 +385,9 @@ async function doLogin() {
       { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
     );
     const users = await userRes.json();
+    console.log('Users lookup:', JSON.stringify(users));
     if (!Array.isArray(users) || !users.length || users[0].role !== 'medsync_superadmin') {
-      throw new Error('Not superadmin');
+      throw new Error('Role check failed — got: ' + JSON.stringify(users));
     }
 
     SESSION = data;
