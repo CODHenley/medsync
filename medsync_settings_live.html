@@ -138,19 +138,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="field"><label>Billing phone</label><input id="bb-billing-phone" type="tel" placeholder="e.g. (312) 555-0100"></div>
           <div class="field">
             <label>Payment terms</label>
-            <select id="bb-payment-terms">
-              <option value="">Select…</option>
-              <option value="net30">Invoice — Net 30</option>
-              <option value="net15">Invoice — Net 15</option>
-              <option value="credit_card">Credit card on file</option>
-              <option value="ach">ACH / bank transfer</option>
-            </select>
+            <div style="padding:10px 14px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:12px;color:var(--navy);line-height:1.6;">
+              Billed monthly on the <strong>1st of each month</strong>. Plans starting mid-month are prorated based on days remaining in that month.
+            </div>
           </div>
         </div>
         <div class="profile-row">
           <div class="field" style="grid-column:span 2;">
             <label>Current plan</label>
-            <div id="bb-plan-display" style="padding:10px 14px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);">Loading…</div>
+            <div id="bb-plan-display" style="padding:12px 16px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);line-height:1.7;">Loading…</div>
+            <div style="margin-top:8px;padding:12px 16px;background:#E8F4EE;border:0.5px solid #b0ddd0;border-radius:9px;font-size:12px;color:#1a5c3a;line-height:1.7;">
+              <strong>Enrollment fee:</strong> $500 one-time (non-refundable). Covers on-site physical count and 30-day supported launch.<br>
+              <strong>90-day money-back guarantee:</strong> Cancel within 90 days of your start date for a full refund, returned within 60 days of your cancellation date.
+            </div>
           </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:4px;">
@@ -433,15 +433,22 @@ let _settOrgId = null;
 
 async function loadBillingBranding() {
   try {
-    const userId = _settSess.user?.id;
-    if (!userId) return;
-    const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:_settH});
-    const users = await ur.json();
-    if (!Array.isArray(users)||!users[0]||!users[0].organization_id) {
-      document.getElementById('bb-plan-display').textContent = 'Internal plan — unlimited locations';
+    // Try session user ID first, fall back to medsync_user stored at login
+    const userId = _settSess.user?.id || _settSess.user_id;
+    const _mu = (function(){ try{return JSON.parse(localStorage.getItem('medsync_user')||'{}');}catch(e){return{};} })();
+
+    let orgId = null;
+    if (userId) {
+      const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:_settH});
+      const users = await ur.json();
+      orgId = (Array.isArray(users) && users[0]) ? users[0].organization_id : null;
+    }
+    if (!orgId && _mu.organization_id) orgId = _mu.organization_id;
+    if (!orgId) {
+      document.getElementById('bb-plan-display').innerHTML = '<strong>Internal plan</strong> — unlimited locations';
       return;
     }
-    _settOrgId = users[0].organization_id;
+    _settOrgId = orgId;
     const or = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,logo_url,billing_contact_name,billing_email,billing_phone,payment_terms&id=eq.'+_settOrgId, {headers:_settH});
     const orgs = await or.json();
     if (!Array.isArray(orgs)||!orgs[0]) return;
@@ -464,8 +471,10 @@ async function loadBillingBranding() {
     const count = Array.isArray(locs) ? locs.length : 0;
     const limit = org.location_limit;
     const label = TIER_LABELS[org.tier] || org.tier;
-    const planText = limit === 999 ? label+' — unlimited locations' : label+' — '+count+' of '+limit+' locations used';
-    document.getElementById('bb-plan-display').textContent = planText;
+    const monthly = {solo:149,small_group:249,mid_group:349,large_group:449,enterprise:null,internal:149}[org.tier];
+    const priceStr = monthly ? '$'+monthly+'/month · $'+(monthly*12)+'/year' : 'Custom pricing';
+    const slotsStr = limit === 999 ? 'Unlimited locations' : count+' of '+limit+' location slots used';
+    document.getElementById('bb-plan-display').innerHTML = '<strong>'+label+'</strong> &nbsp;·&nbsp; '+priceStr+'<br>'+slotsStr;
   } catch(e) { console.error('loadBillingBranding:', e); }
 }
 

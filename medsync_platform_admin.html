@@ -374,13 +374,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         </div>
         <div class="form-group">
           <label class="form-label">Payment terms</label>
-          <select class="form-input" id="prov-payment-terms">
-            <option value="">Select…</option>
-            <option value="net30">Invoice — Net 30</option>
-            <option value="net15">Invoice — Net 15</option>
-            <option value="credit_card">Credit card on file</option>
-            <option value="ach">ACH / bank transfer</option>
-          </select>
+          <div style="padding:10px 12px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:12px;color:var(--navy);line-height:1.6;">
+            Billed monthly on the <strong>1st of each month</strong>. Plans starting mid-month are prorated based on days remaining in that month.
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Enrollment fee</label>
+          <div style="padding:10px 12px;background:#E8F4EE;border:0.5px solid #b0ddd0;border-radius:9px;font-size:12px;color:#1a5c3a;line-height:1.6;">
+            <strong>$500 one-time, non-refundable.</strong> Covers on-site physical count and 30-day supported launch — same for all tiers.<br>
+            <strong>90-day money-back guarantee:</strong> Full refund if cancelled within 90 days of start. Returned within 60 days of cancellation.
+          </div>
         </div>
       </div>
 
@@ -765,7 +768,7 @@ async function provNext() {
         billing_contact_name: document.getElementById('prov-billing-name').value.trim() || null,
         billing_email:        document.getElementById('prov-billing-email').value.trim() || null,
         billing_phone:        document.getElementById('prov-billing-phone').value.trim() || null,
-        payment_terms:        document.getElementById('prov-payment-terms').value || null,
+        payment_terms:        'monthly_first',
         logo_url:             (logoData && logoData !== window.location.href) ? logoData : null,
       };
       await fetch(SUPA_URL + '/rest/v1/organizations?id=eq.' + provOrgId, {
