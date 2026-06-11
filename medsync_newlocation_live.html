@@ -299,31 +299,10 @@ const CAT_COLORS = {
   'Prescription Diets':'#8A93A8','Dermatology':'#A06020',
 };
 
-function renderPlanBanner() {
-  if (!planInfo) return '';
-  const { tier, count, limit, label } = planInfo;
-  const unlimited = limit === 999;
-  const remaining = unlimited ? null : limit - count;
-  const pct = unlimited ? 0 : count / limit;
-  const color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
-  const bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
-  const border= unlimited ? '#b0ddd0' : pct >= 1 ? '#f0a0a0' : pct >= 0.8 ? '#f0d070' : '#b0ddd0';
-  const usageText = unlimited
-    ? 'Unlimited locations'
-    : `${count} of ${limit} location${limit===1?'':'s'} used &nbsp;·&nbsp; <strong>${remaining} remaining</strong>`;
-  return `<div style="background:${bg};border:0.5px solid ${border};border-radius:10px;padding:11px 16px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;font-size:12px;">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span style="background:${color};color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;">${label}</span>
-      <span style="color:${color};">${usageText}</span>
-    </div>
-    ${!unlimited && remaining === 1 ? '<span style="font-size:11px;color:'+color+';">⚠ Last available slot</span>' : ''}
-  </div>`;
-}
-
 function render() {
   const shell = document.getElementById('shell');
   switch(state.screen) {
-    case 'type':    shell.innerHTML = renderPlanBanner() + renderTypeScreen(); break;
+    case 'type':    shell.innerHTML = renderTypeScreen(); break;
     case 'config':  shell.innerHTML = renderConfigScreen(); break;
     case 'order':   shell.innerHTML = renderOrderScreen(); break;
     case 'existing':shell.innerHTML = renderExistingScreen(); break;
@@ -361,6 +340,26 @@ function renderTypeScreen() {
           <div class="tile-name">Existing Practice</div>
           <div class="tile-desc">Acquiring or onboarding an existing clinic — connect your PIMS to automatically import current inventory and set min/max thresholds.</div>
         </div>
+        ${(function(){
+          if (!planInfo) return '';
+          var unlimited = planInfo.limit === 999;
+          var remaining = unlimited ? null : planInfo.limit - planInfo.count;
+          var pct = unlimited ? 0 : planInfo.count / planInfo.limit;
+          var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
+          var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
+          var bdr   = unlimited ? '#b0ddd0' : pct >= 1 ? '#f0a0a0' : pct >= 0.8 ? '#f0d070' : '#b0ddd0';
+          var usageText = unlimited ? 'Unlimited locations' : remaining + ' of ' + planInfo.limit + ' slots remaining';
+          var warn = (!unlimited && remaining === 0) ? '<div style="font-size:10px;margin-top:6px;color:'+color+';font-weight:600;">No slots available — contact Scout to upgrade</div>' :
+                     (!unlimited && remaining === 1) ? '<div style="font-size:10px;margin-top:6px;color:'+color+';font-weight:600;">⚠ Last available slot</div>' : '';
+          var bar = unlimited ? '' : '<div style="background:#e0e0e0;border-radius:4px;height:5px;margin-top:10px;overflow:hidden;"><div style="background:'+color+';height:5px;width:'+(planInfo.count/planInfo.limit*100)+'%;border-radius:4px;"></div></div>';
+          return '<div class="tile" style="background:'+bg+';border-color:'+bdr+';cursor:default;pointer-events:none;">'
+            +'<div class="tile-icon">📋</div>'
+            +'<div class="tile-name" style="color:'+color+';">Your Plan</div>'
+            +'<div style="margin-top:4px;"><span style="background:'+color+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;">'+planInfo.label+'</span></div>'
+            +'<div style="font-size:12px;margin-top:8px;color:'+color+';">'+usageText+'</div>'
+            +bar+warn
+            +'</div>';
+        })()}
       </div>
     </div>
     <div class="btn-row">
