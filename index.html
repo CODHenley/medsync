@@ -21,6 +21,9 @@ function showScreen(name) {
   var sb = document.getElementById('asb-' + name);
   if (sb) sb.classList.add('active');
   window.scrollTo(0,0);
+  if (name === 'portfolio') {
+    setTimeout(loadRecognition, 250);
+  }
   if (name==='analytics' && window._analyticsLoaded !== true) {
     window._analyticsLoaded = true;
     if (typeof loadData === 'function') setTimeout(loadData, 100);
@@ -53,6 +56,102 @@ function showScreen(name) {
   }
 }
 function showOpsScreen(n) { showScreen(n); }
+
+// ── Monthly Recognition ────────────────────────────────────────────────────
+async function loadRecognition() {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const locEl  = document.getElementById('rec-location');
+  const leadEl = document.getElementById('rec-lead');
+  if (!locEl || !leadEl) return;
+
+  try {
+    // ── Award 1: location with most goods lost submissions this month ──────
+    const [glRes, usersRes, poRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: H }),
+    ]);
+    const glData    = await glRes.json();
+    const leadsData = await usersRes.json();
+    const poData    = await poRes.json();
+
+    // Tally goods lost by location
+    const glByLoc = {};
+    if (Array.isArray(glData)) {
+      glData.forEach(function(r) {
+        if (!r.location_id) return;
+        if (!glByLoc[r.location_id]) glByLoc[r.location_id] = { name: r.locations && r.locations.name ? r.locations.name : 'Unknown', count: 0 };
+        glByLoc[r.location_id].count++;
+      });
+    }
+    const topLoc = Object.values(glByLoc).sort(function(a,b){ return b.count - a.count; })[0] || null;
+
+    // Tally POs by location
+    const poByLoc = {};
+    if (Array.isArray(poData)) {
+      poData.forEach(function(r) {
+        if (r.location_id) poByLoc[r.location_id] = (poByLoc[r.location_id] || 0) + 1;
+      });
+    }
+
+    // Score each inventory lead: goods_lost × 2 + po_submissions
+    let topLead = null, topScore = -1;
+    if (Array.isArray(leadsData)) {
+      leadsData.forEach(function(u) {
+        const gl = (glByLoc[u.location_id] || {}).count || 0;
+        const po = poByLoc[u.location_id] || 0;
+        const score = gl * 2 + po;
+        if (score > topScore || (score === topScore && topLead === null)) {
+          topScore = score; topLead = { name: u.full_name, locName: u.locations && u.locations.name ? u.locations.name : '', score: score, gl: gl, po: po };
+        }
+      });
+    }
+
+    // ── Render Award 1 ────────────────────────────────────────────────────
+    if (topLoc && topLoc.count > 0) {
+      locEl.innerHTML =
+        '<div style="font-size:26px;line-height:1;flex-shrink:0;">🏅</div>' +
+        '<div>' +
+          '<div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Top Reporting Location</div>' +
+          '<div style="font-size:14px;font-weight:700;color:#1C2B4A;">' + topLoc.name + '</div>' +
+          '<div style="font-size:11px;color:#6B7A55;margin-top:2px;">' + topLoc.count + ' goods lost ' + (topLoc.count === 1 ? 'submission' : 'submissions') + ' this month</div>' +
+        '</div>';
+    } else {
+      locEl.innerHTML =
+        '<div style="font-size:22px;flex-shrink:0;">🏅</div>' +
+        '<div>' +
+          '<div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Top Reporting Location</div>' +
+          '<div style="font-size:12px;color:#8A93A8;">No submissions recorded yet this month.</div>' +
+        '</div>';
+    }
+
+    // ── Render Award 2 ────────────────────────────────────────────────────
+    if (topLead && topLead.score > 0) {
+      const parts = [];
+      if (topLead.gl > 0) parts.push(topLead.gl + ' goods lost');
+      if (topLead.po > 0) parts.push(topLead.po + ' PO' + (topLead.po > 1 ? 's' : '') + ' processed');
+      leadEl.innerHTML =
+        '<div style="font-size:26px;line-height:1;flex-shrink:0;">⭐</div>' +
+        '<div>' +
+          '<div style="font-size:9px;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Most Consistent Inventory Lead</div>' +
+          '<div style="font-size:14px;font-weight:700;color:#1C2B4A;">' + topLead.name + '</div>' +
+          '<div style="font-size:11px;color:#1a56db;margin-top:2px;">' + (topLead.locName ? topLead.locName + ' · ' : '') + parts.join(' · ') + '</div>' +
+        '</div>';
+    } else {
+      leadEl.innerHTML =
+        '<div style="font-size:22px;flex-shrink:0;">⭐</div>' +
+        '<div>' +
+          '<div style="font-size:9px;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Most Consistent Inventory Lead</div>' +
+          '<div style="font-size:12px;color:#8A93A8;">No activity recorded yet this month.</div>' +
+        '</div>';
+    }
+  } catch(e) {
+    if (locEl) locEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">🏅</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
+    if (leadEl) leadEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">⭐</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
+  }
+}
 
 // Close hamburger when clicking anywhere outside the sidebar
 // window.blur fires when focus moves into an iframe — reliable cross-iframe close
@@ -933,6 +1032,19 @@ function deepDiveLoc(locCode) {
         <p class="metric-label" style="color:#a0700a;">White goods flags</p>
         <p class="metric-value warn-t">2</p>
         <p class="metric-sub warn-t">OO +38% · WL +21% · <span style="text-decoration:underline;">Deep dive →</span></p>
+      </div>
+    </div>
+
+
+    <!-- ── Monthly Recognition Strip ── -->
+    <div id="recognition-strip" style="margin:14px 0 6px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div id="rec-location" style="background:#FFFBF0;border:0.5px solid #E8D080;border-radius:12px;padding:14px 16px;min-height:80px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:22px;line-height:1;">🏅</div>
+        <div style="color:#8A93A8;font-size:12px;">Loading...</div>
+      </div>
+      <div id="rec-lead" style="background:#F0F7FF;border:0.5px solid #B0CCF0;border-radius:12px;padding:14px 16px;min-height:80px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:22px;line-height:1;">⭐</div>
+        <div style="color:#8A93A8;font-size:12px;">Loading...</div>
       </div>
     </div>
 
@@ -2850,10 +2962,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     showScreen('portfolio');
     loadRegionFilter();
+    setTimeout(loadRecognition, 400);
   } else {
     // admin: full access
     showScreen('portfolio');
     loadRegionFilter();
+    setTimeout(loadRecognition, 400);
   }
 })();
 </script>
