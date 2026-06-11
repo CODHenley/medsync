@@ -911,7 +911,7 @@ async function checkLocationLimit() {
 
     // 0. Fast path: @scoutcare.com — skip network lookups, go straight to known org
     let orgId = null;
-    if (userEmail.endsWith('@scoutcare.com')) {
+    if (userEmail.endsWith('@scoutcare.com') || userEmail.endsWith('@medsync.vet')) {
       orgId = 'ce27c4f4-7352-4128-86ff-b1891b50933c';
     }
 
