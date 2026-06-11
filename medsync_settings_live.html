@@ -145,6 +145,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           </div>
         </div>
 
+        <!-- 14-day billing lock notice (shown when locked) -->
+        <div id="billing-lock-notice" style="display:none;background:#FFF8E1;border:0.5px solid #E8D080;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:12px;color:#7A6020;line-height:1.6;">
+          🔒 <strong>Billing info is locked.</strong> For security, billing details cannot be changed within 14 days of a previous update. <span id="billing-lock-countdown"></span>
+        </div>
         <!-- ACH (primary — mandatory) -->
         <div style="margin-top:20px;padding-top:16px;border-top:0.5px solid var(--border);">
           <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">ACH Bank Transfer <span style="background:#1C2B4A;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:6px;">PRIMARY · REQUIRED</span></div>
@@ -207,7 +211,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         </div>
 
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-          <button class="save-btn" onclick="saveBillingInfo()">Save billing info</button>
+          <button class="save-btn" id="billing-save-btn" onclick="initiateBillingSave()">Save billing info</button>
         </div>
       </div>
     </div>
@@ -594,6 +598,8 @@ async function loadBillingBranding() {
     const priceStr = monthly ? '$'+monthly+'/month · $'+(monthly*12)+'/year' : 'Custom pricing';
     const slotsStr = limit === 999 ? 'Unlimited locations' : count+' of '+limit+' location slots used';
     document.getElementById('bb-plan-display').innerHTML = '<strong>'+label+'</strong> &nbsp;·&nbsp; '+priceStr+'<br>'+slotsStr;
+    // Apply 14-day lock if billing was recently updated
+    applyBillingLockUI(org.billing_updated_at || null);
   } catch(e) { console.error('loadBillingBranding:', e); }
 }
 
@@ -631,8 +637,148 @@ async function clearBBLogo() {
   }
 }
 
+// ── Billing OTP flow ─────────────────────────────────────────────────────
+
+function _billingUserEmail() {
+  try {
+    const s = JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');
+    const mu = JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');
+    let em = s.user?.email || s.email || mu.email;
+    if (!em && s.access_token) {
+      try { em = JSON.parse(atob(s.access_token.split('.')[1])).email; } catch(e) {}
+    }
+    return (em || '').trim().toLowerCase();
+  } catch(e) { return ''; }
+}
+
+function _isBillingLocked(billing_updated_at) {
+  if (!billing_updated_at) return false;
+  const updated = new Date(billing_updated_at);
+  const now = new Date();
+  const diffDays = (now - updated) / (1000 * 60 * 60 * 24);
+  return diffDays < 14;
+}
+
+function _billingLockDaysLeft(billing_updated_at) {
+  if (!billing_updated_at) return 0;
+  const updated = new Date(billing_updated_at);
+  const unlockDate = new Date(updated.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  return Math.ceil((unlockDate - now) / (1000 * 60 * 60 * 24));
+}
+
+async function initiateBillingSave() {
+  if (!_settOrgId) { showToast('No organization linked to this account'); return; }
+  // Re-check lock status
+  const _anonH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+  const checkRes = await fetch(SUPA_URL+'/rest/v1/organizations?select=billing_updated_at&id=eq.'+_settOrgId, {headers:_anonH});
+  const checkData = await checkRes.json();
+  const buAt = Array.isArray(checkData) && checkData[0] ? checkData[0].billing_updated_at : null;
+  if (_isBillingLocked(buAt)) {
+    const daysLeft = _billingLockDaysLeft(buAt);
+    showToast('Billing locked — ' + daysLeft + ' day' + (daysLeft===1?'':'s') + ' remaining');
+    return;
+  }
+  // Send OTP
+  const email = _billingUserEmail();
+  if (!email) { showToast('Could not determine account email'); return; }
+  const btn = document.getElementById('billing-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending code…'; }
+  try {
+    const otpRes = await fetch(SUPA_URL + '/auth/v1/otp', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, create_user: false })
+    });
+    if (!otpRes.ok) throw new Error('OTP send failed');
+    document.getElementById('otp-subtext').innerHTML =
+      'A 6-digit code has been sent to <strong>' + email + '</strong>.<br>Enter it below to confirm the billing update.';
+    showBillingOTPModal();
+  } catch(e) {
+    showToast('Failed to send verification email — try again');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save billing info'; }
+  }
+}
+
+function showBillingOTPModal() {
+  ['otp-d1','otp-d2','otp-d3','otp-d4','otp-d5','otp-d6'].forEach(function(id){
+    var el = document.getElementById(id); if (el) { el.value = ''; el.style.borderColor = '#DDD9EC'; }
+  });
+  document.getElementById('otp-error').style.display = 'none';
+  var m = document.getElementById('billing-otp-modal');
+  m.style.display = 'flex';
+  setTimeout(function(){ var d = document.getElementById('otp-d1'); if (d) d.focus(); }, 100);
+}
+
+function closeBillingOTPModal() {
+  document.getElementById('billing-otp-modal').style.display = 'none';
+}
+
+async function resendBillingOTP() {
+  const email = _billingUserEmail();
+  if (!email) return;
+  await fetch(SUPA_URL + '/auth/v1/otp', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, create_user: false })
+  });
+  showToast('Code resent to ' + email);
+}
+
+function otpDigit(el, nextId) {
+  el.value = el.value.replace(/[^0-9]/g,'');
+  if (el.value.length === 1 && nextId) {
+    var next = document.getElementById(nextId);
+    if (next) next.focus();
+  }
+}
+
+function otpBack(e, el, prevId) {
+  if (e.key === 'Backspace' && el.value === '' && prevId) {
+    var prev = document.getElementById(prevId);
+    if (prev) { prev.focus(); prev.value = ''; }
+  }
+}
+
+async function confirmBillingOTP() {
+  const code = ['otp-d1','otp-d2','otp-d3','otp-d4','otp-d5','otp-d6']
+    .map(function(id){ var el = document.getElementById(id); return el ? el.value : ''; })
+    .join('');
+  if (code.length < 6) { showToast('Please enter all 6 digits'); return; }
+  const email = _billingUserEmail();
+  const btn = document.getElementById('otp-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying…'; }
+  try {
+    const verRes = await fetch(SUPA_URL + '/auth/v1/verify', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'email', token: code, email: email })
+    });
+    const verData = await verRes.json();
+    if (!verRes.ok || verData.error) {
+      ['otp-d1','otp-d2','otp-d3','otp-d4','otp-d5','otp-d6'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) { el.value = ''; el.style.borderColor = '#E74C3C'; }
+      });
+      document.getElementById('otp-error').style.display = 'block';
+      document.getElementById('otp-d1').focus();
+      return;
+    }
+    // Verified — save billing info
+    closeBillingOTPModal();
+    await saveBillingInfo();
+  } catch(e) {
+    showToast('Verification error — please try again');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Save Billing'; }
+  }
+}
+
 async function saveBillingInfo() {
   if (!_settOrgId) { showToast('No organization linked to this account'); return; }
+  const email = _billingUserEmail();
+  const now = new Date().toISOString();
   const patch = {
     billing_contact_name: document.getElementById('bb-billing-name').value.trim() || null,
     billing_email:        document.getElementById('bb-billing-email').value.trim() || null,
@@ -647,11 +793,47 @@ async function saveBillingInfo() {
     cc_last4:             document.getElementById('bb-cc-last4').value.trim() || null,
     cc_brand:             document.getElementById('bb-cc-brand').value.trim() || null,
     cc_exp:               document.getElementById('bb-cc-exp').value.trim() || null,
+    billing_updated_at:   now,
+    billing_verified:     false,
   };
   await fetch(SUPA_URL+'/rest/v1/organizations?id=eq.'+_settOrgId, {
     method:'PATCH', headers:_settH, body:JSON.stringify(patch)
   });
-  showToast('✓ Billing info saved');
+  // Log the change for super admin notification
+  const logMu = (function(){ try{ return JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}'); }catch(e){return{};} })();
+  await fetch(SUPA_URL+'/rest/v1/billing_change_log', {
+    method: 'POST',
+    headers: Object.assign({}, _settH, {'Prefer':'return=minimal'}),
+    body: JSON.stringify({ org_id: _settOrgId, org_name: logMu.organization_name || null, changed_by_email: email, reviewed: false })
+  });
+  showToast('✓ Billing info saved — pending admin verification');
+  // Re-apply lock UI
+  applyBillingLockUI(now);
+}
+
+function applyBillingLockUI(billing_updated_at) {
+  const locked = _isBillingLocked(billing_updated_at);
+  const notice = document.getElementById('billing-lock-notice');
+  const countdown = document.getElementById('billing-lock-countdown');
+  const saveBtn = document.getElementById('billing-save-btn');
+  const fields = ['bb-billing-name','bb-billing-email','bb-billing-phone','bb-payment-terms',
+    'bb-ach-bank','bb-ach-holder','bb-ach-routing','bb-ach-account','bb-ach-type',
+    'bb-cc-holder','bb-cc-last4','bb-cc-brand','bb-cc-exp'];
+  if (locked) {
+    const daysLeft = _billingLockDaysLeft(billing_updated_at);
+    if (notice) notice.style.display = 'block';
+    if (countdown) countdown.textContent = daysLeft + ' day' + (daysLeft===1?'':'s') + ' remaining.';
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; saveBtn.style.cursor = 'not-allowed'; }
+    fields.forEach(function(id){
+      var el = document.getElementById(id); if (el) { el.disabled = true; el.style.opacity = '0.6'; }
+    });
+  } else {
+    if (notice) notice.style.display = 'none';
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; }
+    fields.forEach(function(id){
+      var el = document.getElementById(id); if (el) { el.disabled = false; el.style.opacity = '1'; }
+    });
+  }
 }
 
 function nav(screen) {
@@ -738,5 +920,29 @@ window.addEventListener('message', function(e) {
   }
 });
 </script>
+
+<!-- ── Billing OTP Modal ─────────────────────────────────────────── -->
+<div id="billing-otp-modal" style="display:none;position:fixed;inset:0;background:rgba(28,43,74,.55);z-index:9000;display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px 28px;width:360px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.18);text-align:center;">
+    <div style="font-size:28px;margin-bottom:10px;">🔐</div>
+    <div style="font-size:15px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Verify your identity</div>
+    <div id="otp-subtext" style="font-size:12px;color:#6B7A99;margin-bottom:20px;line-height:1.6;">A 6-digit code has been sent to your email.<br>Enter it below to confirm the billing update.</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">
+      <input id="otp-d1" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d2')" onkeydown="otpBack(event,this,null)">
+      <input id="otp-d2" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d3')" onkeydown="otpBack(event,this,'otp-d1')">
+      <input id="otp-d3" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d4')" onkeydown="otpBack(event,this,'otp-d2')">
+      <input id="otp-d4" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d5')" onkeydown="otpBack(event,this,'otp-d3')">
+      <input id="otp-d5" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d6')" onkeydown="otpBack(event,this,'otp-d4')">
+      <input id="otp-d6" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,null)"     onkeydown="otpBack(event,this,'otp-d5')">
+    </div>
+    <div id="otp-error" style="font-size:12px;color:#C0392B;margin-bottom:10px;display:none;">Incorrect code — please try again.</div>
+    <button id="otp-confirm-btn" onclick="confirmBillingOTP()" style="width:100%;padding:12px;background:#1C2B4A;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;">Confirm &amp; Save Billing</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <button onclick="resendBillingOTP()" style="background:none;border:none;font-size:11px;color:#6B7A99;cursor:pointer;padding:4px 0;text-decoration:underline;">Resend code</button>
+      <button onclick="closeBillingOTPModal()" style="background:none;border:none;font-size:11px;color:#6B7A99;cursor:pointer;padding:4px 0;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
