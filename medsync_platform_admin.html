@@ -187,8 +187,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <label class="form-label">Password</label>
       <input class="form-input" id="login-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:-6px;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4A5568;cursor:pointer;">
+        <input type="checkbox" id="pa-remember" style="width:13px;height:13px;accent-color:#1C2B4A;cursor:pointer;">
+        Remember me
+      </label>
+      <span style="font-size:11px;color:#8A93A8;cursor:pointer;" onclick="paForgotPassword()">Forgot password?</span>
+    </div>
     <button class="btn-primary" onclick="doLogin()">Sign in</button>
-    <div class="login-error" id="login-error">Invalid credentials or insufficient permissions.</div>
+    <div class="login-error" id="login-error"></div>
+  </div>
+
+  <!-- Reset password panel -->
+  <div id="pa-reset-panel" style="display:none;padding:24px;">
+    <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Set new password</div>
+    <div style="font-size:12px;color:#8A93A8;margin-bottom:18px;">Enter and confirm your new password below.</div>
+    <div id="pa-reset-error" style="color:#a33030;font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="form-group">
+      <label class="form-label">New password</label>
+      <input class="form-input" id="pa-new-pass" type="password" placeholder="Min. 8 characters" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm password</label>
+      <input class="form-input" id="pa-confirm-pass" type="password" placeholder="Repeat new password" autocomplete="new-password" onkeydown="if(event.key==='Enter')paSetPassword()">
+    </div>
+    <button class="btn-primary" id="pa-reset-btn" onclick="paSetPassword()">Set password</button>
   </div>
 </div>
 
@@ -209,6 +232,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   <div class="tab-bar">
     <div class="tab-item active" id="tab-orgs" onclick="switchTab('orgs')">Organizations</div>
     <div class="tab-item" id="tab-billing" onclick="switchTab('billing')">Billing</div>
+    <div class="tab-item" id="tab-admins" onclick="switchTab('admins')">Super Admins</div>
   </div>
 
   <!-- ── ORGS TAB ── -->
@@ -334,6 +358,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
   </div>
   </div><!-- /panel-billing -->
+
+
+  <!-- ── SUPER ADMINS TAB ── -->
+  <div class="tab-panel" id="panel-admins">
+  <div class="content">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Super Admins</div>
+        <button class="btn-new" onclick="openAddSuperAdmin()">+ Add super admin</button>
+      </div>
+      <table class="org-table">
+        <thead><tr>
+          <th>Name</th><th>Email</th><th>Created</th><th>Action</th>
+        </tr></thead>
+        <tbody id="superadmin-tbody">
+          <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--mist);">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  </div><!-- /panel-admins -->
 
 
 <div class="modal-bg" id="provision-modal">
@@ -470,6 +515,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   </div>
 </div>
 
+<!-- Add super admin modal -->
+<div class="modal-bg" id="add-superadmin-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Add super admin</div>
+      <button class="modal-close" onclick="closeAddSuperAdmin()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--slate);margin-bottom:4px;">This person will have full platform admin access. They must log in at medsync.vet/medsync_platform_admin.html</div>
+      <div class="form-group">
+        <label class="form-label">Full name</label>
+        <input class="form-input" id="sa-name" type="text" placeholder="e.g. Alex Kim">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="sa-email" type="email" placeholder="e.g. alex@medsync.vet">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Temporary password</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="form-input" id="sa-pass" type="text" style="font-family:monospace;" readonly>
+          <button class="btn" onclick="genSAPassword()">Regen</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAddSuperAdmin()">Cancel</button>
+      <button class="btn btn-save" id="sa-submit-btn" onclick="submitSuperAdmin()">Create super admin</button>
+    </div>
+  </div>
+</div>
+
+
 <div id="toast"></div>
 
 <script>
@@ -517,6 +595,14 @@ async function doLogin() {
     document.getElementById('tb-user').textContent = users[0].full_name || email;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+      // Remember me
+      const remCb = document.getElementById('pa-remember');
+      if (remCb && remCb.checked) {
+        localStorage.setItem('pa_remember', '1');
+        localStorage.setItem('pa_remember_email', email);
+      } else {
+        localStorage.removeItem('pa_remember'); localStorage.removeItem('pa_remember_email');
+      }
     loadDashboard();
   } catch(e) {
     errEl.textContent = e.message || 'Invalid credentials or insufficient permissions.';
@@ -916,6 +1002,7 @@ function switchTab(tab) {
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('panel-'+tab).classList.add('active');
   if (tab === 'billing') renderBillingTab();
+  if (tab === 'admins') loadSuperAdmins();
 }
 
 // ── Billing tab ───────────────────────────────────────────────
@@ -1049,6 +1136,166 @@ async function runBillingAnimation() {
       <button onclick="closeBillingRun()" style="padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Done</button>
     </div>`;
 }
+
+// ── Platform admin login: remember me + forgot password ───────────────────
+(function paBootLogin() {
+  const rem = localStorage.getItem('pa_remember') === '1';
+  if (rem) {
+    const email = localStorage.getItem('pa_remember_email');
+    if (email) { const el = document.getElementById('login-email'); if(el) el.value = email; }
+    const pa = document.getElementById('pa-remember'); if(pa) pa.checked = true;
+  }
+  // Detect recovery token in URL hash
+  const hash = window.location.hash.substring(1);
+  const params = {};
+  hash.split('&').forEach(p => { const eq=p.indexOf('='); if(eq>0) params[decodeURIComponent(p.slice(0,eq))]=decodeURIComponent(p.slice(eq+1)); });
+  if (params.type === 'recovery' && params.access_token) {
+    window._paRecoveryToken = params.access_token;
+    const lc = document.querySelector('.login-card');
+    if (lc) {
+      lc.querySelector('.login-title').style.display = 'none';
+      lc.querySelector('.login-sub').style.display = 'none';
+      lc.querySelectorAll('.form-group').forEach(el => el.style.display = 'none');
+      lc.querySelector('.btn-primary').style.display = 'none';
+      const remRow = lc.querySelector('div[style*="remember"]'); if(remRow) remRow.style.display = 'none';
+      document.getElementById('pa-reset-panel').style.display = '';
+    }
+    history.replaceState(null, '', window.location.pathname);
+  }
+})();
+
+async function paForgotPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) { document.getElementById('login-email').focus(); showToast('Enter your email first'); return; }
+  await fetch(SUPA_URL + '/auth/v1/recover', {
+    method:'POST', headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
+    body: JSON.stringify({ email, redirectTo: window.location.href.split('?')[0].split('#')[0] })
+  });
+  showToast('✓ Password reset link sent — check your email');
+}
+
+async function paSetPassword() {
+  const np = document.getElementById('pa-new-pass').value;
+  const cp = document.getElementById('pa-confirm-pass').value;
+  const errEl = document.getElementById('pa-reset-error');
+  errEl.style.display = 'none';
+  if (!np || np.length < 8) { errEl.textContent='Password must be at least 8 characters.'; errEl.style.display=''; return; }
+  if (np !== cp) { errEl.textContent='Passwords do not match.'; errEl.style.display=''; return; }
+  const btn = document.getElementById('pa-reset-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(SUPA_URL+'/auth/v1/user', {
+      method:'PUT', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+window._paRecoveryToken,'Content-Type':'application/json'},
+      body: JSON.stringify({password:np})
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error.message||d.msg||'Failed');
+    showToast('✓ Password updated — please sign in');
+    document.getElementById('pa-reset-panel').style.display = 'none';
+    document.querySelector('.login-card .login-title').style.display = '';
+    document.querySelector('.login-card .login-sub').style.display = '';
+    document.querySelectorAll('.login-card .form-group').forEach(el => el.style.display = '');
+    document.querySelector('.login-card .btn-primary').style.display = '';
+  } catch(e) { errEl.textContent = e.message; errEl.style.display = ''; btn.disabled=false; btn.textContent='Set password'; }
+}
+
+// Patch doLogin to handle remember me
+const _origLogin = doLogin;
+// Override remember me save after successful login — hook into SESSION set
+const _origDoLogin = window.doLogin;
+
+// ── Super admins tab ──────────────────────────────────────────────────────
+async function loadSuperAdmins() {
+  try {
+    const res = await fetch(SUPA_URL+'/rest/v1/users?select=id,full_name,email,created_at&role=eq.medsync_superadmin&order=created_at.asc', {headers:H});
+    const admins = await res.json();
+    const tbody = document.getElementById('superadmin-tbody');
+    if (!tbody) return;
+    if (!Array.isArray(admins) || !admins.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--mist);">No super admins found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = admins.map(a => `
+      <tr>
+        <td style="font-weight:500;">${a.full_name||'—'}</td>
+        <td>${a.email}</td>
+        <td>${a.created_at ? new Date(a.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td>
+        <td><button class="btn" style="font-size:11px;padding:5px 10px;color:#a33030;border-color:#f0c0c0;" onclick="removeSuperAdmin('${a.id}','${a.email}')">Revoke</button></td>
+      </tr>`).join('');
+  } catch(e) { console.error('loadSuperAdmins:', e); }
+}
+
+function openAddSuperAdmin() {
+  document.getElementById('sa-name').value = '';
+  document.getElementById('sa-email').value = '';
+  genSAPassword();
+  document.getElementById('add-superadmin-modal').classList.add('open');
+}
+function closeAddSuperAdmin() { document.getElementById('add-superadmin-modal').classList.remove('open'); }
+
+function genSAPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  let pw = '';
+  for (let i=0;i<12;i++) pw += chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('sa-pass').value = pw;
+}
+
+async function submitSuperAdmin() {
+  const name  = document.getElementById('sa-name').value.trim();
+  const email = document.getElementById('sa-email').value.trim();
+  const pass  = document.getElementById('sa-pass').value;
+  if (!name || !email) { showToast('Enter name and email'); return; }
+  const btn = document.getElementById('sa-submit-btn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    // Create auth user
+    const authRes = await fetch(SUPA_URL+'/auth/v1/admin/users', {
+      method:'POST', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({email, password:pass, email_confirm:true})
+    });
+    const authData = await authRes.json();
+    const authId = authData.id || authData.user?.id;
+    // Insert into users table with superadmin role
+    if (authId) {
+      await fetch(SUPA_URL+'/rest/v1/users', {
+        method:'POST', headers:{...H,'Prefer':'return=minimal'},
+        body: JSON.stringify({id:authId, email, full_name:name, role:'medsync_superadmin', status:'active'})
+      });
+    }
+    btn.disabled=false; btn.textContent='Create super admin';
+    closeAddSuperAdmin();
+    showToast('✓ Super admin created: '+email);
+    loadSuperAdmins();
+
+    // Show credentials
+    setTimeout(() => {
+      const cBox = document.createElement('div');
+      cBox.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;display:flex;align-items:center;justify-content:center;';
+      cBox.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px;width:440px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.2);" onclick="event.stopPropagation()">
+        <div style="font-size:15px;font-weight:600;margin-bottom:16px;">✓ Super admin created</div>
+        <div style="background:#F8F7FC;border-radius:10px;padding:14px 16px;font-size:12px;line-height:1.9;">
+          <div><strong>URL:</strong> medsync.vet/medsync_platform_admin.html</div>
+          <div><strong>Email:</strong> ${email}</div>
+          <div><strong>Temp password:</strong> <span style="font-family:monospace;">${pass}</span></div>
+        </div>
+        <div style="font-size:11px;color:#a33030;margin-top:10px;">⚠ Copy and share these credentials now. The password is not stored.</div>
+        <button onclick="this.closest('div[style]').parentElement.remove()" style="margin-top:16px;width:100%;padding:10px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Done</button>
+      </div>`;
+      cBox.addEventListener('click', ()=>cBox.remove());
+      document.body.appendChild(cBox);
+    }, 300);
+  } catch(e) { btn.disabled=false; btn.textContent='Create super admin'; showToast('Error: '+e.message); }
+}
+
+async function removeSuperAdmin(id, email) {
+  if (!confirm('Revoke super admin access for '+email+'?')) return;
+  await fetch(SUPA_URL+'/rest/v1/users?id=eq.'+id, {
+    method:'PATCH', headers:H, body:JSON.stringify({role:'staff'})
+  });
+  showToast('Access revoked for '+email);
+  loadSuperAdmins();
+}
+
 
 function openEditOrg() {
   showToast('Edit org — coming soon');

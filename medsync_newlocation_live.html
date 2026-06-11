@@ -139,6 +139,7 @@ const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_s
 const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
 
 let planInfo = null; // set by checkLocationLimit, read by render()
+let _orgIdCache = null;
 let state = {
   screen: 'type',
   locationType: null,
@@ -814,42 +815,75 @@ function showToast(msg) {
 }
 // ── Location limit check (runs before first render) ──────────
 
-function showPlanModal() {
+async function showPlanModal() {
   if (!planInfo) return;
-  var unlimited = planInfo.limit === 999;
-  var remaining = unlimited ? null : planInfo.limit - planInfo.count;
-  var pct = unlimited ? 0 : planInfo.count / planInfo.limit;
-  var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
-  var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
-  var bar = unlimited ? '' :
-    '<div style="background:#e0e0e0;border-radius:6px;height:8px;margin:14px 0 4px;overflow:hidden;">'
-    +'<div style="background:'+color+';height:8px;width:'+(planInfo.count/planInfo.limit*100)+'%;border-radius:6px;transition:width .4s;"></div></div>'
-    +'<div style="display:flex;justify-content:space-between;font-size:10px;color:'+color+';margin-bottom:4px;">'
-    +'<span>'+planInfo.count+' used</span><span>'+planInfo.limit+' total</span></div>';
-  var upgradeRow = (!unlimited && remaining !== null && remaining <= 2)
-    ? '<div style="background:#fff;border:0.5px solid '+color+'40;border-radius:9px;padding:12px 14px;margin-top:14px;font-size:12px;line-height:1.6;color:#4A5568;">Need more locations? Contact MedSync to upgrade your plan.<br><strong style="color:'+color+';">hello@medsync.vet</strong></div>'
-    : '';
+  // Show loading state immediately
   var el = document.createElement('div');
   el.id = 'plan-modal-overlay';
   el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
-  el.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px;width:400px;max-width:90vw;box-shadow:0 12px 40px rgba(0,0,0,.2);" onclick="event.stopPropagation()">'
+  el.innerHTML = '<div id="plan-modal-box" style="background:#fff;border-radius:16px;padding:28px;width:480px;max-width:93vw;box-shadow:0 12px 40px rgba(0,0,0,.2);" onclick="event.stopPropagation()">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">'
     +'<div style="font-size:15px;font-weight:600;color:#1C2B4A;">Your Plan</div>'
     +'<button onclick="closePlanModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8A93A8;line-height:1;">×</button></div>'
-    +'<div style="background:'+bg+';border-radius:10px;padding:16px 18px;">'
-    +'<div style="margin-bottom:8px;"><span style="background:'+color+';color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;">'+planInfo.label+'</span></div>'
-    +(unlimited
-      ? '<div style="font-size:13px;color:'+color+';font-weight:500;margin-top:8px;">Unlimited locations included</div>'
-      : '<div style="font-size:13px;color:'+color+';font-weight:500;margin-top:8px;">'+planInfo.count+' of '+planInfo.limit+' location slots used</div>'
-        +'<div style="font-size:12px;color:'+color+';margin-top:2px;"><strong>'+remaining+'</strong> slot'+(remaining===1?'':'s')+' remaining</div>'
-    )
-    +bar
-    +'</div>'
-    +upgradeRow
-    +'<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Got it</button>'
+    +'<div style="color:#8A93A8;font-size:12px;padding:20px 0;text-align:center;">Loading plan details…</div>'
     +'</div>';
   el.addEventListener('click', closePlanModal);
   document.body.appendChild(el);
+
+  // Fetch full org detail
+  try {
+    var orgData = null;
+    if (_orgIdCache) {
+      var r = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,status,contact_name,contact_email,notes&id=eq.'+_orgIdCache, {headers:H});
+      orgData = await r.json();
+      orgData = Array.isArray(orgData) && orgData[0] ? orgData[0] : null;
+    }
+    var box = document.getElementById('plan-modal-box');
+    if (!box) return;
+
+    var unlimited = planInfo.limit === 999;
+    var remaining = unlimited ? null : planInfo.limit - planInfo.count;
+    var pct = unlimited ? 0 : planInfo.count / planInfo.limit;
+    var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
+    var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
+
+    var barPct = unlimited ? 0 : Math.min((planInfo.count/planInfo.limit)*100,100);
+    var bar = unlimited ? '' :
+      '<div style="background:#e0e0e0;border-radius:5px;height:7px;margin-top:10px;overflow:hidden;">'
+      +'<div style="background:'+color+';height:7px;width:'+barPct+'%;border-radius:5px;"></div></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;color:'+color+';margin-top:3px;">'
+      +'<span>'+planInfo.count+' used</span><span>'+planInfo.limit+' total</span></div>';
+
+    function row(label, val) {
+      return '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:9px 0;border-bottom:0.5px solid #F5F3FA;">'
+        +'<div style="font-size:10px;font-weight:600;color:#8A93A8;text-transform:uppercase;letter-spacing:.04em;padding-top:1px;">'+label+'</div>'
+        +'<div style="font-size:13px;color:#1C2B4A;">'+val+'</div></div>';
+    }
+
+    var TIER_PRICES = {solo:'$149/mo',small_group:'$249/mo',mid_group:'$349/mo',large_group:'$449/mo',enterprise:'Custom',internal:'Preferred'};
+    var details = ''
+      + row('Plan', '<span style="background:'+color+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;">'+planInfo.label+'</span> &nbsp;'+( TIER_PRICES[planInfo.tier]||''))
+      + row('Status', orgData ? '<span style="color:'+(orgData.status==='active'?'#0F6E56':'#a33030')+';">'+orgData.status+'</span>' : '—')
+      + row('Location limit', (unlimited?'Unlimited':planInfo.limit+' locations'))
+      + row('Locations used', planInfo.count+(unlimited?'':' of '+planInfo.limit)+(bar?'<br>'+bar:''))
+      + (remaining !== null && !unlimited ? row('Remaining', '<strong style="color:'+color+';">'+remaining+' slot'+(remaining===1?'':'s')+'</strong>') : '')
+      + (orgData&&orgData.contact_name ? row('Contact', orgData.contact_name) : '')
+      + (orgData&&orgData.contact_email ? row('Email', orgData.contact_email) : '')
+      + (orgData&&orgData.notes ? row('Notes', orgData.notes) : '');
+
+    var upgradeNote = (!unlimited && remaining !== null && remaining <= 2)
+      ? '<div style="margin-top:14px;padding:11px 14px;background:#FFF3CD;border:0.5px solid #f0d070;border-radius:9px;font-size:11px;color:#856404;line-height:1.6;">Need more locations? Contact MedSync to upgrade.<br><strong>hello@medsync.vet</strong></div>' : '';
+
+    box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">'
+      +'<div style="font-size:15px;font-weight:600;color:#1C2B4A;">Your Plan</div>'
+      +'<button onclick="closePlanModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8A93A8;line-height:1;">×</button></div>'
+      +'<div style="border:0.5px solid #DDD9EC;border-radius:10px;overflow:hidden;margin-bottom:4px;">'+details+'</div>'
+      +upgradeNote
+      +'<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Got it</button>';
+  } catch(e) {
+    var box = document.getElementById('plan-modal-box');
+    if (box) box.innerHTML += '<div style="color:#a33030;font-size:11px;margin-top:8px;">Could not load plan details.</div>';
+  }
 }
 
 function closePlanModal() {
@@ -877,6 +911,7 @@ async function checkLocationLimit() {
       orgId = Array.isArray(d) && d[0] ? d[0].organization_id : null;
     }
     if (!orgId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; } // Legacy/Scout — no limit
+    _orgIdCache = orgId; // cache for plan modal
 
     const [orgRes, locRes] = await Promise.all([
       fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit&id=eq.${orgId}`, { headers: H }),
