@@ -320,6 +320,44 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
             <tbody id="detail-users"></tbody>
           </table>
         </div>
+
+        <!-- Account Flags -->
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+            Account Flags
+            <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="openAddFlag()">+ Add flag</button>
+          </div>
+          <div id="detail-flags" style="display:flex;flex-direction:column;gap:6px;"></div>
+          <!-- Add flag panel -->
+          <div id="add-flag-panel" style="display:none;margin-top:10px;border:0.5px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Add account flag</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+              <select id="flag-type-select" style="padding:8px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;">
+                <option value="payment_failed">Payment failed</option>
+                <option value="ach_missing">ACH not on file</option>
+                <option value="overdue">Overdue balance</option>
+                <option value="dispute">Payment dispute</option>
+                <option value="trial_expiring">Trial expiring</option>
+                <option value="manual">Manual note</option>
+              </select>
+              <input id="flag-note-input" type="text" placeholder="Optional note…" style="padding:8px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;">
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-new" style="font-size:12px;padding:7px 14px;" onclick="confirmAddFlag()">Add flag</button>
+              <button class="btn" style="font-size:12px;" onclick="closeAddFlag()">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment History -->
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Payment History</div>
+          <table class="sub-table">
+            <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody id="detail-payments"></tbody>
+          </table>
+        </div>
+
       </div>
     </div>
   </div><!-- /content -->
@@ -705,6 +743,109 @@ function openOrgDetail(orgId) {
 
   document.getElementById('detail-section').style.display = 'block';
   document.getElementById('detail-section').scrollIntoView({behavior:'smooth',block:'start'});
+
+  // Payment history
+  renderPaymentHistory(orgId);
+  // Flags
+  renderFlags(orgId);
+}
+
+// ── Mock payment history (keyed by org id; Scout gets real-looking data) ──
+const MOCK_PAYMENTS = {
+  'ce27c4f4-7352-4128-86ff-b1891b50933c': [
+    { date:'Jun 1, 2026',  amount:349, method:'ACH', status:'paid',    note:'' },
+    { date:'May 1, 2026',  amount:349, method:'ACH', status:'paid',    note:'' },
+    { date:'Apr 1, 2026',  amount:349, method:'ACH', status:'paid',    note:'' },
+    { date:'Mar 1, 2026',  amount:349, method:'ACH', status:'paid',    note:'' },
+    { date:'Feb 1, 2026',  amount:349, method:'ACH', status:'paid',    note:'' },
+    { date:'Jan 1, 2026',  amount:175, method:'ACH', status:'paid',    note:'Prorated mid-month start' },
+  ],
+};
+function getPayments(orgId) {
+  if (MOCK_PAYMENTS[orgId]) return MOCK_PAYMENTS[orgId];
+  // Generate plausible history for other orgs
+  const org = ALL_ORGS.find(o => o.id === orgId);
+  const monthly = {solo:149,small_group:249,mid_group:349,large_group:449,enterprise:499,internal:0}[org?.tier] || 0;
+  if (!monthly) return [];
+  const rows = [];
+  const now = new Date();
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    rows.push({ date: d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), amount: monthly, method:'ACH', status:'paid', note:'' });
+  }
+  return rows;
+}
+function renderPaymentHistory(orgId) {
+  const rows = getPayments(orgId);
+  const tbody = document.getElementById('detail-payments');
+  if (!tbody) return;
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--mist);">No payment history</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const sc = r.status === 'paid' ? '#2E8B57' : r.status === 'failed' ? '#C0392B' : '#C8922A';
+    const badge = `<span style="background:${sc};color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">${r.status.toUpperCase()}</span>`;
+    return `<tr>
+      <td style="font-size:11px;">${r.date}</td>
+      <td style="font-weight:600;">$${r.amount}</td>
+      <td style="font-size:11px;color:var(--mist);">${r.method}</td>
+      <td>${badge}</td>
+      <td style="font-size:11px;color:var(--mist);">${r.note||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Flags (stored in localStorage per org for demo; real impl = DB table) ──
+const FLAG_LABELS = {
+  payment_failed: { label:'Payment Failed',   color:'#C0392B', icon:'💳' },
+  ach_missing:    { label:'ACH Not on File',  color:'#C8922A', icon:'🏦' },
+  overdue:        { label:'Overdue Balance',  color:'#C0392B', icon:'⚠️' },
+  dispute:        { label:'Payment Dispute',  color:'#8B2FC9', icon:'⚖️' },
+  trial_expiring: { label:'Trial Expiring',   color:'#C8922A', icon:'⏳' },
+  manual:         { label:'Manual Note',      color:'#1C2B4A', icon:'📌' },
+};
+function getFlagsKey(orgId) { return 'medsync_flags_' + orgId; }
+function loadFlags(orgId)   { try { return JSON.parse(localStorage.getItem(getFlagsKey(orgId)) || '[]'); } catch(e) { return []; } }
+function saveFlags(orgId, flags) { localStorage.setItem(getFlagsKey(orgId), JSON.stringify(flags)); }
+function renderFlags(orgId) {
+  const flags = loadFlags(orgId);
+  const el = document.getElementById('detail-flags');
+  if (!el) return;
+  if (!flags.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--mist);padding:6px 0;">No flags on this account.</div>';
+    return;
+  }
+  el.innerHTML = flags.map((f, i) => {
+    const meta = FLAG_LABELS[f.type] || FLAG_LABELS.manual;
+    return `<div style="display:flex;align-items:flex-start;gap:10px;background:#FFF8F8;border:0.5px solid #f5c6c6;border-radius:8px;padding:9px 12px;">
+      <span style="font-size:16px;">${meta.icon}</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;color:${meta.color};">${meta.label}</div>
+        ${f.note ? `<div style="font-size:11px;color:var(--mist);margin-top:2px;">${f.note}</div>` : ''}
+        <div style="font-size:10px;color:var(--mist);margin-top:3px;">${f.addedBy} · ${f.addedAt}</div>
+      </div>
+      <button onclick="removeFlag('${orgId}',${i})" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--mist);padding:0;line-height:1;" title="Clear flag">✕</button>
+    </div>`;
+  }).join('');
+}
+function removeFlag(orgId, idx) {
+  const flags = loadFlags(orgId);
+  flags.splice(idx, 1);
+  saveFlags(orgId, flags);
+  renderFlags(orgId);
+  showToast('Flag cleared');
+}
+function openAddFlag()  { document.getElementById('add-flag-panel').style.display = ''; }
+function closeAddFlag() { document.getElementById('add-flag-panel').style.display = 'none'; }
+function confirmAddFlag() {
+  if (!selectedOrgId) return;
+  const type = document.getElementById('flag-type-select').value;
+  const note = document.getElementById('flag-note-input').value.trim();
+  const flags = loadFlags(selectedOrgId);
+  flags.unshift({ type, note, addedBy: 'Super Admin', addedAt: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) });
+  saveFlags(selectedOrgId, flags);
+  document.getElementById('flag-note-input').value = '';
+  closeAddFlag();
+  renderFlags(selectedOrgId);
+  showToast('✓ Flag added');
 }
 
 function openLinkLocs() {
