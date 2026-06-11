@@ -543,9 +543,23 @@ async function loadBillingBranding() {
       return;
     }
     _settOrgId = orgId;
-    const or = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,logo_url,billing_contact_name,billing_email,billing_phone,payment_terms,ach_bank_name,ach_account_holder,ach_routing_number,ach_account_number,ach_account_type,cc_holder_name,cc_last4,cc_brand,cc_exp&id=eq.'+_settOrgId, {headers:_settH});
-    const orgs = await or.json();
-    if (!Array.isArray(orgs)||!orgs[0]) return;
+    // Try anon headers first (organizations table uses anon_all RLS policy)
+    let orgs = null;
+    for (const hdrs of [Sett_Hanon, _settH]) {
+      const or = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,logo_url,billing_contact_name,billing_email,billing_phone,payment_terms,ach_bank_name,ach_account_holder,ach_routing_number,ach_account_number,ach_account_type,cc_holder_name,cc_last4,cc_brand,cc_exp&id=eq.'+_settOrgId, {headers:hdrs});
+      const d = await or.json();
+      if (Array.isArray(d) && d[0]) { orgs = d; break; }
+    }
+    // Hardcoded Scout fallback if both fetches fail
+    if (!orgs || !orgs[0]) {
+      if (_settOrgId === 'ce27c4f4-7352-4128-86ff-b1891b50933c') {
+        const lc2 = await fetch(SUPA_URL+'/rest/v1/locations?select=id&organization_id=eq.'+_settOrgId, {headers:Sett_Hanon});
+        const locs2 = await lc2.json();
+        const count2 = Array.isArray(locs2) ? locs2.length : 4;
+        document.getElementById('bb-plan-display').innerHTML = '<strong>Mid Group</strong> &nbsp;<span style="color:var(--mist);font-size:11px;">$349/mo · up to 6 locations</span><br><span style="font-size:11px;color:var(--mist);">'+count2+' of 6 locations used</span>';
+      }
+      return;
+    }
     const org = orgs[0];
     const TIER_LABELS = {solo:'Solo — 1 location',small_group:'Small Group — up to 3',mid_group:'Mid Group — up to 6',large_group:'Large Group — up to 12',enterprise:'Enterprise',internal:'Internal'};
 

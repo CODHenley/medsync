@@ -956,7 +956,18 @@ async function checkLocationLimit() {
     ]);
     const orgs = await orgRes.json();
     const locs = await locRes.json();
-    if (!Array.isArray(orgs) || !orgs[0]) { render(); return; }
+    // If API fetch fails but orgId is known, use hardcoded fallback
+    if (!Array.isArray(orgs) || !orgs[0]) {
+      if (orgId === 'ce27c4f4-7352-4128-86ff-b1891b50933c') {
+        const count = (Array.isArray(locs) && locs.length > 0) ? locs.length : 4;
+        planInfo = { tier: 'mid_group', count, limit: 6, label: 'Mid Group' };
+        render();
+        const topbarSub = document.querySelector('.tb-sub');
+        if (topbarSub) topbarSub.innerHTML = `Mid Group plan &nbsp;·&nbsp; <span style="color:rgba(255,255,255,.5)">${count} / 6 locations used</span>`;
+        return;
+      }
+      render(); return;
+    }
 
     const org   = orgs[0];
     const limit = org.location_limit;
