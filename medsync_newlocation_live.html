@@ -352,7 +352,7 @@ function renderTypeScreen() {
           var warn = (!unlimited && remaining === 0) ? '<div style="font-size:10px;margin-top:6px;color:'+color+';font-weight:600;">No slots available — contact Scout to upgrade</div>' :
                      (!unlimited && remaining === 1) ? '<div style="font-size:10px;margin-top:6px;color:'+color+';font-weight:600;">⚠ Last available slot</div>' : '';
           var bar = unlimited ? '' : '<div style="background:#e0e0e0;border-radius:4px;height:5px;margin-top:10px;overflow:hidden;"><div style="background:'+color+';height:5px;width:'+(planInfo.count/planInfo.limit*100)+'%;border-radius:4px;"></div></div>';
-          return '<div class="tile" style="background:'+bg+';border-color:'+bdr+';cursor:default;pointer-events:none;">'
+          return '<div class="tile" style="background:'+bg+';border-color:'+bdr+';cursor:pointer;" onclick="showPlanModal()">'
             +'<div class="tile-icon">📋</div>'
             +'<div class="tile-name" style="color:'+color+';">Your Plan</div>'
             +'<div style="margin-top:4px;"><span style="background:'+color+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;">'+planInfo.label+'</span></div>'
@@ -813,6 +813,50 @@ function showToast(msg) {
   setTimeout(function(){ t.remove(); }, 2800);
 }
 // ── Location limit check (runs before first render) ──────────
+
+function showPlanModal() {
+  if (!planInfo) return;
+  var unlimited = planInfo.limit === 999;
+  var remaining = unlimited ? null : planInfo.limit - planInfo.count;
+  var pct = unlimited ? 0 : planInfo.count / planInfo.limit;
+  var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
+  var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
+  var bar = unlimited ? '' :
+    '<div style="background:#e0e0e0;border-radius:6px;height:8px;margin:14px 0 4px;overflow:hidden;">'
+    +'<div style="background:'+color+';height:8px;width:'+(planInfo.count/planInfo.limit*100)+'%;border-radius:6px;transition:width .4s;"></div></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:10px;color:'+color+';margin-bottom:4px;">'
+    +'<span>'+planInfo.count+' used</span><span>'+planInfo.limit+' total</span></div>';
+  var upgradeRow = (!unlimited && remaining !== null && remaining <= 2)
+    ? '<div style="background:#fff;border:0.5px solid '+color+'40;border-radius:9px;padding:12px 14px;margin-top:14px;font-size:12px;line-height:1.6;color:#4A5568;">Need more locations? Contact MedSync to upgrade your plan.<br><strong style="color:'+color+';">hello@medsync.vet</strong></div>'
+    : '';
+  var el = document.createElement('div');
+  el.id = 'plan-modal-overlay';
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
+  el.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px;width:400px;max-width:90vw;box-shadow:0 12px 40px rgba(0,0,0,.2);" onclick="event.stopPropagation()">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">'
+    +'<div style="font-size:15px;font-weight:600;color:#1C2B4A;">Your Plan</div>'
+    +'<button onclick="closePlanModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8A93A8;line-height:1;">×</button></div>'
+    +'<div style="background:'+bg+';border-radius:10px;padding:16px 18px;">'
+    +'<div style="margin-bottom:8px;"><span style="background:'+color+';color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;">'+planInfo.label+'</span></div>'
+    +(unlimited
+      ? '<div style="font-size:13px;color:'+color+';font-weight:500;margin-top:8px;">Unlimited locations included</div>'
+      : '<div style="font-size:13px;color:'+color+';font-weight:500;margin-top:8px;">'+planInfo.count+' of '+planInfo.limit+' location slots used</div>'
+        +'<div style="font-size:12px;color:'+color+';margin-top:2px;"><strong>'+remaining+'</strong> slot'+(remaining===1?'':'s')+' remaining</div>'
+    )
+    +bar
+    +'</div>'
+    +upgradeRow
+    +'<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Got it</button>'
+    +'</div>';
+  el.addEventListener('click', closePlanModal);
+  document.body.appendChild(el);
+}
+
+function closePlanModal() {
+  var el = document.getElementById('plan-modal-overlay');
+  if (el) el.remove();
+}
+
 async function checkLocationLimit() {
   try {
     const userId = _sess.user?.id;
