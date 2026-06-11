@@ -872,7 +872,7 @@ async function showPlanModal() {
       + (orgData&&orgData.notes ? row('Notes', orgData.notes) : '');
 
     var upgradeNote = (!unlimited && remaining !== null && remaining <= 0)
-      ? '<div style="margin-top:14px;padding:11px 14px;background:#FFF3CD;border:0.5px solid #f0d070;border-radius:9px;font-size:11px;color:#856404;line-height:1.6;">You've used all your location slots. Contact MedSync to upgrade.<br><strong>hello@medsync.vet</strong></div>' : '';
+      ? '<div style="margin-top:14px;padding:11px 14px;background:#FFF3CD;border:0.5px solid #f0d070;border-radius:9px;font-size:11px;color:#856404;line-height:1.6;">You have used all your location slots. Contact MedSync to upgrade.<br><strong>hello@medsync.vet</strong></div>' : '';
 
     // CTA: use a slot if slots remain, otherwise just "Got it"
     var canAdd = unlimited || (remaining !== null && remaining > 0);
