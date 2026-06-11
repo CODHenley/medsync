@@ -135,6 +135,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .sub-table tr:last-child td{border-bottom:none;}
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+.tab-bar{display:flex;gap:0;border-bottom:0.5px solid var(--border);background:var(--surface);padding:0 24px;margin-bottom:0;}
+.tab-item{padding:12px 20px;font-size:13px;font-weight:500;color:var(--mist);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-0.5px;transition:color .15s;}
+.tab-item:hover{color:var(--navy);}
+.tab-item.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+.bill-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.bill-stat{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;}
+.bill-stat-label{font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.bill-stat-val{font-size:22px;font-weight:700;color:var(--navy);}
+.bill-stat-sub{font-size:11px;color:var(--mist);margin-top:2px;}
+.bill-table{width:100%;border-collapse:collapse;font-size:12px;}
+.bill-table th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:9px 16px;text-align:left;background:#F8F7FC;border-bottom:0.5px solid var(--border);font-weight:500;}
+.bill-table td{padding:11px 16px;border-bottom:0.5px solid #F5F3FA;vertical-align:middle;}
+.bill-table tr:last-child td{border-bottom:none;}
+.pay-badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.pay-current{background:#E1F5EE;color:#0F6E56;}
+.pay-pending{background:#FFF3CD;color:#856404;}
+.pay-overdue{background:#FDECEA;color:#a33030;}
+.pay-trial{background:#E8EEFF;color:#3451b2;}
+.run-btn{padding:9px 20px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.run-btn:hover{background:#162238;}
+/* Email preview */
+.email-preview{background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;max-width:560px;margin:0 auto;}
+.email-header{background:#1C2B4A;padding:24px 32px;text-align:center;}
+.email-body{padding:32px;}
+.email-footer{background:#F8F7FC;padding:16px 32px;text-align:center;font-size:10px;color:var(--mist);border-top:0.5px solid var(--border);}
+
 </style>
 </head>
 <body>
@@ -178,6 +206,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     </div>
   </div>
 
+  <div class="tab-bar">
+    <div class="tab-item active" id="tab-orgs" onclick="switchTab('orgs')">Organizations</div>
+    <div class="tab-item" id="tab-billing" onclick="switchTab('billing')">Billing</div>
+  </div>
+
+  <!-- ── ORGS TAB ── -->
+  <div class="tab-panel active" id="panel-orgs">
   <div class="content">
     <!-- Stats -->
     <div class="stats-bar">
@@ -267,6 +302,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 </div>
 
 <!-- ── PROVISION MODAL ── -->
+  </div><!-- /content -->
+  </div><!-- /panel-orgs -->
+
+  <!-- ── BILLING TAB ── -->
+  <div class="tab-panel" id="panel-billing">
+  <div class="content">
+
+    <!-- Billing stats -->
+    <div class="bill-stats">
+      <div class="bill-stat"><div class="bill-stat-label">Monthly Recurring Revenue</div><div class="bill-stat-val" id="b-mrr">$—</div><div class="bill-stat-sub">Active subscriptions</div></div>
+      <div class="bill-stat"><div class="bill-stat-label">Annual Run Rate</div><div class="bill-stat-val" id="b-arr">$—</div><div class="bill-stat-sub">MRR × 12</div></div>
+      <div class="bill-stat"><div class="bill-stat-label">Next billing run</div><div class="bill-stat-val" id="b-next">Jul 1</div><div class="bill-stat-sub">Auto on 1st of month</div></div>
+      <div class="bill-stat"><div class="bill-stat-label">Orgs current</div><div class="bill-stat-val" id="b-current">—</div><div class="bill-stat-sub" id="b-overdue-sub">— overdue</div></div>
+    </div>
+
+    <!-- Billing table -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Subscription billing</div>
+        <button class="run-btn" onclick="openRunBilling()">▶ Run billing cycle</button>
+      </div>
+      <table class="bill-table">
+        <thead><tr>
+          <th>Organization</th><th>Tier</th><th>Monthly</th>
+          <th>Enrollment fee</th><th>Next charge</th><th>Status</th><th>Billing contact</th>
+        </tr></thead>
+        <tbody id="bill-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+  </div><!-- /panel-billing -->
+
+
 <div class="modal-bg" id="provision-modal">
   <div class="modal">
     <div class="modal-head">
@@ -837,6 +906,148 @@ function clearProvLogo() {
   document.getElementById('prov-logo-file').value = '';
   document.getElementById('prov-logo-img').src = '';
   document.getElementById('prov-logo-preview').style.display = 'none';
+}
+
+
+// ── Tab switching ─────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+  if (tab === 'billing') renderBillingTab();
+}
+
+// ── Billing tab ───────────────────────────────────────────────
+const MOCK_BILLING = [
+  { name:'Scout Veterinary Urgent Care', tier:'mid_group', tierLabel:'Mid Group', monthly:349, locs:4, status:'current', nextCharge:'Jul 1, 2026', billingContact:'Megan Henley', billingEmail:'mhenley@scoutcare.com', enrolled: true },
+  { name:'Riverside Animal Hospital Group', tier:'small_group', tierLabel:'Small Group', monthly:249, locs:2, status:'current', nextCharge:'Jul 1, 2026', billingContact:'Dr. Rachel Torres', billingEmail:'billing@riversideah.com', enrolled: true },
+  { name:'Lakeside Veterinary Partners', tier:'solo', tierLabel:'Solo', monthly:149, locs:1, status:'trial', nextCharge:'Jul 15, 2026', billingContact:'Dr. Kevin Park', billingEmail:'kpark@lakesidevetpartners.com', enrolled: false },
+  { name:'Summit Pet Care Network', tier:'large_group', tierLabel:'Large Group', monthly:449, locs:9, status:'pending', nextCharge:'Jul 1, 2026', billingContact:'Jamie Okonkwo', billingEmail:'jamie@summitpetcare.com', enrolled: true },
+];
+
+function renderBillingTab() {
+  const mrr = MOCK_BILLING.filter(o => o.status !== 'trial').reduce((s,o) => s+o.monthly, 0);
+  document.getElementById('b-mrr').textContent = '$'+mrr.toLocaleString();
+  document.getElementById('b-arr').textContent = '$'+(mrr*12).toLocaleString();
+  const current = MOCK_BILLING.filter(o=>o.status==='current').length;
+  const overdue = MOCK_BILLING.filter(o=>o.status==='overdue').length;
+  document.getElementById('b-current').textContent = current+' / '+MOCK_BILLING.length;
+  document.getElementById('b-overdue-sub').textContent = overdue ? overdue+' overdue' : 'All accounts current';
+
+  const tbody = document.getElementById('bill-tbody');
+  tbody.innerHTML = MOCK_BILLING.map(org => {
+    const badge = {current:'pay-current',pending:'pay-pending',overdue:'pay-overdue',trial:'pay-trial'}[org.status];
+    const label = {current:'Current',pending:'Pending',overdue:'Overdue',trial:'Trial'}[org.status];
+    const enrollBadge = org.enrolled
+      ? '<span style="color:#0F6E56;font-size:10px;">✓ Paid</span>'
+      : '<span style="color:#a0700a;font-size:10px;">Pending</span>';
+    return `<tr>
+      <td><div style="font-weight:500;">${org.name}</div><div style="font-size:10px;color:var(--mist);">${org.locs} location${org.locs!==1?'s':''}</div></td>
+      <td><span class="tier-badge tier-${org.tier}" style="font-size:10px;">${org.tierLabel}</span></td>
+      <td style="font-weight:600;">$${org.monthly}<span style="font-weight:400;color:var(--mist);">/mo</span></td>
+      <td>$500 · ${enrollBadge}</td>
+      <td>${org.nextCharge}</td>
+      <td><span class="pay-badge ${badge}">${label}</span></td>
+      <td><div>${org.billingContact}</div><div style="font-size:10px;color:var(--mist);">${org.billingEmail}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Run billing cycle modal ───────────────────────────────────
+function openRunBilling() {
+  const overlay = document.createElement('div');
+  overlay.id = 'billing-run-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;display:flex;align-items:center;justify-content:center;';
+
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);" onclick="event.stopPropagation()">
+      <div style="padding:20px 24px 14px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:15px;font-weight:600;">Run billing cycle</div>
+        <button onclick="closeBillingRun()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8A93A8;">×</button>
+      </div>
+      <div id="billing-run-body" style="padding:24px;">
+        <div style="font-size:12px;color:var(--mist);margin-bottom:16px;">The following charges will be processed. Confirmation emails will be sent automatically.</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">
+          <thead><tr style="background:#F8F7FC;">
+            <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Organization</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Amount</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Method</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Status</th>
+          </tr></thead>
+          <tbody id="run-rows">
+            ${MOCK_BILLING.filter(o=>o.status!=='trial').map((o,i) => `
+              <tr id="run-row-${i}" style="border-bottom:0.5px solid #F5F3FA;">
+                <td style="padding:10px 12px;">${o.name}</td>
+                <td style="padding:10px 12px;font-weight:600;">$${o.monthly}.00</td>
+                <td style="padding:10px 12px;color:var(--mist);">Stripe ACH</td>
+                <td style="padding:10px 12px;"><span id="run-status-${i}" class="pay-badge pay-pending">Queued</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button onclick="closeBillingRun()" style="padding:9px 18px;border:0.5px solid var(--border);background:#fff;border-radius:8px;font-size:12px;cursor:pointer;">Cancel</button>
+          <button id="confirm-run-btn" onclick="runBillingAnimation()" style="padding:9px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Confirm & process</button>
+        </div>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', closeBillingRun);
+  document.body.appendChild(overlay);
+}
+
+function closeBillingRun() {
+  const el = document.getElementById('billing-run-overlay');
+  if (el) el.remove();
+}
+
+async function runBillingAnimation() {
+  document.getElementById('confirm-run-btn').disabled = true;
+  document.getElementById('confirm-run-btn').textContent = 'Processing…';
+  const orgs = MOCK_BILLING.filter(o=>o.status!=='trial');
+  for (let i = 0; i < orgs.length; i++) {
+    await new Promise(r => setTimeout(r, 700 + Math.random()*400));
+    const s = document.getElementById('run-status-'+i);
+    if (s) { s.className='pay-badge pay-current'; s.textContent='✓ Charged'; }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  await new Promise(r => setTimeout(r, 500));
+  // Replace body with success + email preview
+  document.getElementById('billing-run-body').innerHTML = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:36px;margin-bottom:8px;">✅</div>
+      <div style="font-size:15px;font-weight:600;color:#0F6E56;">Billing cycle complete</div>
+      <div style="font-size:12px;color:var(--mist);margin-top:4px;">3 payments processed · Confirmation emails sent</div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em;">Email preview — sent to each customer</div>
+    <div class="email-preview">
+      <div class="email-header">
+        <img src="medsync_logo.png" alt="MedSync" style="height:32px;width:auto;border-radius:6px;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;">
+        <div style="color:#fff;font-size:16px;font-weight:600;">Payment confirmation</div>
+        <div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:4px;">MedSync Platform</div>
+      </div>
+      <div class="email-body">
+        <p style="font-size:14px;color:#1C2B4A;margin-bottom:16px;">Hi <strong>Megan</strong>,</p>
+        <p style="font-size:13px;color:#4A5568;line-height:1.7;margin-bottom:20px;">Your MedSync subscription payment has been processed successfully. Thank you for being part of the MedSync community.</p>
+        <div style="background:#F8F7FC;border:0.5px solid #DDD9EC;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;"><span style="color:#8A93A8;">Plan</span><span style="font-weight:600;color:#1C2B4A;">Mid Group</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;"><span style="color:#8A93A8;">Billing period</span><span style="color:#1C2B4A;">Jul 1 – Jul 31, 2026</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;"><span style="color:#8A93A8;">Locations</span><span style="color:#1C2B4A;">4 of 6</span></div>
+          <div style="border-top:0.5px solid #DDD9EC;margin:10px 0;"></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;"><span style="color:#1C2B4A;">Amount charged</span><span style="color:#1C2B4A;">$349.00</span></div>
+        </div>
+        <p style="font-size:12px;color:#4A5568;line-height:1.7;margin-bottom:20px;">Your next payment of <strong>$349.00</strong> will be processed on <strong>August 1, 2026</strong>. Questions? Contact us at <a href="mailto:billing@medsync.vet" style="color:#0F6E56;">billing@medsync.vet</a></p>
+        <div style="background:#E1F5EE;border:0.5px solid #b0ddd0;border-radius:9px;padding:12px 16px;font-size:11px;color:#0F6E56;line-height:1.6;">
+          <strong>90-day money-back guarantee:</strong> If you cancel within 90 days of your start date, you'll receive a full refund within 60 days.
+        </div>
+      </div>
+      <div class="email-footer">
+        MedSync · medsync.vet · billing@medsync.vet<br>
+        © 2026 MedSync. All rights reserved.
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+      <button onclick="closeBillingRun()" style="padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Done</button>
+    </div>`;
 }
 
 function openEditOrg() {

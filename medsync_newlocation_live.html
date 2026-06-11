@@ -859,12 +859,23 @@ function closePlanModal() {
 
 async function checkLocationLimit() {
   try {
-    const userId = _sess.user?.id;
-    if (!userId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; }
+    // Try user ID first, then email fallback (handles different session storage formats)
+    const userId = _sess.user?.id || _sess.user_id;
+    const userEmail = _sess.user?.email || _sess.email ||
+      (function(){ try{return JSON.parse(localStorage.getItem('medsync_user')||'{}').email;}catch(e){return null;} })();
 
-    const userRes = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&id=eq.${userId}`, { headers: H });
-    const users = await userRes.json();
-    const orgId = Array.isArray(users) && users[0] ? users[0].organization_id : null;
+    let orgId = null;
+    if (userId) {
+      const r = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&id=eq.${userId}`, { headers: H });
+      const d = await r.json();
+      orgId = Array.isArray(d) && d[0] ? d[0].organization_id : null;
+    }
+    // Email fallback — more reliable when session format varies
+    if (!orgId && userEmail) {
+      const r = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&email=eq.${encodeURIComponent(userEmail)}`, { headers: H });
+      const d = await r.json();
+      orgId = Array.isArray(d) && d[0] ? d[0].organization_id : null;
+    }
     if (!orgId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; } // Legacy/Scout — no limit
 
     const [orgRes, locRes] = await Promise.all([
