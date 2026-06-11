@@ -233,6 +233,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     <div class="tab-item active" id="tab-orgs" onclick="switchTab('orgs')">Organizations</div>
     <div class="tab-item" id="tab-billing" onclick="switchTab('billing')">Billing</div>
     <div class="tab-item" id="tab-admins" onclick="switchTab('admins')">Super Admins</div>
+    <div class="tab-item" id="tab-growth" onclick="switchTab('growth')">Growth</div>
   </div>
 
   <!-- ── ORGS TAB ── -->
@@ -413,6 +414,144 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     </div>
   </div>
   </div><!-- /panel-admins -->
+
+  <!-- ── GROWTH TAB ── -->
+  <div class="tab-panel" id="panel-growth">
+  <div class="content">
+
+    <!-- Current vs target stat cards -->
+    <div class="stat-row" style="margin-bottom:20px;">
+      <div class="stat-card">
+        <div class="stat-label">Current MRR</div>
+        <div class="stat-val" id="g-mrr">—</div>
+        <div class="stat-sub">Live accounts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">2028 ARR Target</div>
+        <div class="stat-val">$74,700</div>
+        <div class="stat-sub">25 customers · Year 1 ext.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Break-even ARR</div>
+        <div class="stat-val">$413K+</div>
+        <div class="stat-sub">~133 customers · mid-2029</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">TAM</div>
+        <div class="stat-val">$24M</div>
+        <div class="stat-sub">Small practice group segment</div>
+      </div>
+    </div>
+
+    <!-- Phase timeline -->
+    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:16px;">Roadmap phases</div>
+      <div style="display:flex;gap:0;position:relative;">
+        <div style="position:absolute;top:18px;left:0;right:0;height:2px;background:var(--border);z-index:0;"></div>
+        ${['Q4 2026–2027','2028','2029','2030+'].map((phase, i) => {
+          const labels = ['Scout deployment &amp; validation','External launch','Growth to break-even','Scale'];
+          const subs = ['4 Scout locations live','25 → 55 customers','75 → 130+ customers','$24M TAM pursuit'];
+          const active = i === 0;
+          const done = false;
+          const color = active ? 'var(--navy)' : '#DDD9EC';
+          const textColor = active ? 'var(--navy)' : 'var(--mist)';
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1;">
+            <div style="width:36px;height:36px;border-radius:50%;background:${active?'var(--navy)':'#fff'};border:2px solid ${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${active?'#fff':color};">${i+1}</div>
+            <div style="text-align:center;">
+              <div style="font-size:11px;font-weight:700;color:${textColor};">${phase}</div>
+              <div style="font-size:10px;color:var(--mist);margin-top:2px;">${labels[i]}</div>
+              <div style="font-size:10px;color:var(--mist);">${subs[i]}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+
+      <!-- Break-even milestones -->
+      <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:20px 24px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;">Break-even milestones</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#F8F7FC;">
+            <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Milestone</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">Customers</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">ARR</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">Payroll</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">When</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:7px 10px;">Year 1 ext. launch</td><td style="padding:7px 10px;text-align:right;font-weight:600;">25</td><td style="padding:7px 10px;text-align:right;">$74,700</td><td style="padding:7px 10px;text-align:right;"><span style="background:#FFF3CD;color:#856404;font-size:10px;padding:2px 6px;border-radius:8px;">~21%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2028</td></tr>
+            <tr style="background:#F8F7FC;"><td style="padding:7px 10px;">Year 2 growth</td><td style="padding:7px 10px;text-align:right;font-weight:600;">75</td><td style="padding:7px 10px;text-align:right;">$224,100</td><td style="padding:7px 10px;text-align:right;"><span style="background:#FFF3CD;color:#856404;font-size:10px;padding:2px 6px;border-radius:8px;">~60%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2029</td></tr>
+            <tr><td style="padding:7px 10px;">Full break-even</td><td style="padding:7px 10px;text-align:right;font-weight:600;">~133</td><td style="padding:7px 10px;text-align:right;">$413,364+</td><td style="padding:7px 10px;text-align:right;"><span style="background:#D4EDDA;color:#155724;font-size:10px;padding:2px 6px;border-radius:8px;">100%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">Mid-2029</td></tr>
+            <tr style="background:#F8F7FC;"><td style="padding:7px 10px;">Scout preferred (40 locs)</td><td style="padding:7px 10px;text-align:right;font-weight:600;">40</td><td style="padding:7px 10px;text-align:right;">$71,520</td><td style="padding:7px 10px;text-align:right;"><span style="background:#E8F0FE;color:#1a56db;font-size:10px;padding:2px 6px;border-radius:8px;">~19%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2027+</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:12px;font-size:11px;color:var(--mist);padding:10px 12px;background:#F8F7FC;border-radius:8px;">Payroll range: $350K–$470K/yr · Blended avg: $259/mo per customer · Thurlow shared services (finance, HR, marketing) not included</div>
+      </div>
+
+      <!-- Pricing tier mix -->
+      <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:20px 24px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;">Tier pricing &amp; mix strategy</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${[
+            {tier:'Solo',price:149,locs:'1 location',color:'#8A93A8',note:'Independent practitioners'},
+            {tier:'Small Group',price:249,locs:'Up to 3',color:'#5B3FA8',note:'Small practice groups'},
+            {tier:'Mid Group',price:349,locs:'Up to 6',color:'#2E8B57',note:'Scout / mid-size groups'},
+            {tier:'Large Group',price:449,locs:'Up to 12',color:'#C8922A',note:'PE roll-ups, multi-site'},
+            {tier:'Enterprise',price:null,locs:'13+',color:'#1C2B4A',note:'Custom — negotiated'},
+          ].map(t => `<div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:${t.color};flex-shrink:0;"></div>
+            <div style="flex:1;font-size:12px;font-weight:500;">${t.tier}</div>
+            <div style="font-size:11px;color:var(--mist);">${t.locs}</div>
+            <div style="font-size:12px;font-weight:700;color:${t.color};">${t.price ? '$'+t.price+'/mo' : 'Custom'}</div>
+          </div>`).join('')}
+        </div>
+        <div style="margin-top:14px;padding:12px;background:#F0F7FF;border-radius:8px;font-size:11px;color:#1e3a8a;line-height:1.6;">
+          <strong>Break-even mix example:</strong> 20 Large Group + 30 Small Group + 40 Solo = 90 customers · $428,520 ARR — already past break-even. The tier mix matters as much as customer count.
+        </div>
+      </div>
+    </div>
+
+    <!-- Quarterly acquisition roadmap -->
+    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px;">Quarterly customer acquisition roadmap</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#F8F7FC;">
+          <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Period</th>
+          <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Strategy</th>
+          <th style="padding:8px 12px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">New</th>
+          <th style="padding:8px 12px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">Total</th>
+          <th style="padding:8px 12px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">ARR</th>
+        </tr></thead>
+        <tbody id="g-roadmap-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- 2027 validation metrics -->
+    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:20px 24px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">2027 Scout validation — what we're proving</div>
+      <div style="font-size:11px;color:var(--mist);margin-bottom:14px;">These are the metrics that become the sales asset at 2028 external launch</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        ${[
+          {label:'COGs impact',desc:'Did MedSync move the COGs needle at Scout? By how much vs. baseline?'},
+          {label:'Stockout reduction',desc:'How many reorder alerts triggered in time? Stockouts prevented?'},
+          {label:'Procurement savings',desc:'Total GPO discount capture + best-price routing savings vs. prior behavior'},
+          {label:'Expiration waste eliminated',desc:'Total value of expired product prevented across all locations in year one'},
+          {label:'IL time saved',desc:'Hours/week recovered from manual inventory tasks per Inventory Lead'},
+          {label:'Denovo accuracy',desc:'How close were Benchmark Starter Program forecasts to actual usage in first 90 days?'},
+        ].map(m => `<div style="padding:12px;background:#F8F7FC;border-radius:8px;border:0.5px solid var(--border);">
+          <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;">${m.label}</div>
+          <div style="font-size:10px;color:var(--mist);line-height:1.5;">${m.desc}</div>
+          <div style="margin-top:8px;height:4px;background:#E4E0F0;border-radius:4px;"><div style="height:4px;background:var(--navy);border-radius:4px;width:0%;transition:width 1s;" class="g-validation-bar"></div></div>
+          <div style="font-size:10px;color:var(--mist);margin-top:4px;">Tracking from Q4 2026</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+  </div><!-- /content -->
+  </div><!-- /panel-growth -->
+
 
 </div><!-- /app -->
 
@@ -911,6 +1050,47 @@ async function suspendOrg() {
   }
 }
 
+
+// ── Growth tab ────────────────────────────────────────────────────────────
+function renderGrowthTab() {
+  // Update current MRR from real data
+  const mrr = MOCK_BILLING.filter(o => o.status !== 'trial').reduce((s,o) => s+o.monthly, 0);
+  const el = document.getElementById('g-mrr');
+  if (el) el.textContent = '$' + mrr.toLocaleString();
+
+  // Quarterly roadmap
+  const roadmap = [
+    { period:'Q1 2028', strategy:'Scout case study published. VMX/NAVC launch. First 5 Vetspire-native groups close.', newC:5, total:5, arr:14940 },
+    { period:'Q2 2028', strategy:'First PE roll-up closes (10–15 locations, large group tier). Vetspire referrals begin.', newC:15, total:20, arr:73380 },
+    { period:'Q3 2028', strategy:'Conference season. Word of mouth from early customers. Second PE group.', newC:20, total:40, arr:143280 },
+    { period:'Q4 2028', strategy:'Trade publication feature. Pipeline building.', newC:15, total:55, arr:197010 },
+    { period:'Q1 2029', strategy:'Second year of Scout case study. Testimonials from 2028 customers. Third PE deal.', newC:20, total:75, arr:269100 },
+    { period:'Q2 2029', strategy:'Vetspire marketplace active. Referral flywheel building.', newC:25, total:100, arr:357120 },
+    { period:'Q3–Q4 2029', strategy:'Sales rep at full rhythm. Referrals increasing. Break-even reached.', newC:30, total:130, arr:466920, breakeven:true },
+  ];
+  const tbody = document.getElementById('g-roadmap-tbody');
+  if (tbody) {
+    tbody.innerHTML = roadmap.map((r, i) => {
+      const bg = r.breakeven ? 'background:#E8F4EE;' : (i%2===1?'background:#F8F7FC;':'');
+      const arrStr = '$' + r.arr.toLocaleString();
+      const beTag = r.breakeven ? ' <span style="background:#2E8B57;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:4px;">BREAK-EVEN</span>' : '';
+      const pct = Math.min(100, Math.round((r.total / 133) * 100));
+      return `<tr style="${bg}">
+        <td style="padding:8px 12px;font-weight:600;white-space:nowrap;">${r.period}</td>
+        <td style="padding:8px 12px;font-size:11px;color:var(--mist);">${r.strategy}</td>
+        <td style="padding:8px 12px;text-align:right;font-weight:600;">+${r.newC}</td>
+        <td style="padding:8px 12px;text-align:right;">
+          <div style="font-weight:600;">${r.total}${beTag}</div>
+          <div style="background:#E4E0F0;height:4px;border-radius:4px;margin-top:4px;width:80px;margin-left:auto;">
+            <div style="background:${r.breakeven?'#2E8B57':'var(--navy)'};height:4px;border-radius:4px;width:${pct}%;"></div>
+          </div>
+        </td>
+        <td style="padding:8px 12px;text-align:right;font-weight:600;">${arrStr}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
 // ── Provision flow ────────────────────────────────────────────
 let provStep = 1;
 let provTier = null;
@@ -1141,6 +1321,7 @@ function switchTab(tab) {
   document.getElementById('panel-'+tab).classList.add('active');
   if (tab === 'billing') renderBillingTab();
   if (tab === 'admins') loadSuperAdmins();
+  if (tab === 'growth') renderGrowthTab();
 }
 
 // ── Billing tab ───────────────────────────────────────────────
