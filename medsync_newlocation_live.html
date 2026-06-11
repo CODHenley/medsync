@@ -897,14 +897,22 @@ function _getMu(){ try{return JSON.parse(localStorage.getItem('medsync_user')||s
 async function checkLocationLimit() {
   try {
     const _mu2 = _getMu();
-    // Fast path: org_id stored at login (no extra fetch needed)
+    const Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+    const userEmail = _sess.user?.email || _sess.email || _mu2.email;
+
+    // 1. Fast path: stored at login
     let orgId = _mu2.organization_id || null;
 
+    // 2. Lookup by contact_email on organizations table (bypasses users RLS)
+    if (!orgId && userEmail) {
+      const r = await fetch(SUPA_URL + `/rest/v1/organizations?select=id&contact_email=eq.${encodeURIComponent(userEmail)}`, { headers: Hanon });
+      const d = await r.json();
+      orgId = Array.isArray(d) && d[0] ? d[0].id : null;
+    }
+
+    // 3. Last resort: users table by id or email
     if (!orgId) {
-      // Fallback: query users table by ID or email
       const userId = _sess.user?.id || _sess.user_id || _jwtSub(_sess.access_token);
-      const userEmail = _sess.user?.email || _sess.email || _mu2.email;
-      const Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
       if (userId) {
         const r = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&id=eq.${userId}`, { headers: Hanon });
         const d = await r.json();

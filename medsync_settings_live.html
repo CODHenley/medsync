@@ -493,18 +493,26 @@ async function loadBillingBranding() {
     // Fast path: org_id stored at login
     let orgId = _mu.organization_id || null;
 
+    const Sett_Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+    const userEmail = _settSess.user?.email || _settSess.email || _mu.email || null;
+
+    // 2. Lookup by contact_email on organizations table (bypasses users RLS)
+    if (!orgId && userEmail) {
+      const ro = await fetch(SUPA_URL+'/rest/v1/organizations?select=id&contact_email=eq.'+encodeURIComponent(userEmail), {headers:Sett_Hanon});
+      const orgsE = await ro.json();
+      orgId = (Array.isArray(orgsE) && orgsE[0]) ? orgsE[0].id : null;
+    }
+
+    // 3. Last resort: users table
     if (!orgId) {
-      // Fallback: query users table
       const userId = _settSess.user?.id || _settSess.user_id || _sJwtSub(_settSess.access_token);
-      const userEmail = _settSess.user?.email || _settSess.email || _mu.email || null;
-      const Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
       if (userId) {
-        const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:Hanon});
+        const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:Sett_Hanon});
         const users = await ur.json();
         orgId = (Array.isArray(users) && users[0]) ? users[0].organization_id : null;
       }
       if (!orgId && userEmail) {
-        const ur2 = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&email=eq.'+encodeURIComponent(userEmail), {headers:Hanon});
+        const ur2 = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&email=eq.'+encodeURIComponent(userEmail), {headers:Sett_Hanon});
         const users2 = await ur2.json();
         orgId = (Array.isArray(users2) && users2[0]) ? users2[0].organization_id : null;
       }
