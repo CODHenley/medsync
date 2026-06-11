@@ -378,13 +378,13 @@ async function doLogin() {
     const data = await res.json();
     if (!data.access_token) throw new Error('Auth failed');
 
-    // Verify superadmin role
+    // Verify superadmin role — use anon key so RLS doesn't block the lookup
     const userRes = await fetch(
       SUPA_URL + `/rest/v1/users?select=id,full_name,role,email&id=eq.${data.user.id}`,
-      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token } }
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
     );
     const users = await userRes.json();
-    if (!users.length || users[0].role !== 'medsync_superadmin') {
+    if (!Array.isArray(users) || !users.length || users[0].role !== 'medsync_superadmin') {
       throw new Error('Not superadmin');
     }
 
