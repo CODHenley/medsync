@@ -35,6 +35,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* Type selection tiles */
 .tile-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@keyframes tlPulse{0%,100%{box-shadow:0 0 0 0 rgba(28,43,74,.0);}50%{box-shadow:0 0 0 6px rgba(28,43,74,.15);}}
+.tile-pulse{animation:tlPulse .7s ease 3;}
 .tile{border:1.5px solid var(--border);border-radius:12px;padding:18px 16px;cursor:pointer;transition:all .15s;background:#fff;text-align:left;}
 .tile:hover{border-color:#9B8EC4;background:#FAFAF8;}
 .tile.selected{border-color:var(--navy);background:#F0EEF8;}
@@ -330,7 +332,7 @@ function renderTypeScreen() {
     <div class="card">
       <div class="card-title">What type of location are you opening?</div>
       <div class="card-sub">This determines how MedSync builds your opening inventory order.</div>
-      <div class="tile-grid">
+      <div class="tile-grid" id="loc-type-grid">
         <div class="tile ${state.locationType==='denovo'?'selected':''}" onclick="selectType('denovo')">
           <div class="tile-icon">🏗️</div>
           <div class="tile-name">De Novo (New Build)</div>
@@ -877,7 +879,7 @@ async function showPlanModal() {
     // CTA: use a slot if slots remain, otherwise just "Got it"
     var canAdd = unlimited || (remaining !== null && remaining > 0);
     var ctaButtons = canAdd
-      ? '<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Use a slot — set up new location →</button>'
+      ? '<button onclick="startLocationSetup()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Use a slot — set up new location →</button>'
         + '<button onclick="closePlanModal()" style="margin-top:8px;width:100%;padding:9px;background:none;border:none;font-size:12px;color:#8A93A8;cursor:pointer;font-family:sans-serif;">Maybe later</button>'
       : '<button onclick="closePlanModal()" style="margin-top:18px;width:100%;padding:11px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:sans-serif;">Got it</button>';
 
@@ -891,6 +893,26 @@ async function showPlanModal() {
     var box = document.getElementById('plan-modal-box');
     if (box) box.innerHTML += '<div style="color:#a33030;font-size:11px;margin-top:8px;">Could not load plan details.</div>';
   }
+}
+
+function startLocationSetup() {
+  // Close modal
+  var el = document.getElementById('plan-modal-overlay');
+  if (el) el.remove();
+  // Scroll to the location type grid and pulse it
+  setTimeout(function() {
+    var grid = document.getElementById('loc-type-grid');
+    if (!grid) return;
+    grid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Add pulse to each selectable tile (De Novo, Existing Practice — not Your Plan)
+    var tiles = grid.querySelectorAll('.tile');
+    tiles.forEach(function(t) {
+      // Skip the Your Plan tile (it has the plan badge inside)
+      if (t.querySelector('.tile-name') && t.querySelector('.tile-name').textContent.trim() === 'Your Plan') return;
+      t.classList.add('tile-pulse');
+      setTimeout(function() { t.classList.remove('tile-pulse'); }, 2500);
+    });
+  }, 150);
 }
 
 function closePlanModal() {
