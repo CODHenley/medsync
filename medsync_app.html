@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cyclecount','users','settings','regions','newlocation'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cyclecount','users','settings','regions','newlocation'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -260,7 +260,7 @@ window.addEventListener('message', function(e) {
 .section{display:block!important;padding:32px 20px;max-width:900px;margin:0 auto;}
 #ms-toast{position:fixed;bottom:20px;right:20px;background:#1C2B4A;color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
 
-#ms-analytics .outer, #ms-lifecycle .outer, #ms-actlog .outer {
+#ms-analytics .outer, #ms-lifecycle .outer, #ms-procurement .outer, #ms-actlog .outer {
   display: grid;
   grid-template-columns: 200px 1fr;
   min-height: calc(100vh - 48px);
@@ -491,6 +491,7 @@ window.addEventListener('message', function(e) {
       <button class="mnb active" id="mnb-portfolio" onclick="showScreen('portfolio')">Portfolio</button>
       <button class="mnb" id="mnb-analytics" onclick="showScreen('analytics')">Analytics</button>
       <button class="mnb" id="mnb-lifecycle" onclick="showScreen('lifecycle')">Lot Lifecycle</button>
+      <button class="mnb" id="mnb-procurement" onclick="showScreen('procurement')">Procurement</button>
       <button class="mnb" id="mnb-actlog" onclick="showScreen('actlog')">Activity Log</button>
     </div>
   </div>
@@ -511,6 +512,7 @@ window.addEventListener('message', function(e) {
   <div class="asb-item" id="asb-portfolio" onclick="showScreen('portfolio')">▪ Portfolio</div>
   <div class="asb-item" id="asb-analytics" onclick="showScreen('analytics')">📊 MedSync Analytics</div>
   <div class="asb-item" id="asb-lifecycle" onclick="showScreen('lifecycle')">🔬 Lot Lifecycle</div>
+  <div class="asb-item" id="asb-procurement" onclick="showScreen('procurement')">🛍️ Procurement</div>
   <div class="asb-item" id="asb-actlog" onclick="showScreen('actlog')">📋 Activity Log</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
@@ -734,9 +736,15 @@ window.addEventListener('message', function(e) {
   </iframe>
 </div>
 <div id="ms-lifecycle" class="ms-screen">
-  <iframe src="medsync_lot_lifecycle_live.html" 
-    style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
+  <iframe src="medsync_lot_lifecycle_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="ms-lifecycle">
+  </iframe>
+</div>
+<div id="ms-procurement" class="ms-screen" style="display:none;">
+  <iframe src="medsync_procurement.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="ms-procurement">
   </iframe>
 </div>
 <div id="ms-actlog" class="ms-screen">

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync Procurement — Scout Veterinary</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1C2B4A;--navy-mid:#243459;
+  --gold:#C8922A;--gold-light:#E8B84B;--gold-pale:#FDF8EE;
+  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --bg:#fff;--surface:#fff;
+  --green:#0F6E56;--green-bg:#E1F5EE;--green-border:#A0D4C0;
+  --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
+  --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
+  --purple:#534AB7;--purple-bg:#EEEDFE;
+  --blue:#185FA5;--blue-bg:#E6F1FB;
+}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;line-height:1.5;height:100%;overflow:hidden;}
+.nav{display:none!important;}
+.sidebar{display:none!important;}
+.outer{display:flex;flex-direction:column;height:100vh;margin:0;}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.tb-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tb-title{font-size:15px;font-weight:500;}
+select{padding:5px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);cursor:pointer;outline:none;height:30px;}
+select:focus{border-color:var(--navy);}
+.btn{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .12s;height:30px;}
+.btn:hover{background:#F0EEF8;}
+.btn-primary{background:var(--navy);color:#fff;border-color:var(--navy);}
+.btn-primary:hover{background:var(--navy-mid);}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px;min-height:0;}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
+.kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.kpi-v{font-size:22px;font-weight:500;line-height:1;}
+.kpi-s{font-size:11px;margin-top:3px;}
+.cg{color:var(--green);}
+.ca{color:var(--amber);}
+.cr{color:var(--red);}
+.cm{color:var(--mist);}
+.cp{color:var(--purple);}
+.cgold{color:var(--gold);}
+
+/* SECTION */
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.sec-title{font-size:12px;font-weight:600;color:var(--navy);}
+.sec-sub{font-size:11px;color:var(--mist);}
+.filter-tabs{display:flex;gap:4px;}
+.ftab{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--slate);transition:all .12s;}
+.ftab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+.ftab:hover:not(.active){background:#F0EEF8;}
+
+/* TABLES */
+.table-wrap{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead{background:#F8F7FC;}
+th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;text-align:left;border-bottom:0.5px solid var(--border);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none;}
+th:hover{color:var(--navy);}
+td{padding:9px 12px;border-bottom:0.5px solid #F5F3FA;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.trow{cursor:default;transition:background .08s;}
+.trow:hover td{background:#F8F7FC;}
+.mono{font-family:'DM Mono',monospace;font-size:11px;}
+.prod-name{font-weight:500;color:var(--navy);}
+.prod-sub{font-size:10px;color:var(--mist);margin-top:1px;}
+
+/* PROGRESS BAR */
+.pbar-wrap{width:80px;height:6px;background:#EEEAF5;border-radius:3px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:3px;transition:width .3s;}
+
+/* BADGES */
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap;}
+.b-active{background:var(--green-bg);color:var(--green);}
+.b-partial{background:var(--amber-bg);color:var(--amber);}
+.b-full{background:var(--blue-bg);color:var(--blue);}
+.b-returned{background:#F5F3FA;color:var(--mist);}
+
+/* REGIONAL SECTION */
+.region-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;}
+.region-card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;}
+.rc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.rc-name{font-size:13px;font-weight:600;}
+.rc-badge{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--gold-pale);color:var(--gold);font-weight:600;border:0.5px solid #EDD9A3;}
+.rc-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #F5F3FA;font-size:11px;}
+.rc-row:last-child{border-bottom:none;}
+.rc-k{color:var(--mist);}
+.rc-v{font-weight:500;}
+.rc-cogs-bar{height:4px;background:#EEEAF5;border-radius:2px;margin-top:10px;overflow:hidden;}
+.rc-cogs-fill{height:100%;background:var(--gold);border-radius:2px;}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:40px 20px;color:var(--mist);}
+.empty-icon{font-size:32px;margin-bottom:8px;}
+.empty-title{font-size:13px;font-weight:500;color:var(--slate);margin-bottom:4px;}
+.empty-sub{font-size:11px;line-height:1.6;}
+
+/* LOADING */
+.loading-row td{text-align:center;padding:32px;color:var(--mist);}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
+
+/* MOBILE */
+@media(max-width:768px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)!important;}
+  .topbar{flex-direction:column!important;padding:10px 12px!important;gap:6px!important;}
+  .tb-left{flex-wrap:wrap!important;gap:6px!important;}
+  .content{padding:10px 12px!important;}
+  table thead{display:none!important;}
+  .table-wrap{overflow-x:hidden!important;}
+}
+@media(min-width:769px){
+  html,body{height:100%;overflow:hidden;}
+  .outer{height:100vh;overflow:hidden;}
+  .content{overflow-y:auto;}
+}
+</style>
+</head>
+<body>
+<div class="outer">
+
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-title">Procurement & COGS</div>
+      <select id="sel-location" onchange="reload()">
+        <option value="">All locations</option>
+        <option value="28253" selected>Wheaton</option>
+      </select>
+      <select id="sel-period" onchange="reload()">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="mtd">Month to date</option>
+      </select>
+      <select id="sel-view" onchange="switchView(this.value)">
+        <option value="product">By product</option>
+        <option value="daily">Daily COGS</option>
+        <option value="regional">Regional roll-up</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" onclick="exportCSV()">↓ CSV</button>
+      <button class="btn btn-primary" onclick="reload()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- KPI STRIP -->
+    <div class="kpi-row" id="kpi-row">
+      <div class="kpi"><div class="kpi-l">Purchase Value</div><div class="kpi-v cm" id="kv-purchase">—</div><div class="kpi-s cm">from receiving log</div></div>
+      <div class="kpi"><div class="kpi-l">True COGS</div><div class="kpi-v" id="kv-cogs" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogs">cost of goods sold</div></div>
+      <div class="kpi"><div class="kpi-l">Remaining Inventory</div><div class="kpi-v cg" id="kv-remaining">—</div><div class="kpi-s cm">estimated on-hand value</div></div>
+      <div class="kpi"><div class="kpi-l">COGS % Revenue</div><div class="kpi-v" id="kv-cogspc" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogspc">true cost vs. revenue</div></div>
+      <div class="kpi"><div class="kpi-l">Items Dispensed</div><div class="kpi-v cp" id="kv-items">—</div><div class="kpi-s cm" id="ks-items">dispense events</div></div>
+    </div>
+
+    <!-- PRODUCT VIEW -->
+    <div id="view-product">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Lot Lifecycle — by Product</div>
+          <div class="sec-sub" id="tbl-count">Loading…</div>
+        </div>
+        <div class="filter-tabs">
+          <div class="ftab active" onclick="setPFilter('all',this)">All</div>
+          <div class="ftab" onclick="setPFilter('active',this)">Active lots</div>
+          <div class="ftab" onclick="setPFilter('full',this)">Fully consumed</div>
+          <div class="ftab" onclick="setPFilter('cost',this)">Has unit cost</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('product_name')">Product ↕</th>
+              <th onclick="sortBy('location_name')">Location ↕</th>
+              <th onclick="sortBy('total_qty_dispensed')" style="text-align:right;">Dispensed Qty ↕</th>
+              <th onclick="sortBy('unit_cost')" style="text-align:right;">Unit Cost ↕</th>
+              <th onclick="sortBy('true_cogs')" style="text-align:right;">True COGS ↕</th>
+              <th style="text-align:right;">Revenue Charged</th>
+              <th onclick="sortBy('pct')" style="text-align:right;">Margin ↕</th>
+              <th>Consumed</th>
+              <th onclick="sortBy('last_dispensed_at')">Last Dispensed ↕</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="product-tbody">
+            <tr class="loading-row"><td colspan="10">Loading procurement data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DAILY VIEW -->
+    <div id="view-daily" style="display:none;">
+      <div class="sec-head">
+        <div class="sec-title">Daily COGS Roll-up</div>
+        <div class="sec-sub" id="daily-count">—</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Location</th>
+              <th style="text-align:right;">Unique Products</th>
+              <th style="text-align:right;">Total Qty</th>
+              <th style="text-align:right;">True COGS</th>
+              <th style="text-align:right;">Revenue</th>
+              <th style="text-align:right;">COGS %</th>
+            </tr>
+          </thead>
+          <tbody id="daily-tbody">
+            <tr class="loading-row"><td colspan="7">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REGIONAL VIEW -->
+    <div id="view-regional" style="display:none;">
+      <div class="sec-head">
+        <div class="sec-title">Regional Roll-up</div>
+        <div class="sec-sub">Aggregate COGS by hospital — Chicagoland region</div>
+      </div>
+      <div class="region-grid" id="region-grid">
+        <div style="padding:20px;color:var(--mist);font-size:12px;">Loading regional data…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Supabase config ──────────────────────────────────────────────
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY) };
+
+// State
+let ALL_PRODUCTS = [];
+let ALL_DAILY    = [];
+let sortCol      = 'true_cogs';
+let sortDir      = -1;
+let pFilter      = 'all';
+let currentView  = 'product';
+
+// ── Date range helper ─────────────────────────────────────────────
+function getDateRange() {
+  const sel = document.getElementById('sel-period').value;
+  const now = new Date();
+  const end = now.toISOString().slice(0, 10);
+  let start;
+  if (sel === 'mtd') {
+    start = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+  } else {
+    const d = new Date(now);
+    d.setDate(d.getDate() - parseInt(sel));
+    start = d.toISOString().slice(0, 10);
+  }
+  return { start, end };
+}
+
+function getLocationFilter() {
+  const v = document.getElementById('sel-location').value;
+  return v ? `&location_id=eq.${v}` : '';
+}
+
+// ── Fetch from Supabase ───────────────────────────────────────────
+async function query(table, params) {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, { headers: H });
+  if (!res.ok) throw new Error(`${table}: HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Reload all data ───────────────────────────────────────────────
+async function reload() {
+  const { start, end } = getDateRange();
+  const locFilter = getLocationFilter();
+
+  setLoading(true);
+
+  try {
+    // Load dispensed_items aggregated by product
+    const raw = await query('dispensed_items',
+      `select=vetspire_product_id,product_name,sku,quantity,unit_price,unit_cost,returned,refunded,dispensed_at,location_id,location_name` +
+      `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
+      `&returned=eq.false&refunded=eq.false` +
+      locFilter +
+      `&order=dispensed_at.desc&limit=5000`
+    );
+
+    // Aggregate by product + location
+    const byProduct = {};
+    for (const row of raw) {
+      const key = row.vetspire_product_id + '|' + (row.location_id || '');
+      if (!byProduct[key]) {
+        byProduct[key] = {
+          vetspire_product_id: row.vetspire_product_id,
+          product_name:        row.product_name || '—',
+          sku:                 row.sku,
+          location_id:         row.location_id,
+          location_name:       row.location_name || '—',
+          total_qty_dispensed: 0,
+          true_cogs:           0,
+          total_revenue:       0,
+          unit_cost:           row.unit_cost,
+          events:              0,
+          last_dispensed_at:   null,
+          first_dispensed_at:  null,
+        };
+      }
+      const p = byProduct[key];
+      const qty = parseFloat(row.quantity) || 0;
+      const cost = parseFloat(row.unit_cost) || 0;
+      const price = parseFloat(row.unit_price) || 0;
+      p.total_qty_dispensed += qty;
+      p.true_cogs           += qty * cost;
+      p.total_revenue       += qty * price;
+      p.events++;
+      const dt = row.dispensed_at;
+      if (!p.last_dispensed_at  || dt > p.last_dispensed_at)  p.last_dispensed_at  = dt;
+      if (!p.first_dispensed_at || dt < p.first_dispensed_at) p.first_dispensed_at = dt;
+      if (row.unit_cost !== null) p.unit_cost = row.unit_cost;
+    }
+
+    ALL_PRODUCTS = Object.values(byProduct).map(p => ({
+      ...p,
+      pct: p.total_revenue > 0
+        ? Math.round(((p.total_revenue - p.true_cogs) / p.total_revenue) * 100)
+        : null,
+    }));
+
+    // Load daily COGS via view
+    const dailyRaw = await query('dispensed_items',
+      `select=dispensed_at,location_id,location_name,vetspire_product_id,quantity,unit_cost,unit_price` +
+      `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
+      `&returned=eq.false&refunded=eq.false` +
+      locFilter +
+      `&order=dispensed_at.desc&limit=5000`
+    );
+
+    // Aggregate by day + location
+    const byDay = {};
+    for (const row of dailyRaw) {
+      const day = row.dispensed_at ? row.dispensed_at.slice(0, 10) : '—';
+      const key = day + '|' + (row.location_id || '');
+      if (!byDay[key]) {
+        byDay[key] = {
+          date: day, location_id: row.location_id, location_name: row.location_name || '—',
+          products: new Set(), total_qty: 0, true_cogs: 0, revenue: 0
+        };
+      }
+      const d = byDay[key];
+      const qty  = parseFloat(row.quantity) || 0;
+      const cost = parseFloat(row.unit_cost) || 0;
+      const price= parseFloat(row.unit_price) || 0;
+      d.products.add(row.vetspire_product_id);
+      d.total_qty  += qty;
+      d.true_cogs  += qty * cost;
+      d.revenue    += qty * price;
+    }
+    ALL_DAILY = Object.values(byDay).map(d => ({
+      ...d, unique_products: d.products.size
+    })).sort((a, b) => b.date.localeCompare(a.date));
+
+    updateKPIs();
+    renderProductTable();
+    renderDailyTable();
+    renderRegionalCards();
+
+  } catch (err) {
+    console.error(err);
+    if (err.message && err.message.includes('relation "dispensed_items" does not exist')) {
+      showEmptyState();
+    } else {
+      showToast('⚠ Could not load data — ' + err.message);
+    }
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── KPI Cards ─────────────────────────────────────────────────────
+async function updateKPIs() {
+  const totalCOGS     = ALL_PRODUCTS.reduce((s, p) => s + p.true_cogs, 0);
+  const totalRevenue  = ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
+  const totalItems    = ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
+
+  // Estimate remaining from lots table
+  let purchaseValue = 0;
+  try {
+    const { start, end } = getDateRange();
+    const locF = getLocationFilter().replace('&location_id', '&location_id');
+    const lots = await query('lots',
+      `select=qty_received,unit_cost,received_date` +
+      `&received_date=gte.${start}&received_date=lte.${end}` +
+      (document.getElementById('sel-location').value
+        ? `&location_id=eq.${document.getElementById('sel-location').value}` : '') +
+      `&limit=500`
+    );
+    purchaseValue = lots.reduce((s, l) => {
+      const qty = parseFloat(l.qty_received) || 0;
+      const cost = parseFloat(l.unit_cost) || 0;
+      return s + (qty * cost);
+    }, 0);
+  } catch(e) { /* lots table may not have unit_cost */ }
+
+  const remaining = purchaseValue > 0 ? Math.max(0, purchaseValue - totalCOGS) : null;
+  const cogsPC    = totalRevenue > 0 ? ((totalCOGS / totalRevenue) * 100).toFixed(1) : null;
+
+  document.getElementById('kv-purchase').textContent  = purchaseValue > 0 ? '$' + fmt(purchaseValue) : '—';
+  document.getElementById('kv-cogs').textContent       = '$' + fmt(totalCOGS);
+  document.getElementById('ks-cogs').textContent       = totalItems + ' dispense events';
+  document.getElementById('kv-remaining').textContent  = remaining !== null ? '$' + fmt(remaining) : '—';
+  document.getElementById('kv-cogspc').textContent     = cogsPC !== null ? cogsPC + '%' : '—';
+  document.getElementById('ks-cogspc').textContent     = totalRevenue > 0 ? 'vs $' + fmt(totalRevenue) + ' revenue' : 'no revenue data';
+  document.getElementById('kv-items').textContent      = totalItems.toLocaleString();
+  document.getElementById('ks-items').textContent      = ALL_PRODUCTS.length + ' unique products';
+
+  // Color the COGS % by health
+  const pEl = document.getElementById('kv-cogspc');
+  if (cogsPC !== null) {
+    const pc = parseFloat(cogsPC);
+    pEl.style.color = pc > 80 ? 'var(--red)' : pc > 60 ? 'var(--amber)' : 'var(--green)';
+  }
+}
+
+// ── Product Table ────────────────────────────────────────────────
+function setPFilter(val, el) {
+  pFilter = val;
+  document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderProductTable();
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  renderProductTable();
+}
+
+function renderProductTable() {
+  let data = [...ALL_PRODUCTS];
+
+  // Filter
+  if (pFilter === 'active') {
+    data = data.filter(p => p.total_qty_dispensed > 0);
+  } else if (pFilter === 'full') {
+    data = data.filter(p => p.quantity_remaining === 0 || p.total_qty_dispensed > 0);
+  } else if (pFilter === 'cost') {
+    data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
+  }
+
+  // Sort
+  data.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (va === null || va === undefined) va = '';
+    if (vb === null || vb === undefined) vb = '';
+    if (typeof va === 'number') return (va - vb) * sortDir;
+    return String(va).localeCompare(String(vb)) * sortDir;
+  });
+
+  const tbody = document.getElementById('product-tbody');
+  document.getElementById('tbl-count').textContent =
+    `${data.length} products · ${getDateRange().start} → ${getDateRange().end}`;
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;">
+      <div class="empty-icon">📦</div>
+      <div class="empty-title">No dispensed items yet</div>
+      <div class="empty-sub">Run the nightly pull to populate this table.<br>
+      <code style="font-family:'DM Mono',monospace;font-size:10px;background:#F5F3FA;padding:2px 6px;border-radius:4px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code></div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map(p => {
+    const cogs    = p.true_cogs;
+    const rev     = p.total_revenue;
+    const margin  = p.pct !== null ? p.pct + '%' : '—';
+    const mColor  = p.pct === null ? 'cm' : p.pct > 40 ? 'cg' : p.pct > 20 ? 'ca' : 'cr';
+    const consumed = p.total_qty_dispensed > 0 ? 100 : 0;
+    const barColor = consumed >= 90 ? 'var(--blue)' : consumed >= 50 ? 'var(--gold)' : 'var(--green)';
+    const status   = consumed >= 100 ? 'b-full' : p.total_qty_dispensed > 0 ? 'b-active' : 'b-partial';
+    const statusTx = consumed >= 100 ? 'Consumed' : p.total_qty_dispensed > 0 ? 'Active' : 'Pending';
+    const lastDate = p.last_dispensed_at ? p.last_dispensed_at.slice(0,10) : '—';
+    const hasCost  = p.unit_cost !== null && p.unit_cost > 0;
+
+    return `<tr class="trow">
+      <td>
+        <div class="prod-name">${esc(p.product_name)}</div>
+        ${p.sku ? `<div class="prod-sub mono">SKU: ${esc(p.sku)}</div>` : ''}
+      </td>
+      <td style="color:var(--slate);font-size:11px;">${esc(p.location_name)}</td>
+      <td style="text-align:right;"><span class="mono">${fmtQty(p.total_qty_dispensed)}</span></td>
+      <td style="text-align:right;">${hasCost ? `<span class="mono">$${fmtUnit(p.unit_cost)}</span>` : '<span class="cm">—</span>'}</td>
+      <td style="text-align:right;">
+        ${hasCost ? `<span class="mono" style="font-weight:500;">$${fmt(cogs)}</span>` : '<span class="cm" style="font-size:10px;">no cost data</span>'}
+      </td>
+      <td style="text-align:right;"><span class="mono cm">$${fmt(rev)}</span></td>
+      <td style="text-align:right;"><span class="${mColor}" style="font-weight:500;">${margin}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="pbar-wrap"><div class="pbar-fill" style="width:${Math.min(consumed,100)}%;background:${barColor};"></div></div>
+          <span class="cm" style="font-size:10px;">${Math.round(consumed)}%</span>
+        </div>
+      </td>
+      <td><span style="font-size:11px;color:var(--mist);">${lastDate}</span></td>
+      <td><span class="badge ${status}">${statusTx}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Daily Table ────────────────────────────────────────────────────
+function renderDailyTable() {
+  const tbody = document.getElementById('daily-tbody');
+  document.getElementById('daily-count').textContent = `${ALL_DAILY.length} days with activity`;
+
+  if (!ALL_DAILY.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--mist);">No daily data in selected range.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = ALL_DAILY.map(d => {
+    const cogsPC = d.revenue > 0 ? ((d.true_cogs / d.revenue) * 100).toFixed(1) + '%' : '—';
+    const pcColor = d.revenue > 0
+      ? parseFloat(cogsPC) > 80 ? 'color:var(--red)' : parseFloat(cogsPC) > 60 ? 'color:var(--amber)' : 'color:var(--green)'
+      : '';
+    return `<tr class="trow">
+      <td><span class="mono">${d.date}</span></td>
+      <td>${esc(d.location_name)}</td>
+      <td style="text-align:right;"><span class="mono">${d.unique_products}</span></td>
+      <td style="text-align:right;"><span class="mono">${fmtQty(d.total_qty)}</span></td>
+      <td style="text-align:right;"><span class="mono" style="font-weight:500;">$${fmt(d.true_cogs)}</span></td>
+      <td style="text-align:right;"><span class="mono cm">$${fmt(d.revenue)}</span></td>
+      <td style="text-align:right;"><span class="mono" style="${pcColor};font-weight:500;">${cogsPC}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Regional Cards ─────────────────────────────────────────────────
+function renderRegionalCards() {
+  const grid = document.getElementById('region-grid');
+  const LOCATIONS = [
+    { name: 'Wheaton',      id: '28253', region: 'Chicagoland West' },
+    { name: 'Lincoln Park', id: '23083', region: 'Chicagoland' },
+    { name: 'Old Orchard',  id: '27390', region: 'Chicagoland' },
+    { name: 'West Loop',    id: '24356', region: 'Chicagoland' },
+  ];
+
+  // Group dispensed data by location
+  const byLoc = {};
+  for (const p of ALL_PRODUCTS) {
+    const lid = p.location_id;
+    if (!byLoc[lid]) byLoc[lid] = { cogs: 0, revenue: 0, products: 0, events: 0, name: p.location_name };
+    byLoc[lid].cogs     += p.true_cogs;
+    byLoc[lid].revenue  += p.total_revenue;
+    byLoc[lid].products += 1;
+    byLoc[lid].events   += p.events;
+  }
+
+  const totalCOGS = Object.values(byLoc).reduce((s, v) => s + v.cogs, 0);
+
+  grid.innerHTML = LOCATIONS.map(loc => {
+    const d = byLoc[loc.id];
+    const hasData = !!d;
+    const cogs    = d ? d.cogs : 0;
+    const rev     = d ? d.revenue : 0;
+    const cogsPC  = rev > 0 ? ((cogs / rev) * 100).toFixed(1) + '%' : '—';
+    const barPct  = totalCOGS > 0 ? Math.round((cogs / totalCOGS) * 100) : 0;
+    const pilotBadge = loc.id === '28253'
+      ? '<span class="rc-badge">Pilot</span>' : '';
+
+    return `<div class="region-card">
+      <div class="rc-head">
+        <div class="rc-name">${loc.name}</div>
+        ${pilotBadge}
+      </div>
+      <div class="rc-row"><span class="rc-k">Region</span><span class="rc-v" style="color:var(--mist);">${loc.region}</span></div>
+      <div class="rc-row"><span class="rc-k">True COGS</span><span class="rc-v">${hasData ? '$' + fmt(cogs) : '—'}</span></div>
+      <div class="rc-row"><span class="rc-k">Revenue</span><span class="rc-v cm">${hasData ? '$' + fmt(rev) : '—'}</span></div>
+      <div class="rc-row"><span class="rc-k">COGS %</span><span class="rc-v">${cogsPC}</span></div>
+      <div class="rc-row"><span class="rc-k">Products tracked</span><span class="rc-v">${d ? d.products : '—'}</span></div>
+      <div class="rc-cogs-bar"><div class="rc-cogs-fill" style="width:${barPct}%;"></div></div>
+      <div style="font-size:10px;color:var(--mist);margin-top:4px;">${barPct}% of regional COGS</div>
+    </div>`;
+  }).join('');
+}
+
+// ── View switcher ─────────────────────────────────────────────────
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-product').style.display  = view === 'product'  ? '' : 'none';
+  document.getElementById('view-daily').style.display    = view === 'daily'    ? '' : 'none';
+  document.getElementById('view-regional').style.display = view === 'regional' ? '' : 'none';
+}
+
+// ── Empty state (table doesn't exist yet) ─────────────────────────
+function showEmptyState() {
+  const bodies = ['product-tbody', 'daily-tbody'];
+  bodies.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">🔧</div>
+      <div style="font-weight:500;color:var(--slate);margin-bottom:6px;">Dispensed items table not set up yet</div>
+      <div style="font-size:11px;color:var(--mist);line-height:1.8;">
+        1. Run <code style="font-family:'DM Mono',monospace;background:#F5F3FA;padding:1px 5px;border-radius:3px;">dispensed_items_migration.sql</code> in Supabase SQL editor<br>
+        2. Run <code style="font-family:'DM Mono',monospace;background:#F5F3FA;padding:1px 5px;border-radius:3px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code> to populate
+      </div>
+    </td></tr>`;
+  });
+  document.getElementById('tbl-count').textContent = 'Setup required';
+  document.getElementById('daily-count').textContent = 'Setup required';
+}
+
+// ── Loading state ─────────────────────────────────────────────────
+function setLoading(on) {
+  if (on) {
+    document.getElementById('product-tbody').innerHTML =
+      '<tr class="loading-row"><td colspan="10">Loading procurement data…</td></tr>';
+  }
+}
+
+// ── CSV Export ────────────────────────────────────────────────────
+function exportCSV() {
+  if (!ALL_PRODUCTS.length) { showToast('No data to export'); return; }
+  const rows = [
+    ['Product', 'Location', 'Qty Dispensed', 'Unit Cost', 'True COGS', 'Revenue', 'Margin %', 'Last Dispensed'],
+    ...ALL_PRODUCTS.map(p => [
+      p.product_name, p.location_name, p.total_qty_dispensed.toFixed(2),
+      p.unit_cost ? p.unit_cost.toFixed(4) : '',
+      p.true_cogs.toFixed(2), p.total_revenue.toFixed(2),
+      p.pct !== null ? p.pct + '%' : '',
+      p.last_dispensed_at ? p.last_dispensed_at.slice(0,10) : ''
+    ])
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'medsync_cogs_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function fmt(v)     { return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtUnit(v) { return Number(v||0).toFixed(4); }
+function fmtQty(v)  { const n = Number(v||0); return n % 1 === 0 ? n.toLocaleString() : n.toFixed(2); }
+function esc(s)     { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.opacity = '0', 3000);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+reload();
+</script>
+</body>
+</html>
