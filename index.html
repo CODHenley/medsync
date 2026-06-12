@@ -169,7 +169,30 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 // Handle navigate messages from iframe screens (e.g. Settings quick links)
 window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'navigate') { showScreen(e.data.screen); }
+  if (!e.data) return;
+  if (e.data.type === 'navigate') { showScreen(e.data.screen); }
+
+  // Cycle count complete → switch to weekly order + notify it to highlight below-par items
+  if (e.data.type === 'cycleCountDone') {
+    showScreen('order');
+    // Give the weekly order iframe a moment to load, then tell it to flag below-par items
+    setTimeout(function() {
+      var orderFrame = document.querySelector('#ms-order iframe');
+      if (orderFrame && orderFrame.contentWindow) {
+        orderFrame.contentWindow.postMessage({
+          type: 'cycleCountComplete',
+          location: e.data.location
+        }, '*');
+      }
+    }, 800);
+    // Show a brief toast-style banner
+    var banner = document.createElement('div');
+    banner.textContent = '✓ Cycle count done — weekly order pre-filled with below-par items';
+    banner.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1C2B4A;color:#fff;padding:11px 22px;border-radius:9px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.18);pointer-events:none;transition:opacity .3s;';
+    document.body.appendChild(banner);
+    setTimeout(function() { banner.style.opacity = '0'; }, 3500);
+    setTimeout(function() { banner.remove(); }, 4000);
+  }
 });
 
 function filterByRegion(region) {

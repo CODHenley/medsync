@@ -1367,15 +1367,39 @@ function showToast(msg) {
 
 // ── Parent app messages ───────────────────────────────────────────────────────
 window.addEventListener('message', e => {
-  if (!e.data || e.data.type !== 'setLocation') return;
-  const sel = document.getElementById('loc-select');
-  if (!sel || sel.options.length <= 1) return;
-  for (let i = 0; i < sel.options.length; i++) {
-    if (sel.options[i].text === e.data.loc) {
-      sel.value = sel.options[i].value;
-      onLocChange();
-      break;
+  if (!e.data) return;
+
+  if (e.data.type === 'setLocation') {
+    const sel = document.getElementById('loc-select');
+    if (!sel || sel.options.length <= 1) return;
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].text === e.data.loc) {
+        sel.value = sel.options[i].value;
+        onLocChange();
+        break;
+      }
     }
+  }
+
+  // Cycle count completed — reload with fresh inventory snapshot so below-par
+  // items are auto-flagged in the order queue
+  if (e.data.type === 'cycleCountComplete') {
+    if (e.data.location) {
+      const sel = document.getElementById('loc-select');
+      if (sel) {
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].text === e.data.location) {
+            sel.value = sel.options[i].value;
+            break;
+          }
+        }
+      }
+    }
+    boot(); // reload order — below-par items auto-flagged
+    setTimeout(() => {
+      const autoSection = document.querySelector('.sec-label');
+      if (autoSection) autoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 1200);
   }
 });
 
