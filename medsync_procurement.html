@@ -136,10 +136,19 @@ tr:last-child td{border-bottom:none;}
         <option value="28253" selected>Wheaton</option>
       </select>
       <select id="sel-period" onchange="reload()">
-        <option value="7">Last 7 days</option>
-        <option value="30" selected>Last 30 days</option>
-        <option value="90">Last 90 days</option>
-        <option value="mtd">Month to date</option>
+        <optgroup label="Current">
+          <option value="today">Today</option>
+          <option value="wtd">This week</option>
+          <option value="mtd" selected>This month</option>
+          <option value="qtd">This quarter</option>
+        </optgroup>
+        <optgroup label="Lookback">
+          <option value="30">Last 30 days</option>
+          <option value="60">Last 60 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="lq">Last quarter</option>
+          <option value="ly">Last year</option>
+        </optgroup>
       </select>
       <select id="sel-view" onchange="switchView(this.value)">
         <option value="product">By product</option>
@@ -262,17 +271,40 @@ let currentView  = 'product';
 function getDateRange() {
   const sel = document.getElementById('sel-period').value;
   const now = new Date();
-  const end = now.toISOString().slice(0, 10);
+  const y   = now.getFullYear();
+  const m   = now.getMonth(); // 0-indexed
+  const d   = now.getDate();
+  const end = iso(now);
   let start;
-  if (sel === 'mtd') {
-    start = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+
+  if (sel === 'today') {
+    start = end;
+  } else if (sel === 'wtd') {
+    const day = now.getDay() || 7; // Mon=1
+    const mon = new Date(now); mon.setDate(d - day + 1);
+    start = iso(mon);
+  } else if (sel === 'mtd') {
+    start = `${y}-${pad(m+1)}-01`;
+  } else if (sel === 'qtd') {
+    const qStart = Math.floor(m / 3) * 3;
+    start = `${y}-${pad(qStart+1)}-01`;
+  } else if (sel === 'lq') {
+    const qStart = Math.floor(m / 3) * 3;
+    const lqStart = qStart === 0 ? new Date(y-1, 9, 1) : new Date(y, qStart-3, 1);
+    const lqEnd   = new Date(lqStart.getFullYear(), lqStart.getMonth()+3, 0);
+    return { start: iso(lqStart), end: iso(lqEnd) };
+  } else if (sel === 'ly') {
+    start = `${y-1}-01-01`;
+    return { start, end: `${y-1}-12-31` };
   } else {
-    const d = new Date(now);
-    d.setDate(d.getDate() - parseInt(sel));
-    start = d.toISOString().slice(0, 10);
+    // numeric days lookback
+    const from = new Date(now); from.setDate(d - parseInt(sel));
+    start = iso(from);
   }
   return { start, end };
 }
+function iso(d) { return d.toISOString().slice(0,10); }
+function pad(n) { return String(n).padStart(2,'0'); }
 
 function getLocationFilter() {
   const v = document.getElementById('sel-location').value;

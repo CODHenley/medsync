@@ -166,8 +166,13 @@ def main():
             else:
                 updated_at = datetime.now(timezone.utc).isoformat()
 
-            # Only include physical inventory items (non-zero cost or has SKU)
             unit_cost = prod.get("unitCost")
+            sku       = prod.get("sku")
+
+            # Skip services — only track physical inventory (must have SKU or unit cost)
+            if not sku and unit_cost is None:
+                continue
+
             unit_price_str = item.get("unitPrice", "0")
             try:
                 unit_price = float(unit_price_str) if unit_price_str else 0.0
