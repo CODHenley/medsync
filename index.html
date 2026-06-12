@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -921,6 +921,7 @@ function deepDiveLoc(locCode) {
       <button class="mnb active" id="mnb-portfolio" onclick="showScreen('portfolio');closeMobileMenu()">Portfolio</button>
       <button class="mnb" id="mnb-analytics" onclick="showScreen('analytics')">Analytics</button>
       <button class="mnb" id="mnb-lifecycle" onclick="showScreen('lifecycle')">Lot Lifecycle</button>
+      <button class="mnb" id="mnb-procurement" onclick="showScreen('procurement')">Procurement</button>
       <button class="mnb" id="mnb-actlog" onclick="showScreen('actlog')">Activity Log</button>
     </div>
   </div>
@@ -945,6 +946,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 Analytics</div>
   <div class="asb-item" id="asb-quarterly" onclick="closeMobileMenu();showScreen('quarterly')">📋 Quarterly Report</div>
   <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
+  <div class="asb-item" id="asb-procurement" onclick="closeMobileMenu();showScreen('procurement')">🛍️ Procurement</div>
   <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">🕐 Activity Log</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
@@ -1239,6 +1241,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_lot_lifecycle_live.html?v=20260611" 
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
     title="ms-lifecycle">
+  </iframe>
+</div>
+<div id="ms-procurement" class="ms-screen" style="display:none;">
+  <iframe src="medsync_procurement.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="ms-procurement">
   </iframe>
 </div>
 <div id="ms-actlog" class="ms-screen">
