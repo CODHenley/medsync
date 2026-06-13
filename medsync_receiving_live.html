@@ -734,6 +734,16 @@ async function completeSession() {
       });
     }
 
+    // Write to Vetspire writeback queue
+    for (const line of confirmed) {
+      if (!line.lotNum) continue;
+      try {
+        const expParts = (line.expDate||"").split("/");
+        const expDate = expParts.length===2 ? expParts[1]+"-"+expParts[0].padStart(2,"0")+"-01" : null;
+        await fetch(SUPA_URL+"/rest/v1/vetspire_writeback_queue",{method:"POST",headers:{...H,"Prefer":"return=minimal"},body:JSON.stringify({vetspire_product_id:String(line.vetspireProductId||""),vetspire_location_id:String(state.vetspireLocationId||"28253"),lot_number:line.lotNum,expiration_date:expDate,quantity_change:parseFloat(line.qtyOrdered)||0,unit_cost:line.unitCost?parseFloat(line.unitCost):null,po_reference:state.selectedOrder?state.selectedOrder.ref:null,status:"pending"})});
+      } catch(e) { console.warn("Writeback queue error:",e); }
+    }
+
     // Log activity
     await fetch(SUPA_URL + '/rest/v1/activity_log', {
       method: 'POST',
