@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """
-Wheaton Inventory Sync — pulls current on-hand quantities from Vetspire
-and upserts into Supabase inventory_snapshots table.
+Wheaton Inventory Sync — computes current on-hand per product by summing
+all Vetspire inventoryAdjustments, then upserts into inventory_snapshots.
 
-Runs every 4 hours alongside wheaton_usage_pull.py.
-Cron: 30 */4 * * * /usr/bin/python3 ~/Desktop/medsync_deploy/wheaton_inventory_sync.py >> ~/Desktop/medsync_deploy/inventory_sync.log 2>&1
+How it works:
+  Vetspire tracks every stock change (receiving, cycle count correction,
+  wastage, dispense) as an InventoryAdjustment with a quantityChange.
+  Summing all quantityChanges per product = current on-hand. This is
+  exactly what Vetspire's own UI displays.
 
-To refresh token:
+Runs every 4 hours:
+  30 */4 * * * /usr/bin/python3 ~/Desktop/medsync_deploy/wheaton_inventory_sync.py >> ~/Desktop/medsync_deploy/inventory_sync.log 2>&1
+
+Token refresh:
   python3 -c "open('/Users/meganhenley/.vetspire_token','w').write('TOKEN')"
 """
 
@@ -25,9 +31,9 @@ WHEATON_NAME      = "Wheaton"
 token = open(TOKEN_FILE).read().strip().removeprefix("Bearer ").strip()
 try:
     payload = token.split(".")[1] + "=="
-    data = json.loads(base64.urlsafe_b64decode(payload))
-    exp  = data.get("exp", 0)
-    now  = datetime.now(timezone.utc).timestamp()
+    data    = json.loads(base64.urlsafe_b64decode(payload))
+    exp     = data.get("exp", 0)
+    now     = datetime.now(timezone.utc).timestamp()
     if exp < now:
         print("TOKEN EXPIRED — refresh it first"); sys.exit(1)
     print(f"Token valid for {(exp-now)/3600:.1f}h")
@@ -36,125 +42,86 @@ except Exception as e:
 
 def gql(query, variables=None):
     body = json.dumps({"query": query, "variables": variables or {}}).encode()
-    req = urllib.request.Request(VETSPIRE_ENDPOINT, data=body, headers={
+    req  = urllib.request.Request(VETSPIRE_ENDPOINT, data=body, headers={
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
-        "Origin": VETSPIRE_ORIGIN,
+        "Origin":        VETSPIRE_ORIGIN,
     })
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
-# ── Try multiple Vetspire query shapes ────────────────────────────────────────
-# Different Vetspire instances expose inventory differently.
-# We try each until one returns real data.
-
-QUERIES = [
-    ("inventoryItems", """
-        query($lid: ID!) {
-            inventoryItems(locationId: $lid) {
-                id name sku onHand reorderPoint minimum maximum unitCost
-            }
-        }
-    """, lambda r: r.get("data",{}).get("inventoryItems"), {"lid": WHEATON_ID}),
-
-    ("products_onHand", """
-        query($lid: ID!) {
-            products(locationId: $lid) {
-                id name sku onHand unitCost reorderPoint minimum maximum
-            }
-        }
-    """, lambda r: r.get("data",{}).get("products"), {"lid": WHEATON_ID}),
-
-    ("inventoryReport", """
-        query($lids: [ID!]) {
-            inventoryReport(locationIds: $lids) {
-                productId productName sku onHand minimum maximum unitCost
-            }
-        }
-    """, lambda r: r.get("data",{}).get("inventoryReport"), {"lids": [WHEATON_ID]}),
-
-    ("stockLevels", """
-        query($lids: [ID!]) {
-            stockLevels(locationIds: $lids) {
-                productId productName quantity reorderPoint
-            }
-        }
-    """, lambda r: r.get("data",{}).get("stockLevels"), {"lids": [WHEATON_ID]}),
-
-    ("inventory", """
-        query($lid: ID!) {
-            inventory(locationId: $lid) {
-                productId productName onHand minimum maximum
-            }
-        }
-    """, lambda r: r.get("data",{}).get("inventory"), {"lid": WHEATON_ID}),
-]
+# ── Pull all inventory adjustments for Wheaton ────────────────────────────────
+QUERY = """
+query($lid: ID!) {
+    inventoryAdjustments(locationId: $lid) {
+        id
+        quantityChange
+        insertedAt
+        product { id name sku unitCost }
+    }
+}
+"""
 
 print(f"\n=== Wheaton Inventory Sync — {date.today()} ===")
+print(f"  Pulling inventoryAdjustments for Wheaton ({WHEATON_ID})...")
 
-items = None
-used_query = None
-for (label, query, extractor, variables) in QUERIES:
-    print(f"  Trying {label}...", end=" ")
-    try:
-        result = gql(query, variables)
-        if "errors" in result:
-            print(f"✗ ({result['errors'][0]['message'][:60]})")
-            continue
-        data = extractor(result)
-        if data and len(data) > 0:
-            print(f"✓ {len(data)} items")
-            items = data
-            used_query = label
-            break
-        else:
-            print("✗ (no data)")
-    except Exception as e:
-        print(f"✗ ({e})")
+try:
+    result = gql(QUERY, {"lid": WHEATON_ID})
+except Exception as e:
+    print(f"  ERROR: {e}"); sys.exit(1)
 
-if not items:
-    print("\nERROR: No Vetspire inventory query succeeded.")
-    print("Run vetspire_inventory_probe.py to debug, then update QUERIES above.")
+if "errors" in result:
+    print(f"  API error: {result['errors'][0]['message']}")
     sys.exit(1)
 
-print(f"\nUsing query: {used_query} — {len(items)} products")
+adjustments = result.get("data", {}).get("inventoryAdjustments", [])
+print(f"  {len(adjustments)} adjustment records returned")
 
-# ── Normalise field names across query shapes ─────────────────────────────────
-def normalise(item):
-    """Map different field names to a standard shape."""
-    return {
-        "vetspire_product_id": str(item.get("id") or item.get("productId") or ""),
-        "product_name":        item.get("name") or item.get("productName") or "",
-        "sku":                 item.get("sku"),
-        "on_hand":             float(item.get("onHand") or item.get("quantity") or 0),
-        "reorder_point":       float(item.get("reorderPoint")) if item.get("reorderPoint") is not None else None,
-        "minimum":             float(item.get("minimum")) if item.get("minimum") is not None else None,
-        "maximum":             float(item.get("maximum")) if item.get("maximum") is not None else None,
-        "unit_cost":           float(item.get("unitCost")) if item.get("unitCost") is not None else None,
+if not adjustments:
+    print("  No data — exiting"); sys.exit(0)
+
+# ── Sum quantityChange per product = current on-hand ─────────────────────────
+on_hand   = {}   # product_id -> running total
+prod_meta = {}   # product_id -> { name, sku, unit_cost }
+
+for adj in adjustments:
+    prod = adj.get("product") or {}
+    pid  = str(prod.get("id") or adj.get("id") or "")
+    if not pid:
+        continue
+
+    qty = float(adj.get("quantityChange") or 0)
+    on_hand[pid]   = on_hand.get(pid, 0.0) + qty
+    prod_meta[pid] = {
+        "name":      prod.get("name") or "",
+        "sku":       prod.get("sku"),
+        "unit_cost": float(prod.get("unitCost")) if prod.get("unitCost") is not None else None,
     }
 
-# ── Filter & build records ────────────────────────────────────────────────────
-today_str    = date.today().isoformat()
-pulled_at    = datetime.now(timezone.utc).isoformat()
-records      = []
-skipped      = 0
+print(f"  {len(on_hand)} unique products found")
 
-for raw in items:
-    n = normalise(raw)
-    if not n["product_name"]:
+# ── Build Supabase records ────────────────────────────────────────────────────
+today_str = date.today().isoformat()
+pulled_at = datetime.now(timezone.utc).isoformat()
+records   = []
+skipped   = 0
+
+for pid, qty in on_hand.items():
+    meta = prod_meta[pid]
+    if not meta["name"]:
         skipped += 1
         continue
     records.append({
         "vetspire_location_id": WHEATON_ID,
         "location_name":        WHEATON_NAME,
-        "vetspire_product_id":  n["vetspire_product_id"],
-        "product_name":         n["product_name"],
-        "on_hand":              n["on_hand"],
+        "vetspire_product_id":  pid,
+        "product_name":         meta["name"],
+        "on_hand":              round(qty, 4),
         "snapshot_date":        today_str,
         "created_at":           pulled_at,
     })
 
-print(f"  {len(records)} records to upsert, {skipped} skipped (no name)")
+print(f"  {len(records)} records to upsert  ({skipped} skipped — no name)")
 
 # ── Upsert to Supabase ────────────────────────────────────────────────────────
 def supa_upsert(batch):
@@ -177,8 +144,7 @@ def supa_upsert(batch):
         print(f"  Supabase error {e.code}: {e.read().decode()[:200]}")
         return e.code
 
-# Upsert in chunks of 100
-CHUNK = 100
+CHUNK    = 100
 total_ok = 0
 for i in range(0, len(records), CHUNK):
     batch  = records[i:i+CHUNK]
@@ -188,5 +154,13 @@ for i in range(0, len(records), CHUNK):
     else:
         print(f"  ✗ Chunk {i//CHUNK+1} failed (status {status})")
 
-print(f"\n  ✓ Upserted {total_ok} inventory snapshots")
+print(f"\n  ✓ {total_ok} inventory snapshots upserted")
+
+# Print summary
+print(f"\n  Top on-hand quantities:")
+top = sorted(on_hand.items(), key=lambda x: -x[1])[:15]
+for pid, qty in top:
+    name = prod_meta[pid]["name"]
+    print(f"    {qty:>8.1f}  {name}")
+
 print(f"\nDone.\n")
