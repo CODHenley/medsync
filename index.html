@@ -2987,13 +2987,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     showScreen('analytics');
   } else if (user.role === 'manager') {
-    // Manager: full operational + analytics access; no admin-only screens
-    ['asb-newlocation','asb-regions','asb-settings','asb-admin-label'].forEach(function(id){
+    // Manager: operations screens only
+    ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    showScreen('portfolio');
-    loadRegionFilter();
-    setTimeout(loadRecognition, 400);
+    ['asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog','asb-newlocation','asb-regions','asb-settings','asb-admin-label'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+    showScreen('order');
   } else {
     // admin: full access
     showScreen('portfolio');
