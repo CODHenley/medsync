@@ -464,9 +464,8 @@ async function updateKPIs() {
   let inventoryValue = null;
   try {
     const locId = document.getElementById("sel-location").value || "28253";
-    const snapRows = await query("inventory_snapshots",
-      "select=on_hand,unit_cost&vetspire_location_id=eq." + locId + "&limit=500"
-    );
+    const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+locId+"&limit=500", {headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+    const snapRows = await snapRes.json();
     const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand)||0) * (parseFloat(r.unit_cost)||0)), 0);
     if (iv > 0) inventoryValue = iv;
   } catch(e) {}
