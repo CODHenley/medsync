@@ -461,7 +461,16 @@ async function updateKPIs() {
     }, 0);
   } catch(e) { /* lots table may not have unit_cost */ }
 
-  const remaining = purchaseValue > 0 ? Math.max(0, purchaseValue - totalCOGS) : null;
+  let inventoryValue = null;
+  try {
+    const locId = document.getElementById("sel-location").value || "28253";
+    const snapRows = await query("inventory_snapshots",
+      "select=on_hand,unit_cost&vetspire_location_id=eq." + locId + "&unit_cost=not.is.null&limit=500"
+    );
+    const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand)||0) * (parseFloat(r.unit_cost)||0)), 0);
+    if (iv > 0) inventoryValue = iv;
+  } catch(e) {}
+  const remaining = inventoryValue;
   const cogsPC    = totalRevenue > 0 ? ((totalCOGS / totalRevenue) * 100).toFixed(1) : null;
 
   document.getElementById('kv-purchase').textContent  = purchaseValue > 0 ? '$' + fmt(purchaseValue) : '—';
