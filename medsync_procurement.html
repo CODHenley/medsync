@@ -461,7 +461,7 @@ async function updateKPIs() {
     }, 0);
   } catch(e) { /* lots table may not have unit_cost */ }
 
-  const remaining = purchaseValue > 0 ? Math.max(0, purchaseValue - totalCOGS) : null;
+  const snap=await fetch(SUPABASE_URL+"/rest/v1/inventory_snapshots?vetspire_location_id=eq.28253&select=on_hand,unit_cost",{headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}});const snapData=await snap.json();const invVal=snapData.reduce((t,r)=>t+((r.on_hand||0)*(r.unit_cost||0)),0);const remaining=invVal>0?invVal:null;
   const cogsPC    = totalRevenue > 0 ? ((totalCOGS / totalRevenue) * 100).toFixed(1) : null;
 
   document.getElementById('kv-purchase').textContent  = purchaseValue > 0 ? '$' + fmt(purchaseValue) : '—';
