@@ -240,7 +240,8 @@ async function signIn() {
       role:            u.role            || '',
       email:           u.email           || email,
       organization_id: u.organization_id || null,
-      location_name:   u.locations       ? u.locations.name : ''
+      location_name:   u.locations       ? u.locations.name : '',
+      locations:       u.locations       ? [{name: u.locations.name}] : []
     };
     store.setItem('medsync_user', JSON.stringify(stored));
     saveRecentLogin(email, stored.full_name, stored.role);
