@@ -95,7 +95,7 @@ for adj in adjustments:
     prod_meta[pid] = {
         "name":      prod.get("name") or "",
         "sku":       prod.get("sku"),
-        "unit_cost": float(prod.get("unitCost")) if prod.get("unitCost") is not None else None,
+        "unit_cost": float(prod.get("unitCost")) if prod.get("unitCost") is not None else (prod_meta[pid]["unit_cost"] if pid in prod_meta else None),
     }
 
 print(f"  {len(on_hand)} unique products found")
@@ -127,7 +127,7 @@ print(f"  {len(records)} records to upsert  ({skipped} skipped — no name)")
 def supa_upsert(batch):
     body = json.dumps(batch).encode()
     req  = urllib.request.Request(
-        SUPA_URL + "/rest/v1/inventory_snapshots",
+        SUPA_URL + "/rest/v1/inventory_snapshots?on_conflict=vetspire_product_id,vetspire_location_id",
         data=body,
         headers={
             "Content-Type": "application/json",
