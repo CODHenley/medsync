@@ -2085,7 +2085,7 @@ function setRole(r) {
   document.getElementById('rt-mgr').classList.toggle('active',   r==='manager');
   document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Manager';
   document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Location Manager';
-  var _u = {}; try { _u = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+  var _u = {}; try { _u = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) {}
   var _name = _u.full_name || (r==='admin' ? 'Admin' : 'Manager');
   var _loc  = _u.location_name || (r==='admin' ? 'Scout' : 'Old Orchard');
   document.getElementById('sb-role-loc').textContent    = _name + ' · ' + _loc;
@@ -2935,7 +2935,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Boot ──────────────────────────────────────────────────────
 (function boot() {
   var user = {};
-  try { user = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+  try { user = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) {}
   var name = user.full_name || '';
   var loc  = user.location_name || 'Scout';
   if (name) {
