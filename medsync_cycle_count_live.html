@@ -1099,7 +1099,7 @@ async function pcSubmitItem() {
     await fetch(SUPA_URL + '/rest/v1/vetspire_writeback_queue', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, product_name: cp.productName, quantity_change: actual - cp.on_hand, lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null, status: 'pending' })
+      body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, quantity_change: actual - cp.on_hand, lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null, status: 'pending' })
     });
     await fetch(SUPA_URL + '/rest/v1/physical_count_items', {
       method: 'POST',
