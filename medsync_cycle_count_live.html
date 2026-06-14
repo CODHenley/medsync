@@ -906,7 +906,7 @@ async function init() {
     }
   }
 
-  document.getElementById('loc-label').textContent = currentLocation;
+  var _urlLoc = new URLSearchParams(window.location.search).get('location'); if(_urlLoc){ currentLocation = _urlLoc; } document.getElementById('loc-label').textContent = currentLocation;
 
   // Due categories
   dueCategories = getDueCategories();
