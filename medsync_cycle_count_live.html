@@ -906,7 +906,7 @@ async function init() {
     }
   }
 
-  var _urlLoc = new URLSearchParams(window.location.search).get('location'); if(_urlLoc){ currentLocation = _urlLoc; } document.getElementById('loc-label').textContent = currentLocation;
+  var _urlLoc = new URLSearchParams(window.location.search).get('location'); if(_urlLoc){ currentLocation = _urlLoc; } var _sel=document.getElementById('loc-label'); if(_sel document.getElementById('loc-label').textContent = currentLocation;document.getElementById('loc-label').textContent = currentLocation; _sel.tagName==='SELECT'){_sel.value=currentLocation;}else if(_sel){_sel.textContent=currentLocation;}
 
   // Due categories
   dueCategories = getDueCategories();
