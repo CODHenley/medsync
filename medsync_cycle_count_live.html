@@ -1096,7 +1096,7 @@ async function pcSubmitItem() {
   var variance = actual - cp.expected;
   var varVal = variance * (cp.unitCost || 0);
   if (pcState.sessionId) {
-    await fetch(SUPA_URL + '/rest/v1/vetspire_writeback_queue', {
+    await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, quantity_change: actual - cp.on_hand, lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null, status: 'pending' })
