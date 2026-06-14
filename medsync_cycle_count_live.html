@@ -1108,10 +1108,7 @@ async function pcSubmitItem() {
     });
   }
   if (cp.vetspireProductId) {
-    await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?vetspire_product_id=eq.' + cp.vetspireProductId + '&vetspire_location_id=eq.' + pcState.locationId, {
-      method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ quantity_on_hand: actual })
-    });
+    // snapshot update handled by Edge Function
     if (variance !== 0) {
       await fetch(SUPA_URL + '/rest/v1/vetspire_writeback_queue', {
         method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' },
