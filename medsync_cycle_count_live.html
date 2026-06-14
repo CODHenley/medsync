@@ -1108,14 +1108,12 @@ async function pcSubmitItem() {
       body: JSON.stringify({ session_id: pcState.sessionId, vetspire_product_id: cp.vetspireProductId, product_name: cp.name, expected_qty: cp.expected, actual_qty: actual, unit_cost: cp.unitCost || null, vetspire_synced: false })
     });
   }
-  if (cp.vetspireProductId) {
-    // snapshot update handled by Edge Function
-    if (variance !== 0) {
-      await fetch(SUPA_URL + '/rest/v1/vetspire_writeback_queue', {
-        method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ vetspire_product_id: String(cp.vetspireProductId), vetspire_location_id: String(pcState.locationId), quantity_change: variance, status: 'pending' })
-      });
-    }
+  if (cp.vetspireProductId && !pcState.sessionId) {
+    // No session (shouldn't happen) - call Edge Function directly
+    await fetch(SUPA_EF_URL + '/functions/v1/writeback-queue', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vetspire_location_id: String(pcState.locationId), vetspire_product_id: String(cp.vetspireProductId), actual_count: actual, quantity_change: variance, product_name: cp.name || '', location_name: pcState.locationName || '' })
+    });
   }
   pcState.items.push({ name: cp.name, expected: cp.expected, actual: actual, variance: variance, varVal: varVal });
   pcRenderLog();
