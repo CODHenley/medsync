@@ -1039,7 +1039,7 @@ function closePhysicalCount() {
 async function pcSuggest(val) {
   var sugg = document.getElementById('pc-suggestions');
   if (!val || val.length < 2) { sugg.style.display = 'none'; return; }
-  var url = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(val) + '*&vetspire_location_id=eq.' + pcState.locationId + '&limit=6';
+  var url = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(val) + '*&limit=6';
   var res = await fetch(url, { headers: H });
   var rows = await res.json();
   if (!rows.length) { sugg.style.display = 'none'; return; }
@@ -1055,7 +1055,7 @@ function pcSelectSuggestion(el) {
 }async function pcLookup() {
   var q = document.getElementById('pc-scan-input').value.trim();
   if (!q) return;
-  var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(q) + '*&vetspire_location_id=eq.' + pcState.locationId + '&limit=1';
+  var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(q) + '*&limit=1';
   var res2 = await fetch(url2, { headers: H });
   var snaps = await res2.json();
   if (!snaps.length) { alert('Product not found: ' + q); return; }
