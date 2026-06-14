@@ -1039,15 +1039,15 @@ function closePhysicalCount() {
 async function pcLookup() {
   var q = document.getElementById('pc-scan-input').value.trim();
   if (!q) return;
-  var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,quantity_on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(q) + '*&location_id=eq.' + pcState.locationId + '&limit=1';
+  var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(q) + '*&vetspire_location_id=eq.' + pcState.locationId + '&limit=1';
   var res2 = await fetch(url2, { headers: H });
   var snaps = await res2.json();
   if (!snaps.length) { alert('Product not found: ' + q); return; }
   var sn = snaps[0];
-  pcState.currentProduct = { name: sn.product_name, vetspireProductId: sn.vetspire_product_id, expected: sn.quantity_on_hand || 0, unitCost: sn.unit_cost || 0 };
+  pcState.currentProduct = { name: sn.product_name, vetspireProductId: sn.vetspire_product_id, expected: sn.on_hand || 0, unitCost: sn.unit_cost || 0 };
   document.getElementById('pc-prod-name').textContent = sn.product_name;
   document.getElementById('pc-prod-meta').textContent = sn.vetspire_product_id ? 'Vetspire ID: ' + sn.vetspire_product_id : 'No Vetspire ID';
-  document.getElementById('pc-expected').textContent = sn.quantity_on_hand || 0;
+  document.getElementById('pc-expected').textContent = sn.on_hand || 0;
   document.getElementById('pc-actual-input').value = '';
   document.getElementById('pc-variance-preview').style.display = 'none';
   document.getElementById('pc-product-card').style.display = 'block';
@@ -1087,7 +1087,7 @@ async function pcSubmitItem() {
     });
   }
   if (cp.vetspireProductId) {
-    await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?vetspire_product_id=eq.' + cp.vetspireProductId + '&location_id=eq.' + pcState.locationId, {
+    await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?vetspire_product_id=eq.' + cp.vetspireProductId + '&vetspire_location_id=eq.' + pcState.locationId, {
       method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ quantity_on_hand: actual })
     });
