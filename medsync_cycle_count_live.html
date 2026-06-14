@@ -1007,8 +1007,9 @@ function togglePhysicalCount() {
 
 async function pcStartSession() {
   var mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
-  pcState.locationId = new URLSearchParams(window.location.search).get('location') === 'Lincoln Park' ? '23083' : new URLSearchParams(window.location.search).get('location') === 'Old Orchard' ? '27390' : new URLSearchParams(window.location.search).get('location') === 'West Loop' ? '24356' : '28253';
-  pcState.locationName = new URLSearchParams(window.location.search).get('location') || 'Wheaton';
+  var _locMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
+  pcState.locationName = currentLocation || new URLSearchParams(window.location.search).get('location') || 'Lincoln Park';
+  pcState.locationId = _locMap[pcState.locationName] || '23083';
   var res = await fetch(SUPA_URL + '/rest/v1/physical_count_sessions', {
     method: 'POST',
     headers: { ...H, 'Prefer': 'return=representation' },
