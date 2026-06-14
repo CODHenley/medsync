@@ -1098,7 +1098,7 @@ async function pcSubmitItem() {
   if (pcState.sessionId) {
     await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
       method: 'POST',
-      headers: { ...H, 'Prefer': 'return=minimal' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, quantity_change: actual - cp.on_hand, lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null, status: 'pending' })
     });
     await fetch(SUPA_URL + '/rest/v1/physical_count_items', {
