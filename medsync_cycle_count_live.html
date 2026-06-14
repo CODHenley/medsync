@@ -1036,7 +1036,23 @@ function closePhysicalCount() {
   if (btn) btn.style.background = 'rgba(200,146,42,.18)';
 }
 
-async function pcLookup() {
+async function pcSuggest(val) {
+  var sugg = document.getElementById('pc-suggestions');
+  if (!val || val.length < 2) { sugg.style.display = 'none'; return; }
+  var url = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(val) + '*&vetspire_location_id=eq.' + pcState.locationId + '&limit=6';
+  var res = await fetch(url, { headers: H });
+  var rows = await res.json();
+  if (!rows.length) { sugg.style.display = 'none'; return; }
+  sugg.innerHTML = rows.map(function(r) {
+    return '<div onclick="pcSelectSuggestion(this)" data-name="' + r.product_name.replace(/"/g,"&quot;") + '" style="padding:10px 14px;cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,.08);font-size:14px;color:#fff;" onmouseover="this.style.background=\'rgba(255,255,255,.1)\'" onmouseout="this.style.background=\'none\'">' + r.product_name + '<span style="float:right;color:rgba(255,255,255,.4);font-size:12px;">' + (r.on_hand || 0) + ' on hand</span></div>';
+  }).join('');
+  sugg.style.display = 'block';
+}
+function pcSelectSuggestion(el) {
+  document.getElementById('pc-scan-input').value = el.getAttribute('data-name');
+  document.getElementById('pc-suggestions').style.display = 'none';
+  pcLookup();
+}async function pcLookup() {
   var q = document.getElementById('pc-scan-input').value.trim();
   if (!q) return;
   var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(q) + '*&vetspire_location_id=eq.' + pcState.locationId + '&limit=1';
