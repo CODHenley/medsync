@@ -1096,6 +1096,11 @@ async function pcSubmitItem() {
   var variance = actual - cp.expected;
   var varVal = variance * (cp.unitCost || 0);
   if (pcState.sessionId) {
+    await fetch(SUPA_URL + '/rest/v1/vetspire_writeback_queue', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, product_name: cp.productName, quantity_change: actualCount - cp.onHand, lot_number: lotNum || null, expiration_date: expDate || null, status: 'pending', source: 'physical_count' })
+    });
     await fetch(SUPA_URL + '/rest/v1/physical_count_items', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
