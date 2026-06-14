@@ -10,6 +10,12 @@
 // These run synchronously before body renders
 var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings'];
 function showScreen(name) {
+  if (name === 'cycle') {
+    var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+    var locName = (mu.locations && mu.locations[0] && mu.locations[0].name) || '';
+    var fr = document.getElementById('cycle-iframe');
+    if (fr && locName) fr.src = 'medsync_cycle_count_live.html?v=20260611&location=' + encodeURIComponent(locName);
+  }
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
     if (el) el.style.display = (s === name) ? 'block' : 'none';
