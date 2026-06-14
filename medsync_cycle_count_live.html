@@ -1007,8 +1007,8 @@ function togglePhysicalCount() {
 
 async function pcStartSession() {
   var mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
-  pcState.locationId = mu.vetspireLocationId || '28253';
-  pcState.locationName = mu.location_name || 'Unknown';
+  pcState.locationId = '28253';
+  pcState.locationName = 'Wheaton';
   var res = await fetch(SUPA_URL + '/rest/v1/physical_count_sessions', {
     method: 'POST',
     headers: { ...H, 'Prefer': 'return=representation' },
