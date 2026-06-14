@@ -994,6 +994,139 @@ function exportCCPDF() {
     rows
   );
 }
+
+// ═══════════════ PHYSICAL COUNT MODE ═══════════════
+var pcState = { sessionId: null, items: [], locationId: null, locationName: null };
+
+function togglePhysicalCount() {
+  var panel = document.getElementById('pc-panel');
+  if (panel.style.display === 'flex') { closePhysicalCount(); return; }
+  pcStartSession();
+}
+
+async function pcStartSession() {
+  var mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
+  pcState.locationId = mu.vetspireLocationId || '28253';
+  pcState.locationName = mu.location_name || 'Unknown';
+  var res = await fetch(SUPA_URL + '/rest/v1/physical_count_sessions', {
+    method: 'POST',
+    headers: { ...H, 'Prefer': 'return=representation' },
+    body: JSON.stringify({
+      location_id: pcState.locationId,
+      location_name: pcState.locationName,
+      started_by: mu.full_name || mu.email || 'Unknown',
+      status: 'in_progress'
+    })
+  });
+  var data = await res.json();
+  pcState.sessionId = data[0] ? data[0].id : null;
+  pcState.items = [];
+  document.getElementById('pc-session-info').textContent =
+    pcState.locationName + ' · Session started ' + new Date().toLocaleTimeString();
+  document.getElementById('pc-panel').style.display = 'flex';
+  document.getElementById('pc-scan-input').focus();
+  var btn = document.getElementById('pc-mode-btn');
+  if (btn) btn.style.background = 'rgba(200,146,42,.35)';
+}
+
+function closePhysicalCount() {
+  document.getElementById('pc-panel').style.display = 'none';
+  var btn = document.getElementById('pc-mode-btn');
+  if (btn) btn.style.background = 'rgba(200,146,42,.18)';
+}
+
+async function pcLookup() {
+  var q = document.getElementById('pc-scan-input').value.trim();
+  if (!q) return;
+  var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,quantity_on_hand,unit_cost&product_name=ilike.*' + encodeURIComponent(q) + '*&location_id=eq.' + pcState.locationId + '&limit=1';
+  var res2 = await fetch(url2, { headers: H });
+  var snaps = await res2.json();
+  if (!snaps.length) { alert('Product not found: ' + q); return; }
+  var sn = snaps[0];
+  pcState.currentProduct = { name: sn.product_name, vetspireProductId: sn.vetspire_product_id, expected: sn.quantity_on_hand || 0, unitCost: sn.unit_cost || 0 };
+  document.getElementById('pc-prod-name').textContent = sn.product_name;
+  document.getElementById('pc-prod-meta').textContent = sn.vetspire_product_id ? 'Vetspire ID: ' + sn.vetspire_product_id : 'No Vetspire ID';
+  document.getElementById('pc-expected').textContent = sn.quantity_on_hand || 0;
+  document.getElementById('pc-actual-input').value = '';
+  document.getElementById('pc-variance-preview').style.display = 'none';
+  document.getElementById('pc-product-card').style.display = 'block';
+  document.getElementById('pc-actual-input').focus();
+  document.getElementById('pc-scan-input').value = '';
+}
+
+function pcUpdateVariancePreview() {
+  if (!pcState.currentProduct) return;
+  var actual = parseFloat(document.getElementById('pc-actual-input').value);
+  if (isNaN(actual)) return;
+  var variance = actual - pcState.currentProduct.expected;
+  var varVal = variance * (pcState.currentProduct.unitCost || 0);
+  var el = document.getElementById('pc-variance-preview');
+  el.style.display = 'block';
+  if (variance === 0) {
+    el.style.background = 'rgba(26,122,74,.2)'; el.style.color = '#4ade80';
+    el.textContent = 'Matches expected quantity';
+  } else {
+    el.style.background = variance < 0 ? 'rgba(220,38,38,.2)' : 'rgba(200,146,42,.2)';
+    el.style.color = variance < 0 ? '#f87171' : '#C8922A';
+    el.textContent = (variance > 0 ? '+' : '') + variance + ' units  (' + (varVal >= 0 ? '+' : '') + '$' + Math.abs(varVal).toFixed(2) + ')';
+  }
+}
+
+async function pcSubmitItem() {
+  var actual = parseFloat(document.getElementById('pc-actual-input').value);
+  if (isNaN(actual) || actual < 0) { alert('Enter a valid count'); return; }
+  var cp = pcState.currentProduct;
+  var variance = actual - cp.expected;
+  var varVal = variance * (cp.unitCost || 0);
+  if (pcState.sessionId) {
+    await fetch(SUPA_URL + '/rest/v1/physical_count_items', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ session_id: pcState.sessionId, vetspire_product_id: cp.vetspireProductId, product_name: cp.name, expected_qty: cp.expected, actual_qty: actual, unit_cost: cp.unitCost || null, vetspire_synced: false })
+    });
+  }
+  if (cp.vetspireProductId) {
+    await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?vetspire_product_id=eq.' + cp.vetspireProductId + '&location_id=eq.' + pcState.locationId, {
+      method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ quantity_on_hand: actual })
+    });
+    if (variance !== 0) {
+      await fetch(SUPA_URL + '/rest/v1/vetspire_writeback_queue', {
+        method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ vetspire_product_id: String(cp.vetspireProductId), vetspire_location_id: String(pcState.locationId), quantity_change: variance, status: 'pending' })
+      });
+    }
+  }
+  pcState.items.push({ name: cp.name, expected: cp.expected, actual: actual, variance: variance, varVal: varVal });
+  pcRenderLog();
+  pcClearCard();
+  document.getElementById('pc-scan-input').focus();
+}
+
+function pcRenderLog() {
+  var log = document.getElementById('pc-log');
+  document.getElementById('pc-log-header').style.display = 'block';
+  document.getElementById('pc-totals').style.display = 'block';
+  var totalUnits = 0, totalVal = 0;
+  log.innerHTML = pcState.items.slice().reverse().map(function(it) {
+    totalUnits += it.variance; totalVal += it.varVal;
+    var col = it.variance === 0 ? '#4ade80' : it.variance < 0 ? '#f87171' : '#C8922A';
+    return '<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">' +
+      '<div style="font-size:13px;color:#fff;">' + it.name + '</div>' +
+      '<div style="font-size:12px;color:rgba(255,255,255,.5);">' + it.expected + ' expected · <span style="color:' + col + ';font-weight:600;">' + (it.variance >= 0 ? '+' : '') + it.variance + ' (' + (it.varVal >= 0 ? '+$' : '-$') + Math.abs(it.varVal).toFixed(2) + ')</span></div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('pc-tot-items').textContent = pcState.items.length;
+  document.getElementById('pc-tot-units').textContent = (totalUnits >= 0 ? '+' : '') + totalUnits;
+  document.getElementById('pc-tot-val').textContent = (totalVal >= 0 ? '+$' : '-$') + Math.abs(totalVal).toFixed(2);
+}
+
+function pcClearCard() {
+  document.getElementById('pc-product-card').style.display = 'none';
+  pcState.currentProduct = null;
+}
+// ═══════════════════════════════════════════════════
+
 </script>
 <script src="medsync_export.js"></script>
 </body>
