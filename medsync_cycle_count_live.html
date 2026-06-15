@@ -1108,7 +1108,7 @@ async function pcSubmitItem() {
       body: JSON.stringify({ session_id: pcState.sessionId, vetspire_product_id: cp.vetspireProductId, product_name: cp.name, expected_qty: cp.expected, actual_qty: actual, unit_cost: cp.unitCost || null, vetspire_synced: false })
     });
   }
-  if (cp.vetspireProductId && !pcState.sessionId) {
+  if (cp.vetspireProductId) {
     // No session (shouldn't happen) - call Edge Function directly
     await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
