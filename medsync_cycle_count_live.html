@@ -357,7 +357,7 @@ let currentLocation = null;
 let currentLocationId = null;
 
 // ── Session / user ───────────────────────────────────────────────────────────
-const _sess = JSON.parse(localStorage.getItem('medsync_session') || '{}');
+const _sess = JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}');
 const _user = JSON.parse(localStorage.getItem('medsync_user')   || '{}');
 const H = {
   'apikey': SUPA_KEY,
