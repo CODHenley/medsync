@@ -92,7 +92,12 @@ for p in all_products:
         "unit_cost":            cost,
     })
 
-print(f"  {len(records)} records to insert")
+# Deduplicate by product ID (Vetspire occasionally returns the same product twice)
+seen_pids = {}
+for r in records:
+    seen_pids[r["vetspire_product_id"]] = r
+records = list(seen_pids.values())
+print(f"  {len(records)} records to insert (after dedup)")
 
 # Delete today's Wheaton records first so we can do a clean insert
 del_req = urllib.request.Request(
