@@ -99,24 +99,23 @@ for r in records:
 records = list(seen_pids.values())
 print(f"  {len(records)} records to insert (after dedup)")
 
-# Delete today's Wheaton records first so we can do a clean insert
-del_req = urllib.request.Request(
-    SUPA_URL + f"/rest/v1/inventory_snapshots?vetspire_location_id=eq.{WHEATON_ID}&snapshot_date=eq.{today_str}",
-    headers={
-        "apikey":        SUPA_KEY,
-        "Authorization": f"Bearer {SUPA_KEY}",
-    }
-)
-del_req.get_method = lambda: "DELETE"
-try:
-    with urllib.request.urlopen(del_req, timeout=30) as r:
-        print(f"  Cleared today's existing Wheaton records ✓")
-except urllib.error.HTTPError as e:
-    print(f"  Warning clearing old records: {e.read().decode()[:200]}")
+# Fetch existing product IDs already stored for Wheaton today
+existing_url = SUPA_URL + f"/rest/v1/inventory_snapshots?select=vetspire_product_id&vetspire_location_id=eq.{WHEATON_ID}&snapshot_date=eq.{today_str}&limit=2000"
+existing_req = urllib.request.Request(existing_url, headers={
+    "apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}"
+})
+with urllib.request.urlopen(existing_req, timeout=30) as r:
+    existing = {row["vetspire_product_id"] for row in json.loads(r.read())}
+print(f"  {len(existing)} products already in DB for today")
 
+to_insert = [r for r in records if r["vetspire_product_id"] not in existing]
+to_update = [r for r in records if r["vetspire_product_id"] in existing]
+
+# Insert new records
 BATCH = 200
-for i in range(0, len(records), BATCH):
-    batch = records[i:i+BATCH]
+inserted = 0
+for i in range(0, len(to_insert), BATCH):
+    batch = to_insert[i:i+BATCH]
     body  = json.dumps(batch).encode()
     req   = urllib.request.Request(
         SUPA_URL + "/rest/v1/inventory_snapshots",
@@ -131,10 +130,33 @@ for i in range(0, len(records), BATCH):
     req.get_method = lambda: "POST"
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
-            pass
-        print(f"  Inserted batch {i//BATCH + 1} ({len(batch)} rows) ✓")
+            inserted += len(batch)
     except urllib.error.HTTPError as e:
-        print(f"  Supabase error on batch {i//BATCH + 1}: {e.read().decode()[:300]}")
+        print(f"  Insert error: {e.read().decode()[:300]}")
         sys.exit(1)
+
+# Update existing records one by one (on_hand may have changed)
+updated = 0
+for rec in to_update:
+    pid  = rec["vetspire_product_id"]
+    body = json.dumps({"on_hand": rec["on_hand"], "unit_cost": rec["unit_cost"]}).encode()
+    req  = urllib.request.Request(
+        SUPA_URL + f"/rest/v1/inventory_snapshots?vetspire_location_id=eq.{WHEATON_ID}&vetspire_product_id=eq.{pid}&snapshot_date=eq.{today_str}",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "apikey":        SUPA_KEY,
+            "Authorization": f"Bearer {SUPA_KEY}",
+            "Prefer":        "return=minimal",
+        }
+    )
+    req.get_method = lambda: "PATCH"
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            updated += 1
+    except urllib.error.HTTPError as e:
+        print(f"  Update error for {pid}: {e.read().decode()[:200]}")
+
+print(f"  Inserted {inserted} new, updated {updated} existing ✓")
 
 print(f"\nDone — {len(records)} Wheaton products synced to MedSync.")
