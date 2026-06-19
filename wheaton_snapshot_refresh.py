@@ -99,8 +99,8 @@ for r in records:
 records = list(seen_pids.values())
 print(f"  {len(records)} records to insert (after dedup)")
 
-# Fetch existing product IDs already stored for Wheaton today
-existing_url = SUPA_URL + f"/rest/v1/inventory_snapshots?select=vetspire_product_id&vetspire_location_id=eq.{WHEATON_ID}&snapshot_date=eq.{today_str}&limit=2000"
+# Fetch ALL existing Wheaton product IDs (any date) — constraint is per product not per day
+existing_url = SUPA_URL + f"/rest/v1/inventory_snapshots?select=vetspire_product_id&vetspire_location_id=eq.{WHEATON_ID}&limit=2000"
 existing_req = urllib.request.Request(existing_url, headers={
     "apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}"
 })
@@ -139,9 +139,9 @@ for i in range(0, len(to_insert), BATCH):
 updated = 0
 for rec in to_update:
     pid  = rec["vetspire_product_id"]
-    body = json.dumps({"on_hand": rec["on_hand"], "unit_cost": rec["unit_cost"]}).encode()
+    body = json.dumps({"on_hand": rec["on_hand"], "unit_cost": rec["unit_cost"], "snapshot_date": today_str}).encode()
     req  = urllib.request.Request(
-        SUPA_URL + f"/rest/v1/inventory_snapshots?vetspire_location_id=eq.{WHEATON_ID}&vetspire_product_id=eq.{pid}&snapshot_date=eq.{today_str}",
+        SUPA_URL + f"/rest/v1/inventory_snapshots?vetspire_location_id=eq.{WHEATON_ID}&vetspire_product_id=eq.{pid}",
         data=body,
         headers={
             "Content-Type": "application/json",
