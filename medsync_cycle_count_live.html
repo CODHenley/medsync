@@ -1097,11 +1097,15 @@ async function pcSubmitItem() {
   var variance = actual - cp.expected;
   var varVal = variance * (cp.unitCost || 0);
   if (pcState.sessionId) {
-    await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, quantity_change: actual - (cp.on_hand || 0), actual_count: actual, product_name: cp.name || '', location_name: pcState.locationName || '', lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null, status: 'pending' })
-    });
+    if (pcState.locationName === 'Wheaton' && cp.vetspireProductId) {
+      var wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
+        body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, actual_count: actual, product_name: cp.name || '', location_name: pcState.locationName || '', lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null })
+      });
+      var wbJson = await wbRes.json();
+      if (!wbJson.ok) console.error('Vetspire writeback failed:', wbJson.error);
+    }
     await fetch(SUPA_URL + '/rest/v1/physical_count_items', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },

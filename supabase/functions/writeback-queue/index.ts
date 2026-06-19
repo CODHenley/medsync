@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type', 'Content-Type': 'application/json' }
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, authorization, apikey', 'Content-Type': 'application/json' }
 const SUPA_URL = Deno.env.get('SUPABASE_URL')
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 async function getVetspireToken() {
@@ -15,15 +15,14 @@ async function getCurrentStock(token, productId, locationId) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Origin': 'https://scoutcare.vetspire.com' },
     body: JSON.stringify({
-      query: 'query getStock($locationId: ID!, $limit: Int, $offset: Int) { products(onlyTrackInventory: true, onlyEnabledAt: $locationId, limit: $limit, offset: $offset) { id inventoryLevels(locationId: $locationId) { stock } } }',
-      variables: { locationId: locationId, limit: 500, offset: 0 }
+      query: 'query getStock($id: ID!, $locationId: ID!) { product(id: $id) { id inventoryLevels(locationId: $locationId) { stock } } }',
+      variables: { id: String(productId), locationId: String(locationId) }
     })
   })
   const d = await r.json()
-  const prods = d.data?.products || []
-  const match = prods.find(p => String(p.id) === String(productId))
-  if (!match) return 0
-  return (match.inventoryLevels || []).reduce((sum, l) => sum + parseFloat(l.stock || 0), 0)
+  const prod = d.data?.product
+  if (!prod) return 0
+  return (prod.inventoryLevels || []).reduce((sum: number, l: any) => sum + parseFloat(l.stock || 0), 0)
 }
 
 serve(async (req) => {
