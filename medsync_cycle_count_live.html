@@ -1064,7 +1064,7 @@ function pcSelectSuggestion(el) {
 }async function pcLookup() {
   var q = document.getElementById('pc-scan-input').value.trim();
   if (!q) return;
-  var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,unit_cost&product_name=ilike.' + encodeURIComponent('%' + q + '%') + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1';
+  var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand&product_name=ilike.' + encodeURIComponent('%' + q + '%') + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1';
   var res2 = await fetch(url2, { headers: H });
   var snaps = await res2.json();
   if (!Array.isArray(snaps)) { console.error('pcLookup error:', snaps); alert('Lookup failed — check console for details'); return; }
