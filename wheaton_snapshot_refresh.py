@@ -92,27 +92,42 @@ for p in all_products:
         "unit_cost":            cost,
     })
 
-print(f"  {len(records)} records to upsert")
+print(f"  {len(records)} records to insert")
+
+# Delete today's Wheaton records first so we can do a clean insert
+del_req = urllib.request.Request(
+    SUPA_URL + f"/rest/v1/inventory_snapshots?vetspire_location_id=eq.{WHEATON_ID}&snapshot_date=eq.{today_str}",
+    headers={
+        "apikey":        SUPA_KEY,
+        "Authorization": f"Bearer {SUPA_KEY}",
+    }
+)
+del_req.get_method = lambda: "DELETE"
+try:
+    with urllib.request.urlopen(del_req, timeout=30) as r:
+        print(f"  Cleared today's existing Wheaton records ✓")
+except urllib.error.HTTPError as e:
+    print(f"  Warning clearing old records: {e.read().decode()[:200]}")
 
 BATCH = 200
 for i in range(0, len(records), BATCH):
     batch = records[i:i+BATCH]
     body  = json.dumps(batch).encode()
     req   = urllib.request.Request(
-        SUPA_URL + "/rest/v1/inventory_snapshots?on_conflict=vetspire_product_id,vetspire_location_id,snapshot_date",
+        SUPA_URL + "/rest/v1/inventory_snapshots",
         data=body,
         headers={
             "Content-Type": "application/json",
             "apikey":        SUPA_KEY,
             "Authorization": f"Bearer {SUPA_KEY}",
-            "Prefer":        "resolution=merge-duplicates,return=minimal",
+            "Prefer":        "return=minimal",
         }
     )
     req.get_method = lambda: "POST"
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             pass
-        print(f"  Upserted batch {i//BATCH + 1} ({len(batch)} rows) ✓")
+        print(f"  Inserted batch {i//BATCH + 1} ({len(batch)} rows) ✓")
     except urllib.error.HTTPError as e:
         print(f"  Supabase error on batch {i//BATCH + 1}: {e.read().decode()[:300]}")
         sys.exit(1)
