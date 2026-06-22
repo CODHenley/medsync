@@ -14,7 +14,7 @@ function showScreen(name) {
     var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
     var locName = (mu.locations && mu.locations[0] && mu.locations[0].name) || '';
     var fr = document.getElementById('cycle-iframe');
-    if (fr && locName) fr.src = 'medsync_cycle_count_live.html?v=20260622b&location=' + encodeURIComponent(locName);
+    if (fr && locName) fr.src = 'medsync_cycle_count_live.html?v=20260622c&location=' + encodeURIComponent(locName);
   }
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -1285,7 +1285,7 @@ function deepDiveLoc(locCode) {
   </iframe>
 </div>
 <div id="ms-cycle" class="ms-screen">
-  <iframe id="cycle-iframe" src="medsync_cycle_count_live.html?v=20260622b"
+  <iframe id="cycle-iframe" src="medsync_cycle_count_live.html?v=20260622c"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Cycle Count">
   </iframe>
