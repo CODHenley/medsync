@@ -488,7 +488,7 @@ const DEMO_PRODUCTS = [
 async function loadProducts(locName) {
   try {
     const res = await fetch(
-      SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,on_hand,snapshot_date&location_name=eq.${encodeURIComponent(locName)}&order=snapshot_date.desc&limit=500`,
+      SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,snapshot_date&location_name=eq.${encodeURIComponent(locName)}&order=snapshot_date.desc&limit=500`,
       { headers: H }
     );
     const rows = await res.json();
@@ -498,6 +498,7 @@ async function loadProducts(locName) {
     rows.forEach(r => { if (!seen[r.product_name]) seen[r.product_name] = r; });
     return Object.values(seen).map(r => ({
       name: r.product_name,
+      vetspireProductId: r.vetspire_product_id || null,
       unit: 'unit',
       expected: parseFloat(r.on_hand) || 0,
       dea: false
@@ -821,6 +822,22 @@ async function submitCount() {
     });
   } catch(e) {
     console.warn('Activity log write failed:', e);
+  }
+
+  // Writeback counted products to Vetspire (Wheaton only)
+  if (currentLocation === 'Wheaton') {
+    const _locMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
+    const locationId = _locMap[currentLocation];
+    const toWrite = prods.filter(p => p.actual !== null && p.vetspireProductId);
+    for (const p of toWrite) {
+      try {
+        await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
+          body: JSON.stringify({ vetspire_location_id: locationId, vetspire_product_id: p.vetspireProductId, actual_count: p.actual, product_name: p.name, location_name: currentLocation })
+        });
+      } catch(e) { console.warn('Writeback failed for', p.name, e); }
+    }
   }
 
   // Mark this category done
