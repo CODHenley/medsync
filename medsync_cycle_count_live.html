@@ -336,6 +336,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div class="success-stat-val" id="s-time">0:00</div>
       <div class="success-stat-label">Minutes</div>
     </div>
+    <div class="success-stat" id="s-vetspire-stat" style="display:none;">
+      <div class="success-stat-val" id="s-vetspire">0</div>
+      <div class="success-stat-label">Synced to Vetspire</div>
+    </div>
   </div>
   <div class="success-sub" id="s-sub">Activity log updated.</div>
   <button class="success-btn" onclick="closeSuccess()">Done</button>
@@ -825,17 +829,20 @@ async function submitCount() {
   }
 
   // Writeback counted products to Vetspire (Wheaton only)
+  let vetspireSynced = 0;
   if (currentLocation === 'Wheaton') {
     const _locMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
     const locationId = _locMap[currentLocation];
     const toWrite = prods.filter(p => p.actual !== null && p.vetspireProductId);
     for (const p of toWrite) {
       try {
-        await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
+        const wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
           body: JSON.stringify({ vetspire_location_id: locationId, vetspire_product_id: p.vetspireProductId, actual_count: p.actual, product_name: p.name, location_name: currentLocation })
         });
+        const wbJson = await wbRes.json();
+        if (wbJson.ok) vetspireSynced++;
       } catch(e) { console.warn('Writeback failed for', p.name, e); }
     }
   }
@@ -849,6 +856,12 @@ async function submitCount() {
   document.getElementById('s-disc').textContent = discs;
   document.getElementById('s-time').textContent = mins;
   document.getElementById('s-sub').textContent = `${currentLocation} · Cat ${cat} · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+  if (currentLocation === 'Wheaton') {
+    document.getElementById('s-vetspire').textContent = vetspireSynced;
+    document.getElementById('s-vetspire-stat').style.display = '';
+  } else {
+    document.getElementById('s-vetspire-stat').style.display = 'none';
+  }
   document.getElementById('success-overlay').classList.add('open');
 }
 
