@@ -1139,10 +1139,22 @@ async function pcSubmitItem() {
   var varVal = variance * (cp.unitCost || 0);
   if (pcState.sessionId) {
     if (pcState.locationName === 'Wheaton' && cp.vetspireProductId) {
+      // Convert MM/YYYY expiration date to YYYY-MM-DD (last day of month)
+      var rawExp = document.getElementById('pc-exp-input').value.trim();
+      var expDate = null;
+      if (rawExp) {
+        var expParts = rawExp.split('/');
+        if (expParts.length === 2) {
+          var expMonth = parseInt(expParts[0], 10);
+          var expYear = parseInt(expParts[1], 10);
+          var lastDay = new Date(expYear, expMonth, 0).getDate();
+          expDate = expYear + '-' + String(expMonth).padStart(2,'0') + '-' + String(lastDay).padStart(2,'0');
+        }
+      }
       var wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
-        body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, actual_count: actual, product_name: cp.name || '', location_name: pcState.locationName || '', lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null })
+        body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, actual_count: actual, product_name: cp.name || '', location_name: pcState.locationName || '', lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: expDate })
       });
       var wbJson = await wbRes.json();
       if (!wbJson.ok) console.error('Vetspire writeback failed:', wbJson.error);

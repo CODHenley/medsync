@@ -44,9 +44,14 @@ serve(async (req) => {
       .select().single()
     if (insertErr) throw new Error('Insert failed: ' + JSON.stringify(insertErr))
 
-    // 3. Update Supabase snapshot
-    await supabase.from('inventory_snapshots')
-      .upsert({ vetspire_product_id: body.vetspire_product_id, vetspire_location_id: body.vetspire_location_id, on_hand: actualCount, snapshot_date: new Date().toISOString().slice(0,10), product_name: body.product_name || '', location_name: body.location_name || '' }, { onConflict: 'vetspire_product_id,vetspire_location_id,snapshot_date' })
+    // 3. Update Supabase snapshot (PATCH if exists, INSERT if not)
+    const today = new Date().toISOString().slice(0,10)
+    const { data: existing } = await supabase.from('inventory_snapshots').select('id').eq('vetspire_product_id', body.vetspire_product_id).eq('vetspire_location_id', body.vetspire_location_id).eq('snapshot_date', today).maybeSingle()
+    if (existing) {
+      await supabase.from('inventory_snapshots').update({ on_hand: actualCount }).eq('id', existing.id)
+    } else {
+      await supabase.from('inventory_snapshots').insert({ vetspire_product_id: body.vetspire_product_id, vetspire_location_id: body.vetspire_location_id, on_hand: actualCount, snapshot_date: today, product_name: body.product_name || '', location_name: body.location_name || '' })
+    }
 
     // 4. Send adjustment to Vetspire only if there is a real nonzero delta
     let adjId = null
