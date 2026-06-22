@@ -139,7 +139,7 @@ for i in range(0, len(to_insert), BATCH):
 updated = 0
 for rec in to_update:
     pid  = rec["vetspire_product_id"]
-    body = json.dumps({"on_hand": rec["on_hand"], "unit_cost": rec["unit_cost"], "snapshot_date": today_str}).encode()
+    body = json.dumps({"on_hand": rec["on_hand"], "unit_cost": rec["unit_cost"], "snapshot_date": today_str, "location_name": WHEATON_NAME}).encode()
     req  = urllib.request.Request(
         SUPA_URL + f"/rest/v1/inventory_snapshots?vetspire_location_id=eq.{WHEATON_ID}&vetspire_product_id=eq.{pid}",
         data=body,
