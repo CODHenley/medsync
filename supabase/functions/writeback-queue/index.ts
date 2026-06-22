@@ -13,7 +13,7 @@ async function getVetspireToken() {
 async function getCurrentStock(token, productId, locationId) {
   const r = await fetch('https://api.vetspire.com/graphql', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Origin': 'https://scoutcare.vetspire.com' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': token, 'Origin': 'https://scoutcare.vetspire.com' },
     body: JSON.stringify({
       query: 'query getStock($id: ID!, $locationId: ID!) { product(id: $id) { id inventoryLevels(locationId: $locationId) { stock } } }',
       variables: { id: String(productId), locationId: String(locationId) }
@@ -53,7 +53,7 @@ serve(async (req) => {
     if (quantityChange !== 0 && !isNaN(quantityChange)) {
       const result = await fetch('https://api.vetspire.com/graphql', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Origin': 'https://scoutcare.vetspire.com' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': token, 'Origin': 'https://scoutcare.vetspire.com' },
         body: JSON.stringify({
           query: 'mutation CreateInventoryAdjustment($input: InventoryAdjustmentInput!) { createInventoryAdjustment(input: $input) { id quantityChange } }',
           variables: { input: { locationId: body.vetspire_location_id, productId: body.vetspire_product_id, quantityChange: quantityChange, lotNumber: body.lot_number || null, expirationDate: body.expiration_date || null, isWastage: false } }
@@ -61,7 +61,8 @@ serve(async (req) => {
       })
       const resultJson = await result.json()
       if (resultJson.errors) throw new Error('Vetspire GQL error: ' + JSON.stringify(resultJson.errors))
-      adjId = resultJson.data?.createInventoryAdjustment?.id
+      if (!resultJson.data?.createInventoryAdjustment) throw new Error('Vetspire adjustment returned null — token may lack write permission. Response: ' + JSON.stringify(resultJson))
+      adjId = resultJson.data.createInventoryAdjustment.id
     }
 
     // 5. Mark processed
