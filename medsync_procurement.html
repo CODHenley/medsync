@@ -266,18 +266,23 @@ tr:last-child td{border-bottom:none;}
 // ── Bundle revenue allocation ─────────────────────────────────────
 // When a component is dispensed as part of a bundle (unit_price = 0),
 // allocate the bundle's charge price proportionally by unit cost.
+// totalCost = sum of unit costs for a typical procedure in that bundle
 const BUNDLE_COMPONENTS = {
-  'Catalyst Chem 17': { bundlePrice: 325, unitCost: 55.65 },
-  'Catalyst Lytes 4': { bundlePrice: 325, unitCost: 15.10 },
-  'ProCyte Dx CBC':   { bundlePrice: 325, unitCost:  2.69 },
+  // Complete Bloodwork ($325) — fixed per run
+  'Catalyst Chem 17': { bundlePrice: 325, totalCost: 73.44, unitCost: 55.65 },
+  'Catalyst Lytes 4': { bundlePrice: 325, totalCost: 73.44, unitCost: 15.10 },
+  'ProCyte Dx CBC':   { bundlePrice: 325, totalCost: 73.44, unitCost:  2.69 },
   // PCV/TS excluded — labor-based, no unit cost
+  // Euthanasia Services ($120) — avg procedure: 1 vial propofol + 4.03ml euthasol = $18.98
+  'Propofol Inj 10 mg/ml':         { bundlePrice: 120, totalCost: 18.98, unitCost: 15.55 },
+  'Euthasol':                       { bundlePrice: 120, totalCost: 18.98, unitCost:  0.85 },
+  'Fatal-Plus Solu Inj 390 mg/ml': { bundlePrice: 120, totalCost: 18.98, unitCost:  0.85 },
 };
-const BUNDLE_TOTAL_COST = 55.65 + 15.10 + 2.69; // 73.44
 
 function allocatedRevenue(productName, unitPrice, qty) {
   const bc = BUNDLE_COMPONENTS[productName];
   if (bc && unitPrice === 0) {
-    return bc.bundlePrice * (bc.unitCost / BUNDLE_TOTAL_COST) * qty;
+    return bc.bundlePrice * (bc.unitCost / bc.totalCost) * qty;
   }
   return unitPrice * qty;
 }
