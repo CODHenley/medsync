@@ -74,13 +74,16 @@ async function loadRecognition() {
 
   try {
     // ── Award 1: location with most goods lost submissions this month ──────
+    const _SUPA2 = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+    const _KEY2  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+    const _H2    = { 'apikey': _KEY2, 'Authorization': 'Bearer ' + _KEY2 };
     const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
     const [glRes, usersRes, poRes, whGlRes, whPoRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/po_items?select=status,submitted_at&location_id=eq.' + WHEATON_UUID + '&order=submitted_at.desc&limit=1', { headers: H }),
+      fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/po_items?select=status,submitted_at&location_id=eq.' + WHEATON_UUID + '&order=submitted_at.desc&limit=1', { headers: _H2 }),
     ]);
     const glData    = await glRes.json();
     const leadsData = await usersRes.json();
@@ -200,14 +203,17 @@ async function loadWheatonCOGs() {
   const el = document.getElementById('wheaton-cogs-val');
   const dot = document.getElementById('wheaton-cogs-dot');
   if (!el) return;
+  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const today = now.toISOString().split('T')[0];
   const WHEATON_ID = '28253';
   try {
     const [cogsRes, revRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_ID + '&dispensed_date=gte.' + monthStart + '&dispensed_date=lte.' + today + '&sku=not.is.null', { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_ID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: H }),
+      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_ID + '&dispensed_date=gte.' + monthStart + '&dispensed_date=lte.' + today + '&sku=not.is.null', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_ID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
     ]);
     const cogsRows = await cogsRes.json();
     const revRows  = await revRes.json();
