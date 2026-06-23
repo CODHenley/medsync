@@ -680,7 +680,9 @@ function handleInput(cat, idx, val) {
   if (document.getElementById('var-'+p.id)) {
     document.getElementById('var-'+p.id).textContent = getVarianceText(p);
     document.getElementById('var-'+p.id).className = 'prod-variance ' + getVarianceClass(p);
-    document.getElementById('status-'+p.id).innerHTML = getStatusHtml(p);
+    const lotCount = p.lotEntries && p.lotEntries.length;
+    const lotBtnText = lotCount ? '🔖 ' + lotCount + ' lot' + (lotCount > 1 ? 's' : '') : '+ Lots';
+    document.getElementById('status-'+p.id).innerHTML = getStatusHtml(p) + '<button onclick="openLotModal(\'' + cat + '\',' + idx + ')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid rgba(200,146,42,.5);background:rgba(200,146,42,.12);color:#C8922A;cursor:pointer;white-space:nowrap;" id="lot-btn-' + p.id + '">' + lotBtnText + '</button>';
     const row = document.getElementById('row-'+p.id);
     if (row) row.className = 'prod-row ' + getRowClass(p);
     const inp = document.getElementById('input-'+p.id);
