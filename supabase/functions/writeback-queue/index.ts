@@ -11,7 +11,7 @@ async function getVetspireToken() {
   return token
 }
 
-async function getCurrentLevels(token, productId, locationId): Promise<Array<{stock: number, lotNumber: string|null, expirationDate: string|null}>> {
+async function getCurrentLevels(token, productId, locationId): Promise<{levels: Array<{stock: number, lotNumber: string|null, expirationDate: string|null}>, rawResponse: any}> {
   const r = await fetch('https://api.vetspire.com/graphql', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': token, 'Origin': 'https://scoutcare.vetspire.com' },
@@ -22,7 +22,10 @@ async function getCurrentLevels(token, productId, locationId): Promise<Array<{st
   })
   const d = await r.json()
   const levels = d.data?.product?.inventoryLevels || []
-  return levels.map((l: any) => ({ stock: parseFloat(l.stock || 0), lotNumber: l.lotNumber || null, expirationDate: l.expirationDate || null }))
+  return {
+    rawResponse: d,
+    levels: levels.map((l: any) => ({ stock: parseFloat(l.stock || 0), lotNumber: l.lotNumber || null, expirationDate: l.expirationDate || null }))
+  }
 }
 
 async function sendAdjustment(token, locationId, productId, quantityChange, lotNumber, expirationDate) {
@@ -50,7 +53,7 @@ serve(async (req) => {
     // Multi-lot clean-slate mode: body.lot_entries = [{quantity, lot_number, expiration_date}, ...]
     if (Array.isArray(body.lot_entries) && body.lot_entries.length > 0) {
       const totalQty = body.lot_entries.reduce((s: number, e: any) => s + parseFloat(e.quantity || 0), 0)
-      const currentLevels = await getCurrentLevels(token, body.vetspire_product_id, body.vetspire_location_id)
+      const { levels: currentLevels, rawResponse: levelsRaw } = await getCurrentLevels(token, body.vetspire_product_id, body.vetspire_location_id)
       const currentStock = currentLevels.reduce((s, l) => s + l.stock, 0)
 
       // Log to queue
@@ -88,12 +91,12 @@ serve(async (req) => {
 
       await supabase.from('vetspire_writeback_queue').update({ status: 'processed', processed_at: new Date().toISOString() }).eq('id', row.id)
 
-      return new Response(JSON.stringify({ ok: true, adjustment_ids: adjIds, debug: { totalQty, currentStock, lotCount: body.lot_entries.length, zeroedLots: currentLevels.length } }), { headers: CORS })
+      return new Response(JSON.stringify({ ok: true, adjustment_ids: adjIds, debug: { totalQty, currentStock, lotCount: body.lot_entries.length, zeroedLots: currentLevels.length, levelsRaw } }), { headers: CORS })
     }
 
     // Single-entry mode (existing behavior — differential adjustment)
     const actualCount = parseFloat(body.actual_count)
-    const currentLevelsSingle = await getCurrentLevels(token, body.vetspire_product_id, body.vetspire_location_id)
+    const { levels: currentLevelsSingle } = await getCurrentLevels(token, body.vetspire_product_id, body.vetspire_location_id)
     const currentStock = currentLevelsSingle.reduce((s, l) => s + l.stock, 0)
     const quantityChange = actualCount - currentStock
 
