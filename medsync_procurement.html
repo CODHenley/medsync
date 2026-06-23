@@ -263,6 +263,30 @@ tr:last-child td{border-bottom:none;}
 <div id="toast"></div>
 
 <script>
+// ── Bundle revenue allocation ─────────────────────────────────────
+// When a component is dispensed as part of a bundle (unit_price = 0),
+// allocate the bundle's charge price proportionally by unit cost.
+// totalCost = sum of unit costs for a typical procedure in that bundle
+const BUNDLE_COMPONENTS = {
+  // Complete Bloodwork ($325) — fixed per run
+  'Catalyst Chem 17': { bundlePrice: 325, totalCost: 73.44, unitCost: 55.65 },
+  'Catalyst Lytes 4': { bundlePrice: 325, totalCost: 73.44, unitCost: 15.10 },
+  'ProCyte Dx CBC':   { bundlePrice: 325, totalCost: 73.44, unitCost:  2.69 },
+  // PCV/TS excluded — labor-based, no unit cost
+  // Euthanasia Services ($120) — avg procedure: 1 vial propofol + 4.03ml euthasol = $18.98
+  'Propofol Inj 10 mg/ml':         { bundlePrice: 120, totalCost: 18.98, unitCost: 15.55 },
+  'Euthasol':                       { bundlePrice: 120, totalCost: 18.98, unitCost:  0.85 },
+  'Fatal-Plus Solu Inj 390 mg/ml': { bundlePrice: 120, totalCost: 18.98, unitCost:  0.85 },
+};
+
+function allocatedRevenue(productName, unitPrice, qty) {
+  const bc = BUNDLE_COMPONENTS[productName];
+  if (bc && unitPrice === 0) {
+    return bc.bundlePrice * (bc.unitCost / bc.totalCost) * qty;
+  }
+  return unitPrice * qty;
+}
+
 // ── Supabase config ──────────────────────────────────────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
@@ -340,7 +364,7 @@ async function reload() {
     const raw = await query('dispensed_items',
       `select=vetspire_product_id,product_name,sku,quantity,unit_price,unit_cost,returned,refunded,dispensed_at,location_id,location_name` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
-      `&returned=eq.false&refunded=eq.false` +
+      `&returned=eq.false&refunded=eq.false&sku=not.is.null` +
       locFilter +
       `&order=dispensed_at.desc&limit=5000`
     );
@@ -371,7 +395,7 @@ async function reload() {
       const price = parseFloat(row.unit_price) || 0;
       p.total_qty_dispensed += qty;
       p.true_cogs           += qty * cost;
-      p.total_revenue       += qty * price;
+      p.total_revenue       += allocatedRevenue(row.product_name, price, qty);
       p.events++;
       const dt = row.dispensed_at;
       if (!p.last_dispensed_at  || dt > p.last_dispensed_at)  p.last_dispensed_at  = dt;
@@ -388,9 +412,9 @@ async function reload() {
 
     // Load daily COGS via view
     const dailyRaw = await query('dispensed_items',
-      `select=dispensed_at,location_id,location_name,vetspire_product_id,quantity,unit_cost,unit_price` +
+      `select=dispensed_at,location_id,location_name,vetspire_product_id,product_name,quantity,unit_cost,unit_price` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
-      `&returned=eq.false&refunded=eq.false` +
+      `&returned=eq.false&refunded=eq.false&sku=not.is.null` +
       locFilter +
       `&order=dispensed_at.desc&limit=5000`
     );
@@ -413,7 +437,7 @@ async function reload() {
       d.products.add(row.vetspire_product_id);
       d.total_qty  += qty;
       d.true_cogs  += qty * cost;
-      d.revenue    += qty * price;
+      d.revenue    += allocatedRevenue(row.product_name, price, qty);
     }
     ALL_DAILY = Object.values(byDay).map(d => ({
       ...d, unique_products: d.products.size
