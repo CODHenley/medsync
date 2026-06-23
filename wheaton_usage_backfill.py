@@ -53,7 +53,7 @@ def supa_upsert(records):
         return 201
     body = json.dumps(records).encode()
     req = urllib.request.Request(
-        SUPA_URL + "/rest/v1/dispensed_items",
+        SUPA_URL + "/rest/v1/dispensed_items?on_conflict=vetspire_product_id,dispensed_at,location_id",
         data=body,
         headers={
             "Content-Type": "application/json",
