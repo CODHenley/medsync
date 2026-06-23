@@ -17,16 +17,7 @@ WHEATON_ID        = "28253"
 BACKFILL_DAYS     = 90  # change to 180 for 6 months
 
 token = open(TOKEN_FILE).read().strip().removeprefix("Bearer ").strip()
-try:
-    payload = token.split(".")[1] + "=="
-    data = json.loads(base64.urlsafe_b64decode(payload))
-    exp = data.get("exp", 0)
-    now = datetime.now(timezone.utc).timestamp()
-    if exp < now:
-        print("TOKEN EXPIRED — refresh it first"); sys.exit(1)
-    print(f"Token valid for {(exp-now)/3600:.1f}h")
-except Exception as e:
-    print(f"Token decode error: {e}")
+print(f"Token loaded: {token[:20]}...")
 
 USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
@@ -51,7 +42,7 @@ def gql(query, variables=None):
     body = json.dumps({"query": query, "variables": variables or {}}).encode()
     req = urllib.request.Request(VETSPIRE_ENDPOINT, data=body, headers={
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",
+        "Authorization": token,
         "Origin": VETSPIRE_ORIGIN,
     })
     with urllib.request.urlopen(req, timeout=30) as r:
