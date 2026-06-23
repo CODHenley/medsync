@@ -74,14 +74,50 @@ async function loadRecognition() {
 
   try {
     // ── Award 1: location with most goods lost submissions this month ──────
-    const [glRes, usersRes, poRes] = await Promise.all([
+    const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
+    const [glRes, usersRes, poRes, whGlRes, whPoRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: H }),
       fetch(SUPA_URL + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: H }),
       fetch(SUPA_URL + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/po_items?select=status,submitted_at&location_id=eq.' + WHEATON_UUID + '&order=submitted_at.desc&limit=1', { headers: H }),
     ]);
     const glData    = await glRes.json();
     const leadsData = await usersRes.json();
     const poData    = await poRes.json();
+    const whGlData  = await whGlRes.json();
+    const whPoData  = await whPoRes.json();
+
+    // ── Wheaton: live goods lost $ ────────────────────────────────────────────
+    const glEl = document.getElementById('wheaton-gl-val');
+    if (glEl && Array.isArray(whGlData)) {
+      const total = whGlData.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
+      glEl.textContent = total > 0 ? '$' + total.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}) : '$0';
+      glEl.style.color = total > 500 ? '#a33030' : total > 0 ? '#a0700a' : '#1C2B4A';
+    }
+
+    // ── Wheaton: live order status ────────────────────────────────────────────
+    const ordEl = document.getElementById('wheaton-order-val');
+    if (ordEl && Array.isArray(whPoData) && whPoData.length > 0) {
+      const latest = whPoData[0];
+      const st = (latest.status || '').toLowerCase();
+      if (st === 'received') {
+        ordEl.className = 'badge badge-ok'; ordEl.style.fontSize = '11px';
+        ordEl.innerHTML = '<i class="ti ti-package" style="font-size:11px;" aria-hidden="true"></i> Received';
+      } else if (st === 'submitted') {
+        ordEl.className = 'badge badge-ok'; ordEl.style.fontSize = '11px';
+        ordEl.innerHTML = '<i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted';
+      } else if (st === 'pending') {
+        ordEl.className = 'badge'; ordEl.style.cssText = 'font-size:11px;background:#FFF3CD;color:#a0700a;border:1px solid #e0c56a;';
+        ordEl.innerHTML = '<i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending';
+      } else {
+        ordEl.className = ''; ordEl.style.fontSize = '11px'; ordEl.style.color = '#8A93A8';
+        ordEl.textContent = '—';
+      }
+    } else if (ordEl && Array.isArray(whPoData) && whPoData.length === 0) {
+      ordEl.className = ''; ordEl.style.cssText = 'font-size:11px;color:#8A93A8;';
+      ordEl.textContent = 'No order';
+    }
 
     // Tally goods lost by location
     const glByLoc = {};
@@ -1186,9 +1222,9 @@ function deepDiveLoc(locCode) {
           <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span id="wheaton-cogs-val" class="good" style="font-size:12px;font-weight:600;">…</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div id="wheaton-cogs-dot" style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
           <span class="warn-t" data-label="Expiring">1</span>
-          <span style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">$437</span>
+          <span id="wheaton-gl-val" style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">…</span>
           <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 18 min</span>
-          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span id="wheaton-order-val" class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- DEMO: Naperville (Chicagoland South) -->
