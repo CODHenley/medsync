@@ -83,7 +83,7 @@ def gql(token, query, variables=None):
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
+            "Authorization": token,
             "Origin": VETSPIRE_ORIGIN,
         }
     )
