@@ -123,8 +123,8 @@ while cursor <= today:
         unit_cost = prod.get("unitCost")
         sku       = prod.get("sku")
 
-        # Skip services — only physical inventory
-        if not sku and unit_cost is None:
+        # Skip services — only physical inventory items have SKUs
+        if not sku:
             total_skipped += 1
             continue
 

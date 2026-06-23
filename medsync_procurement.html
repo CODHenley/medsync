@@ -364,7 +364,7 @@ async function reload() {
     const raw = await query('dispensed_items',
       `select=vetspire_product_id,product_name,sku,quantity,unit_price,unit_cost,returned,refunded,dispensed_at,location_id,location_name` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
-      `&returned=eq.false&refunded=eq.false` +
+      `&returned=eq.false&refunded=eq.false&sku=not.is.null` +
       locFilter +
       `&order=dispensed_at.desc&limit=5000`
     );
@@ -414,7 +414,7 @@ async function reload() {
     const dailyRaw = await query('dispensed_items',
       `select=dispensed_at,location_id,location_name,vetspire_product_id,product_name,quantity,unit_cost,unit_price` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
-      `&returned=eq.false&refunded=eq.false` +
+      `&returned=eq.false&refunded=eq.false&sku=not.is.null` +
       locFilter +
       `&order=dispensed_at.desc&limit=5000`
     );

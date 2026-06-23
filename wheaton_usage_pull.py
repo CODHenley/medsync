@@ -169,8 +169,8 @@ def main():
             unit_cost = prod.get("unitCost")
             sku       = prod.get("sku")
 
-            # Skip services — only track physical inventory (must have SKU or unit cost)
-            if not sku and unit_cost is None:
+            # Skip services — only physical inventory items have SKUs
+            if not sku:
                 continue
 
             unit_price_str = item.get("unitPrice", "0")
