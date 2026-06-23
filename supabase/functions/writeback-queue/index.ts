@@ -16,7 +16,7 @@ async function getCurrentLevels(token, productId, locationId): Promise<{levels: 
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': token, 'Origin': 'https://scoutcare.vetspire.com' },
     body: JSON.stringify({
-      query: 'query getStock($id: ID!, $locationId: ID!) { product(id: $id) { id inventoryLevels(locationId: $locationId) { stock lotNumber expirationDate } } }',
+      query: 'query getStock($id: ID!, $locationId: ID!) { product(id: $id) { id inventoryLevels(locationId: $locationId) { stock lotNumber } } }',
       variables: { id: String(productId), locationId: String(locationId) }
     })
   })
