@@ -157,6 +157,42 @@ async function loadRecognition() {
     if (locEl) locEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">🏅</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
     if (leadEl) leadEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">⭐</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
   }
+  loadWheatonCOGs();
+}
+
+async function loadWheatonCOGs() {
+  const el = document.getElementById('wheaton-cogs-val');
+  const dot = document.getElementById('wheaton-cogs-dot');
+  if (!el) return;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const today = now.toISOString().split('T')[0];
+  const WHEATON_ID = '28253';
+  try {
+    const [cogsRes, revRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_ID + '&dispensed_date=gte.' + monthStart + '&dispensed_date=lte.' + today + '&sku=not.is.null', { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_ID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: H }),
+    ]);
+    const cogsRows = await cogsRes.json();
+    const revRows  = await revRes.json();
+    if (!Array.isArray(cogsRows) || !Array.isArray(revRows)) { el.textContent = '—'; return; }
+    const totalCOGS = cogsRows.reduce(function(s, r) { return s + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 0); }, 0);
+    const totalRev  = revRows.reduce(function(s, r) { return s + (Number(r.revenue) || 0); }, 0);
+    if (totalRev < 1) { el.textContent = '—'; return; }
+    const pct = totalCOGS / totalRev * 100;
+    const label = pct.toFixed(1) + '%';
+    const isWarn = pct > 10;
+    el.textContent = label;
+    el.className = isWarn ? 'warn-t' : 'good';
+    if (dot) {
+      // Position dot proportionally on 0–14% scale
+      const left = Math.min(Math.max(pct / 14 * 100, 2), 98);
+      dot.style.left = left.toFixed(1) + '%';
+      dot.style.background = isWarn ? '#c8902a' : '#2E8B57';
+    }
+  } catch(err) {
+    el.textContent = '—';
+  }
 }
 
 // Close hamburger when clicking anywhere outside the sidebar
@@ -1147,7 +1183,7 @@ function deepDiveLoc(locCode) {
         <!-- Wheaton -->
         <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Wheaton</p><p class="loc-sub">IL · Megan H.</p></div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">8.7%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
+          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span id="wheaton-cogs-val" class="good" style="font-size:12px;font-weight:600;">…</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div id="wheaton-cogs-dot" style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
           <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
           <span class="warn-t" data-label="Expiring">1</span>
           <span style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">$437</span>
