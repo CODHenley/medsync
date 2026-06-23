@@ -412,7 +412,7 @@ async function reload() {
 
     // Load daily COGS via view
     const dailyRaw = await query('dispensed_items',
-      `select=dispensed_at,location_id,location_name,vetspire_product_id,quantity,unit_cost,unit_price` +
+      `select=dispensed_at,location_id,location_name,vetspire_product_id,product_name,quantity,unit_cost,unit_price` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
       `&returned=eq.false&refunded=eq.false` +
       locFilter +
