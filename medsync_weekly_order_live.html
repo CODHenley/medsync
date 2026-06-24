@@ -347,17 +347,21 @@ async function loadCogsBudget() {
   state.mtdRevenue = 0;
   state.mtdCogs    = 0;
   if (!state.locationId) return;
+  // daily_revenue uses Vetspire integer location IDs, not Supabase UUIDs
+  const VID_MAP = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
+  const vid = VID_MAP[state.locationName];
+  if (!vid) return;
   try {
     const now    = new Date();
     const month1 = now.toISOString().slice(0,7) + '-01';
     const today  = now.toISOString().slice(0,10);
-    // MTD revenue
+    // MTD revenue via Vetspire location ID
     const revRes  = await fetch(
-      SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + state.locationId +
+      SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid +
       '&date=gte.' + month1 + '&date=lte.' + today, { headers: H });
     const revRows = await revRes.json();
     if (Array.isArray(revRows)) state.mtdRevenue = revRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
-    // MTD COGS: sum of delivered/completed po_items this month
+    // MTD COGS: received po_items this month (Supabase UUID is correct here)
     const cogsRes  = await fetch(
       SUPA_URL + '/rest/v1/po_items?select=gpo_price,order_qty&location_id=eq.' + state.locationId +
       '&status=eq.received&week_start=gte.' + month1, { headers: H });
