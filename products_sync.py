@@ -77,7 +77,7 @@ query($locationId: ID!, $limit: Int, $offset: Int) {
     name
     sku
     unitCost
-    manufacturer
+    manufacturer { name }
     ndc
     isControlled
     deaSchedule
@@ -170,7 +170,7 @@ print(f"  {has_ndc} have NDC populated ({len(all_products) - has_ndc} without)")
 print(f"\n{'Name':<45} {'NDC':<15} {'SKU':<12} {'Manufacturer'}")
 print("-" * 100)
 for p in sorted(all_products, key=lambda x: x.get("name") or "")[:30]:
-    print(f"  {(p.get('name') or '')[:43]:<43}  {(p.get('ndc') or ''):<15} {(p.get('sku') or ''):<12}  {p.get('manufacturer') or ''}")
+    print(f"  {(p.get('name') or '')[:43]:<43}  {(p.get('ndc') or ''):<15} {(p.get('sku') or ''):<12}  {(p.get('manufacturer') or {}).get('name') or ''}")
 if len(all_products) > 30:
     print(f"  … and {len(all_products) - 30} more")
 
@@ -189,7 +189,7 @@ for p in all_products:
         "name":           name,
         "ndc":            ndc_raw or None,
         "sku":            (p.get("sku") or "").strip() or None,
-        "manufacturer":   (p.get("manufacturer") or "").strip() or None,
+        "manufacturer":   ((p.get("manufacturer") or {}).get("name") or "").strip() or None,
         "unit_price":     p.get("unitCost") or None,
         "is_controlled":  bool(p.get("isControlled")),
         "dea_schedule":   dea or None,

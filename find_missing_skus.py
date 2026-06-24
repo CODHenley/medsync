@@ -53,7 +53,7 @@ query($locationId: ID!, $limit: Int, $offset: Int) {
     name
     sku
     ndc
-    manufacturer
+    manufacturer { name }
     unitCost
   }
 }
@@ -102,7 +102,7 @@ for p in sorted(missing_sku, key=lambda x: x.get("name") or ""):
     print(
         f"  {(p.get('name') or '')[:48]:<48}  "
         f"{(p.get('ndc') or ''):<18} "
-        f"{(p.get('manufacturer') or '')[:23]:<25} "
+        f"{((p.get('manufacturer') or {}).get('name') or '')[:23]:<25} "
         f"{p.get('unitCost') or ''}"
     )
 
@@ -116,7 +116,7 @@ with open(out_file, "w", newline="") as f:
             "vetspire_id":  p.get("id") or "",
             "name":         p.get("name") or "",
             "ndc":          p.get("ndc") or "",
-            "manufacturer": p.get("manufacturer") or "",
+            "manufacturer": (p.get("manufacturer") or {}).get("name") or "",
             "unit_cost":    p.get("unitCost") or "",
         })
 
