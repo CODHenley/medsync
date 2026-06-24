@@ -531,9 +531,9 @@ async function loadLocations() {
       sel.value = loc.id;
       state.locationId   = loc.id;
       state.locationName = loc.name;
+      await loadCogsBudget();
       await loadQueue();
       _loadGenerated();
-      loadCogsBudget();
     }
   } catch(e) { showToast('Error loading locations'); }
 }
@@ -544,9 +544,9 @@ async function onLocChange() {
   state.locationName = sel.options[sel.selectedIndex].text;
   state.submitted.clear();
   state.generated.clear();
+  await loadCogsBudget();
   await loadQueue();
   _loadGenerated();
-  loadCogsBudget();
 }
 
 // ── Load queue ───────────────────────────────────────────────────────────────
