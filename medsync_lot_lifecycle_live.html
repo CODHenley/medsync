@@ -614,6 +614,7 @@ if (window.self !== window.top) {
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Close</button>
+      <button class="btn" id="m-edit-btn" onclick="editCurrentLot()">Edit lot</button>
       <button class="btn" id="m-action-btn" onclick="handleLotAction()">Log disposal</button>
     </div>
   </div>
@@ -695,6 +696,7 @@ if (window.self !== window.top) {
           <option value="Manual entry — existing inventory">Existing inventory (pre-MedSync)</option>
           <option value="Manual entry — cycle count">Cycle count</option>
           <option value="Manual entry — receiving">Receiving</option>
+          <option value="Manual entry — product transfer">Product transfer from another Scout</option>
           <option value="Manual entry">Other</option>
         </select>
       </div>
@@ -902,15 +904,50 @@ function filterTable() {
     `Showing ${filtered.length} of ${ALL_LOTS.length} lots`;
 }
 
-function openAddLotModal() {
-  ['al-product','al-lotnum','al-exp','al-qty','al-vendor'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  const src = document.getElementById('al-source'); if (src) src.selectedIndex = 0;
-  const loc = document.getElementById('al-loc'); if (loc) loc.selectedIndex = 0;
+let _editingLotDbId = null;
+
+function openAddLotModal(lot) {
+  _editingLotDbId = lot ? lot.dbId : null;
+
+  const title = document.querySelector('#add-lot-modal .modal-title');
+  const saveBtn = document.querySelector('#add-lot-modal .btn-primary');
+  if (lot) {
+    if (title) title.textContent = 'Edit lot';
+    if (saveBtn) saveBtn.textContent = 'Save changes';
+    // Pre-fill fields
+    document.getElementById('al-product').value = lot.name || '';
+    document.getElementById('al-lotnum').value  = lot.id   || '';
+    // Convert YYYY-MM-DD → MM/YYYY for the exp field
+    const expParts = (lot.exp || '').split('-');
+    document.getElementById('al-exp').value = expParts.length >= 2 ? expParts[1] + '/' + expParts[0] : '';
+    document.getElementById('al-qty').value    = lot.qtyRem ?? '';
+    document.getElementById('al-vendor').value = lot.vendor !== '—' ? (lot.vendor || '') : '';
+    // Set location
+    const locSel = document.getElementById('al-loc');
+    if (locSel) {
+      for (const opt of locSel.options) { if (opt.value === lot.locationId) { opt.selected = true; break; } }
+    }
+  } else {
+    if (title) title.textContent = 'Add lot manually';
+    if (saveBtn) saveBtn.textContent = 'Save lot';
+    ['al-product','al-lotnum','al-exp','al-qty','al-vendor'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const src = document.getElementById('al-source'); if (src) src.selectedIndex = 0;
+    const loc = document.getElementById('al-loc');   if (loc) loc.selectedIndex = 0;
+  }
   const err = document.getElementById('al-error'); if (err) err.style.display = 'none';
   document.getElementById('add-lot-modal').classList.add('open');
 }
+
+function editCurrentLot() {
+  const lotNum = document.getElementById('m-lot-num').textContent;
+  const lot = ALL_LOTS.find(l => l.dbId === lotNum || l.id === lotNum || l.dbId === _currentLotDbId);
+  closeModal();
+  openAddLotModal(lot);
+}
+
+let _currentLotDbId = null;
 
 function closeAddLotModal() {
   document.getElementById('add-lot-modal').classList.remove('open');
@@ -977,22 +1014,39 @@ async function submitAddLot() {
   const daysLeft = Math.round((new Date(expDate) - new Date()) / 86400000);
   const status   = daysLeft < 0 ? 'Expired' : daysLeft <= 30 ? 'Expiring soon' : 'Active';
 
+  const isEdit = !!_editingLotDbId;
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/lots', {
-      method: 'POST',
-      headers: { ...H, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location_id:     locId,
-        lot_number:      lotNum,
-        qty_received:    qty,
-        qty_remaining:   qty,
-        received_date:   today,
-        expiration_date: expDate,
-        status:          status,
-        vendor:          vendor || null,
-        notes:           source,
-      })
-    });
+    let res;
+    if (isEdit) {
+      res = await fetch(SUPA_URL + '/rest/v1/lots?id=eq.' + encodeURIComponent(_editingLotDbId), {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lot_number:      lotNum,
+          qty_remaining:   qty,
+          expiration_date: expDate,
+          status:          status,
+          vendor:          vendor || null,
+          location_id:     locId,
+        })
+      });
+    } else {
+      res = await fetch(SUPA_URL + '/rest/v1/lots', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location_id:     locId,
+          lot_number:      lotNum,
+          qty_received:    qty,
+          qty_remaining:   qty,
+          received_date:   today,
+          expiration_date: expDate,
+          status:          status,
+          vendor:          vendor || null,
+          notes:           source,
+        })
+      });
+    }
     if (!res.ok) {
       const body = await res.text();
       errEl.textContent = 'Save failed: ' + body.slice(0,120);
@@ -1000,8 +1054,8 @@ async function submitAddLot() {
       return;
     }
     closeAddLotModal();
-    showToast('✓ Lot added — ' + product + ' · ' + lotNum);
-    loadLots(); // refresh table
+    showToast(isEdit ? '✓ Lot updated — ' + lotNum : '✓ Lot added — ' + product + ' · ' + lotNum);
+    loadLots();
   } catch(e) {
     errEl.textContent = 'Network error — ' + e.message;
     errEl.style.display = '';
@@ -1023,9 +1077,9 @@ function setStatusFilter(val, el) {
 
 // ── Lot detail modal — loads from Supabase by UUID ───────────
 async function openLot(dbId) {
-  // Find in memory first (already loaded)
   const lot = ALL_LOTS.find(l => l.dbId === dbId);
   if (!lot) return;
+  _currentLotDbId = dbId;
 
     document.getElementById('m-lot-num').textContent = lot.id;
     document.getElementById('m-prod-name').textContent = lot.name;
