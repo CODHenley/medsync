@@ -197,6 +197,7 @@ async function loadRecognition() {
     if (leadEl) leadEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">⭐</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
   }
   loadWheatonCOGs();
+  loadWheatonInsights();
 }
 
 async function loadWheatonCOGs() {
@@ -234,6 +235,138 @@ async function loadWheatonCOGs() {
     }
   } catch(err) {
     el.textContent = '—';
+  }
+}
+
+async function loadWheatonInsights() {
+  const container = document.getElementById('wheaton-insights');
+  if (!container) return;
+  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
+  const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
+  const WHEATON_VID  = '28253';
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const today      = now.toISOString().split('T')[0];
+  const in60       = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 60).toISOString().split('T')[0];
+
+  try {
+    const [lotsRes, glRes, cogsRes, revRes] = await Promise.all([
+      fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,quantity_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&order=expiration_date.asc', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H }),
+      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
+    ]);
+
+    const lotsJson = await lotsRes.json();  const lots    = Array.isArray(lotsJson)  ? lotsJson  : [];
+    const glJson   = await glRes.json();    const glRows  = Array.isArray(glJson)    ? glJson    : [];
+    const diJson   = await cogsRes.json();  const diRows  = Array.isArray(diJson)    ? diJson    : [];
+    const revJson  = await revRes.json();   const revRows = Array.isArray(revJson)   ? revJson   : [];
+
+    const cards = [];
+
+    // ── 1. Expiring lots ────────────────────────────────────────────────────
+    if (lots.length > 0) {
+      lots.forEach(function(l) {
+        const name = (l.products && l.products.name) || l.lot_number || 'Unknown product';
+        const exp  = l.expiration_date;
+        const daysLeft = Math.round((new Date(exp) - now) / 86400000);
+        const urgency  = daysLeft <= 14 ? 'bad' : 'warn';
+        const qty  = l.quantity_remaining != null ? l.quantity_remaining + ' remaining' : '';
+        cards.push({
+          urgency: urgency,
+          icon: 'ti-alert-triangle',
+          title: 'Expiring soon — ' + name + ' · Wheaton',
+          body:  'Expires ' + exp + (qty ? ' · ' + qty : '') + ' · ' + daysLeft + ' days left',
+          badge: daysLeft + 'd',
+          tag:   'Expiring lot',
+          dollar: 9999 - daysLeft,
+        });
+      });
+    }
+
+    // ── 2. Goods lost this month ────────────────────────────────────────────
+    const totalGL = glRows.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
+    if (totalGL > 0) {
+      cards.push({
+        urgency: totalGL > 300 ? 'bad' : 'warn',
+        icon: 'ti-alert-circle',
+        title: 'Goods lost — Wheaton · ' + now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        body:  glRows.length + ' submission' + (glRows.length !== 1 ? 's' : '') + ' totaling $' + totalGL.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' in write-offs this month.',
+        badge: '$' + totalGL.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}),
+        tag:   'Goods lost',
+        dollar: totalGL,
+      });
+    }
+
+    // ── 3. COGs% above threshold ────────────────────────────────────────────
+    const totalCOGS = diRows.reduce(function(s, r) { return s + (Number(r.unit_cost)||0) * (Number(r.quantity)||0); }, 0);
+    const totalRev  = revRows.reduce(function(s, r) { return s + (Number(r.revenue)||0); }, 0);
+    if (totalRev > 0) {
+      const pct = totalCOGS / totalRev * 100;
+      if (pct > 10) {
+        cards.push({
+          urgency: 'bad',
+          icon: 'ti-trending-up',
+          title: 'COGs above target — Wheaton',
+          body:  'Current month COGs at ' + pct.toFixed(1) + '% — above 10% threshold. Review top-cost dispensed items.',
+          badge: pct.toFixed(1) + '%',
+          tag:   'COGs flag',
+          dollar: Math.round(totalCOGS),
+        });
+      }
+      // ── 4. Top COGS driver for context ─────────────────────────────────
+      const byProduct = {};
+      diRows.forEach(function(r) {
+        const k = r.product_name || 'Unknown';
+        byProduct[k] = (byProduct[k] || 0) + (Number(r.unit_cost)||0) * (Number(r.quantity)||0);
+      });
+      const top = Object.entries(byProduct).sort(function(a, b) { return b[1] - a[1]; })[0];
+      if (top && top[1] > 50) {
+        cards.push({
+          urgency: 'info',
+          icon: 'ti-pill',
+          title: 'Top COGS driver — ' + top[0] + ' · Wheaton',
+          body:  '$' + top[1].toFixed(2) + ' in dispensed cost MTD · ' + (totalRev > 0 ? (top[1]/totalRev*100).toFixed(1) + '% of revenue alone' : ''),
+          badge: '$' + Math.round(top[1]),
+          tag:   'Cost driver',
+          dollar: top[1],
+        });
+      }
+    }
+
+    // Sort by dollar impact desc
+    cards.sort(function(a, b) { return b.dollar - a.dollar; });
+
+    if (cards.length === 0) {
+      container.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f0faf5;border:0.5px solid #a8d8b9;border-radius:8px;margin-bottom:4px;">' +
+        '<div style="width:30px;height:30px;border-radius:7px;background:#d5ede0;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-circle-check" style="color:#2E8B57;font-size:14px;" aria-hidden="true"></i></div>' +
+        '<div style="flex:1;"><p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">Wheaton — no active flags</p>' +
+        '<p style="font-size:11px;color:#4A5568;">COGs on target · no expiring lots · no goods lost this month.</p></div></div>';
+      return;
+    }
+
+    const colorMap = {
+      bad:  { bg:'#fff5f5', border:'#f5c6c6', iconBg:'#fde8e8' },
+      warn: { bg:'#fdf8ee', border:'#f0d070', iconBg:'#fdefc7' },
+      info: { bg:'#f0f7ff', border:'#b0ccf0', iconBg:'#dceeff' },
+    };
+    container.innerHTML = cards.map(function(c) {
+      const col = colorMap[c.urgency] || colorMap.warn;
+      const badgeCls = c.urgency === 'bad' ? 'badge-bad' : c.urgency === 'info' ? 'badge-info' : 'badge-warn';
+      return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:' + col.bg + ';border:0.5px solid ' + col.border + ';border-radius:8px;margin-bottom:4px;">' +
+        '<div style="width:30px;height:30px;border-radius:7px;background:' + col.iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+        '<i class="ti ' + c.icon + '" style="color:' + (c.urgency==='bad'?'#a33030':c.urgency==='info'?'#1a56db':'#a0700a') + ';font-size:14px;" aria-hidden="true"></i></div>' +
+        '<div style="flex:1;"><p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">' + c.title + '</p>' +
+        '<p style="font-size:11px;color:#4A5568;line-height:1.5;">' + c.body + '</p></div>' +
+        '<div style="text-align:right;flex-shrink:0;"><span class="badge ' + badgeCls + '" style="font-size:11px;">' + c.badge + '</span>' +
+        '<p style="font-size:10px;color:#4A5568;margin-top:4px;">' + c.tag + '</p></div></div>';
+    }).join('');
+
+  } catch(e) {
+    // Silent fail — hardcoded insights still show
   }
 }
 
@@ -1281,6 +1414,8 @@ function deepDiveLoc(locCode) {
     <!-- Ranked insight engine — top 3 -->
     <div style="background:#fff;border-top:0.5px solid #C8C4D8;padding:12px 20px;display:flex;flex-direction:column;gap:8px;">
       <p style="font-size:10px;color:#4A5568;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Platform insights — ranked by dollar impact</p>
+
+      <div id="wheaton-insights"></div>
 
       <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
         <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
