@@ -400,6 +400,10 @@ if (window.self !== window.top) {
           </select>
                     <select id="loc-filter" onchange="filterTable()">
             <option value="">All locations</option>
+            <option value="Lincoln Park">Lincoln Park</option>
+            <option value="Old Orchard">Old Orchard</option>
+            <option value="West Loop">West Loop</option>
+            <option value="Wheaton">Wheaton</option>
           </select>
           <select id="cs-filter" onchange="filterTable()">
             <option value="all">All products</option>
@@ -693,9 +697,9 @@ async function loadLots() {
 // ── KPI cards ────────────────────────────────────────────────
 function updateKPIs() {
   const active      = ALL_LOTS.filter(l => l.status === 'Active').length;
-  const soon30      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) <= EXP_DAYS).length;
-  const soon60      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) > EXP_DAYS).length;
-  const expired     = ALL_LOTS.filter(l => l.status === 'Expired').length;
+  const soon30      = ALL_LOTS.filter(l => { const d = daysUntil(l.exp); return d >= 0 && d <= EXP_DAYS; }).length;
+  const soon60      = ALL_LOTS.filter(l => { const d = daysUntil(l.exp); return d > EXP_DAYS && d <= EXP_DAYS * 2; }).length;
+  const expired     = ALL_LOTS.filter(l => l.status === 'Expired' || daysUntil(l.exp) < 0).length;
   const cs          = ALL_LOTS.filter(l => l.cs).length;
 
     document.getElementById('kpi-active').textContent      = active;
@@ -937,7 +941,7 @@ async function openLot(dbId) {
   tl.innerHTML = '<div style="color:var(--mist);font-size:11px;padding:8px 0;">Loading history…</div>';
   try {
     const logRes = await fetch(
-      SUPA_URL + `/rest/v1/activity_log?select=description,metadata,created_at,users(full_name)&reference_id=eq.${lot.id}&order=created_at.asc`,
+      SUPA_URL + `/rest/v1/activity_log?select=description,metadata,created_at,users(full_name)&reference_id=eq.${lot.dbId}&order=created_at.asc`,
       { headers: H }
     );
     const logs = await logRes.json();
@@ -999,9 +1003,9 @@ async function fetchLinkedInvoice(lot) {
   if (!invEl) return;
   try {
     const vendor = encodeURIComponent(lot.vendor.split(' ')[0]); // first word e.g. "Zoetis"
-    const loc = encodeURIComponent(lot.loc);
+    const locClause = lot.locationId ? `&location_id=eq.${lot.locationId}` : '';
     const res = await fetch(
-      SUPA_URL + `/rest/v1/invoices?select=id,invoice_number,invoice_date,vendor,total_amount,invoice_items(product_name,qty_invoiced,unit_price_invoiced)&vendor=ilike.*${vendor}*&location_name=ilike.*${loc}*&order=invoice_date.desc&limit=5`,
+      SUPA_URL + `/rest/v1/invoices?select=id,invoice_number,invoice_date,vendor,total_amount,invoice_items(product_name,qty_invoiced,unit_price_invoiced)&vendor=ilike.*${vendor}*${locClause}&order=invoice_date.desc&limit=5`,
       { headers: H }
     );
     const invs = await res.json();
@@ -1204,21 +1208,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
 }
 
-// ── Dynamic location dropdown ────────────────────────────────
-async function loadLocationFilter() {
-  try {
-    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
-    const locs = await res.json();
-    const sel = document.getElementById('loc-filter');
-    if (!sel || !Array.isArray(locs)) return;
-    const allOpt = sel.querySelector('option[value=""]');
-    sel.innerHTML = '';
-    if (allOpt) sel.appendChild(allOpt);
-    else { const o = document.createElement('option'); o.value=''; o.textContent='All locations'; sel.appendChild(o); }
-    locs.forEach(l => { const o = document.createElement('option'); o.value = l.name; o.textContent = l.name; sel.appendChild(o); });
-  } catch(e) { console.warn('Could not load locations', e); }
-}
-
 // ── Boot ──────────────────────────────────────────────────────
 (function bootSidebar() {
   var u = {}; try { u = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
@@ -1228,7 +1217,6 @@ async function loadLocationFilter() {
     if (sbl) sbl.textContent = u.full_name + ' · ' + loc;
   }
 })();
-loadLocationFilter();
 loadLots();
 
 // ── Export ────────────────────────────────────────────────────
