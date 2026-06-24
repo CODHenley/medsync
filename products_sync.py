@@ -182,17 +182,12 @@ for p in all_products:
         continue
 
     ndc_raw = (p.get("ndc") or "").strip()
-    dea = (p.get("deaSchedule") or "").strip()
 
     records.append({
-        "vetspire_id":    str(p.get("id") or ""),
-        "name":           name,
-        "ndc":            ndc_raw or None,
-        "sku":            (p.get("sku") or "").strip() or None,
-        "manufacturer":   ((p.get("manufacturer") or {}).get("name") or "").strip() or None,
-        "unit_price":     p.get("unitCost") or None,
-        "is_controlled":  bool(p.get("isControlled")),
-        "dea_schedule":   dea or None,
+        "name":         name,
+        "ndc":          ndc_raw or None,
+        "manufacturer": ((p.get("manufacturer") or {}).get("name") or "").strip() or None,
+        "unit_price":   p.get("unitCost") or None,
     })
 
 print(f"\n{len(records)} records to upsert into Supabase products table")
@@ -210,7 +205,7 @@ for i in range(0, len(records), BATCH):
     try:
         status, body = supa_req(
             "POST",
-            "/rest/v1/products?on_conflict=vetspire_id",
+            "/rest/v1/products?on_conflict=name",
             batch,
             prefer="resolution=merge-duplicates,return=minimal",
         )
@@ -218,26 +213,8 @@ for i in range(0, len(records), BATCH):
         print(f"  Batch {i//BATCH + 1}: ✓ {len(batch)} records (HTTP {status})")
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        # If vetspire_id column doesn't exist, fall back to name-based upsert
-        if "vetspire_id" in body or e.code == 400:
-            print(f"  Batch {i//BATCH + 1}: vetspire_id column missing — falling back to name upsert")
-            try:
-                # Strip vetspire_id from records and upsert on name
-                batch_no_id = [{k: v for k, v in r.items() if k != "vetspire_id"} for r in batch]
-                status, _ = supa_req(
-                    "POST",
-                    "/rest/v1/products?on_conflict=name",
-                    batch_no_id,
-                    prefer="resolution=merge-duplicates,return=minimal",
-                )
-                upserted += len(batch)
-                print(f"    ↳ fallback succeeded (HTTP {status})")
-            except Exception as e2:
-                print(f"    ↳ fallback failed: {e2}")
-                failed += len(batch)
-        else:
-            print(f"  Batch {i//BATCH + 1}: ✗ HTTP {e.code} — {body[:300]}")
-            failed += len(batch)
+        print(f"  Batch {i//BATCH + 1}: ✗ HTTP {e.code} — {body[:300]}")
+        failed += len(batch)
     except Exception as e:
         print(f"  Batch {i//BATCH + 1}: ✗ {e}")
         failed += len(batch)
