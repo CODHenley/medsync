@@ -326,7 +326,7 @@ html, body { margin: 0 !important; padding: 0 !important; }
     overflow: hidden !important;
     box-sizing: border-box !important;
   }
-  /* Hide the long "Target: 8–10%…" subtitle on mobile — no room */
+  /* Hide the long "Target: 6.5–7.1%…" subtitle on mobile — no room */
   .card-head .card-sub {
     display: none !important;
   }
@@ -504,9 +504,9 @@ if (window.self !== window.top) {
             <div class="kpi-s cg">↓ 0.3% vs prior month</div>
           </div>
           <div class="kpi">
-            <div class="kpi-l">Procurement savings</div>
-            <div class="kpi-v cg" id="k-sav">$18,420</div>
-            <div class="kpi-s cm" id="k-sav-s">YTD · pace $44K/yr</div>
+            <div class="kpi-l">COGs savings vs. prior period</div>
+            <div class="kpi-v cg" id="k-sav">…</div>
+            <div class="kpi-s cm" id="k-sav-s">vs. prior period</div>
           </div>
           <div class="kpi">
             <div class="kpi-l">Goods lost</div>
@@ -524,7 +524,7 @@ if (window.self !== window.top) {
         <div class="card">
           <div class="card-head">
             <div class="card-title" id="cogs-title">COGs by location — May 2026</div>
-            <div class="card-sub">Target: 8–10% · gross production denominator</div>
+            <div class="card-sub">Target: 6.5–7.1% · gross production denominator</div>
           </div>
           <div class="bar-chart" id="cogs-bars">
             <div class="br">
@@ -652,7 +652,7 @@ if (window.self !== window.top) {
         <div class="pcontent" id="p-ov">
           <div><div class="pc-title">Period summary</div><div class="pc-sub" id="period-label">Month to date · All locations</div></div>
           <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg">8.4%</span></div>
-          <div class="mrow"><span class="mk">Target range</span><span class="mv">8–10%</span></div>
+          <div class="mrow"><span class="mk">Target range</span><span class="mv">6.5–7.1%</span></div>
           <div class="mrow"><span class="mk">Total revenue</span><span class="mv">$1.168M</span></div>
           <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">$98,112</span></div>
           <div class="mrow"><span class="mk">Procurement savings</span><span class="mv cg" id="ov-sav">…</span></div>
@@ -965,23 +965,8 @@ async function loadData() {
       `select=qty_ordered,unit_price,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
     );
 
-    // Savings = 12% GPO discount on total submitted/received order value
-    const totalOrderVal = poItems.reduce((s, i) =>
-      s + (Number(i.unit_price) || 0) * (Number(i.qty_ordered) || 0), 0);
-    const totalSav = totalOrderVal * 0.12;
-    const ksav = document.getElementById('k-sav');
-    ksav.textContent = fmt$(totalSav);
-    ksav.className = totalSav > 0 ? 'kpi-v cg' : 'kpi-v cm';
-    const ksavs = document.getElementById('k-sav-s');
-    if (ksavs) ksavs.textContent = 'Est. GPO discount · 12% capture rate';
-    // Update procurement detail panels with live GPO figure
-    const otherSav = 5120 + 2460 + 1000; // Vetcove + SKU + consolidation (static)
-    const totalYTD = totalSav + otherSav;
+    let totalSav = 0; // populated after live COGs computed below
     var _el;
-    _el = document.getElementById('gpo-row-amt');    if (_el) _el.textContent = fmt$(totalSav);
-    _el = document.getElementById('total-ytd-table'); if (_el) _el.textContent = fmt$(totalYTD);
-    _el = document.getElementById('proc-gpo-amt');   if (_el) _el.textContent = fmt$(totalSav);
-    _el = document.getElementById('proc-total-ytd'); if (_el) _el.textContent = fmt$(totalYTD);
 
     // Order compliance — derive from po_items week coverage
     const weeksSeen = {};
@@ -1020,6 +1005,42 @@ async function loadData() {
     const whRev   = Array.isArray(revRows) ? revRows.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
     const whPct   = whRev > 0 ? whCOGS / whRev * 100 : null;
 
+    // ── COGs savings vs. prior period ────────────────────────
+    const curFrom  = new Date(from), curTo = new Date(to);
+    const spanMs   = curTo - curFrom;
+    const prevTo   = new Date(curFrom.getTime() - 1);
+    const prevFrom = new Date(prevTo.getTime() - spanMs);
+    const pFromStr = prevFrom.toISOString(), pToStr = prevTo.toISOString();
+    const pFromDate = pFromStr.split('T')[0], pToDate = pToStr.split('T')[0];
+    const ksav  = document.getElementById('k-sav');
+    const ksavs = document.getElementById('k-sav-s');
+    if (loc === 'wh' || loc === 'all') {
+      const [pDiRes, pRevRes] = await Promise.all([
+        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.28253'
+              + '&dispensed_at=gte.' + pFromStr + '&dispensed_at=lte.' + pToStr + '&sku=not.is.null', { headers: HEADERS }),
+        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.28253'
+              + '&date=gte.' + pFromDate + '&date=lte.' + pToDate, { headers: HEADERS }),
+      ]);
+      const pDiRows  = await pDiRes.json();
+      const pRevRows = await pRevRes.json();
+      const priorCOGS = Array.isArray(pDiRows)  ? pDiRows.reduce((s,r) => s+(Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
+      const priorRev  = Array.isArray(pRevRows) ? pRevRows.reduce((s,r) => s+(Number(r.revenue)||0), 0) : 0;
+      const priorPct  = priorRev > 0 ? priorCOGS / priorRev * 100 : null;
+      if (priorPct !== null && whRev > 0 && whPct !== null) {
+        const delta      = priorPct - whPct;
+        const dollarDelta = (delta / 100) * whRev;
+        totalSav = dollarDelta;
+        if (ksav)  { ksav.textContent = (dollarDelta >= 0 ? '+' : '') + fmt$(dollarDelta); ksav.className = dollarDelta >= 0 ? 'kpi-v cg' : 'kpi-v cr'; }
+        if (ksavs) ksavs.textContent = (delta >= 0 ? '↓ ' : '↑ ') + Math.abs(delta).toFixed(1) + '% COGs vs. prior period';
+      } else {
+        if (ksav)  { ksav.textContent = '—'; ksav.className = 'kpi-v cm'; }
+        if (ksavs) ksavs.textContent = 'No prior period data';
+      }
+    } else {
+      if (ksav)  { ksav.textContent = '—'; ksav.className = 'kpi-v cm'; }
+      if (ksavs) ksavs.textContent = 'Live data · Wheaton only';
+    }
+
     // Update WH revenue grid cell
     const whRevEl = document.getElementById('wh-rev-val');
     if (whRevEl) whRevEl.textContent = whRev > 0 ? '$' + (whRev/1000).toFixed(0) + 'K' : '—';
@@ -1037,7 +1058,7 @@ async function loadData() {
     const kcogsEl = document.getElementById('k-cogs');
     if (loc === 'wh' && whPct !== null) {
       kcogsEl.textContent = whPct.toFixed(1) + '%';
-      kcogsEl.className   = whPct > 10 ? 'kpi-v cr' : whPct > 8.5 ? 'kpi-v ca' : 'kpi-v cg';
+      kcogsEl.className   = whPct > 7.1 ? 'kpi-v cr' : whPct > 6.5 ? 'kpi-v ca' : 'kpi-v cg';
     } else {
       kcogsEl.textContent = '8.4%';
       kcogsEl.className   = 'kpi-v cg';
@@ -1119,7 +1140,7 @@ function renderCOGSBars(glRows, loc, whPct) {
         <div class="br-val" style="color:var(--mist);">…</div>
       </div>`;
     }
-    const color = l.pct > 10 ? 'var(--red)' : l.pct > 8.5 ? 'var(--amber)' : 'var(--green)';
+    const color = l.pct > 7.1 ? 'var(--red)' : l.pct > 6.5 ? 'var(--amber)' : 'var(--green)';
     const w = Math.round((l.pct / max) * 100);
     return `<div class="br">
       <div class="br-loc">${l.name}${l.name === 'Wheaton' && whPct !== null ? ' <span style="font-size:9px;color:var(--mist);font-weight:400;">live</span>' : ''}</div>
