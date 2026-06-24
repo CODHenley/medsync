@@ -353,12 +353,14 @@ html, body { margin: 0 !important; padding: 0 !important; }
 
 <script>
 
+var _currentLocFilter = '';  // set by loadData, consumed by loadPI/loadExpiry
+
 async function loadPI() {
   try {
     var ms=new Date(); ms.setDate(1); ms.setHours(0,0,0,0);
-    var r1=await fetch(SUPA_URL+'/rest/v1/po_items?select=qty_ordered,product_name&status=in.(submitted,received)',{headers:HEADERS});
+    var r1=await fetch(SUPA_URL+'/rest/v1/po_items?select=qty_ordered,product_name&status=in.(submitted,received)'+_currentLocFilter,{headers:HEADERS});
     var ol=await r1.json();
-    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,notes&created_at=gte.'+ms.toISOString(),{headers:HEADERS});
+    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,notes&created_at=gte.'+ms.toISOString()+_currentLocFilter,{headers:HEADERS});
     var gl=await r2.json();
     var bought={},lostQ={},lostV={};
     if(Array.isArray(ol))ol.forEach(function(x){var n=x.product_name;if(!n)return;bought[n]=(bought[n]||0)+(x.qty_ordered||0);});
@@ -388,7 +390,7 @@ async function loadPI() {
 async function loadExpiry(){
   try{
     var now=new Date(),d90=new Date(now.getTime()+90*864e5).toISOString().split('T')[0],today=now.toISOString().split('T')[0],d30=new Date(now.getTime()+30*864e5).toISOString().split('T')[0],d60=new Date(now.getTime()+60*864e5).toISOString().split('T')[0];
-    var r=await fetch(SUPA_URL+'/rest/v1/lots?select=expiration_date,qty_remaining,products(name)&expiration_date=lte.'+d90+'&order=expiration_date',{headers:HEADERS});
+    var r=await fetch(SUPA_URL+'/rest/v1/lots?select=expiration_date,qty_remaining,products(name)&expiration_date=lte.'+d90+'&order=expiration_date'+_currentLocFilter,{headers:HEADERS});
     var lots=await r.json();var by={};
     if(Array.isArray(lots)&&lots.length){lots.forEach(function(l){var n=l.products&&l.products.name?l.products.name:'Unknown',e=l.expiration_date,q=l.qty_remaining||1;if(!by[n])by[n]={exp:0,d30:0,d60:0};if(e<=today)by[n].exp+=q;else if(e<=d30)by[n].d30+=q;else if(e<=d60)by[n].d60+=q;else by[n].d60+=q;});}
     else{by={'Ketamine HCl 10mg/ml':{exp:1,d30:0,d60:1},'Dexmedetomidine 0.5mg/ml':{exp:1,d30:0,d60:0},'Buprenorphine 0.3mg/ml':{exp:0,d30:2,d60:1},'Carprofen 50mg tabs':{exp:0,d30:1,d60:2}};}
@@ -546,7 +548,7 @@ if (window.self !== window.top) {
             <div class="rv"><div class="rv-l">LP Revenue</div><div class="rv-v">$312K</div></div>
             <div class="rv"><div class="rv-l">OO Revenue</div><div class="rv-v">$287K</div></div>
             <div class="rv"><div class="rv-l">WL Revenue</div><div class="rv-v">$301K</div></div>
-            <div class="rv"><div class="rv-l">WH Revenue</div><div class="rv-v">$268K</div></div>
+            <div class="rv"><div class="rv-l">WH Revenue</div><div class="rv-v" id="wh-rev-val">$268K</div></div>
           </div>
         </div>
 
@@ -648,7 +650,7 @@ if (window.self !== window.top) {
           <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg">8.4%</span></div>
           <div class="mrow"><span class="mk">Target range</span><span class="mv">8–10%</span></div>
           <div class="mrow"><span class="mk">Total revenue</span><span class="mv">$1.168M</span></div>
-          <div class="mrow"><span class="mk">Drug spend</span><span class="mv">$98,112</span></div>
+          <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">$98,112</span></div>
           <div class="mrow"><span class="mk">Procurement savings</span><span class="mv cg" id="ov-sav">…</span></div>
           <div class="mrow"><span class="mk">Goods lost</span><span class="mv ca" id="ov-gl">…</span></div>
           <div class="mrow"><span class="mk">WG overspend est.</span><span class="mv ca">$133/mo</span></div>
@@ -919,7 +921,8 @@ async function loadData() {
   let locFilter = '';
   if (loc !== 'all') {
     locFilter = `&location_id=eq.${LOC_IDS[loc]}`;
-  } else if (_region !== 'all' && _regIds.length > 0) {
+  }
+  _currentLocFilter = locFilter; // share with loadPI / loadExpiry else if (_region !== 'all' && _regIds.length > 0) {
     locFilter = `&location_id=in.(${_regIds.join(',')})`;
   } else if (_region !== 'all' && _regIds.length === 0) {
     // No real Supabase data for this region
@@ -998,14 +1001,49 @@ async function loadData() {
     kwg.textContent = expiring.length + ' lot' + (expiring.length !== 1 ? 's' : '') + ' flagged';
     kwg.className = expiring.length > 0 ? 'kpi-v ca' : 'kpi-v cg';
 
-    // COGs by location — use goods lost as proxy until revenue data exists
-    renderCOGSBars(glRows, loc);
+    // ── 4. Live COGs for Wheaton from daily_revenue + dispensed_items ──────
+    const WHEATON_VID  = '28253';
+    const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
+    const [diRes, revRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID
+            + '&dispensed_at=gte.' + from + '&dispensed_at=lte.' + to + '&sku=not.is.null', { headers: HEADERS }),
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue,date&location_id=eq.' + WHEATON_VID
+            + '&date=gte.' + from.split('T')[0] + '&date=lte.' + to.split('T')[0], { headers: HEADERS }),
+    ]);
+    const diRows  = await diRes.json();
+    const revRows = await revRes.json();
+    const whCOGS  = Array.isArray(diRows)  ? diRows.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
+    const whRev   = Array.isArray(revRows) ? revRows.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
+    const whPct   = whRev > 0 ? whCOGS / whRev * 100 : null;
 
-    // ── 4. KPI: COGs placeholder (needs revenue table later) ─
-    document.getElementById('k-cogs').textContent = '8.4%';
-    document.getElementById('k-cogs').className = 'kpi-v cg';
+    // Update WH revenue grid cell
+    const whRevEl = document.getElementById('wh-rev-val');
+    if (whRevEl) whRevEl.textContent = whRev > 0 ? '$' + (whRev/1000).toFixed(0) + 'K' : '—';
 
-    // Overview sidebar
+    // Update drug spend in overview if Wheaton selected
+    if (loc === 'wh' && whCOGS > 0) {
+      const dsEl = document.getElementById('ov-drug-spend');
+      if (dsEl) dsEl.textContent = fmt$(whCOGS);
+    }
+
+    // COGs by location bars — Wheaton live, others static
+    renderCOGSBars(glRows, loc, whPct);
+
+    // COGs KPI tile — live for Wheaton, static portfolio otherwise
+    const kcogsEl = document.getElementById('k-cogs');
+    if (loc === 'wh' && whPct !== null) {
+      kcogsEl.textContent = whPct.toFixed(1) + '%';
+      kcogsEl.className   = whPct > 10 ? 'kpi-v cr' : whPct > 8.5 ? 'kpi-v ca' : 'kpi-v cg';
+    } else {
+      kcogsEl.textContent = '8.4%';
+      kcogsEl.className   = 'kpi-v cg';
+    }
+
+    // Overview sidebar — compRate from compliance rows
+    const allOrders = syntheticOrders;
+    const onTimeAll = allOrders.filter(o => o.status !== 'Late').length;
+    const compRate  = allOrders.length > 0 ? Math.round(onTimeAll / allOrders.length * 100) : 100;
+
     document.getElementById('ov-gl').textContent = fmt$(totalGL);
     document.getElementById('ov-sav').textContent = fmt$(totalSav);
     document.getElementById('ov-comp').textContent = compRate + '%';
@@ -1057,31 +1095,32 @@ function renderGLBars(byCategory, total) {
 }
 
 // ── Render COGs bars by location ─────────────────────────────
-function renderCOGSBars(glRows, loc) {
+function renderCOGSBars(glRows, loc, whPct) {
   const container = document.getElementById('cogs-bars');
   if (!container) return;
-  // Group GL by location as a proxy metric
-  const byLoc = {};
-  glRows.forEach(r => {
-    const name = LOC_NAMES[r.location_id] || r.location_id;
-    byLoc[name] = (byLoc[name] || 0) + (Number(r.value_lost) || 0);
-  });
-  // Show all 4 locations with static COGs % (will be live once revenue table added)
   const staticCOGs = [
-    { name:'Lincoln Park', pct:7.6, color:'var(--green)' },
-    { name:'Old Orchard',  pct:9.8, color:'var(--amber)' },
-    { name:'West Loop',    pct:7.9, color:'var(--green)' },
-    { name:'Wheaton',      pct:8.1, color:'var(--green)' }
+    { name:'Lincoln Park', pct:7.6 },
+    { name:'Old Orchard',  pct:9.8 },
+    { name:'West Loop',    pct:7.9 },
+    { name:'Wheaton',      pct: whPct !== null && whPct !== undefined ? Math.round(whPct * 10) / 10 : null }
   ];
   const filtered = loc === 'all' ? staticCOGs
     : staticCOGs.filter(l => l.name === (LOC_NAMES[LOC_IDS[loc]] || ''));
-  const max = 10; // 10% = full bar
+  const max = 12;
   container.innerHTML = filtered.map(l => {
-    const w = Math.round((l.pct/max)*100);
+    if (l.pct === null) {
+      return `<div class="br">
+        <div class="br-loc">${l.name}</div>
+        <div class="br-track"><div class="br-fill" style="width:2%;background:var(--mist);"></div></div>
+        <div class="br-val" style="color:var(--mist);">…</div>
+      </div>`;
+    }
+    const color = l.pct > 10 ? 'var(--red)' : l.pct > 8.5 ? 'var(--amber)' : 'var(--green)';
+    const w = Math.round((l.pct / max) * 100);
     return `<div class="br">
-      <div class="br-loc">${l.name}</div>
-      <div class="br-track"><div class="br-fill" style="width:${w}%;background:${l.color};">${l.pct}%</div></div>
-      <div class="br-val" style="color:${l.color};">${l.pct}%</div>
+      <div class="br-loc">${l.name}${l.name === 'Wheaton' && whPct !== null ? ' <span style="font-size:9px;color:var(--mist);font-weight:400;">live</span>' : ''}</div>
+      <div class="br-track"><div class="br-fill" style="width:${w}%;background:${color};">${l.pct}%</div></div>
+      <div class="br-val" style="color:${color};">${l.pct}%</div>
     </div>`;
   }).join('');
 }
