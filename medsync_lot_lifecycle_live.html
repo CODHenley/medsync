@@ -750,7 +750,7 @@ if (window.self !== window.top) {
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeAddLotModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAddLot()">Save lot</button>
+      <button id="al-save-btn" class="btn btn-primary" onclick="submitAddLot()">Save lot</button>
     </div>
   </div>
 </div>
@@ -956,7 +956,7 @@ function openAddLotModal(lot) {
   _editingLotDbId = lot ? lot.dbId : null;
 
   const title = document.querySelector('#add-lot-modal .modal-title');
-  const saveBtn = document.querySelector('#add-lot-modal .btn-primary');
+  const saveBtn = document.getElementById('al-save-btn');
   if (lot) {
     if (title) title.textContent = 'Edit lot';
     if (saveBtn) saveBtn.textContent = 'Save changes';
