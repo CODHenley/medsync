@@ -477,6 +477,10 @@ if (window.self !== window.top) {
 <select id="region-filter" onchange="onRegionFilter(this.value)" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);"><option value="all">All regions</option><option value="Chicagoland">Chicagoland</option><option value="Chicagoland South">Chicagoland South</option><option value="Chicagoland West">Chicagoland West</option></select>
                 <select id="loc" onchange="refresh()">
           <option value="all">All locations</option>
+          <option value="lp">Lincoln Park</option>
+          <option value="oo">Old Orchard</option>
+          <option value="wl">West Loop</option>
+          <option value="wh">Wheaton</option>
         </select>
       </div>
       <div class="tb-right">
@@ -1228,23 +1232,7 @@ function showToast(msg) {
 // ── Filter change ────────────────────────────────────────────
 function refresh() { loadData(); }
 
-// ── Dynamic location dropdown ────────────────────────────────
-async function loadLocationFilter() {
-  try {
-    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: HEADERS });
-    const locs = await res.json();
-    const sel = document.getElementById('loc');
-    if (!sel || !Array.isArray(locs)) return;
-    const allOpt = sel.querySelector('option[value=""]');
-    sel.innerHTML = '';
-    if (allOpt) sel.appendChild(allOpt);
-    else { const o = document.createElement('option'); o.value=''; o.textContent='All locations'; sel.appendChild(o); }
-    locs.forEach(l => { const o = document.createElement('option'); o.value = l.name; o.textContent = l.name; sel.appendChild(o); });
-  } catch(e) { console.warn('Could not load locations', e); }
-}
-
 // ── Boot ─────────────────────────────────────────────────────
-loadLocationFilter();
 loadData();
 </script>
 
