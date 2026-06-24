@@ -71,8 +71,9 @@ start_date = today - timedelta(days=BACKFILL_DAYS)
 
 print(f"\nBackfilling {BACKFILL_DAYS} days of revenue: {start_date} → {today}\n")
 
-total_days   = 0
+total_days    = 0
 total_revenue = 0.0
+_debug_shown  = False
 cursor = start_date
 
 while cursor <= today:
@@ -93,8 +94,10 @@ while cursor <= today:
 
     raw = r.get("data", {}).get("salesReport", "[]")
     records = json.loads(raw) if isinstance(raw, str) else (raw or [])
-    if total_days == 0 and records:
+    if not _debug_shown and records:
         print(f"  [DEBUG] salesReport fields: {list(records[0].keys())}")
+        print(f"  [DEBUG] first record: {records[0]}")
+        _debug_shown = True
     rec = records[0] if records else {}
     # Use paid/collected revenue only — excludes open and due invoices
     revenue = float(rec.get("collected") or rec.get("paid") or rec.get("paidTotal") or rec.get("total") or 0)
