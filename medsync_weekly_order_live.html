@@ -335,11 +335,36 @@ const state = {
   allProducts:  [],        // for modal search
   submitted:    new Set(), // vendor names printed this session
   generated:    new Set(), // vendor names pushed to receiving this session
+  mtdRevenue:   0,
+  mtdCogs:      0,
 };
 
 function _generatedKey() { return 'medsync_generated_' + (state.locationId||'') + '_' + getWeekStart(); }
 function _saveGenerated() { try { sessionStorage.setItem(_generatedKey(), JSON.stringify([...state.generated])); } catch(e) {} }
 function _loadGenerated() { try { const v = sessionStorage.getItem(_generatedKey()); if (v) state.generated = new Set(JSON.parse(v)); } catch(e) {} }
+
+async function loadCogsBudget() {
+  state.mtdRevenue = 0;
+  state.mtdCogs    = 0;
+  if (!state.locationId) return;
+  try {
+    const now    = new Date();
+    const month1 = now.toISOString().slice(0,7) + '-01';
+    const today  = now.toISOString().slice(0,10);
+    // MTD revenue
+    const revRes  = await fetch(
+      SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + state.locationId +
+      '&date=gte.' + month1 + '&date=lte.' + today, { headers: H });
+    const revRows = await revRes.json();
+    if (Array.isArray(revRows)) state.mtdRevenue = revRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
+    // MTD COGS: sum of delivered/completed po_items this month
+    const cogsRes  = await fetch(
+      SUPA_URL + '/rest/v1/po_items?select=gpo_price,order_qty&location_id=eq.' + state.locationId +
+      '&status=eq.received&week_start=gte.' + month1, { headers: H });
+    const cogsRows = await cogsRes.json();
+    if (Array.isArray(cogsRows)) state.mtdCogs = cogsRows.reduce((s,r) => s + (parseFloat(r.gpo_price)||0)*(parseInt(r.order_qty)||0), 0);
+  } catch(e) {}
+}
 
 // ── Vendor config ────────────────────────────────────────────────────────────
 const VENDORS = {
@@ -508,6 +533,7 @@ async function loadLocations() {
       state.locationName = loc.name;
       await loadQueue();
       _loadGenerated();
+      loadCogsBudget();
     }
   } catch(e) { showToast('Error loading locations'); }
 }
@@ -520,6 +546,7 @@ async function onLocChange() {
   state.generated.clear();
   await loadQueue();
   _loadGenerated();
+  loadCogsBudget();
 }
 
 // ── Load queue ───────────────────────────────────────────────────────────────
@@ -870,13 +897,34 @@ function renderQueueView() {
   const autoItems   = state.queue.filter(i => i.autoFlagged);
   const manualItems = state.queue.filter(i => !i.autoFlagged);
 
+  const gpoTotal       = state.queue.reduce((s,i)=>s+i.gpoPrice*i.orderQty,0);
+  const cogsTarget     = state.mtdRevenue * 0.071;
+  const budgetLeft     = cogsTarget - state.mtdCogs;
+  const budgetAfterPO  = budgetLeft - gpoTotal;
+  const cogsSpentPct   = state.mtdRevenue > 0 ? (state.mtdCogs / state.mtdRevenue) * 100 : 0;
+  const budgetColor    = cogsSpentPct < 6.5 ? '#16a34a' : cogsSpentPct <= 7.1 ? '#d97706' : '#dc2626';
+  const budgetLabel    = state.mtdRevenue > 0
+    ? (budgetLeft >= 0 ? `$${budgetLeft.toFixed(0)} left` : `$${Math.abs(budgetLeft).toFixed(0)} over`)
+    : '—';
+  const budgetTitle    = state.mtdRevenue > 0
+    ? `MTD revenue $${state.mtdRevenue.toFixed(0)} · COGS ${cogsSpentPct.toFixed(1)}% · 7.1% target = $${cogsTarget.toFixed(0)}`
+    : 'No revenue data for this location';
+  const afterPONote    = state.mtdRevenue > 0 && gpoTotal > 0
+    ? ` · After this PO: ${((state.mtdCogs+gpoTotal)/state.mtdRevenue*100).toFixed(1)}%`
+    : '';
+
   let html = `
     <div class="stat-bar">
       <div class="sb-item"><div class="sb-val">${state.queue.length}</div><div class="sb-label">Items queued</div></div>
       <div class="sb-divider"></div>
       <div class="sb-item"><div class="sb-val">${autoItems.length}</div><div class="sb-label">Auto-flagged</div></div>
       <div class="sb-divider"></div>
-      <div class="sb-item"><div class="sb-val">$${state.queue.reduce((s,i)=>s+i.gpoPrice*i.orderQty,0).toFixed(2)}</div><div class="sb-label">Est. GPO total</div></div>
+      <div class="sb-item"><div class="sb-val">$${gpoTotal.toFixed(2)}</div><div class="sb-label">Est. GPO total</div></div>
+      <div class="sb-divider"></div>
+      <div class="sb-item" title="${budgetTitle}${afterPONote}">
+        <div class="sb-val" style="color:${budgetColor};font-weight:700;">${budgetLabel}</div>
+        <div class="sb-label">COGS budget</div>
+      </div>
       <div class="sb-spacer"></div>
       <button class="add-btn" onclick="openAddModal()"><i class="ti ti-plus"></i> Add item</button>
     </div>`;
