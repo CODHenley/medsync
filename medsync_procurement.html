@@ -109,6 +109,18 @@ tr:last-child td{border-bottom:none;}
 /* TOAST */
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
 
+/* REORDER PANEL */
+.reorder-banner{background:var(--amber-bg);border:0.5px solid var(--amber-border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.reorder-banner-txt{font-size:12px;font-weight:500;color:var(--amber);}
+.reorder-banner-sub{font-size:11px;color:#b0880e;margin-top:1px;}
+.btn-approve{padding:4px 11px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:var(--navy);color:#fff;font-family:'DM Sans',sans-serif;transition:background .12s;}
+.btn-approve:hover{background:var(--navy-mid);}
+.btn-approve-all{padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:var(--green);color:#fff;font-family:'DM Sans',sans-serif;transition:background .12s;}
+.btn-approve-all:hover{background:#0d5e48;}
+.days-pill{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;white-space:nowrap;}
+.days-crit{background:var(--red-bg);color:var(--red);}
+.days-warn{background:var(--amber-bg);color:var(--amber);}
+
 /* MOBILE */
 @media(max-width:768px){
   .kpi-row{grid-template-columns:repeat(2,1fr)!important;}
@@ -154,6 +166,7 @@ tr:last-child td{border-bottom:none;}
         <option value="product">By product</option>
         <option value="daily">Daily COGS</option>
         <option value="regional">Regional roll-up</option>
+        <option value="reorder">Reorder Suggestions</option>
       </select>
     </div>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -254,6 +267,35 @@ tr:last-child td{border-bottom:none;}
       </div>
       <div class="region-grid" id="region-grid">
         <div style="padding:20px;color:var(--mist);font-size:12px;">Loading regional data…</div>
+      </div>
+    </div>
+
+    <!-- REORDER SUGGESTIONS VIEW -->
+    <div id="view-reorder" style="display:none;">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Reorder Suggestions</div>
+          <div class="sec-sub" id="reorder-count">—</div>
+        </div>
+        <button class="btn-approve-all" id="btn-approve-all" onclick="approveAllReorders()" style="display:none;">✓ Approve All → Weekly Order</button>
+      </div>
+      <div id="reorder-banner" style="display:none;margin-bottom:10px;"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th style="text-align:right;">On Hand</th>
+              <th style="text-align:right;">Avg Daily Use</th>
+              <th style="text-align:right;">Days Left</th>
+              <th style="text-align:right;">Suggested Order</th>
+              <th style="text-align:center;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="reorder-tbody">
+            <tr class="loading-row"><td colspan="6">Select a location and switch to this view to load suggestions.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -410,6 +452,25 @@ async function reload() {
         : null,
     }));
 
+    // Fetch lots to get qty_remaining per product (for filter + consumption %)
+    try {
+      const locId = document.getElementById('sel-location').value;
+      const lotsQ = locId
+        ? `select=notes,qty_remaining&location_id=eq.${locId}&limit=1000`
+        : `select=notes,qty_remaining&limit=1000`;
+      const lotsData = await query('lots', lotsQ);
+      const lotsByName = {};
+      for (const lot of lotsData) {
+        const name = (lot.notes || '').replace(/^Vetspire inventory:\s*/, '').trim();
+        if (!name) continue;
+        lotsByName[name] = (lotsByName[name] || 0) + (parseFloat(lot.qty_remaining) || 0);
+      }
+      for (const p of ALL_PRODUCTS) {
+        const rem = lotsByName[p.product_name];
+        if (rem !== undefined) p.qty_remaining = rem;
+      }
+    } catch(e) { /* lots not available */ }
+
     // Load daily COGS via view
     const dailyRaw = await query('dispensed_items',
       `select=dispensed_at,location_id,location_name,vetspire_product_id,product_name,quantity,unit_cost,unit_price` +
@@ -483,7 +544,7 @@ async function updateKPIs() {
       const cost = parseFloat(l.unit_cost) || 0;
       return s + (qty * cost);
     }, 0);
-  } catch(e) { /* lots table may not have unit_cost */ }
+  } catch(e) { showToast('⚠ Purchase value unavailable: ' + e.message); }
 
   let inventoryValue = null;
   try {
@@ -534,7 +595,7 @@ function renderProductTable() {
   if (pFilter === 'active') {
     data = data.filter(p => p.total_qty_dispensed > 0);
   } else if (pFilter === 'full') {
-    data = data.filter(p => p.quantity_remaining === 0 || p.total_qty_dispensed > 0);
+    data = data.filter(p => p.qty_remaining !== undefined && p.qty_remaining === 0 && p.total_qty_dispensed > 0);
   } else if (pFilter === 'cost') {
     data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
   }
@@ -567,7 +628,8 @@ function renderProductTable() {
     const rev     = p.total_revenue;
     const margin  = p.pct !== null ? p.pct + '%' : '—';
     const mColor  = p.pct === null ? 'cm' : p.pct > 40 ? 'cg' : p.pct > 20 ? 'ca' : 'cr';
-    const consumed = p.total_qty_dispensed > 0 ? 100 : 0;
+    const totalThrough = p.total_qty_dispensed + (p.qty_remaining || 0);
+    const consumed = totalThrough > 0 ? Math.round((p.total_qty_dispensed / totalThrough) * 100) : (p.total_qty_dispensed > 0 ? 100 : 0);
     const barColor = consumed >= 90 ? 'var(--blue)' : consumed >= 50 ? 'var(--gold)' : 'var(--green)';
     const status   = consumed >= 100 ? 'b-full' : p.total_qty_dispensed > 0 ? 'b-active' : 'b-partial';
     const statusTx = consumed >= 100 ? 'Consumed' : p.total_qty_dispensed > 0 ? 'Active' : 'Pending';
@@ -681,6 +743,183 @@ function switchView(view) {
   document.getElementById('view-product').style.display  = view === 'product'  ? '' : 'none';
   document.getElementById('view-daily').style.display    = view === 'daily'    ? '' : 'none';
   document.getElementById('view-regional').style.display = view === 'regional' ? '' : 'none';
+  document.getElementById('view-reorder').style.display  = view === 'reorder'  ? '' : 'none';
+  if (view === 'reorder') renderReorderSuggestions();
+}
+
+// ── Reorder Suggestions ───────────────────────────────────────────
+const LOC_UUID = {
+  '28253': '11111111-0000-0000-0000-000000000004',
+  '28250': '11111111-0000-0000-0000-000000000001',
+  '28251': '11111111-0000-0000-0000-000000000002',
+  '28252': '11111111-0000-0000-0000-000000000003',
+};
+
+let REORDER_ITEMS = [];
+
+async function renderReorderSuggestions() {
+  const tbody = document.getElementById('reorder-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Calculating reorder needs…</td></tr>';
+  document.getElementById('reorder-count').textContent = '—';
+  document.getElementById('btn-approve-all').style.display = 'none';
+  document.getElementById('reorder-banner').style.display = 'none';
+
+  const locId = document.getElementById('sel-location').value || '28253';
+
+  try {
+    // 1. Fetch current on-hand qty from lots
+    const lotsData = await query('lots',
+      `select=notes,qty_remaining&location_id=eq.${locId}&qty_remaining=gt.0&limit=1000`
+    );
+    const onHandMap = {};
+    for (const lot of lotsData) {
+      const name = (lot.notes || '').replace(/^Vetspire inventory:\s*/, '').trim();
+      if (!name) continue;
+      onHandMap[name] = (onHandMap[name] || 0) + (parseFloat(lot.qty_remaining) || 0);
+    }
+
+    // 2. Fetch last 30 days of usage
+    const now = new Date();
+    const from30 = new Date(now); from30.setDate(now.getDate() - 30);
+    const fromStr = from30.toISOString().slice(0, 10);
+    const toStr   = now.toISOString().slice(0, 10);
+
+    const usageRows = await query('dispensed_items',
+      `select=product_name,quantity` +
+      `&location_id=eq.${locId}` +
+      `&dispensed_at=gte.${fromStr}T00:00:00Z&dispensed_at=lte.${toStr}T23:59:59Z` +
+      `&returned=eq.false&refunded=eq.false&sku=not.is.null&limit=5000`
+    );
+    const usageMap = {};
+    for (const row of usageRows) {
+      const n = row.product_name || '';
+      usageMap[n] = (usageMap[n] || 0) + (parseFloat(row.quantity) || 0);
+    }
+
+    // 3. Calculate days of supply; flag < 14 days
+    REORDER_ITEMS = [];
+    for (const [name, onHand] of Object.entries(onHandMap)) {
+      const totalUsed30 = usageMap[name] || 0;
+      if (totalUsed30 <= 0) continue;
+      const avgDaily  = totalUsed30 / 30;
+      const daysLeft  = onHand / avgDaily;
+      if (daysLeft < 14) {
+        const suggestQty = Math.max(1, Math.ceil((30 * avgDaily) - onHand));
+        REORDER_ITEMS.push({ product_name: name, on_hand: onHand, avg_daily: avgDaily, days_left: daysLeft, suggest_qty: suggestQty });
+      }
+    }
+    REORDER_ITEMS.sort((a, b) => a.days_left - b.days_left);
+
+    document.getElementById('reorder-count').textContent =
+      `${REORDER_ITEMS.length} product${REORDER_ITEMS.length !== 1 ? 's' : ''} need reordering · based on last 30 days usage`;
+
+    if (!REORDER_ITEMS.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--mist);">
+        <div style="font-size:28px;margin-bottom:8px;">✓</div>
+        <div style="font-weight:500;color:var(--slate);">All products have 14+ days of supply</div>
+        <div style="font-size:11px;margin-top:4px;">No reorders needed right now.</div>
+      </td></tr>`;
+      return;
+    }
+
+    document.getElementById('btn-approve-all').style.display = '';
+
+    tbody.innerHTML = REORDER_ITEMS.map((item, i) => {
+      const daysCls = item.days_left < 7 ? 'days-crit' : 'days-warn';
+      return `<tr class="trow" id="reorder-row-${i}">
+        <td><div class="prod-name">${esc(item.product_name)}</div></td>
+        <td style="text-align:right;"><span class="mono">${fmtQty(item.on_hand)}</span></td>
+        <td style="text-align:right;"><span class="mono">${item.avg_daily.toFixed(2)}/day</span></td>
+        <td style="text-align:right;">
+          <span class="days-pill ${daysCls}">${item.days_left < 1 ? '<1' : Math.floor(item.days_left)} days</span>
+        </td>
+        <td style="text-align:right;"><span class="mono" style="font-weight:500;">${fmtQty(item.suggest_qty)}</span></td>
+        <td style="text-align:center;">
+          <button class="btn-approve" onclick="approveReorder(${i})">Approve →</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+  } catch(err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red);">Error: ${esc(err.message)}</td></tr>`;
+    showToast('⚠ Reorder suggestions failed: ' + err.message);
+  }
+}
+
+async function approveReorder(idx) {
+  const item = REORDER_ITEMS[idx];
+  if (!item) return;
+  await _pushToWeeklyOrder([item]);
+}
+
+async function approveAllReorders() {
+  if (!REORDER_ITEMS.length) return;
+  await _pushToWeeklyOrder(REORDER_ITEMS);
+}
+
+async function _pushToWeeklyOrder(items) {
+  const locId   = document.getElementById('sel-location').value || '28253';
+  const locUUID = LOC_UUID[locId] || locId;
+
+  // Monday of current week
+  const now = new Date();
+  const day = now.getDay() || 7;
+  const mon = new Date(now); mon.setDate(now.getDate() - day + 1);
+  const weekStart = mon.toISOString().slice(0, 10);
+
+  let pushed = 0;
+  for (const item of items) {
+    // Look up product in products table for id, vendor, unit_price
+    let productId = null, vendor = null, unitPrice = null;
+    try {
+      const prods = await query('products',
+        `select=id,vendor,unit_price&name=eq.${encodeURIComponent(item.product_name)}&limit=1`
+      );
+      if (prods.length) {
+        productId = prods[0].id;
+        vendor    = prods[0].vendor || null;
+        unitPrice = prods[0].unit_price || null;
+      }
+    } catch(e) {}
+
+    const record = {
+      location_id:  locUUID,
+      product_id:   productId,
+      product_name: item.product_name,
+      vendor:       vendor,
+      qty_ordered:  item.suggest_qty,
+      unit_price:   unitPrice,
+      gpo_price:    null,
+      on_hand:      item.on_hand,
+      week_start:   weekStart,
+      status:       'queued',
+      auto_flagged: true,
+    };
+
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/po_items`, {
+        method: 'POST',
+        headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(record),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 120)}`);
+      }
+      pushed++;
+      // Gray out approved row
+      const row = document.getElementById(`reorder-row-${REORDER_ITEMS.indexOf(item)}`);
+      if (row) {
+        row.style.opacity = '0.4';
+        const btn = row.querySelector('.btn-approve');
+        if (btn) { btn.textContent = '✓ Queued'; btn.disabled = true; }
+      }
+    } catch(e) {
+      showToast(`⚠ Failed to queue ${item.product_name}: ${e.message}`);
+      return;
+    }
+  }
+  showToast(`✓ ${pushed} item${pushed !== 1 ? 's' : ''} added to weekly order`);
 }
 
 // ── Empty state (table doesn't exist yet) ─────────────────────────
