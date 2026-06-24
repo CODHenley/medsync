@@ -336,7 +336,8 @@ const state = {
   submitted:    new Set(), // vendor names printed this session
   generated:    new Set(), // vendor names pushed to receiving this session
   mtdRevenue:   0,
-  mtdCogs:      0,
+  weekRevenue:  0,
+  cogsPeriod:   'month',   // 'month' | 'week'
 };
 
 function _generatedKey() { return 'medsync_generated_' + (state.locationId||'') + '_' + getWeekStart(); }
@@ -344,8 +345,8 @@ function _saveGenerated() { try { sessionStorage.setItem(_generatedKey(), JSON.s
 function _loadGenerated() { try { const v = sessionStorage.getItem(_generatedKey()); if (v) state.generated = new Set(JSON.parse(v)); } catch(e) {} }
 
 async function loadCogsBudget() {
-  state.mtdRevenue = 0;
-  state.mtdCogs    = 0;
+  state.mtdRevenue  = 0;
+  state.weekRevenue = 0;
   if (!state.locationId) return;
   // daily_revenue uses Vetspire integer location IDs, not Supabase UUIDs
   const VID_MAP = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
@@ -353,21 +354,27 @@ async function loadCogsBudget() {
   if (!vid) return;
   try {
     const now    = new Date();
-    const month1 = now.toISOString().slice(0,7) + '-01';
     const today  = now.toISOString().slice(0,10);
-    // MTD revenue via Vetspire location ID
-    const revRes  = await fetch(
-      SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid +
-      '&date=gte.' + month1 + '&date=lte.' + today, { headers: H });
-    const revRows = await revRes.json();
-    if (Array.isArray(revRows)) state.mtdRevenue = revRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
-    // MTD COGS: actual cost of goods dispensed from Vetspire (same source as analytics)
-    const cogsRes  = await fetch(
-      SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + vid +
-      '&dispensed_at=gte.' + month1 + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: H });
-    const cogsRows = await cogsRes.json();
-    if (Array.isArray(cogsRows)) state.mtdCogs = cogsRows.reduce((s,r) => s + (parseFloat(r.unit_cost)||0)*(parseInt(r.quantity)||0), 0);
+    const month1 = today.slice(0,7) + '-01';
+    // Week start (Monday)
+    const ws = new Date(now);
+    ws.setDate(ws.getDate() - (ws.getDay() === 0 ? 6 : ws.getDay() - 1));
+    const weekStart = ws.toISOString().slice(0,10);
+    // Fetch MTD and week revenue in parallel
+    const [mRes, wRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid + '&date=gte.' + month1 + '&date=lte.' + today, { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid + '&date=gte.' + weekStart + '&date=lte.' + today, { headers: H }),
+    ]);
+    const mRows = await mRes.json();
+    const wRows = await wRes.json();
+    if (Array.isArray(mRows)) state.mtdRevenue  = mRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
+    if (Array.isArray(wRows)) state.weekRevenue = wRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
   } catch(e) {}
+}
+
+function setCogsPeriod(p) {
+  state.cogsPeriod = p;
+  renderAll();
 }
 
 // ── Vendor config ────────────────────────────────────────────────────────────
@@ -901,21 +908,16 @@ function renderQueueView() {
   const autoItems   = state.queue.filter(i => i.autoFlagged);
   const manualItems = state.queue.filter(i => !i.autoFlagged);
 
-  const gpoTotal       = state.queue.reduce((s,i)=>s+i.gpoPrice*i.orderQty,0);
-  const cogsTarget     = state.mtdRevenue * 0.071;
-  const budgetLeft     = cogsTarget - state.mtdCogs;
-  const budgetAfterPO  = budgetLeft - gpoTotal;
-  const cogsSpentPct   = state.mtdRevenue > 0 ? (state.mtdCogs / state.mtdRevenue) * 100 : 0;
-  const budgetColor    = cogsSpentPct < 6.5 ? '#16a34a' : cogsSpentPct <= 7.1 ? '#d97706' : '#dc2626';
-  const budgetLabel    = state.mtdRevenue > 0
-    ? (budgetLeft >= 0 ? `$${budgetLeft.toFixed(0)} left` : `$${Math.abs(budgetLeft).toFixed(0)} over`)
-    : '—';
-  const budgetTitle    = state.mtdRevenue > 0
-    ? `MTD revenue $${state.mtdRevenue.toFixed(0)} · COGS ${cogsSpentPct.toFixed(1)}% · 7.1% target = $${cogsTarget.toFixed(0)}`
-    : 'No revenue data for this location';
-  const afterPONote    = state.mtdRevenue > 0 && gpoTotal > 0
-    ? ` · After this PO: ${((state.mtdCogs+gpoTotal)/state.mtdRevenue*100).toFixed(1)}%`
-    : '';
+  const gpoTotal    = state.queue.reduce((s,i)=>s+i.gpoPrice*i.orderQty,0);
+  const isWeek      = state.cogsPeriod === 'week';
+  const revenue     = isWeek ? state.weekRevenue : state.mtdRevenue;
+  const budget      = revenue * 0.069;
+  const periodLabel = isWeek ? 'This week' : 'This month';
+  const revLabel    = revenue > 0 ? `$${Math.round(revenue).toLocaleString()} revenue · 6.9% = ` : '';
+  const budgetVal   = revenue > 0 ? `$${Math.round(budget).toLocaleString()}` : '—';
+  const budgetTitle = revenue > 0
+    ? `${periodLabel}: ${revLabel}$${Math.round(budget).toLocaleString()} available to spend`
+    : 'No revenue data for this location yet';
 
   let html = `
     <div class="stat-bar">
@@ -925,9 +927,16 @@ function renderQueueView() {
       <div class="sb-divider"></div>
       <div class="sb-item"><div class="sb-val">$${gpoTotal.toFixed(2)}</div><div class="sb-label">Est. GPO total</div></div>
       <div class="sb-divider"></div>
-      <div class="sb-item" title="${budgetTitle}${afterPONote}">
-        <div class="sb-val" style="color:${budgetColor};font-weight:700;">${budgetLabel}</div>
-        <div class="sb-label">COGS budget</div>
+      <div class="sb-item" title="${budgetTitle}" style="cursor:default;">
+        <div class="sb-val" style="color:#16a34a;font-weight:700;">${budgetVal}</div>
+        <div class="sb-label" style="display:flex;align-items:center;gap:4px;">
+          Available to spend
+          <select onchange="setCogsPeriod(this.value)" onclick="event.stopPropagation()"
+            style="font-size:10px;border:none;background:transparent;color:var(--mist);cursor:pointer;padding:0;outline:none;">
+            <option value="month" ${!isWeek?'selected':''}>Monthly</option>
+            <option value="week"  ${isWeek?'selected':''}>Weekly</option>
+          </select>
+        </div>
       </div>
       <div class="sb-spacer"></div>
       <button class="add-btn" onclick="openAddModal()"><i class="ti ti-plus"></i> Add item</button>
