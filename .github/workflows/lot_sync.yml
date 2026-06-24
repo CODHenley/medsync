@@ -19,7 +19,12 @@ jobs:
           python-version: '3.11'
 
       - name: Write Vetspire token
-        run: echo "${{ secrets.VETSPIRE_API_TOKEN }}" > ~/.vetspire_token
+        run: |
+          echo "${{ secrets.VETSPIRE_API_TOKEN }}" > ~/.vetspire_token
+          echo "${{ secrets.VETSPIRE_API_TOKEN }}" > vetspire_token.txt
 
       - name: Run lot sync
         run: python3 wheaton_lot_sync.py
+
+      - name: Run Wheaton snapshot refresh
+        run: python3 wheaton_snapshot_refresh.py
