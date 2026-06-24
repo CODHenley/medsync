@@ -691,8 +691,9 @@ if (window.self !== window.top) {
         <input id="al-vendor" type="text" placeholder="e.g. Zoetis, Covetrus" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
       </div>
       <div>
-        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Source</div>
+        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Source <span style="color:var(--red);">*</span></div>
         <select id="al-source" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;height:auto;">
+          <option value="">Select a reason…</option>
           <option value="Manual entry — existing inventory">Existing inventory (pre-MedSync)</option>
           <option value="Manual entry — cycle count">Cycle count</option>
           <option value="Manual entry — receiving">Receiving</option>
@@ -1002,6 +1003,7 @@ async function submitAddLot() {
   if (!expRaw || !/^\d{2}\/\d{4}$/.test(expRaw)) errors.push('Expiration must be MM/YYYY (e.g. 06/2027).');
   if (isNaN(qty) || qty < 0) errors.push('Quantity must be 0 or more.');
   if (!locId)   errors.push('Location is required.');
+  if (!source)  errors.push('Source is required.');
   if (errors.length) { errEl.textContent = errors.join(' '); errEl.style.display = ''; return; }
   errEl.style.display = 'none';
 
