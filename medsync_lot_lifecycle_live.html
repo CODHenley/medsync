@@ -931,7 +931,7 @@ async function alProductSuggest(val) {
       const rows = await res.json();
       if (!Array.isArray(rows) || !rows.length) { sugg.style.display = 'none'; return; }
       sugg.innerHTML = rows.map(r =>
-        `<div onmousedown="alSelectProduct(${JSON.stringify(r.name)})"
+        `<div onmousedown="alSelectProduct(this)" data-name="${r.name.replace(/"/g,'&quot;')}"
           style="padding:9px 12px;cursor:pointer;border-bottom:0.5px solid #F5F3FA;font-size:13px;color:var(--navy);"
           onmouseover="this.style.background='#F8F7FC'" onmouseout="this.style.background=''"
         >${r.name}${r.vendor ? `<span style="float:right;font-size:11px;color:var(--mist);">${r.vendor}</span>` : ''}</div>`
@@ -941,8 +941,8 @@ async function alProductSuggest(val) {
   }, 180);
 }
 
-function alSelectProduct(name) {
-  document.getElementById('al-product').value = name;
+function alSelectProduct(el) {
+  document.getElementById('al-product').value = el.dataset.name;
   document.getElementById('al-product-suggestions').style.display = 'none';
   document.getElementById('al-lotnum').focus();
 }
