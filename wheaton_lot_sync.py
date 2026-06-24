@@ -55,8 +55,8 @@ def supa_post(path, body):
 #                         quantityChange, insertedAt, isWastage, reason
 
 QUERY = """
-query($lid: ID!, $offset: Int) {
-    inventoryAdjustments(locationId: $lid, first: 500, offset: $offset) {
+query($lid: ID!) {
+    inventoryAdjustments(locationId: $lid) {
         id
         lotNumber
         expirationDate
@@ -71,48 +71,17 @@ query($lid: ID!, $offset: Int) {
 print(f"\nFetching inventory adjustments for Wheaton (id={WHEATON_VETSPIRE_ID})...")
 
 all_adjustments = []
-offset = 0
-page = 0
-while True:
-    try:
-        result = gql(QUERY, {"lid": WHEATON_VETSPIRE_ID, "offset": offset})
-        if "errors" in result:
-            err = result["errors"][0].get("message", "?")
-            print(f"  GraphQL error: {err}")
-            # Try without offset param if it's not supported
-            if "offset" in err.lower() or page == 0:
-                result2 = gql("""
-query($lid: ID!) {
-    inventoryAdjustments(locationId: $lid, first: 1000) {
-        id
-        lotNumber
-        expirationDate
-        quantityChange
-        insertedAt
-        isWastage
-        product { id name }
-    }
-}
-""", {"lid": WHEATON_VETSPIRE_ID})
-                if "errors" in result2:
-                    print(f"  Fallback also failed: {result2['errors'][0].get('message','?')}")
-                    sys.exit(1)
-                batch = (result2.get("data") or {}).get("inventoryAdjustments") or []
-                all_adjustments.extend(batch)
-                print(f"  Fetched {len(batch)} adjustments (single page)")
-            break
-        batch = (result.get("data") or {}).get("inventoryAdjustments") or []
-        if not batch:
-            break
-        all_adjustments.extend(batch)
-        print(f"  Page {page}: {len(batch)} adjustments (total so far: {len(all_adjustments)})")
-        if len(batch) < 500:
-            break
-        offset += 500
-        page += 1
-    except Exception as e:
-        print(f"  ERROR on page {page}: {e}")
-        break
+try:
+    result = gql(QUERY, {"lid": WHEATON_VETSPIRE_ID})
+    if "errors" in result:
+        err = result["errors"][0].get("message", "?")
+        print(f"  GraphQL error: {err}")
+        sys.exit(1)
+    all_adjustments = (result.get("data") or {}).get("inventoryAdjustments") or []
+    print(f"  Fetched {len(all_adjustments)} adjustments")
+except Exception as e:
+    print(f"  ERROR: {e}")
+    sys.exit(1)
 
 print(f"\nTotal adjustments fetched: {len(all_adjustments)}")
 
