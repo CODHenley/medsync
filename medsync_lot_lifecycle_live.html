@@ -330,6 +330,7 @@ html, body { margin: 0 !important; padding: 0 !important; }
 @media (max-width: 768px) {
   .right, .main-area { padding-top: 0 !important; box-sizing: border-box !important; }
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <script>
@@ -413,6 +414,7 @@ if (window.self !== window.top) {
         </div>
       </div>
       <div class="tb-right">
+        <button class="btn" onclick="refreshLots()"><i class="ti ti-refresh" id="lc-refresh-icon" style="font-size:12px;margin-right:4px;"></i>Refresh</button>
         <button class="btn" onclick="openScanModal()">⊡ Scan / Look up lot</button>
         <button class="btn" onclick="exportLotsCSV()">↓ CSV</button>
         <button class="btn" onclick="exportLotsPDF()">↓ PDF</button>
@@ -830,6 +832,12 @@ function filterTable() {
 
   document.getElementById('table-count').textContent =
     `Showing ${filtered.length} of ${ALL_LOTS.length} lots`;
+}
+
+function refreshLots() {
+  const icon = document.getElementById('lc-refresh-icon');
+  if (icon) icon.style.animation = 'spin 0.7s linear infinite';
+  loadLots().finally(() => { if (icon) icon.style.animation = ''; });
 }
 
 function setStatusFilter(val, el) {
