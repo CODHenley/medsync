@@ -215,7 +215,7 @@ failed = 0
 for i in range(0, len(records), 50):
     batch = records[i:i+50]
     try:
-        status = supa_post("/rest/v1/lots?on_conflict=location_id,lot_number", batch)
+        status = supa_post("/rest/v1/lots?on_conflict=lot_number", batch)
         upserted += len(batch)
         print(f"  Batch {i//50 + 1}: ✓ {len(batch)} records (HTTP {status})")
     except urllib.error.HTTPError as e:
