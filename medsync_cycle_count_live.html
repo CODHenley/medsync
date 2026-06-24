@@ -852,6 +852,13 @@ async function submitCount() {
     }
   }
 
+  // Write lot entries to lots table for any product that has them
+  for (const p of prods) {
+    if (p.lotEntries && p.lotEntries.length && currentLocationId) {
+      await upsertLots(currentLocationId, p.name, p.lotEntries);
+    }
+  }
+
   // Mark this category done
   submittedCategories.add(cat);
 
@@ -1083,6 +1090,30 @@ function ccRenderLotEntries() {
   }).join('');
 }
 
+// ── Upsert lot entries into the lots table ────────────────────
+async function upsertLots(locationId, productName, lotEntries) {
+  const today = new Date().toISOString().split('T')[0];
+  for (const e of lotEntries) {
+    if (!e.lot_number || !e.expiration_date) continue;
+    try {
+      await fetch(SUPA_URL + '/rest/v1/lots', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'resolution=merge-duplicates,return=minimal', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location_id:     locationId,
+          lot_number:      e.lot_number,
+          qty_received:    e.quantity,
+          qty_remaining:   e.quantity,
+          received_date:   today,
+          expiration_date: e.expiration_date,
+          status:          'Active',
+          notes:           'Added via ' + (productName ? 'cycle count: ' + productName : 'cycle count'),
+        })
+      });
+    } catch(err) { console.warn('Lot upsert failed for', e.lot_number, err); }
+  }
+}
+
 function ccSaveLots() {
   var currentQty = parseFloat(document.getElementById('cc-lot-qty').value);
   if (!isNaN(currentQty) && currentQty >= 0) {
@@ -1290,6 +1321,11 @@ async function pcSubmitItem() {
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ session_id: pcState.sessionId, vetspire_product_id: cp.vetspireProductId, product_name: cp.name, expected_qty: cp.expected, actual_qty: totalActual, unit_cost: cp.unitCost || null, vetspire_synced: false })
     });
+
+    // Write lot entries to lots table
+    if (pcState.lotEntries.length && pcState.locationId) {
+      await upsertLots(pcState.locationId, cp.name, pcState.lotEntries);
+    }
   }
 
   pcState.items.push({ name: cp.name, expected: cp.expected, actual: totalActual, variance: variance, varVal: varVal, lotCount: pcState.lotEntries.length });
