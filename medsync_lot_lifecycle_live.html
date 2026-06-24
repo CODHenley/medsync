@@ -736,7 +736,7 @@ async function loadLots() {
       exp:        r.expiration_date || '',
       qtyIn:      r.qty_received || 0,
       qtyRem:     r.qty_remaining || 0,
-      status:     r.status || 'Active',
+      status:     (function(exp){ const d=(new Date(exp)-new Date())/(864e5); return d<0?'Expired':d<=30?'Expiring soon':'Active'; })(r.expiration_date) || r.status || 'Active',
       po:         r.po_reference || '—',
       notes:      r.notes || '',
       cs:         r.products?.is_controlled || false,
