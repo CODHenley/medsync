@@ -349,7 +349,8 @@ html, body { margin: 0 !important; padding: 0 !important; }
 .pi-v{font-size:10px;width:34px;text-align:right;flex-shrink:0;font-weight:500;}
 .pi-leg{display:flex;gap:12px;margin-bottom:8px;}
 .pi-leg span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--mist);}
-.pi-dot{width:8px;height:8px;border-radius:2px;}</style>
+.pi-dot{width:8px;height:8px;border-radius:2px;}
+@keyframes spin { to { transform: rotate(360deg); } }</style>
 
 <script>
 
@@ -650,8 +651,11 @@ if (window.self !== window.top) {
 
         <!-- OVERVIEW -->
         <div class="pcontent" id="p-ov">
-          <div><div class="pc-title">Period summary</div><div class="pc-sub" id="period-label">Month to date · All locations</div></div>
-          <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg">8.4%</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div><div class="pc-title">Period summary</div><div class="pc-sub" id="period-label">Month to date · All locations</div></div>
+            <button id="ov-refresh-btn" onclick="ovRefresh()" title="Refresh" style="background:none;border:0.5px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:11px;color:var(--navy);display:flex;align-items:center;gap:4px;"><i class="ti ti-refresh" id="ov-refresh-icon" style="font-size:12px;"></i> Refresh</button>
+          </div>
+          <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg" id="ov-cogs">8.4%</span></div>
           <div class="mrow"><span class="mk">Target range</span><span class="mv">6.5–7.1%</span></div>
           <div class="mrow"><span class="mk">Total revenue</span><span class="mv">$1.168M</span></div>
           <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">$98,112</span></div>
@@ -1070,9 +1074,14 @@ async function loadData() {
     const compRate  = allOrders.length > 0 ? Math.round(onTimeAll / allOrders.length * 100) : 100;
 
     document.getElementById('ov-gl').textContent = fmt$(totalGL);
-    document.getElementById('ov-sav').textContent = fmt$(totalSav);
+    document.getElementById('ov-sav').textContent = totalSav !== 0 ? (totalSav >= 0 ? '+' : '') + fmt$(totalSav) : '—';
     document.getElementById('ov-comp').textContent = compRate + '%';
     document.getElementById('ov-lots').textContent = expiring.length + ' flagged';
+    const ovCogsEl = document.getElementById('ov-cogs');
+    if (ovCogsEl && whPct !== null) {
+      ovCogsEl.textContent = whPct.toFixed(1) + '%';
+      ovCogsEl.className = 'mv ' + (whPct > 7.1 ? 'cr' : whPct > 6.5 ? 'ca' : 'cg');
+    }
 
     // Cache for export
     const staticCOGSExport = [
@@ -1252,6 +1261,11 @@ function showToast(msg) {
 
 // ── Filter change ────────────────────────────────────────────
 function refresh() { loadData(); }
+function ovRefresh() {
+  const icon = document.getElementById('ov-refresh-icon');
+  if (icon) icon.style.animation = 'spin 0.7s linear infinite';
+  loadData().finally(() => { if (icon) icon.style.animation = ''; });
+}
 
 // ── Boot ─────────────────────────────────────────────────────
 loadData();
