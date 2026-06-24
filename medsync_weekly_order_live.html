@@ -337,6 +337,10 @@ const state = {
   generated:    new Set(), // vendor names pushed to receiving this session
 };
 
+function _generatedKey() { return 'medsync_generated_' + (state.locationId||'') + '_' + getWeekStart(); }
+function _saveGenerated() { try { sessionStorage.setItem(_generatedKey(), JSON.stringify([...state.generated])); } catch(e) {} }
+function _loadGenerated() { try { const v = sessionStorage.getItem(_generatedKey()); if (v) state.generated = new Set(JSON.parse(v)); } catch(e) {} }
+
 // ── Vendor config ────────────────────────────────────────────────────────────
 const VENDORS = {
   'MWI Animal Health':    { color:'#C8922A', bg:'#FDF8EE', border:'#F0D896', threshold:500, place:'mwiah.com or your MWI rep' },
@@ -503,6 +507,7 @@ async function loadLocations() {
       state.locationId   = loc.id;
       state.locationName = loc.name;
       await loadQueue();
+      _loadGenerated();
     }
   } catch(e) { showToast('Error loading locations'); }
 }
@@ -512,7 +517,9 @@ async function onLocChange() {
   state.locationId   = sel.value;
   state.locationName = sel.options[sel.selectedIndex].text;
   state.submitted.clear();
+  state.generated.clear();
   await loadQueue();
+  _loadGenerated();
 }
 
 // ── Load queue ───────────────────────────────────────────────────────────────
@@ -1052,6 +1059,7 @@ async function changeQty(idx, delta) {
   if (numEl)   numEl.textContent   = newQty;
   if (priceEl) priceEl.textContent = '$' + (item.gpoPrice * newQty).toFixed(2);
 
+  logOrderEvent(`Qty changed: ${item.productName} → ${newQty} units`);
   renderAll();
 }
 
@@ -1066,6 +1074,7 @@ async function removeItem(idx) {
     }).catch(() => {});
   }
 
+  logOrderEvent(`Item removed from queue: ${item.productName}`);
   state.queue.splice(idx, 1);
   renderAll();
   showToast('Removed from queue');
@@ -1118,7 +1127,7 @@ function printVendorPO(vendor) {
     @media print{body{padding:20px 28px;}}</style></head><body>
     <div class="logo">Med<span>Sync</span></div>
     <div style="margin-top:6px;"><div class="vendor-tag" style="background:${vc.color};">${vendor}</div></div>
-    <div class="meta">Scout Veterinary Urgent Care &nbsp;·&nbsp; ${state.locationName||''} &nbsp;·&nbsp; ${dateStr}</div>
+    <div class="meta">Scout Veterinary Urgent Care &nbsp;·&nbsp; ${state.locationName||'Scout'} &nbsp;·&nbsp; ${dateStr}</div>
     <div class="ref">Purchase Order: ${ref}${isLate ? ' &nbsp;<span class="late">⚠ Outside Mon–Tue window</span>':''}</div>
     <hr>
     <table><thead><tr>
@@ -1165,6 +1174,7 @@ async function generatePO(vendor) {
   try {
     await Promise.all(updates);
     state.generated.add(vendor);
+    _saveGenerated();
     showToast(`✓ PO ${ref} sent to Receiving`);
     renderBuildView();
     // Reload queue so submitted items drop off the queued list
@@ -1201,7 +1211,7 @@ function printAllPOs() {
       <div style="${vi > 0 ? 'page-break-before:always;padding-top:20px;' : ''}">
         <div style="font-size:22px;font-weight:700;letter-spacing:-.5px;">Med<span style="color:#C8922A;">Sync</span></div>
         <div style="margin-top:6px;display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;background:${vc.color};">${vendor}</div>
-        <div style="font-size:11px;color:#8A93A8;margin-top:4px;">Scout Veterinary Urgent Care &nbsp;·&nbsp; ${state.locationName||''} &nbsp;·&nbsp; ${dateStr}</div>
+        <div style="font-size:11px;color:#8A93A8;margin-top:4px;">Scout Veterinary Urgent Care &nbsp;·&nbsp; ${state.locationName||'Scout'} &nbsp;·&nbsp; ${dateStr}</div>
         <div style="font-size:14px;font-weight:600;margin-top:8px;">${ref}${isLate?' <span style="color:#C0392B;font-weight:600;">⚠ Outside window</span>':''}</div>
         <hr style="border:none;border-top:2px solid #1C2B4A;margin:14px 0;">
         <table style="width:100%;border-collapse:collapse;">
@@ -1238,6 +1248,21 @@ function printAllPOs() {
   if (w) { w.document.write(fullHtml); w.document.close(); }
 
   switchView('build');
+}
+
+async function logOrderEvent(description, flag) {
+  try {
+    await fetch(SUPA_URL + '/rest/v1/activity_log', {
+      method: 'POST',
+      headers: { ...H, 'Prefer':'return=minimal', 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        location_id: state.locationId,
+        type:        'order',
+        description,
+        flag:        flag || 'ok',
+      })
+    });
+  } catch(e) {}
 }
 
 async function logPOActivity(vendor, items, total, ref) {
@@ -1350,6 +1375,7 @@ async function addSelectedToQueue() {
     if (Array.isArray(saved) && saved[0]) newItem.id = saved[0].id;
   } catch(e) { /* best-effort */ }
 
+  logOrderEvent(`Item added to queue: ${selectedProduct.name} · ${qty} units · ${vendor}`);
   state.queue.push(newItem);
   closeAddModal();
   renderAll();
