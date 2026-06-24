@@ -725,7 +725,7 @@ async function loadLots() {
     ALL_LOTS = rows.map(r => ({
       dbId:       r.id,
       id:         r.lot_number,
-      name:       r.products?.name || '—',
+      name:       r.products?.name || (r.notes||'').replace(/^Vetspire inventory:\s*/,'') || '—',
       mfr:        r.products?.manufacturer || '—',
       ndc:        r.products?.ndc || '—',
       vendor:     r.vendor || r.products?.vendor || '—',
