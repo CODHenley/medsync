@@ -215,31 +215,10 @@ for key, lot in lot_map.items():
         "status":          status,
         "notes":           f"Vetspire inventory: {lot['product_name']}",
         "vendor":          None,
-        "_product_name":   lot["product_name"],  # temp field for lookup
     })
 
 print(f"  {skipped_bad_exp} lots skipped (unparseable expiration date)")
 print(f"\n{len(records)} records to upsert")
-
-# ── Look up / create product_id for each record ──────────────────────────────
-print("\nResolving product_ids...")
-product_id_cache = {}
-resolved = 0
-for r in records:
-    pname = r.pop("_product_name")
-    if pname not in product_id_cache:
-        try:
-            product_id_cache[pname] = get_or_create_product_id(pname)
-            resolved += 1
-        except Exception as e:
-            print(f"  Warning: could not resolve product '{pname}': {e}")
-            product_id_cache[pname] = None
-    pid = product_id_cache[pname]
-    if pid:
-        r["product_id"] = pid
-
-records = [r for r in records if r.get("product_id")]
-print(f"  {resolved} products looked up / created, {len(records)} records ready")
 
 if not records:
     print("Nothing to upsert.")
