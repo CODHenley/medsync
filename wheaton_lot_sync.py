@@ -38,14 +38,15 @@ def gql(query, variables=None):
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
-def supa_post(path, body):
-    data = json.dumps(body).encode()
-    req = urllib.request.Request(SUPA_URL + path, data=data, method="POST", headers={
+def supa_req(method, path, body=None):
+    data = json.dumps(body).encode() if body is not None else None
+    headers = {
         "apikey": SUPA_KEY,
         "Authorization": f"Bearer {SUPA_KEY}",
         "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates,return=minimal",
-    })
+        "Prefer": "return=minimal",
+    }
+    req = urllib.request.Request(SUPA_URL + path, data=data, method=method, headers=headers)
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.status
 
@@ -207,15 +208,23 @@ for r in sorted(records, key=lambda x: x["expiration_date"]):
     pname = r["notes"].replace("Vetspire inventory: ", "")
     print(f"  {pname:<43} {r['lot_number']:<15} {r['expiration_date']:<12} {r['qty_remaining']:>6}  {r['status']}")
 
-# ── Upsert into Supabase lots table ──────────────────────────────────────────
-print(f"\nUpserting {len(records)} records into lots table...")
+# ── Sync into Supabase lots table (delete Vetspire-synced rows, then insert) ──
+print(f"\nSyncing {len(records)} records into lots table...")
+
+# Delete all existing Vetspire-synced lots for Wheaton (notes starts with "Vetspire inventory:")
+try:
+    supa_req("DELETE", f"/rest/v1/lots?location_id=eq.{WHEATON_UUID}&notes=like.Vetspire inventory:%25")
+    print("  Cleared existing Vetspire lots for Wheaton")
+except Exception as e:
+    print(f"  Warning: delete step failed — {e}")
+
 upserted = 0
 failed = 0
 
 for i in range(0, len(records), 50):
     batch = records[i:i+50]
     try:
-        status = supa_post("/rest/v1/lots?on_conflict=lot_number", batch)
+        status = supa_req("POST", "/rest/v1/lots", batch)
         upserted += len(batch)
         print(f"  Batch {i//50 + 1}: ✓ {len(batch)} records (HTTP {status})")
     except urllib.error.HTTPError as e:
