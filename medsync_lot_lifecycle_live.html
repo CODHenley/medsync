@@ -642,12 +642,15 @@ if (window.self !== window.top) {
 
 <!-- Add lot manually modal -->
 <div class="modal-bg" id="add-lot-modal">
-  <div class="modal-inner" style="max-width:480px;">
-    <div class="modal-hdr">
-      <div class="modal-title">Add lot manually</div>
+  <div class="modal" style="max-width:480px;width:calc(100vw - 32px);">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Add lot manually</div>
+        <div style="font-size:11px;color:var(--mist);margin-top:2px;">Enter lot details to add to the lifecycle tracker</div>
+      </div>
       <button class="modal-close" onclick="closeAddLotModal()">✕</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px;padding:16px 0 4px;">
+    <div class="modal-body" style="gap:12px;">
       <div style="position:relative;">
         <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Product name <span style="color:var(--red);">*</span></div>
         <input id="al-product" type="text" placeholder="e.g. Atropine Sulfate" autocomplete="off"
@@ -695,7 +698,10 @@ if (window.self !== window.top) {
         </select>
       </div>
       <div id="al-error" style="display:none;font-size:12px;color:var(--red);padding:8px 12px;background:#fff5f5;border-radius:6px;border:0.5px solid #f5c6c6;"></div>
-      <button onclick="submitAddLot()" style="width:100%;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:4px;">Save lot</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAddLotModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddLot()">Save lot</button>
     </div>
   </div>
 </div>
@@ -925,7 +931,7 @@ async function alProductSuggest(val) {
       const rows = await res.json();
       if (!Array.isArray(rows) || !rows.length) { sugg.style.display = 'none'; return; }
       sugg.innerHTML = rows.map(r =>
-        `<div onclick="alSelectProduct(${JSON.stringify(r.name)})"
+        `<div onmousedown="alSelectProduct(${JSON.stringify(r.name)})"
           style="padding:9px 12px;cursor:pointer;border-bottom:0.5px solid #F5F3FA;font-size:13px;color:var(--navy);"
           onmouseover="this.style.background='#F8F7FC'" onmouseout="this.style.background=''"
         >${r.name}${r.vendor ? `<span style="float:right;font-size:11px;color:var(--mist);">${r.vendor}</span>` : ''}</div>`
