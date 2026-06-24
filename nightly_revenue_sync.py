@@ -90,7 +90,9 @@ def main():
             continue
         raw = result.get("data", {}).get("salesReport", "[]")
         rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
-        total = float(rows[0].get("total", 0)) if rows else 0.0
+        rec = rows[0] if rows else {}
+        # Use paid/collected revenue only — excludes open and due invoices
+        total = float(rec.get("collected") or rec.get("paid") or rec.get("paidTotal") or rec.get("total") or 0)
         print(f"${total:,.2f}")
         records.append({
             "date":          target_date,

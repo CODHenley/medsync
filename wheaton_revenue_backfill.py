@@ -93,7 +93,11 @@ while cursor <= today:
 
     raw = r.get("data", {}).get("salesReport", "[]")
     records = json.loads(raw) if isinstance(raw, str) else (raw or [])
-    revenue = float(records[0].get("total", 0)) if records else 0.0
+    if total_days == 0 and records:
+        print(f"  [DEBUG] salesReport fields: {list(records[0].keys())}")
+    rec = records[0] if records else {}
+    # Use paid/collected revenue only — excludes open and due invoices
+    revenue = float(rec.get("collected") or rec.get("paid") or rec.get("paidTotal") or rec.get("total") or 0)
 
     status = supa_upsert([{
         "date":          s,
