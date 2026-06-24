@@ -564,8 +564,10 @@ async function loadEvents() {
 
 // ── Summary cards ─────────────────────────────────────────────
 function updateSummaryCards() {
+  var _mu = {}; try { _mu = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e2) {}
+  const mgrLoc = _mu.location_name || '';
   const scoped = currentRole === 'manager'
-    ? ALL_EVENTS.filter(e => e.loc === 'Old Orchard' || e.loc === 'All locations')
+    ? ALL_EVENTS.filter(e => !mgrLoc || e.loc === mgrLoc || e.loc === 'All locations')
     : ALL_EVENTS;
   document.getElementById('s-orders').textContent   = scoped.filter(e=>e.type==='order').length;
   document.getElementById('s-receives').textContent = scoped.filter(e=>e.type==='receive').length;
@@ -582,12 +584,12 @@ function setRole(r) {
   document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Location Manager';
   var _u2 = {}; try { _u2 = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
   var _name2 = _u2.full_name || (r==='admin' ? 'Admin' : 'Manager');
-  var _loc2  = _u2.location_name || (r==='admin' ? 'Scout' : 'Old Orchard');
-  document.getElementById('sb-role-loc').textContent    = _name2 + ' · ' + _loc2;
+  var _loc2  = _u2.location_name || (r==='admin' ? 'Scout' : '');
+  document.getElementById('sb-role-loc').textContent    = _name2 + (_loc2 ? ' · ' + _loc2 : '');
   var _init2 = _name2.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || (r==='admin' ? 'AD' : 'MG');
   try { window.parent.document.getElementById('nav-avatar').textContent = _init2; } catch(e) {}
   const locSel = document.getElementById('loc-filter');
-  locSel.value    = r==='manager' ? 'Old Orchard' : 'all';
+  locSel.value    = r==='manager' ? (_loc2 || 'all') : 'all';
   locSel.disabled = r==='manager';
   updateSummaryCards();
   renderTable();
@@ -620,7 +622,9 @@ function getFiltered() {
   const today  = new Date().toISOString().slice(0,10);
 
   return ALL_EVENTS.filter(e => {
-    if (currentRole==='manager' && e.loc!=='Old Orchard' && e.loc!=='All locations') return false;
+    var _fu = {}; try { _fu = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e2) {}
+    const _fmgrLoc = _fu.location_name || '';
+    if (currentRole==='manager' && _fmgrLoc && e.loc!==_fmgrLoc && e.loc!=='All locations') return false;
     if (typeFilter!=='all' && e.type!==typeFilter) return false;
     if (loc!=='all' && e.loc!==loc && e.loc!=='All locations') return false;
     if (search && !e.desc.toLowerCase().includes(search) &&
@@ -630,8 +634,11 @@ function getFiltered() {
         !e.detail.toLowerCase().includes(search)) return false;
     const ts = e.ts.slice(0,10);
     if (date==='today' && ts !== today) return false;
-    if (date==='week'  && ts < '2026-05-25') return false;
-    if (date==='month' && ts < '2026-05-01') return false;
+    if (date==='week') {
+      const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      if (ts < weekStart.toISOString().slice(0,10)) return false;
+    }
+    if (date==='month' && ts < today.slice(0,7) + '-01') return false;
     return true;
   });
 }
@@ -667,7 +674,13 @@ function renderTable() {
   const locLabel = document.getElementById('loc-filter').value === 'all'
     ? 'all locations' : document.getElementById('loc-filter').value;
   document.getElementById('tbl-count').textContent = sorted.length + ' event' + (sorted.length!==1?'s':'');
-  document.getElementById('tbl-sub').textContent   = 'May 2026 · ' + locLabel;
+  const dateFilter = document.getElementById('date-filter').value;
+  const monthLabel = dateFilter === 'month'
+    ? new Date().toLocaleString('default', {month:'long', year:'numeric'})
+    : dateFilter === 'week' ? 'This Week'
+    : dateFilter === 'today' ? 'Today'
+    : new Date().toLocaleString('default', {month:'long', year:'numeric'});
+  document.getElementById('tbl-sub').textContent = monthLabel + ' · ' + locLabel;
 
   const tbody = document.getElementById('ev-tbody');
   const empty = document.getElementById('ev-empty');
