@@ -38,10 +38,11 @@ for lot_num in BAD_LOT_NUMBERS:
     url = SUPA_URL + f"/rest/v1/lots?lot_number=eq.{lot_num}&location_id=eq.{WHEATON_UUID}"
     req = urllib.request.Request(url, method="DELETE", headers={**HEADERS, "Prefer": "return=representation"})
     with urllib.request.urlopen(req, timeout=15) as r:
-        deleted = json.loads(r.read())
+        body = r.read()
+        deleted = json.loads(body) if body else []
     if deleted:
         print(f"  Deleted: {lot_num} ({deleted[0].get('notes','')[:50]})")
     else:
-        print(f"  {lot_num} — not found (already deleted?)")
+        print(f"  {lot_num} — deleted (empty response) or not found")
 
 print("\nDone. Run 'Refresh' on the Lot Lifecycle screen to confirm.")

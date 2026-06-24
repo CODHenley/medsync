@@ -66,10 +66,10 @@ except Exception as e:
     print(f"  Introspection not available: {e}")
     all_names = []
 
-# ── Attempt 1: vaccinations query ────────────────────────────────────────────
+# ── Attempt 1: immunizations query (confirmed in schema probe) ────────────────
 VACC_QUERY = """
 query($lid: ID!, $after: String) {
-    vaccinations(locationId: $lid, first: 200, after: $after) {
+    immunizations(locationId: $lid, first: 200, after: $after) {
         pageInfo { hasNextPage endCursor }
         edges { node {
             id
@@ -82,10 +82,10 @@ query($lid: ID!, $after: String) {
 }
 """
 
-# ── Attempt 2: patientVaccinations ───────────────────────────────────────────
+# ── Attempt 2: listImmunizations ──────────────────────────────────────────────
 PVACC_QUERY = """
 query($lid: ID!) {
-    patientVaccinations(locationId: $lid, first: 200) {
+    listImmunizations(locationId: $lid, first: 200) {
         edges { node {
             id
             lotNumber
@@ -97,16 +97,16 @@ query($lid: ID!) {
 }
 """
 
-# ── Attempt 3: inventoryLots ─────────────────────────────────────────────────
+# ── Attempt 3: immunization (singular) ───────────────────────────────────────
 INVLOTS_QUERY = """
 query($lid: ID!) {
-    inventoryLots(locationId: $lid, first: 200) {
+    immunization(locationId: $lid, first: 200) {
         edges { node {
             id
             lotNumber
             expirationDate
+            administeredOn
             product { id name }
-            quantity
         }}
     }
 }
@@ -122,9 +122,9 @@ for loc in LOCATIONS:
     source = None
 
     for (label, query, conn_key) in [
-        ("vaccinations",       VACC_QUERY,    "vaccinations"),
-        ("patientVaccinations",PVACC_QUERY,   "patientVaccinations"),
-        ("inventoryLots",      INVLOTS_QUERY, "inventoryLots"),
+        ("immunizations",      VACC_QUERY,    "immunizations"),
+        ("listImmunizations",  PVACC_QUERY,   "listImmunizations"),
+        ("immunization",       INVLOTS_QUERY, "immunization"),
     ]:
         try:
             result = gql(query, {"lid": loc["vetspire_id"]})
