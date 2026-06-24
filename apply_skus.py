@@ -19,8 +19,12 @@ H = {
 def supa(method, path, body=None):
     data = json.dumps(body).encode() if body else None
     req = urllib.request.Request(SUPA_URL + path, data=data, method=method, headers=H)
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return r.status
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        print(f"    ERROR {e.code}: {e.read().decode()}")
+        raise
 
 # ── Products with confirmed SKUs ──────────────────────────────────────────────
 SKUS = [
