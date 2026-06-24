@@ -754,26 +754,53 @@ async function completeSession() {
     });
     await sessRes.json();
 
-    // Create lot records for confirmed items
+    // Create or increment lot records for confirmed items
     for (const line of confirmed) {
       if (!line.lotNum) continue;
       const expParts = line.expDate.split('/');
       const expDate = expParts[1] + '-' + expParts[0].padStart(2,'0') + '-01';
-      await fetch(SUPA_URL + '/rest/v1/lots', {
-        method: 'POST',
-        headers: { ...H, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({
-          product_id:     line.productId,
-          location_id:    state.locationId,
-          lot_number:     line.lotNum,
-          qty_received:   line.qtyOrdered,
-          qty_remaining:  line.qtyOrdered,
-          received_date:  new Date().toISOString().split('T')[0],
-          expiration_date: expDate,
-          status:         'Active',
-          po_reference:   state.selectedOrder.ref,
-        })
-      });
+      const newQty  = parseFloat(line.qtyOrdered) || 0;
+
+      // Check if this lot already exists for this location
+      const checkRes = await fetch(
+        SUPA_URL + '/rest/v1/lots?lot_number=eq.' + encodeURIComponent(line.lotNum) +
+        '&location_id=eq.' + encodeURIComponent(state.locationId) +
+        '&select=id,qty_received,qty_remaining&limit=1',
+        { headers: H }
+      );
+      const existing = await checkRes.json();
+
+      if (Array.isArray(existing) && existing.length > 0) {
+        // Lot exists — increment quantities
+        const row = existing[0];
+        await fetch(SUPA_URL + '/rest/v1/lots?id=eq.' + encodeURIComponent(row.id), {
+          method: 'PATCH',
+          headers: { ...H, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            qty_received:    (parseFloat(row.qty_received)  || 0) + newQty,
+            qty_remaining:   (parseFloat(row.qty_remaining) || 0) + newQty,
+            expiration_date: expDate,
+            status:          'Active',
+          })
+        });
+      } else {
+        // New lot — insert
+        await fetch(SUPA_URL + '/rest/v1/lots', {
+          method: 'POST',
+          headers: { ...H, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_id:      line.productId,
+            location_id:     state.locationId,
+            lot_number:      line.lotNum,
+            qty_received:    newQty,
+            qty_remaining:   newQty,
+            received_date:   new Date().toISOString().split('T')[0],
+            expiration_date: expDate,
+            status:          'Active',
+            po_reference:    state.selectedOrder.ref,
+          })
+        });
+      }
     }
 
     // Write to Vetspire writeback queue
