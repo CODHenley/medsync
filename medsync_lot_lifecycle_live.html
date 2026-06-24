@@ -652,6 +652,17 @@ if (window.self !== window.top) {
       <button class="modal-close" onclick="closeAddLotModal()">✕</button>
     </div>
     <div class="modal-body" style="gap:12px;">
+      <!-- SKU / NDC scan row -->
+      <div style="background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;padding:12px 14px;">
+        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Scan SKU / NDC <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">(optional — auto-fills product)</span></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="al-sku" type="text" placeholder="Scan barcode or type NDC…" autocomplete="off"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();alSkuLookup();}"
+            style="flex:1;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+          <button type="button" class="btn btn-primary" onclick="alSkuLookup()" style="white-space:nowrap;padding:8px 14px;font-size:12px;">Look up</button>
+        </div>
+        <div id="al-sku-status" style="margin-top:7px;font-size:12px;display:none;"></div>
+      </div>
       <div style="position:relative;">
         <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Product name <span style="color:var(--red);">*</span></div>
         <input id="al-product" type="text" placeholder="e.g. Atropine Sulfate" autocomplete="off"
@@ -931,11 +942,12 @@ function openAddLotModal(lot) {
   } else {
     if (title) title.textContent = 'Add lot manually';
     if (saveBtn) saveBtn.textContent = 'Save lot';
-    ['al-product','al-lotnum','al-exp','al-qty','al-vendor'].forEach(id => {
+    ['al-sku','al-product','al-lotnum','al-exp','al-qty','al-vendor'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const src = document.getElementById('al-source'); if (src) src.selectedIndex = 0;
     const loc = document.getElementById('al-loc');   if (loc) loc.selectedIndex = 0;
+    const skuStatus = document.getElementById('al-sku-status'); if (skuStatus) skuStatus.style.display = 'none';
   }
   const err = document.getElementById('al-error'); if (err) err.style.display = 'none';
   document.getElementById('add-lot-modal').classList.add('open');
@@ -984,6 +996,53 @@ function alSelectProduct(el) {
   document.getElementById('al-product').value = el.dataset.name;
   document.getElementById('al-product-suggestions').style.display = 'none';
   document.getElementById('al-lotnum').focus();
+}
+
+async function alSkuLookup() {
+  const raw = document.getElementById('al-sku').value.trim();
+  const statusEl = document.getElementById('al-sku-status');
+  if (!raw) return;
+
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--mist)';
+  statusEl.textContent = 'Looking up…';
+
+  try {
+    // Try exact NDC match first, then broad name search
+    let rows = [];
+    const ndcRes = await fetch(
+      SUPA_URL + '/rest/v1/products?select=name,vendor,ndc&ndc=eq.' + encodeURIComponent(raw) + '&limit=1',
+      { headers: H }
+    );
+    rows = await ndcRes.json();
+
+    if (!Array.isArray(rows) || !rows.length) {
+      // Fallback: name search
+      const nameRes = await fetch(
+        SUPA_URL + '/rest/v1/products?select=name,vendor,ndc&name=ilike.' +
+        encodeURIComponent('%' + raw + '%') + '&order=name.asc&limit=1',
+        { headers: H }
+      );
+      rows = await nameRes.json();
+    }
+
+    if (Array.isArray(rows) && rows.length) {
+      const hit = rows[0];
+      document.getElementById('al-product').value = hit.name || '';
+      if (hit.vendor) document.getElementById('al-vendor').value = hit.vendor;
+      document.getElementById('al-product-suggestions').style.display = 'none';
+      statusEl.style.color = 'var(--green,#2a7a4b)';
+      statusEl.textContent = '✓ Product found — name and vendor filled in';
+      document.getElementById('al-lotnum').focus();
+    } else {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'No product found for this SKU — enter the product name manually below';
+      document.getElementById('al-product').focus();
+    }
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = 'Lookup failed — enter product name manually';
+  }
 }
 
 async function submitAddLot() {
