@@ -454,9 +454,10 @@ async function reload() {
 
     // Fetch lots to get qty_remaining per product (for filter + consumption %)
     try {
-      const locId = document.getElementById('sel-location').value;
-      const lotsQ = locId
-        ? `select=notes,qty_remaining&location_id=eq.${locId}&limit=1000`
+      const locId   = document.getElementById('sel-location').value;
+      const locUUID = LOC_UUID[locId] || null;
+      const lotsQ = locUUID
+        ? `select=notes,qty_remaining&location_id=eq.${locUUID}&limit=1000`
         : `select=notes,qty_remaining&limit=1000`;
       const lotsData = await query('lots', lotsQ);
       const lotsByName = {};
