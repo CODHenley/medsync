@@ -1,0 +1,24 @@
+name: Products Sync (NDC + Catalog)
+
+on:
+  schedule:
+    - cron: '30 12 * * *'   # 7:30am CT (UTC-5) every day, 30 min after lot sync
+  workflow_dispatch:          # manual trigger from GitHub Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run products sync
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 products_sync.py
