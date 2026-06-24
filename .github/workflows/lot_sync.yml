@@ -1,0 +1,25 @@
+name: Wheaton Lot Sync
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 7:00am CT (UTC-5) every day
+  workflow_dispatch:         # manual trigger from GitHub Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Write Vetspire token
+        run: echo "${{ secrets.VETSPIRE_API_TOKEN }}" > ~/.vetspire_token
+
+      - name: Run lot sync
+        run: python3 wheaton_lot_sync.py
