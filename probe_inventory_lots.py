@@ -31,8 +31,17 @@ def try_query(label, q, variables=None):
         if "errors" in r:
             print(f"  ERROR: {r['errors'][0].get('message','?')}")
             return None
-        print(json.dumps(r.get("data"), indent=2)[:3000])
-        return r.get("data")
+        data = r.get("data")
+        # For introspection, just print field names cleanly
+        typ = (data or {}).get("__type")
+        if typ and typ.get("fields"):
+            for f in typ["fields"]:
+                tname = (f.get("type") or {}).get("name") or \
+                        ((f.get("type") or {}).get("ofType") or {}).get("name") or "?"
+                print(f"  {f['name']}: {tname}")
+            return data
+        print(json.dumps(data, indent=2)[:3000])
+        return data
     except Exception as e:
         print(f"  EXCEPTION: {e}")
         return None
@@ -48,7 +57,7 @@ for f in fields:
     desc = (f.get("description") or "").lower()
     if any(k in name or k in desc for k in keywords):
         matches.append(f)
-        print(f"  {f['name']}: {f.get('description','')[:80]}")
+        print(f"  {f['name']}: {(f.get('description') or '')[:80]}")
 
 print(f"\n  ({len(matches)} matches out of {len(fields)} total queries)")
 
@@ -84,6 +93,14 @@ query { inventoryAdjustments(locationId: """ + WHEATON_ID + """, first: 3) {
         product { id name }
     }}
 }}
+""")
+
+try_query("introspect InventoryAdjustment type", """
+{
+  __type(name: "InventoryAdjustment") {
+    fields { name description type { name kind ofType { name kind } } }
+  }
+}
 """)
 
 try_query("inventoryAdjustment(locationId)", """
