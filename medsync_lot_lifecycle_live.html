@@ -640,6 +640,45 @@ if (window.self !== window.top) {
 
 <div id="toast"></div>
 
+<!-- SKU camera scanner modal -->
+<div class="modal-bg" id="sku-scanner-modal" style="z-index:200;">
+  <div style="background:var(--surface);border-radius:14px;width:480px;max-width:calc(100vw - 32px);overflow:hidden;box-shadow:0 8px 40px rgba(28,43,74,.22);">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Scan SKU / NDC</div>
+        <div style="font-size:11px;color:var(--mist);margin-top:2px;">Point camera at barcode, or type NDC manually</div>
+      </div>
+      <button class="modal-close" onclick="closeSkuScanner()">✕</button>
+    </div>
+    <!-- Camera view -->
+    <div id="sku-cam-wrap" style="position:relative;background:#000;height:220px;display:flex;align-items:center;justify-content:center;">
+      <video id="sku-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+      <div id="sku-cam-msg" style="color:#fff;font-size:13px;text-align:center;padding:20px;">
+        <div style="font-size:36px;margin-bottom:10px;">📷</div>
+        <div id="sku-cam-msg-text">Starting camera…</div>
+      </div>
+      <!-- Aim guide -->
+      <div id="sku-aim" style="display:none;position:absolute;inset:0;pointer-events:none;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:80px;border:2px solid rgba(255,255,255,.7);border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,.35);"></div>
+      </div>
+    </div>
+    <!-- Manual entry fallback -->
+    <div style="padding:14px 18px;border-top:0.5px solid var(--border);">
+      <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Or enter NDC manually</div>
+      <div style="display:flex;gap:8px;">
+        <input id="sku-manual-input" type="text" placeholder="e.g. 61703-0322-63" autocomplete="off"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();alSkuLookupVal(this.value);}"
+          style="flex:1;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        <button type="button" class="btn btn-primary" onclick="alSkuLookupVal(document.getElementById('sku-manual-input').value)">Look up</button>
+      </div>
+      <div id="sku-scanner-status" style="margin-top:8px;font-size:12px;display:none;"></div>
+    </div>
+    <div class="modal-actions" style="justify-content:flex-end;">
+      <button class="btn" onclick="closeSkuScanner()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add lot manually modal -->
 <div class="modal-bg" id="add-lot-modal">
   <div class="modal" style="max-width:480px;width:calc(100vw - 32px);">
@@ -651,16 +690,12 @@ if (window.self !== window.top) {
       <button class="modal-close" onclick="closeAddLotModal()">✕</button>
     </div>
     <div class="modal-body" style="gap:12px;">
-      <!-- SKU / NDC scan row -->
-      <div style="background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;padding:12px 14px;">
-        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Scan SKU / NDC <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">(optional — auto-fills product)</span></div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input id="al-sku" type="text" placeholder="Scan barcode or type NDC…" autocomplete="off"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();alSkuLookup();}"
-            style="flex:1;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
-          <button type="button" class="btn btn-primary" onclick="alSkuLookup()" style="white-space:nowrap;padding:8px 14px;font-size:12px;">Look up</button>
-        </div>
-        <div id="al-sku-status" style="margin-top:7px;font-size:12px;display:none;"></div>
+      <!-- SKU scan button -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button type="button" class="btn btn-primary" onclick="openSkuScanner()" style="display:flex;align-items:center;gap:6px;padding:9px 16px;font-size:13px;">
+          <span style="font-size:16px;line-height:1;">⊡</span> Scan SKU
+        </button>
+        <div id="al-sku-status" style="font-size:12px;display:none;"></div>
       </div>
       <div style="position:relative;">
         <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Product name <span style="color:var(--red);">*</span></div>
@@ -962,6 +997,7 @@ function editCurrentLot() {
 let _currentLotDbId = null;
 
 function closeAddLotModal() {
+  _stopSkuCamera();
   document.getElementById('add-lot-modal').classList.remove('open');
   document.getElementById('al-product-suggestions').style.display = 'none';
 }
@@ -997,8 +1033,83 @@ function alSelectProduct(el) {
   document.getElementById('al-lotnum').focus();
 }
 
-async function alSkuLookup() {
-  const raw = document.getElementById('al-sku').value.trim();
+let _skuStream = null;
+let _skuDetectInterval = null;
+
+function openSkuScanner() {
+  document.getElementById('sku-manual-input').value = '';
+  document.getElementById('sku-scanner-status').style.display = 'none';
+  document.getElementById('sku-scanner-modal').classList.add('open');
+  _startSkuCamera();
+}
+
+function closeSkuScanner() {
+  _stopSkuCamera();
+  document.getElementById('sku-scanner-modal').classList.remove('open');
+}
+
+async function _startSkuCamera() {
+  const video = document.getElementById('sku-video');
+  const msg = document.getElementById('sku-cam-msg');
+  const msgText = document.getElementById('sku-cam-msg-text');
+  const aim = document.getElementById('sku-aim');
+
+  try {
+    _skuStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = _skuStream;
+    video.style.display = 'block';
+    msg.style.display = 'none';
+    aim.style.display = 'block';
+
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','data_matrix','qr_code'] });
+      _skuDetectInterval = setInterval(async () => {
+        if (video.readyState < 2) return;
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes.length) {
+            clearInterval(_skuDetectInterval);
+            _skuDetectInterval = null;
+            const val = barcodes[0].rawValue;
+            _stopSkuCamera();
+            document.getElementById('sku-scanner-modal').classList.remove('open');
+            alSkuLookupVal(val);
+          }
+        } catch(_) {}
+      }, 350);
+    } else {
+      msgText.textContent = 'Auto-detect not supported in this browser — use manual entry below';
+      msg.style.display = 'flex';
+      msg.style.flexDirection = 'column';
+      msg.style.position = 'absolute';
+      msg.style.bottom = '10px';
+      msg.style.background = 'rgba(0,0,0,.6)';
+      msg.style.borderRadius = '6px';
+      msg.style.padding = '6px 12px';
+      msg.style.fontSize = '11px';
+    }
+  } catch(e) {
+    video.style.display = 'none';
+    msg.style.display = 'block';
+    msgText.textContent = 'Camera unavailable — use manual entry below';
+  }
+}
+
+function _stopSkuCamera() {
+  if (_skuDetectInterval) { clearInterval(_skuDetectInterval); _skuDetectInterval = null; }
+  if (_skuStream) { _skuStream.getTracks().forEach(t => t.stop()); _skuStream = null; }
+  const video = document.getElementById('sku-video');
+  if (video) { video.srcObject = null; video.style.display = 'none'; }
+  const aim = document.getElementById('sku-aim');
+  if (aim) aim.style.display = 'none';
+  const msg = document.getElementById('sku-cam-msg');
+  if (msg) msg.style.display = 'block';
+}
+
+async function alSkuLookupVal(raw) {
+  raw = (raw || '').trim();
   const statusEl = document.getElementById('al-sku-status');
   if (!raw) return;
 
@@ -1007,7 +1118,6 @@ async function alSkuLookup() {
   statusEl.textContent = 'Looking up…';
 
   try {
-    // Try exact NDC match first, then broad name search
     let rows = [];
     const ndcRes = await fetch(
       SUPA_URL + '/rest/v1/products?select=name,vendor,ndc&ndc=eq.' + encodeURIComponent(raw) + '&limit=1',
@@ -1016,7 +1126,6 @@ async function alSkuLookup() {
     rows = await ndcRes.json();
 
     if (!Array.isArray(rows) || !rows.length) {
-      // Fallback: name search
       const nameRes = await fetch(
         SUPA_URL + '/rest/v1/products?select=name,vendor,ndc&name=ilike.' +
         encodeURIComponent('%' + raw + '%') + '&order=name.asc&limit=1',
@@ -1031,11 +1140,11 @@ async function alSkuLookup() {
       if (hit.vendor) document.getElementById('al-vendor').value = hit.vendor;
       document.getElementById('al-product-suggestions').style.display = 'none';
       statusEl.style.color = 'var(--green,#2a7a4b)';
-      statusEl.textContent = '✓ Product found — name and vendor filled in';
+      statusEl.textContent = '✓ ' + (hit.name || 'Product') + ' found — fields filled in';
       document.getElementById('al-lotnum').focus();
     } else {
       statusEl.style.color = 'var(--red)';
-      statusEl.textContent = 'No product found for this SKU — enter the product name manually below';
+      statusEl.textContent = 'No product found for "' + raw + '" — enter product name manually';
       document.getElementById('al-product').focus();
     }
   } catch(e) {
