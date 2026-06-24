@@ -361,12 +361,12 @@ async function loadCogsBudget() {
       '&date=gte.' + month1 + '&date=lte.' + today, { headers: H });
     const revRows = await revRes.json();
     if (Array.isArray(revRows)) state.mtdRevenue = revRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
-    // MTD COGS: received po_items this month (Supabase UUID is correct here)
+    // MTD COGS: actual cost of goods dispensed from Vetspire (same source as analytics)
     const cogsRes  = await fetch(
-      SUPA_URL + '/rest/v1/po_items?select=gpo_price,order_qty&location_id=eq.' + state.locationId +
-      '&status=eq.received&week_start=gte.' + month1, { headers: H });
+      SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + vid +
+      '&dispensed_at=gte.' + month1 + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: H });
     const cogsRows = await cogsRes.json();
-    if (Array.isArray(cogsRows)) state.mtdCogs = cogsRows.reduce((s,r) => s + (parseFloat(r.gpo_price)||0)*(parseInt(r.order_qty)||0), 0);
+    if (Array.isArray(cogsRows)) state.mtdCogs = cogsRows.reduce((s,r) => s + (parseFloat(r.unit_cost)||0)*(parseInt(r.quantity)||0), 0);
   } catch(e) {}
 }
 
