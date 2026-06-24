@@ -38,17 +38,40 @@ def gql(query, variables=None):
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
-def supa_req(method, path, body=None):
+def supa_req(method, path, body=None, prefer="return=minimal"):
     data = json.dumps(body).encode() if body is not None else None
     headers = {
         "apikey": SUPA_KEY,
         "Authorization": f"Bearer {SUPA_KEY}",
         "Content-Type": "application/json",
-        "Prefer": "return=minimal",
+        "Prefer": prefer,
     }
     req = urllib.request.Request(SUPA_URL + path, data=data, method=method, headers=headers)
     with urllib.request.urlopen(req, timeout=30) as r:
-        return r.status
+        body_out = r.read()
+        return r.status, body_out
+
+def supa_get(path):
+    headers = {
+        "apikey": SUPA_KEY,
+        "Authorization": f"Bearer {SUPA_KEY}",
+    }
+    req = urllib.request.Request(SUPA_URL + path, headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read())
+
+def get_or_create_product_id(name):
+    """Look up product by name in Supabase products table; create if missing."""
+    encoded_name = urllib.parse.quote(name)
+    rows = supa_get(f"/rest/v1/products?name=eq.{encoded_name}&select=id")
+    if rows:
+        return rows[0]["id"]
+    # Create minimal product record
+    status, body = supa_req("POST", "/rest/v1/products", {"name": name}, prefer="return=representation")
+    created = json.loads(body)
+    if isinstance(created, list) and created:
+        return created[0]["id"]
+    raise RuntimeError(f"Failed to create product '{name}': {body.decode()}")
 
 # ── Fetch all inventory adjustments for Wheaton ──────────────────────────────
 # inventoryAdjustments returns a plain list (not a Connection) — no edges wrapper.
@@ -192,10 +215,31 @@ for key, lot in lot_map.items():
         "status":          status,
         "notes":           f"Vetspire inventory: {lot['product_name']}",
         "vendor":          None,
+        "_product_name":   lot["product_name"],  # temp field for lookup
     })
 
 print(f"  {skipped_bad_exp} lots skipped (unparseable expiration date)")
 print(f"\n{len(records)} records to upsert")
+
+# ── Look up / create product_id for each record ──────────────────────────────
+print("\nResolving product_ids...")
+product_id_cache = {}
+resolved = 0
+for r in records:
+    pname = r.pop("_product_name")
+    if pname not in product_id_cache:
+        try:
+            product_id_cache[pname] = get_or_create_product_id(pname)
+            resolved += 1
+        except Exception as e:
+            print(f"  Warning: could not resolve product '{pname}': {e}")
+            product_id_cache[pname] = None
+    pid = product_id_cache[pname]
+    if pid:
+        r["product_id"] = pid
+
+records = [r for r in records if r.get("product_id")]
+print(f"  {resolved} products looked up / created, {len(records)} records ready")
 
 if not records:
     print("Nothing to upsert.")
@@ -213,7 +257,7 @@ print(f"\nSyncing {len(records)} records into lots table...")
 
 # Delete all existing Vetspire-synced lots for Wheaton (notes starts with "Vetspire inventory:")
 try:
-    supa_req("DELETE", f"/rest/v1/lots?location_id=eq.{WHEATON_UUID}&notes=like.Vetspire inventory:%25")
+    supa_req("DELETE", f"/rest/v1/lots?location_id=eq.{WHEATON_UUID}&notes=like.Vetspire%20inventory%3A%25")  # noqa
     print("  Cleared existing Vetspire lots for Wheaton")
 except Exception as e:
     print(f"  Warning: delete step failed — {e}")
@@ -224,9 +268,9 @@ failed = 0
 for i in range(0, len(records), 50):
     batch = records[i:i+50]
     try:
-        status = supa_req("POST", "/rest/v1/lots", batch)
+        http_status, _ = supa_req("POST", "/rest/v1/lots", batch)
         upserted += len(batch)
-        print(f"  Batch {i//50 + 1}: ✓ {len(batch)} records (HTTP {status})")
+        print(f"  Batch {i//50 + 1}: ✓ {len(batch)} records (HTTP {http_status})")
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f"  Batch {i//50 + 1}: ✗ HTTP {e.code} — {body[:200]}")
