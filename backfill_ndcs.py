@@ -43,6 +43,27 @@ SKIP_PATTERNS = [
     r"Microchip Implant",
     r"Spec Collect",               # specimen collection fees
     r"Implantation",
+    r"\bLabel\b",                  # label rolls / supplies
+    r"Per Roll",
+    r"^Hill's\b",                  # prescription diets — no NDC
+    r"^Royal Canin\b",
+    r"^Science Diet\b",
+    r"^Purina\b",
+    r"Diet,",
+    r"\bDiet\b.*\boz\b",
+    r"^Microchip\b",
+    r"^Anemia\b",                  # PCR/lab panels
+    r"Panel[—-]",
+    r"^Cryptococcus\b",
+    r"Rabies Spec",
+    r"Collection Kit",
+    r"^No Flap",
+    r"^TUMS\b",                    # OTC human products unlikely to match vet NDC
+    r"^Glycerin\b",
+    r"Ear Wrap",
+    r"Bravecto",                   # Zoetis vet-only — often missing from FDA DB
+    r"Vetcast",
+    r"^Clevor\b",                  # ropinirole vet product — may not be in FDA
 ]
 
 def should_skip(name):
@@ -80,10 +101,8 @@ def fda_search(field, value, limit=3):
         with urllib.request.urlopen(req, timeout=10) as r:
             data = json.loads(r.read())
             return data.get("results") or []
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            return []   # no results
-        raise
+    except urllib.error.HTTPError:
+        return []   # 404 = no results, 500 = bad query — either way skip
     except Exception:
         return []
 
