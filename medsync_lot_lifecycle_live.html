@@ -1224,6 +1224,7 @@ async function submitAddLot() {
     }
     closeAddLotModal();
     showToast(isEdit ? '✓ Lot updated — ' + lotNum : '✓ Lot added — ' + product + ' · ' + lotNum);
+    logLotEvent(isEdit ? 'Lot updated' : 'Lot added', lotNum, product, locId);
     loadLots();
   } catch(e) {
     errEl.textContent = 'Network error — ' + e.message;
@@ -1528,6 +1529,7 @@ async function logVaccineReturn() {
         ].filter(Boolean).join(' · '),
       })
     });
+    logLotEvent('Vendor return', lot.id, lot.name, lot.locationId);
     showToast('✓ Logged as vendor return in Goods Lost');
     closeModal();
     loadLots();
@@ -1544,6 +1546,8 @@ async function logDisposal(dbId) {
       headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({ status: 'Disposed', qty_remaining: 0 })
     });
+    const _dl = ALL_LOTS.find(l => l.dbId === dbId);
+    if (_dl) logLotEvent('Lot disposed', _dl.id, _dl.name, _dl.locationId);
     showToast('✓ Disposal logged — lot marked Disposed');
     closeModal();
     loadLots(); // refresh
@@ -1611,6 +1615,24 @@ function showToast(msg) {
   t.style.opacity = '1';
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
+}
+
+// ── Activity log helper ───────────────────────────────────────
+async function logLotEvent(action, lotNumber, productName, locationId) {
+  try {
+    var _u = {}; try { _u = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+    await fetch(SUPA_URL + '/rest/v1/activity_log', {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        type:        'lot',
+        description: action + ': ' + productName + ' · Lot ' + lotNumber,
+        location_id: locationId || null,
+        user_id:     _u.id || null,
+        metadata:    { lot_number: lotNumber, product: productName, action },
+      })
+    });
+  } catch(e) {}
 }
 
 // ── Boot ──────────────────────────────────────────────────────
