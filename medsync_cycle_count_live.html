@@ -755,6 +755,18 @@ function updateSubmitButton() {
 function openSubmitModal() {
   const cat = currentTab;
   const prods = products[cat] || [];
+
+  // Require at least one complete lot entry (lot # + exp date) for every counted product
+  const missingLots = prods.filter(p =>
+    p.actual !== null &&
+    !(p.lotEntries && p.lotEntries.some(e => e.lot_number && e.expiration_date))
+  );
+  if (missingLots.length > 0) {
+    const names = missingLots.map(p => '• ' + p.name).join('\n');
+    alert('Lot number and expiration date are required for every item.\n\nMissing lot info:\n' + names + '\n\nClick the "+ Lots" button next to each item to add lot details.');
+    return;
+  }
+
   const counted = prods.filter(p => p.actual !== null).length;
   const discs = prods.filter(p => p.actual !== null && Math.abs(getVariancePct(p)) > 10).length;
   stopTimer();
@@ -1292,6 +1304,9 @@ async function pcSubmitItem() {
     var lotNum = document.getElementById('pc-lot-input').value.trim() || null;
     var expDate = pcParseExp(document.getElementById('pc-exp-input').value);
     var dispExp = document.getElementById('pc-exp-input').value.trim();
+    // Require lot # and exp date before accepting entry
+    if (!lotNum) { alert('Lot number is required.'); document.getElementById('pc-lot-input').focus(); return; }
+    if (!/^\d{2}\/\d{4}$/.test(dispExp)) { alert('Expiration date is required (MM/YYYY).'); document.getElementById('pc-exp-input').focus(); return; }
     pcState.lotEntries.push({ quantity: currentQty, lot_number: lotNum, expiration_date: expDate, display_exp: dispExp });
   }
   if (!pcState.lotEntries.length) { alert('Enter a valid count'); return; }
