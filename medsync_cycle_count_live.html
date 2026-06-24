@@ -336,6 +336,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div class="success-stat-val" id="s-time">0:00</div>
       <div class="success-stat-label">Minutes</div>
     </div>
+    <div class="success-stat" id="s-vetspire-stat" style="display:none;">
+      <div class="success-stat-val" id="s-vetspire">0</div>
+      <div class="success-stat-label">Synced to Vetspire</div>
+    </div>
   </div>
   <div class="success-sub" id="s-sub">Activity log updated.</div>
   <button class="success-btn" onclick="closeSuccess()">Done</button>
@@ -488,7 +492,7 @@ const DEMO_PRODUCTS = [
 async function loadProducts(locName) {
   try {
     const res = await fetch(
-      SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,on_hand,snapshot_date&location_name=eq.${encodeURIComponent(locName)}&order=snapshot_date.desc&limit=500`,
+      SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand,snapshot_date&location_name=eq.${encodeURIComponent(locName)}&order=snapshot_date.desc&limit=500`,
       { headers: H }
     );
     const rows = await res.json();
@@ -498,6 +502,7 @@ async function loadProducts(locName) {
     rows.forEach(r => { if (!seen[r.product_name]) seen[r.product_name] = r; });
     return Object.values(seen).map(r => ({
       name: r.product_name,
+      vetspireProductId: r.vetspire_product_id || null,
       unit: 'unit',
       expected: parseFloat(r.on_hand) || 0,
       dea: false
@@ -611,7 +616,7 @@ function renderContent() {
             onfocus="startTimer()">
         </div>
         <div class="prod-variance ${varClass}" id="var-${p.id}">${varText}</div>
-        <div class="prod-status" id="status-${p.id}">${statusHtml}</div>
+        <div class="prod-status" id="status-${p.id}" style="display:flex;flex-direction:column;align-items:center;gap:4px;">${statusHtml}<button onclick="openLotModal('${cat}',${i})" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid rgba(200,146,42,.5);background:rgba(200,146,42,.12);color:#C8922A;cursor:pointer;white-space:nowrap;" id="lot-btn-${p.id}">${p.lotEntries && p.lotEntries.length ? '🔖 ' + p.lotEntries.length + ' lot' + (p.lotEntries.length > 1 ? 's' : '') : '+ Lots'}</button></div>
       </div>`;
   });
 
@@ -675,7 +680,9 @@ function handleInput(cat, idx, val) {
   if (document.getElementById('var-'+p.id)) {
     document.getElementById('var-'+p.id).textContent = getVarianceText(p);
     document.getElementById('var-'+p.id).className = 'prod-variance ' + getVarianceClass(p);
-    document.getElementById('status-'+p.id).innerHTML = getStatusHtml(p);
+    const lotCount = p.lotEntries && p.lotEntries.length;
+    const lotBtnText = lotCount ? '🔖 ' + lotCount + ' lot' + (lotCount > 1 ? 's' : '') : '+ Lots';
+    document.getElementById('status-'+p.id).innerHTML = getStatusHtml(p) + '<button onclick="openLotModal(\'' + cat + '\',' + idx + ')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid rgba(200,146,42,.5);background:rgba(200,146,42,.12);color:#C8922A;cursor:pointer;white-space:nowrap;" id="lot-btn-' + p.id + '">' + lotBtnText + '</button>';
     const row = document.getElementById('row-'+p.id);
     if (row) row.className = 'prod-row ' + getRowClass(p);
     const inp = document.getElementById('input-'+p.id);
@@ -823,6 +830,35 @@ async function submitCount() {
     console.warn('Activity log write failed:', e);
   }
 
+  // Writeback counted products to Vetspire (Wheaton only)
+  let vetspireSynced = 0;
+  if (currentLocation === 'Wheaton') {
+    const _locMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
+    const locationId = _locMap[currentLocation];
+    const toWrite = prods.filter(p => p.actual !== null && p.vetspireProductId);
+    for (const p of toWrite) {
+      try {
+        const lotEntries = p.lotEntries && p.lotEntries.length
+          ? p.lotEntries.map(e => ({ quantity: e.quantity, lot_number: e.lot_number, expiration_date: e.expiration_date }))
+          : [{ quantity: p.actual, lot_number: null, expiration_date: null }];
+        const wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
+          body: JSON.stringify({ vetspire_location_id: locationId, vetspire_product_id: p.vetspireProductId, product_name: p.name, location_name: currentLocation, lot_entries: lotEntries })
+        });
+        const wbJson = await wbRes.json();
+        if (wbJson.ok) vetspireSynced++;
+      } catch(e) { console.warn('Writeback failed for', p.name, e); }
+    }
+  }
+
+  // Write lot entries to lots table for any product that has them
+  for (const p of prods) {
+    if (p.lotEntries && p.lotEntries.length && currentLocationId) {
+      await upsertLots(currentLocationId, p.name, p.lotEntries);
+    }
+  }
+
   // Mark this category done
   submittedCategories.add(cat);
 
@@ -832,6 +868,12 @@ async function submitCount() {
   document.getElementById('s-disc').textContent = discs;
   document.getElementById('s-time').textContent = mins;
   document.getElementById('s-sub').textContent = `${currentLocation} · Cat ${cat} · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+  if (currentLocation === 'Wheaton') {
+    document.getElementById('s-vetspire').textContent = vetspireSynced;
+    document.getElementById('s-vetspire-stat').style.display = '';
+  } else {
+    document.getElementById('s-vetspire-stat').style.display = 'none';
+  }
   document.getElementById('success-overlay').classList.add('open');
 }
 
@@ -996,8 +1038,103 @@ function exportCCPDF() {
   );
 }
 
+// ═══════════════ CYCLE COUNT LOT MODAL ═══════════════
+var ccLotModal = { cat: null, idx: null, entries: [] };
+
+function openLotModal(cat, idx) {
+  var p = products[cat][idx];
+  ccLotModal.cat = cat;
+  ccLotModal.idx = idx;
+  ccLotModal.entries = p.lotEntries ? p.lotEntries.slice() : [];
+  document.getElementById('cc-lot-product-name').textContent = p.name;
+  document.getElementById('cc-lot-qty').value = p.actual !== null ? p.actual : '';
+  document.getElementById('cc-lot-num').value = '';
+  document.getElementById('cc-lot-exp').value = '';
+  ccRenderLotEntries();
+  document.getElementById('cc-lot-modal').style.display = 'flex';
+  document.getElementById('cc-lot-qty').focus();
+}
+
+function closeLotModal() {
+  document.getElementById('cc-lot-modal').style.display = 'none';
+  ccLotModal.cat = null; ccLotModal.idx = null; ccLotModal.entries = [];
+}
+
+function ccAddLotEntry() {
+  var qty = parseFloat(document.getElementById('cc-lot-qty').value);
+  if (isNaN(qty) || qty < 0) { alert('Enter a valid quantity'); return; }
+  var lotNum = document.getElementById('cc-lot-num').value.trim() || null;
+  var rawExp = document.getElementById('cc-lot-exp').value.trim();
+  var expDate = pcParseExp(rawExp);
+  ccLotModal.entries.push({ quantity: qty, lot_number: lotNum, expiration_date: expDate, display_exp: rawExp });
+  document.getElementById('cc-lot-qty').value = '';
+  document.getElementById('cc-lot-num').value = '';
+  document.getElementById('cc-lot-exp').value = '';
+  ccRenderLotEntries();
+  document.getElementById('cc-lot-qty').focus();
+}
+
+function ccRemoveLotEntry(i) {
+  ccLotModal.entries.splice(i, 1);
+  ccRenderLotEntries();
+}
+
+function ccRenderLotEntries() {
+  var el = document.getElementById('cc-lot-entries-list');
+  if (!ccLotModal.entries.length) { el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,.3);padding:8px 0;">No lots added yet</div>'; return; }
+  el.innerHTML = ccLotModal.entries.map(function(e, i) {
+    return '<div style="background:rgba(42,123,228,.12);border:1px solid rgba(42,123,228,.3);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<span style="font-size:13px;color:#fff;">' + e.quantity + ' units' + (e.lot_number ? ' · Lot: ' + e.lot_number : '') + (e.display_exp ? ' · Exp: ' + e.display_exp : '') + '</span>' +
+      '<button onclick="ccRemoveLotEntry(' + i + ')" style="background:rgba(220,38,38,.3);border:none;color:#f87171;padding:2px 8px;border-radius:6px;cursor:pointer;font-size:11px;">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+// ── Upsert lot entries into the lots table ────────────────────
+async function upsertLots(locationId, productName, lotEntries) {
+  const today = new Date().toISOString().split('T')[0];
+  for (const e of lotEntries) {
+    if (!e.lot_number || !e.expiration_date) continue;
+    try {
+      await fetch(SUPA_URL + '/rest/v1/lots', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'resolution=merge-duplicates,return=minimal', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location_id:     locationId,
+          lot_number:      e.lot_number,
+          qty_received:    e.quantity,
+          qty_remaining:   e.quantity,
+          received_date:   today,
+          expiration_date: e.expiration_date,
+          status:          'Active',
+          notes:           'Added via ' + (productName ? 'cycle count: ' + productName : 'cycle count'),
+        })
+      });
+    } catch(err) { console.warn('Lot upsert failed for', e.lot_number, err); }
+  }
+}
+
+function ccSaveLots() {
+  var currentQty = parseFloat(document.getElementById('cc-lot-qty').value);
+  if (!isNaN(currentQty) && currentQty >= 0) {
+    var lotNum = document.getElementById('cc-lot-num').value.trim() || null;
+    var rawExp = document.getElementById('cc-lot-exp').value.trim();
+    ccLotModal.entries.push({ quantity: currentQty, lot_number: lotNum, expiration_date: pcParseExp(rawExp), display_exp: rawExp });
+  }
+  if (!ccLotModal.entries.length) { alert('Add at least one lot entry'); return; }
+  var p = products[ccLotModal.cat][ccLotModal.idx];
+  var totalQty = ccLotModal.entries.reduce(function(s, e) { return s + e.quantity; }, 0);
+  p.actual = totalQty;
+  p.lotEntries = ccLotModal.entries.slice();
+  handleInput(ccLotModal.cat, ccLotModal.idx, totalQty);
+  var inp = document.getElementById('input-' + p.id);
+  if (inp) inp.value = totalQty;
+  closeLotModal();
+}
+// ═══════════════════════════════════════════════════
+
 // ═══════════════ PHYSICAL COUNT MODE ═══════════════
-var pcState = { sessionId: null, items: [], locationId: null, locationName: null };
+var pcState = { sessionId: null, items: [], locationId: null, locationName: null, lotEntries: [] };
 
 function togglePhysicalCount() {
   var panel = document.getElementById('pc-panel');
@@ -1101,30 +1238,97 @@ function pcUpdateVariancePreview() {
   }
 }
 
+function pcParseExp(raw) {
+  if (!raw) return null;
+  var parts = raw.trim().split('/');
+  if (parts.length === 2) {
+    var m = parseInt(parts[0], 10), y = parseInt(parts[1], 10);
+    if (!isNaN(m) && !isNaN(y)) {
+      var lastDay = new Date(y, m, 0).getDate();
+      return y + '-' + String(m).padStart(2,'0') + '-' + String(lastDay).padStart(2,'0');
+    }
+  }
+  return null;
+}
+
+function pcAddLot() {
+  var qty = parseFloat(document.getElementById('pc-actual-input').value);
+  if (isNaN(qty) || qty < 0) { alert('Enter a valid count before adding a lot'); return; }
+  var lotNum = document.getElementById('pc-lot-input').value.trim() || null;
+  var expDate = pcParseExp(document.getElementById('pc-exp-input').value);
+  pcState.lotEntries.push({ quantity: qty, lot_number: lotNum, expiration_date: expDate, display_exp: document.getElementById('pc-exp-input').value.trim() });
+  document.getElementById('pc-actual-input').value = '';
+  document.getElementById('pc-lot-input').value = '';
+  document.getElementById('pc-exp-input').value = '';
+  document.getElementById('pc-variance-preview').style.display = 'none';
+  pcRenderLotEntries();
+  document.getElementById('pc-actual-input').focus();
+}
+
+function pcRenderLotEntries() {
+  var el = document.getElementById('pc-lot-entries');
+  if (!el) return;
+  if (!pcState.lotEntries.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Lots to submit (' + pcState.lotEntries.length + ')</div>' +
+    pcState.lotEntries.map(function(e, i) {
+      return '<div style="background:rgba(42,123,228,.12);border:1px solid rgba(42,123,228,.3);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<div style="font-size:13px;color:#fff;">' + e.quantity + ' units' + (e.lot_number ? ' · Lot: ' + e.lot_number : '') + (e.display_exp ? ' · Exp: ' + e.display_exp : '') + '</div>' +
+        '<button onclick="pcRemoveLot(' + i + ')" style="background:rgba(220,38,38,.3);border:none;color:#f87171;padding:2px 8px;border-radius:6px;cursor:pointer;font-size:11px;">✕</button>' +
+        '</div>';
+    }).join('');
+}
+
+function pcRemoveLot(i) {
+  pcState.lotEntries.splice(i, 1);
+  pcRenderLotEntries();
+}
+
 async function pcSubmitItem() {
-  var actual = parseFloat(document.getElementById('pc-actual-input').value);
-  if (isNaN(actual) || actual < 0) { alert('Enter a valid count'); return; }
   var cp = pcState.currentProduct;
-  var variance = actual - cp.expected;
+  // If there's a filled-in entry, add it to lotEntries first
+  var currentQty = parseFloat(document.getElementById('pc-actual-input').value);
+  if (!isNaN(currentQty) && currentQty >= 0) {
+    var lotNum = document.getElementById('pc-lot-input').value.trim() || null;
+    var expDate = pcParseExp(document.getElementById('pc-exp-input').value);
+    var dispExp = document.getElementById('pc-exp-input').value.trim();
+    pcState.lotEntries.push({ quantity: currentQty, lot_number: lotNum, expiration_date: expDate, display_exp: dispExp });
+  }
+  if (!pcState.lotEntries.length) { alert('Enter a valid count'); return; }
+
+  var totalActual = pcState.lotEntries.reduce(function(s, e) { return s + e.quantity; }, 0);
+  var variance = totalActual - cp.expected;
   var varVal = variance * (cp.unitCost || 0);
+
   if (pcState.sessionId) {
     if (pcState.locationName === 'Wheaton' && cp.vetspireProductId) {
       var wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
-        body: JSON.stringify({ vetspire_location_id: pcState.locationId, vetspire_product_id: cp.vetspireProductId, actual_count: actual, product_name: cp.name || '', location_name: pcState.locationName || '', lot_number: document.getElementById('pc-lot-input').value || null, expiration_date: document.getElementById('pc-exp-input').value || null })
+        body: JSON.stringify({
+          vetspire_location_id: pcState.locationId,
+          vetspire_product_id: cp.vetspireProductId,
+          product_name: cp.name || '',
+          location_name: pcState.locationName || '',
+          lot_entries: pcState.lotEntries.map(function(e) { return { quantity: e.quantity, lot_number: e.lot_number, expiration_date: e.expiration_date }; })
+        })
       });
       var wbJson = await wbRes.json();
-      if (!wbJson.ok) console.error('Vetspire writeback failed:', wbJson.error);
+      if (!wbJson.ok) console.error('Vetspire writeback failed:', wbJson);
     }
     await fetch(SUPA_URL + '/rest/v1/physical_count_items', {
       method: 'POST',
       headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ session_id: pcState.sessionId, vetspire_product_id: cp.vetspireProductId, product_name: cp.name, expected_qty: cp.expected, actual_qty: actual, unit_cost: cp.unitCost || null, vetspire_synced: false })
+      body: JSON.stringify({ session_id: pcState.sessionId, vetspire_product_id: cp.vetspireProductId, product_name: cp.name, expected_qty: cp.expected, actual_qty: totalActual, unit_cost: cp.unitCost || null, vetspire_synced: false })
     });
+
+    // Write lot entries to lots table
+    if (pcState.lotEntries.length && pcState.locationId) {
+      await upsertLots(pcState.locationId, cp.name, pcState.lotEntries);
+    }
   }
 
-  pcState.items.push({ name: cp.name, expected: cp.expected, actual: actual, variance: variance, varVal: varVal });
+  pcState.items.push({ name: cp.name, expected: cp.expected, actual: totalActual, variance: variance, varVal: varVal, lotCount: pcState.lotEntries.length });
   pcRenderLog();
   pcClearCard();
   document.getElementById('pc-scan-input').focus();
@@ -1151,8 +1355,12 @@ function pcRenderLog() {
 function pcClearCard() {
   document.getElementById('pc-product-card').style.display = 'none';
   pcState.currentProduct = null;
+  pcState.lotEntries = [];
+  var el = document.getElementById('pc-lot-entries');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
 }
 // ═══════════════════════════════════════════════════
 </script>
 <script src="medsync_export.js"></script>
-<div id="pc-panel" style="position:fixed;inset:0;background:rgba(14,20,27,.97);z-index:9000;display:none;flex-direction:column;align-items:center;padding:24px 16px;overflow-y:auto;"><div style="width:100%;max-width:600px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;"><div><div style="font-size:18px;font-weight:700;color:#fff;">Physical Count</div><div id="pc-session-info" style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;"></div></div><button onclick="closePhysicalCount()" style="background:rgba(255,255,255,.1);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;">X</button></div><div style="background:rgba(255,255,255,.06);border-radius:12px;padding:16px;margin-bottom:14px;"><div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Scan barcode or type product name</div><div style="display:flex;gap:8px;"><input id="pc-scan-input" type="text" placeholder="Ready to scan..." autocomplete="off" oninput="pcSuggest(this.value)" style="flex:1;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:12px 14px;color:#fff;font-size:16px;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();pcLookup();}"><button onclick="pcLookup()" style="background:#2A7BE4;border:none;color:#fff;padding:12px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Look up</button></div><div id="pc-suggestions" style="display:none;background:#1a2235;border:1px solid rgba(255,255,255,.15);border-radius:8px;margin-top:4px;overflow:hidden;"></div></div><div id="pc-product-card" style="display:none;background:rgba(255,255,255,.06);border-radius:12px;padding:16px;margin-bottom:14px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;"><div style="flex:1;"><div id="pc-prod-name" style="font-size:15px;font-weight:600;color:#fff;"></div><div id="pc-prod-meta" style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;"></div></div><div style="text-align:right;margin-left:12px;"><div style="font-size:10px;color:rgba(255,255,255,.4);">Expected</div><div id="pc-expected" style="font-size:24px;font-weight:700;color:#fff;"></div></div></div><div style="margin-bottom:12px;"><div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Actual Count</div><input id="pc-actual-input" type="number" min="0" inputmode="numeric" placeholder="0" oninput="pcUpdateVariancePreview()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pc-lot-input').focus();}" style="width:100%;background:rgba(255,255,255,.1);border:1.5px solid #C8922A;border-radius:8px;padding:12px 14px;color:#fff;font-size:24px;font-weight:600;outline:none;box-sizing:border-box;"></div><div id="pc-variance-preview" style="display:none;font-size:13px;padding:8px 12px;border-radius:8px;margin-bottom:12px;"></div><div style="margin-bottom:12px;"><div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Lot Number</div><input id="pc-lot-input" type="text" placeholder="e.g. A12345B" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pc-exp-input').focus();}" style="width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;color:#fff;font-size:15px;outline:none;box-sizing:border-box;"></div><div style="margin-bottom:14px;"><div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Expiration Date (MM/YYYY)</div><input id="pc-exp-input" type="text" placeholder="06/2027" maxlength="7" onkeydown="if(event.key==='Enter'){event.preventDefault();pcSubmitItem();}" style="width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;color:#fff;font-size:15px;outline:none;box-sizing:border-box;"></div><button onclick="pcSubmitItem()" style="width:100%;background:#1a7a4a;border:none;color:#fff;padding:14px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;">Record Count</button></div><div id="pc-log-header" style="display:none;font-size:12px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Items counted</div><div id="pc-log" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div><div id="pc-totals" style="display:none;background:rgba(200,146,42,.12);border:1px solid rgba(200,146,42,.3);border-radius:12px;padding:14px;"><div style="font-size:12px;color:#C8922A;font-weight:600;margin-bottom:10px;">Session Summary</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;"><div><div id="pc-tot-items" style="font-size:20px;font-weight:700;color:#fff;">0</div><div style="font-size:10px;color:rgba(255,255,255,.4);">Items</div></div><div><div id="pc-tot-units" style="font-size:20px;font-weight:700;color:#fff;">0</div><div style="font-size:10px;color:rgba(255,255,255,.4);">Unit variance</div></div><div><div id="pc-tot-val" style="font-size:20px;font-weight:700;color:#fff;">$0</div><div style="font-size:10px;color:rgba(255,255,255,.4);">$ variance</div></div></div></div></div></div>
+<div id="cc-lot-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9500;align-items:center;justify-content:center;padding:16px;"><div style="background:#141c27;border:1px solid rgba(255,255,255,.12);border-radius:16px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div style="font-size:16px;font-weight:700;color:#fff;">Lot Entry</div><button onclick="closeLotModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;">✕</button></div><div id="cc-lot-product-name" style="font-size:13px;color:#C8922A;font-weight:600;margin-bottom:16px;"></div><div style="margin-bottom:10px;"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Quantity</div><input id="cc-lot-qty" type="number" min="0" inputmode="numeric" placeholder="0" onkeydown="if(event.key==='Enter'){document.getElementById('cc-lot-num').focus();}" style="width:100%;background:rgba(255,255,255,.1);border:1.5px solid #C8922A;border-radius:8px;padding:10px 14px;color:#fff;font-size:18px;font-weight:600;outline:none;box-sizing:border-box;"></div><div style="margin-bottom:10px;"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Lot Number</div><input id="cc-lot-num" type="text" placeholder="e.g. A12345B" onkeydown="if(event.key==='Enter'){document.getElementById('cc-lot-exp').focus();}" style="width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;color:#fff;font-size:14px;outline:none;box-sizing:border-box;"></div><div style="margin-bottom:14px;"><div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Expiration (MM/YYYY)</div><input id="cc-lot-exp" type="text" placeholder="06/2027" maxlength="7" onkeydown="if(event.key==='Enter'){ccAddLotEntry();}" style="width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;color:#fff;font-size:14px;outline:none;box-sizing:border-box;"></div><button onclick="ccAddLotEntry()" style="width:100%;background:rgba(42,123,228,.25);border:1.5px solid rgba(42,123,228,.5);color:#7ab8f5;padding:10px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin-bottom:14px;">+ Add Another Lot</button><div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Lots added</div><div id="cc-lot-entries-list" style="margin-bottom:16px;"></div><button onclick="ccSaveLots()" style="width:100%;background:#1a7a4a;border:none;color:#fff;padding:13px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;">Save Lots</button></div></div>
+<div id="pc-panel" style="position:fixed;inset:0;background:rgba(14,20,27,.97);z-index:9000;display:none;flex-direction:column;align-items:center;padding:24px 16px;overflow-y:auto;"><div style="width:100%;max-width:600px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;"><div><div style="font-size:18px;font-weight:700;color:#fff;">Physical Count</div><div id="pc-session-info" style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;"></div></div><button onclick="closePhysicalCount()" style="background:rgba(255,255,255,.1);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;">X</button></div><div style="background:rgba(255,255,255,.06);border-radius:12px;padding:16px;margin-bottom:14px;"><div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Scan barcode or type product name</div><div style="display:flex;gap:8px;"><input id="pc-scan-input" type="text" placeholder="Ready to scan..." autocomplete="off" oninput="pcSuggest(this.value)" style="flex:1;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:12px 14px;color:#fff;font-size:16px;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();pcLookup();}"><button onclick="pcLookup()" style="background:#2A7BE4;border:none;color:#fff;padding:12px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Look up</button></div><div id="pc-suggestions" style="display:none;background:#1a2235;border:1px solid rgba(255,255,255,.15);border-radius:8px;margin-top:4px;overflow:hidden;"></div></div><div id="pc-product-card" style="display:none;background:rgba(255,255,255,.06);border-radius:12px;padding:16px;margin-bottom:14px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;"><div style="flex:1;"><div id="pc-prod-name" style="font-size:15px;font-weight:600;color:#fff;"></div><div id="pc-prod-meta" style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;"></div></div><div style="text-align:right;margin-left:12px;"><div style="font-size:10px;color:rgba(255,255,255,.4);">Expected</div><div id="pc-expected" style="font-size:24px;font-weight:700;color:#fff;"></div></div></div><div style="margin-bottom:12px;"><div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Actual Count</div><input id="pc-actual-input" type="number" min="0" inputmode="numeric" placeholder="0" oninput="pcUpdateVariancePreview()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pc-lot-input').focus();}" style="width:100%;background:rgba(255,255,255,.1);border:1.5px solid #C8922A;border-radius:8px;padding:12px 14px;color:#fff;font-size:24px;font-weight:600;outline:none;box-sizing:border-box;"></div><div id="pc-variance-preview" style="display:none;font-size:13px;padding:8px 12px;border-radius:8px;margin-bottom:12px;"></div><div style="margin-bottom:12px;"><div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Lot Number</div><input id="pc-lot-input" type="text" placeholder="e.g. A12345B" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pc-exp-input').focus();}" style="width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;color:#fff;font-size:15px;outline:none;box-sizing:border-box;"></div><div style="margin-bottom:14px;"><div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Expiration Date (MM/YYYY)</div><input id="pc-exp-input" type="text" placeholder="06/2027" maxlength="7" onkeydown="if(event.key==='Enter'){event.preventDefault();pcSubmitItem();}" style="width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;color:#fff;font-size:15px;outline:none;box-sizing:border-box;"></div><div style="display:flex;gap:8px;margin-bottom:10px;"><button onclick="pcAddLot()" style="flex:1;background:rgba(42,123,228,.25);border:1.5px solid rgba(42,123,228,.5);color:#7ab8f5;padding:12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">+ Add Another Lot</button></div><div id="pc-lot-entries" style="display:none;margin-bottom:10px;"></div><button onclick="pcSubmitItem()" style="width:100%;background:#1a7a4a;border:none;color:#fff;padding:14px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;">Submit Count</button></div><div id="pc-log-header" style="display:none;font-size:12px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Items counted</div><div id="pc-log" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div><div id="pc-totals" style="display:none;background:rgba(200,146,42,.12);border:1px solid rgba(200,146,42,.3);border-radius:12px;padding:14px;"><div style="font-size:12px;color:#C8922A;font-weight:600;margin-bottom:10px;">Session Summary</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;"><div><div id="pc-tot-items" style="font-size:20px;font-weight:700;color:#fff;">0</div><div style="font-size:10px;color:rgba(255,255,255,.4);">Items</div></div><div><div id="pc-tot-units" style="font-size:20px;font-weight:700;color:#fff;">0</div><div style="font-size:10px;color:rgba(255,255,255,.4);">Unit variance</div></div><div><div id="pc-tot-val" style="font-size:20px;font-weight:700;color:#fff;">$0</div><div style="font-size:10px;color:rgba(255,255,255,.4);">$ variance</div></div></div></div></div></div>

@@ -330,6 +330,7 @@ html, body { margin: 0 !important; padding: 0 !important; }
 @media (max-width: 768px) {
   .right, .main-area { padding-top: 0 !important; box-sizing: border-box !important; }
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <script>
@@ -399,7 +400,11 @@ if (window.self !== window.top) {
             <option value="Chicagoland West">Chicagoland West</option>
           </select>
                     <select id="loc-filter" onchange="filterTable()">
-            <option value="">All locations</option>
+            <option value="all">All locations</option>
+            <option value="Lincoln Park">Lincoln Park</option>
+            <option value="Old Orchard">Old Orchard</option>
+            <option value="West Loop">West Loop</option>
+            <option value="Wheaton">Wheaton</option>
           </select>
           <select id="cs-filter" onchange="filterTable()">
             <option value="all">All products</option>
@@ -409,6 +414,8 @@ if (window.self !== window.top) {
         </div>
       </div>
       <div class="tb-right">
+        <button class="btn" onclick="refreshLots()"><i class="ti ti-refresh" id="lc-refresh-icon" style="font-size:12px;margin-right:4px;"></i>Refresh</button>
+        <button class="btn btn-primary" onclick="openAddLotModal()">+ Add lot</button>
         <button class="btn" onclick="openScanModal()">⊡ Scan / Look up lot</button>
         <button class="btn" onclick="exportLotsCSV()">↓ CSV</button>
         <button class="btn" onclick="exportLotsPDF()">↓ PDF</button>
@@ -633,6 +640,63 @@ if (window.self !== window.top) {
 
 <div id="toast"></div>
 
+<!-- Add lot manually modal -->
+<div class="modal-bg" id="add-lot-modal">
+  <div class="modal-inner" style="max-width:480px;">
+    <div class="modal-hdr">
+      <div class="modal-title">Add lot manually</div>
+      <button class="modal-close" onclick="closeAddLotModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;padding:16px 0 4px;">
+      <div>
+        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Product name <span style="color:var(--red);">*</span></div>
+        <input id="al-product" type="text" placeholder="e.g. Atropine Sulfate" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Lot number <span style="color:var(--red);">*</span></div>
+          <input id="al-lotnum" type="text" placeholder="e.g. A12345B" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Expiration (MM/YYYY) <span style="color:var(--red);">*</span></div>
+          <input id="al-exp" type="text" placeholder="06/2027" maxlength="7" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Quantity on hand <span style="color:var(--red);">*</span></div>
+          <input id="al-qty" type="number" min="0" placeholder="0" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Location <span style="color:var(--red);">*</span></div>
+          <select id="al-loc" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;height:auto;">
+            <option value="">Select…</option>
+            <option value="11111111-0000-0000-0000-000000000001">Lincoln Park</option>
+            <option value="11111111-0000-0000-0000-000000000002">Old Orchard</option>
+            <option value="11111111-0000-0000-0000-000000000003">West Loop</option>
+            <option value="11111111-0000-0000-0000-000000000004">Wheaton</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Vendor (optional)</div>
+        <input id="al-vendor" type="text" placeholder="e.g. Zoetis, Covetrus" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Source</div>
+        <select id="al-source" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;height:auto;">
+          <option value="Manual entry — existing inventory">Existing inventory (pre-MedSync)</option>
+          <option value="Manual entry — cycle count">Cycle count</option>
+          <option value="Manual entry — receiving">Receiving</option>
+          <option value="Manual entry">Other</option>
+        </select>
+      </div>
+      <div id="al-error" style="display:none;font-size:12px;color:var(--red);padding:8px 12px;background:#fff5f5;border-radius:6px;border:0.5px solid #f5c6c6;"></div>
+      <button onclick="submitAddLot()" style="width:100%;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:4px;">Save lot</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Supabase config ──────────────────────────────────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
@@ -693,9 +757,9 @@ async function loadLots() {
 // ── KPI cards ────────────────────────────────────────────────
 function updateKPIs() {
   const active      = ALL_LOTS.filter(l => l.status === 'Active').length;
-  const soon30      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) <= EXP_DAYS).length;
-  const soon60      = ALL_LOTS.filter(l => l.status === 'Expiring soon' && daysUntil(l.exp) > EXP_DAYS).length;
-  const expired     = ALL_LOTS.filter(l => l.status === 'Expired').length;
+  const soon30      = ALL_LOTS.filter(l => { const d = daysUntil(l.exp); return d >= 0 && d <= EXP_DAYS; }).length;
+  const soon60      = ALL_LOTS.filter(l => { const d = daysUntil(l.exp); return d > EXP_DAYS && d <= EXP_DAYS * 2; }).length;
+  const expired     = ALL_LOTS.filter(l => l.status === 'Expired' || daysUntil(l.exp) < 0).length;
   const cs          = ALL_LOTS.filter(l => l.cs).length;
 
     document.getElementById('kpi-active').textContent      = active;
@@ -828,6 +892,86 @@ function filterTable() {
     `Showing ${filtered.length} of ${ALL_LOTS.length} lots`;
 }
 
+function openAddLotModal() {
+  ['al-product','al-lotnum','al-exp','al-qty','al-vendor'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const src = document.getElementById('al-source'); if (src) src.selectedIndex = 0;
+  const loc = document.getElementById('al-loc'); if (loc) loc.selectedIndex = 0;
+  const err = document.getElementById('al-error'); if (err) err.style.display = 'none';
+  document.getElementById('add-lot-modal').classList.add('open');
+}
+
+function closeAddLotModal() {
+  document.getElementById('add-lot-modal').classList.remove('open');
+}
+
+async function submitAddLot() {
+  const product  = document.getElementById('al-product').value.trim();
+  const lotNum   = document.getElementById('al-lotnum').value.trim();
+  const expRaw   = document.getElementById('al-exp').value.trim();
+  const qty      = parseFloat(document.getElementById('al-qty').value);
+  const locId    = document.getElementById('al-loc').value;
+  const vendor   = document.getElementById('al-vendor').value.trim();
+  const source   = document.getElementById('al-source').value;
+  const errEl    = document.getElementById('al-error');
+
+  // Validate
+  const errors = [];
+  if (!product) errors.push('Product name is required.');
+  if (!lotNum)  errors.push('Lot number is required.');
+  if (!expRaw || !/^\d{2}\/\d{4}$/.test(expRaw)) errors.push('Expiration must be MM/YYYY (e.g. 06/2027).');
+  if (isNaN(qty) || qty < 0) errors.push('Quantity must be 0 or more.');
+  if (!locId)   errors.push('Location is required.');
+  if (errors.length) { errEl.textContent = errors.join(' '); errEl.style.display = ''; return; }
+  errEl.style.display = 'none';
+
+  // Parse MM/YYYY → YYYY-MM-01
+  const parts = expRaw.split('/');
+  const expDate = parts[1] + '-' + parts[0].padStart(2,'0') + '-01';
+  const today   = new Date().toISOString().split('T')[0];
+
+  // Determine status from expiration
+  const daysLeft = Math.round((new Date(expDate) - new Date()) / 86400000);
+  const status   = daysLeft < 0 ? 'Expired' : daysLeft <= 30 ? 'Expiring soon' : 'Active';
+
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/lots', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location_id:     locId,
+        lot_number:      lotNum,
+        qty_received:    qty,
+        qty_remaining:   qty,
+        received_date:   today,
+        expiration_date: expDate,
+        status:          status,
+        vendor:          vendor || null,
+        notes:           source,
+      })
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      errEl.textContent = 'Save failed: ' + body.slice(0,120);
+      errEl.style.display = '';
+      return;
+    }
+    closeAddLotModal();
+    showToast('✓ Lot added — ' + product + ' · ' + lotNum);
+    loadLots(); // refresh table
+  } catch(e) {
+    errEl.textContent = 'Network error — ' + e.message;
+    errEl.style.display = '';
+  }
+}
+
+function refreshLots() {
+  const icon = document.getElementById('lc-refresh-icon');
+  if (icon) icon.style.animation = 'spin 0.7s linear infinite';
+  loadLots().finally(() => { if (icon) icon.style.animation = ''; });
+}
+
 function setStatusFilter(val, el) {
   statusFilter = val;
   document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
@@ -937,7 +1081,7 @@ async function openLot(dbId) {
   tl.innerHTML = '<div style="color:var(--mist);font-size:11px;padding:8px 0;">Loading history…</div>';
   try {
     const logRes = await fetch(
-      SUPA_URL + `/rest/v1/activity_log?select=description,metadata,created_at,users(full_name)&reference_id=eq.${lot.id}&order=created_at.asc`,
+      SUPA_URL + `/rest/v1/activity_log?select=description,metadata,created_at,users(full_name)&reference_id=eq.${lot.dbId}&order=created_at.asc`,
       { headers: H }
     );
     const logs = await logRes.json();
@@ -999,9 +1143,9 @@ async function fetchLinkedInvoice(lot) {
   if (!invEl) return;
   try {
     const vendor = encodeURIComponent(lot.vendor.split(' ')[0]); // first word e.g. "Zoetis"
-    const loc = encodeURIComponent(lot.loc);
+    const locClause = lot.locationId ? `&location_id=eq.${lot.locationId}` : '';
     const res = await fetch(
-      SUPA_URL + `/rest/v1/invoices?select=id,invoice_number,invoice_date,vendor,total_amount,invoice_items(product_name,qty_invoiced,unit_price_invoiced)&vendor=ilike.*${vendor}*&location_name=ilike.*${loc}*&order=invoice_date.desc&limit=5`,
+      SUPA_URL + `/rest/v1/invoices?select=id,invoice_number,invoice_date,vendor,total_amount,invoice_items(product_name,qty_invoiced,unit_price_invoiced)&vendor=ilike.*${vendor}*${locClause}&order=invoice_date.desc&limit=5`,
       { headers: H }
     );
     const invs = await res.json();
@@ -1204,21 +1348,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
 }
 
-// ── Dynamic location dropdown ────────────────────────────────
-async function loadLocationFilter() {
-  try {
-    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
-    const locs = await res.json();
-    const sel = document.getElementById('loc-filter');
-    if (!sel || !Array.isArray(locs)) return;
-    const allOpt = sel.querySelector('option[value=""]');
-    sel.innerHTML = '';
-    if (allOpt) sel.appendChild(allOpt);
-    else { const o = document.createElement('option'); o.value=''; o.textContent='All locations'; sel.appendChild(o); }
-    locs.forEach(l => { const o = document.createElement('option'); o.value = l.name; o.textContent = l.name; sel.appendChild(o); });
-  } catch(e) { console.warn('Could not load locations', e); }
-}
-
 // ── Boot ──────────────────────────────────────────────────────
 (function bootSidebar() {
   var u = {}; try { u = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
@@ -1228,7 +1357,6 @@ async function loadLocationFilter() {
     if (sbl) sbl.textContent = u.full_name + ' · ' + loc;
   }
 })();
-loadLocationFilter();
 loadLots();
 
 // ── Export ────────────────────────────────────────────────────

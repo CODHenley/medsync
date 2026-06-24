@@ -14,6 +14,9 @@ Token management:
 import json, urllib.request, urllib.error, os, sys
 from datetime import date, datetime, timezone
 
+SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
+SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
+
 # ── Config ─────────────────────────────────────────────────────
 ENDPOINT    = "https://api.vetspire.com/graphql"
 WHEATON_ID  = "28253"
@@ -126,6 +129,33 @@ def main():
         json.dump(log, f, indent=2)
 
     print(f"  Saved → {LOG_FILE}")
+
+    # Upsert to Supabase daily_revenue
+    print(f"  Upserting to Supabase daily_revenue...")
+    supa_record = [{
+        "date":          today,
+        "location_id":   WHEATON_ID,
+        "location_name": "Wheaton",
+        "revenue":       total,
+        "pulled_at":     datetime.now(timezone.utc).isoformat(),
+    }]
+    req2 = urllib.request.Request(
+        SUPA_URL + "/rest/v1/daily_revenue",
+        data=json.dumps(supa_record).encode(),
+        headers={
+            "Content-Type":  "application/json",
+            "apikey":        SUPA_KEY,
+            "Authorization": f"Bearer {SUPA_KEY}",
+            "Prefer":        "resolution=merge-duplicates,return=minimal",
+        }
+    )
+    req2.get_method = lambda: "POST"
+    try:
+        with urllib.request.urlopen(req2, timeout=30) as r:
+            print(f"  ✓ Supabase upsert OK (HTTP {r.status})")
+    except urllib.error.HTTPError as e:
+        print(f"  ✗ Supabase error {e.code}: {e.read().decode()[:200]}")
+
     print(f"\n  Last 7 days:")
     for e in log[:7]:
         print(f"    {e['date']}  ${e['revenue']:>10,.2f}")

@@ -14,7 +14,7 @@ function showScreen(name) {
     var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
     var locName = (mu.locations && mu.locations[0] && mu.locations[0].name) || '';
     var fr = document.getElementById('cycle-iframe');
-    if (fr && locName) fr.src = 'medsync_cycle_count_live.html?v=20260622a&location=' + encodeURIComponent(locName);
+    if (fr && locName) fr.src = 'medsync_cycle_count_live.html?v=20260622e&location=' + encodeURIComponent(locName);
   }
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -74,14 +74,53 @@ async function loadRecognition() {
 
   try {
     // ── Award 1: location with most goods lost submissions this month ──────
-    const [glRes, usersRes, poRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: H }),
+    const _SUPA2 = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+    const _KEY2  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+    const _H2    = { 'apikey': _KEY2, 'Authorization': 'Bearer ' + _KEY2 };
+    const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
+    const [glRes, usersRes, poRes, whGlRes, whPoRes] = await Promise.all([
+      fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/po_items?select=status,submitted_at&location_id=eq.' + WHEATON_UUID + '&order=submitted_at.desc&limit=1', { headers: _H2 }),
     ]);
     const glData    = await glRes.json();
     const leadsData = await usersRes.json();
     const poData    = await poRes.json();
+    const whGlData  = await whGlRes.json();
+    const whPoData  = await whPoRes.json();
+
+    // ── Wheaton: live goods lost $ ────────────────────────────────────────────
+    const glEl = document.getElementById('wheaton-gl-val');
+    if (glEl && Array.isArray(whGlData)) {
+      const total = whGlData.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
+      glEl.textContent = total > 0 ? '$' + total.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}) : '$0';
+      glEl.style.color = total > 500 ? '#a33030' : total > 0 ? '#a0700a' : '#1C2B4A';
+    }
+
+    // ── Wheaton: live order status ────────────────────────────────────────────
+    const ordEl = document.getElementById('wheaton-order-val');
+    if (ordEl && Array.isArray(whPoData) && whPoData.length > 0) {
+      const latest = whPoData[0];
+      const st = (latest.status || '').toLowerCase();
+      if (st === 'received') {
+        ordEl.className = 'badge badge-ok'; ordEl.style.fontSize = '11px';
+        ordEl.innerHTML = '<i class="ti ti-package" style="font-size:11px;" aria-hidden="true"></i> Received';
+      } else if (st === 'submitted') {
+        ordEl.className = 'badge badge-ok'; ordEl.style.fontSize = '11px';
+        ordEl.innerHTML = '<i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted';
+      } else if (st === 'pending') {
+        ordEl.className = 'badge'; ordEl.style.cssText = 'font-size:11px;background:#FFF3CD;color:#a0700a;border:1px solid #e0c56a;';
+        ordEl.innerHTML = '<i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending';
+      } else {
+        ordEl.className = ''; ordEl.style.fontSize = '11px'; ordEl.style.color = '#8A93A8';
+        ordEl.textContent = '—';
+      }
+    } else if (ordEl && Array.isArray(whPoData) && whPoData.length === 0) {
+      ordEl.className = ''; ordEl.style.cssText = 'font-size:11px;color:#8A93A8;';
+      ordEl.textContent = 'No order';
+    }
 
     // Tally goods lost by location
     const glByLoc = {};
@@ -156,6 +195,331 @@ async function loadRecognition() {
   } catch(e) {
     if (locEl) locEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">🏅</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
     if (leadEl) leadEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">⭐</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
+  }
+  loadWheatonCOGs();
+  loadWheatonInsights();
+}
+
+async function loadWheatonCOGs() {
+  const el = document.getElementById('wheaton-cogs-val');
+  const dot = document.getElementById('wheaton-cogs-dot');
+  if (!el) return;
+  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const today = now.toISOString().split('T')[0];
+  const WHEATON_ID = '28253';
+  try {
+    const [cogsRes, revRes] = await Promise.all([
+      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_ID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_ID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
+    ]);
+    const cogsRows = await cogsRes.json();
+    const revRows  = await revRes.json();
+    if (!Array.isArray(cogsRows) || !Array.isArray(revRows)) { el.textContent = '—'; return; }
+    const totalCOGS = cogsRows.reduce(function(s, r) { return s + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 0); }, 0);
+    const totalRev  = revRows.reduce(function(s, r) { return s + (Number(r.revenue) || 0); }, 0);
+    if (totalRev < 1) { el.textContent = '—'; return; }
+    const pct = totalCOGS / totalRev * 100;
+    const label = pct.toFixed(1) + '%';
+    const isWarn = pct > 10;
+    el.textContent = label;
+    el.className = isWarn ? 'warn-t' : 'good';
+    if (dot) {
+      // Position dot proportionally on 0–14% scale
+      const left = Math.min(Math.max(pct / 14 * 100, 2), 98);
+      dot.style.left = left.toFixed(1) + '%';
+      dot.style.background = isWarn ? '#c8902a' : '#2E8B57';
+    }
+  } catch(err) {
+    el.textContent = '—';
+  }
+}
+
+async function loadWheatonInsights() {
+  const container = document.getElementById('wheaton-insights');
+  if (!container) return;
+  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
+  const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
+  const WHEATON_VID  = '28253';
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const today      = now.toISOString().split('T')[0];
+  const in60       = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 60).toISOString().split('T')[0];
+
+  try {
+    const [lotsRes, glRes, cogsRes, revRes] = await Promise.all([
+      fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,quantity_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&order=expiration_date.asc', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H }),
+      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
+    ]);
+
+    const lotsJson = await lotsRes.json();  const lots    = Array.isArray(lotsJson)  ? lotsJson  : [];
+    const glJson   = await glRes.json();    const glRows  = Array.isArray(glJson)    ? glJson    : [];
+    const diJson   = await cogsRes.json();  const diRows  = Array.isArray(diJson)    ? diJson    : [];
+    const revJson  = await revRes.json();   const revRows = Array.isArray(revJson)   ? revJson   : [];
+
+    const cards = [];
+
+    // ── 1. Expiring lots ────────────────────────────────────────────────────
+    if (lots.length > 0) {
+      lots.forEach(function(l) {
+        const name = (l.products && l.products.name) || l.lot_number || 'Unknown product';
+        const exp  = l.expiration_date;
+        const daysLeft = Math.round((new Date(exp) - now) / 86400000);
+        const urgency  = daysLeft <= 14 ? 'bad' : 'warn';
+        const qty  = l.quantity_remaining != null ? l.quantity_remaining + ' remaining' : '';
+        cards.push({
+          urgency: urgency,
+          icon: 'ti-alert-triangle',
+          title: 'Expiring soon — ' + name + ' · Wheaton',
+          body:  'Expires ' + exp + (qty ? ' · ' + qty : '') + ' · ' + daysLeft + ' days left',
+          badge: daysLeft + 'd',
+          tag:   'Expiring lot',
+          dollar: 9999 - daysLeft,
+        });
+      });
+    }
+
+    // ── 2. Goods lost this month ────────────────────────────────────────────
+    const totalGL = glRows.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
+    if (totalGL > 0) {
+      cards.push({
+        urgency: totalGL > 300 ? 'bad' : 'warn',
+        icon: 'ti-alert-circle',
+        title: 'Goods lost — Wheaton · ' + now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        body:  glRows.length + ' submission' + (glRows.length !== 1 ? 's' : '') + ' totaling $' + totalGL.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' in write-offs this month.',
+        badge: '$' + totalGL.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}),
+        tag:   'Goods lost',
+        dollar: totalGL,
+      });
+    }
+
+    // ── 3. COGs% above threshold ────────────────────────────────────────────
+    const totalCOGS = diRows.reduce(function(s, r) { return s + (Number(r.unit_cost)||0) * (Number(r.quantity)||0); }, 0);
+    const totalRev  = revRows.reduce(function(s, r) { return s + (Number(r.revenue)||0); }, 0);
+    if (totalRev > 0) {
+      const pct = totalCOGS / totalRev * 100;
+      if (pct > 10) {
+        cards.push({
+          urgency: 'bad',
+          icon: 'ti-trending-up',
+          title: 'COGs above target — Wheaton',
+          body:  'Current month COGs at ' + pct.toFixed(1) + '% — above 10% threshold. Review top-cost dispensed items.',
+          badge: pct.toFixed(1) + '%',
+          tag:   'COGs flag',
+          dollar: Math.round(totalCOGS),
+        });
+      }
+      // ── 4. Top COGS driver for context ─────────────────────────────────
+      const byProduct = {};
+      diRows.forEach(function(r) {
+        const k = r.product_name || 'Unknown';
+        byProduct[k] = (byProduct[k] || 0) + (Number(r.unit_cost)||0) * (Number(r.quantity)||0);
+      });
+      const top = Object.entries(byProduct).sort(function(a, b) { return b[1] - a[1]; })[0];
+      if (top && top[1] > 50) {
+        cards.push({
+          urgency: 'info',
+          icon: 'ti-pill',
+          title: 'Top COGS driver — ' + top[0] + ' · Wheaton',
+          body:  '$' + top[1].toFixed(2) + ' in dispensed cost MTD · ' + (totalRev > 0 ? (top[1]/totalRev*100).toFixed(1) + '% of revenue alone' : ''),
+          badge: '$' + Math.round(top[1]),
+          tag:   'Cost driver',
+          dollar: top[1],
+        });
+      }
+    }
+
+    // Sort by dollar impact desc
+    cards.sort(function(a, b) { return b.dollar - a.dollar; });
+
+    if (cards.length === 0) {
+      container.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f0faf5;border:0.5px solid #a8d8b9;border-radius:8px;margin-bottom:4px;">' +
+        '<div style="width:30px;height:30px;border-radius:7px;background:#d5ede0;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-circle-check" style="color:#2E8B57;font-size:14px;" aria-hidden="true"></i></div>' +
+        '<div style="flex:1;"><p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">Wheaton — no active flags</p>' +
+        '<p style="font-size:11px;color:#4A5568;">COGs on target · no expiring lots · no goods lost this month.</p></div></div>';
+      return;
+    }
+
+    const colorMap = {
+      bad:  { bg:'#fff5f5', border:'#f5c6c6', iconBg:'#fde8e8' },
+      warn: { bg:'#fdf8ee', border:'#f0d070', iconBg:'#fdefc7' },
+      info: { bg:'#f0f7ff', border:'#b0ccf0', iconBg:'#dceeff' },
+    };
+    container.innerHTML = cards.map(function(c) {
+      const col = colorMap[c.urgency] || colorMap.warn;
+      const badgeCls = c.urgency === 'bad' ? 'badge-bad' : c.urgency === 'info' ? 'badge-info' : 'badge-warn';
+      return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:' + col.bg + ';border:0.5px solid ' + col.border + ';border-radius:8px;margin-bottom:4px;">' +
+        '<div style="width:30px;height:30px;border-radius:7px;background:' + col.iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+        '<i class="ti ' + c.icon + '" style="color:' + (c.urgency==='bad'?'#a33030':c.urgency==='info'?'#1a56db':'#a0700a') + ';font-size:14px;" aria-hidden="true"></i></div>' +
+        '<div style="flex:1;"><p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">' + c.title + '</p>' +
+        '<p style="font-size:11px;color:#4A5568;line-height:1.5;">' + c.body + '</p></div>' +
+        '<div style="text-align:right;flex-shrink:0;"><span class="badge ' + badgeCls + '" style="font-size:11px;">' + c.badge + '</span>' +
+        '<p style="font-size:10px;color:#4A5568;margin-top:4px;">' + c.tag + '</p></div></div>';
+    }).join('');
+
+  } catch(e) {
+    // Silent fail — hardcoded insights still show
+  }
+}
+
+async function refreshAllInsights() {
+  const btn  = document.getElementById('refresh-insights-btn');
+  const icon = document.getElementById('refresh-insights-icon');
+  const managed = document.getElementById('managed-insights');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+
+  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
+  const LOC   = {
+    '11111111-0000-0000-0000-000000000001': 'Lincoln Park',
+    '11111111-0000-0000-0000-000000000002': 'Old Orchard',
+    '11111111-0000-0000-0000-000000000003': 'West Loop',
+    '11111111-0000-0000-0000-000000000004': 'Wheaton',
+  };
+  const now        = new Date();
+  const today      = now.toISOString().split('T')[0];
+  const days30ago  = new Date(now - 30*864e5).toISOString().split('T')[0];
+  const days60fwd  = new Date(+now + 60*864e5).toISOString().split('T')[0];
+
+  function fmt$(n) { return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
+
+  async function sg(path) {
+    try {
+      const r = await fetch(_SUPA + path, { headers: _H });
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
+    } catch(e) { return []; }
+  }
+
+  function makeCard(icon, iconColor, bg, border, iconBg, title, body, badge, badgeCls, tag) {
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:${bg};border:0.5px solid ${border};border-radius:8px;">
+        <div style="width:30px;height:30px;border-radius:7px;background:${iconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ${icon}" style="color:${iconColor};font-size:14px;" aria-hidden="true"></i>
+        </div>
+        <div style="flex:1;">
+          <p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">${title}</p>
+          <p style="font-size:11px;color:#4A5568;line-height:1.5;">${body}</p>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <span class="badge ${badgeCls}" style="font-size:11px;">${badge}</span>
+          <p style="font-size:10px;color:#4A5568;margin-top:4px;">${tag}</p>
+        </div>
+      </div>`;
+  }
+
+  try {
+    const [glRows, lots, diRows] = await Promise.all([
+      sg(`/rest/v1/goods_lost?select=location_id,value_lost,product_name&created_at=gte.${days30ago}&order=value_lost.desc&limit=200`),
+      sg(`/rest/v1/lots?select=expiration_date,quantity_remaining,location_id,products(name)&expiration_date=gte.${today}&expiration_date=lte.${days60fwd}&order=expiration_date.asc&limit=50`),
+      sg(`/rest/v1/dispensed_items?select=product_name,location_name,unit_cost,quantity&dispensed_at=gte.${days30ago}&sku=not.is.null&limit=2000`),
+    ]);
+
+    const cards = [];
+
+    // 1. Top goods-lost location
+    if (glRows.length) {
+      const byLoc = {};
+      glRows.forEach(function(r) {
+        const lid = r.location_id || '';
+        byLoc[lid] = (byLoc[lid] || 0) + (Number(r.value_lost) || 0);
+      });
+      const [topLid, topVal] = Object.entries(byLoc).sort((a,b) => b[1]-a[1])[0];
+      const locName = LOC[topLid] || topLid;
+      const count   = glRows.filter(r => r.location_id === topLid).length;
+      const topProd = (glRows.find(r => r.location_id === topLid && r.product_name) || {}).product_name || '';
+      const urgency = topVal > 500 ? 'bad' : 'warn';
+      cards.push({ dollar: topVal, html: makeCard(
+        'ti-alert-circle',
+        urgency==='bad' ? '#a33030' : '#a0700a',
+        urgency==='bad' ? '#fff5f5' : '#fdf8ee',
+        urgency==='bad' ? '#f5c6c6' : '#f0d070',
+        urgency==='bad' ? '#fde8e8' : '#fdefc7',
+        `Goods lost — ${locName} · top location this period`,
+        `${count} submission${count!==1?'s':''} totaling ${fmt$(topVal)} in the last 30 days.${topProd ? ' Highest item: ' + topProd + '.' : ''}`,
+        fmt$(topVal),
+        urgency==='bad' ? 'badge-bad' : 'badge-warn',
+        'Goods lost'
+      )});
+    }
+
+    // 2. Most urgent expiring lot
+    if (lots.length) {
+      const lot      = lots[0];
+      const exp      = lot.expiration_date || '';
+      const daysLeft = exp ? Math.round((new Date(exp) - now) / 864e5) : 999;
+      const prodName = (lot.products || {}).name || 'Unknown product';
+      const locName  = LOC[lot.location_id] || 'Unknown location';
+      const qty      = lot.quantity_remaining;
+      const urgency  = daysLeft <= 14 ? 'bad' : 'warn';
+      cards.push({ dollar: 10000 - daysLeft, html: makeCard(
+        'ti-alert-triangle',
+        urgency==='bad' ? '#a33030' : '#a0700a',
+        urgency==='bad' ? '#fff5f5' : '#fdf8ee',
+        urgency==='bad' ? '#f5c6c6' : '#f0d070',
+        urgency==='bad' ? '#fde8e8' : '#fdefc7',
+        `Expiring soon — ${prodName} · ${locName}`,
+        `Expires ${exp}${qty != null ? ' · ' + qty + ' remaining' : ''} · ${daysLeft} days left · ${lots.length} lot${lots.length!==1?'s':''} expiring portfolio-wide within 60 days.`,
+        `${daysLeft}d`,
+        urgency==='bad' ? 'badge-bad' : 'badge-warn',
+        'Expiring lot'
+      )});
+    }
+
+    // 3. Top COGS driver
+    if (diRows.length) {
+      const byProd = {};
+      diRows.forEach(function(r) {
+        const k = r.product_name || 'Unknown';
+        byProd[k] = (byProd[k] || 0) + (Number(r.unit_cost)||0) * (Number(r.quantity)||0);
+      });
+      const [topProd, topCost] = Object.entries(byProd).sort((a,b) => b[1]-a[1])[0];
+      const locCounts = {};
+      diRows.filter(r => r.product_name === topProd).forEach(function(r) {
+        const l = r.location_name || '—';
+        locCounts[l] = (locCounts[l] || 0) + (Number(r.unit_cost)||0) * (Number(r.quantity)||0);
+      });
+      const topLoc = Object.entries(locCounts).sort((a,b) => b[1]-a[1])[0]?.[0] || '—';
+      cards.push({ dollar: topCost, html: makeCard(
+        'ti-pill', '#a0700a', '#fdf8ee', '#f0d070', '#fdefc7',
+        `Top cost driver — ${topProd}`,
+        `${fmt$(topCost)} in dispensed cost over 30 days. Highest volume at ${topLoc}. Verify par levels and review substitution options.`,
+        fmt$(topCost), 'badge-warn', 'Cost driver'
+      )});
+    }
+
+    cards.sort((a,b) => b.dollar - a.dollar);
+    const top3 = cards.slice(0,3);
+
+    if (managed && top3.length) {
+      managed.innerHTML =
+        '<!-- MANAGED-INSIGHTS-START -->\n' +
+        top3.map(c => '      ' + c.html).join('\n') +
+        '\n      <!-- MANAGED-INSIGHTS-END -->';
+    }
+
+    // Also refresh Wheaton-specific insights
+    loadWheatonInsights();
+
+    // Stamp the refresh time
+    const stamp = document.getElementById('insights-refreshed-at');
+    const timeStr = now.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    if (stamp) stamp.textContent = 'Updated ' + timeStr;
+
+  } catch(e) {
+    console.error('refreshAllInsights error:', e);
+  } finally {
+    if (btn)  { btn.disabled = false; btn.style.opacity = '1'; }
+    if (icon) icon.style.animation = '';
   }
 }
 
@@ -460,6 +824,7 @@ function deepDiveLoc(locCode) {
   .comp-cell { border-radius: 8px; padding: 10px 12px; }
   .insight-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid #E4E0F0; }
   .insight-row:last-child { border-bottom: none; padding-bottom: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .ins-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .ins-title { font-size: 12px; font-weight: 500; color: #1C2B4A; margin-bottom: 2px; }
   .ins-body { font-size: 11px; color: #4A5568; line-height: 1.5; }
@@ -1108,12 +1473,12 @@ function deepDiveLoc(locCode) {
         <!-- Lincoln Park -->
         <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Lincoln Park</p><p class="loc-sub">IL · Maria K.</p></div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">8.1%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:35%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
-          <span class="warn-t" data-label="Alerts">3</span>
-          <span class="bad-t" data-label="Expiring">2 ⚠</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$580</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 14 min</span>
-          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span class="good" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">8.1%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:35%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
+          <span class="warn-t" data-label="Alerts" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View lot alerts">3</span>
+          <span class="bad-t" data-label="Expiring" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View expiring lots">2 ⚠</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">$580</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✓ Done · 14 min</span>
+          <span class="badge badge-ok" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- Old Orchard -->
@@ -1122,12 +1487,12 @@ function deepDiveLoc(locCode) {
             <p class="loc-name">Old Orchard</p>
             <p class="loc-sub warn-t">IL · Taryn S. · <span style="color:#a33030;">WG: +38% gauze</span></p>
           </div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="warn-t" style="font-size:12px;font-weight:600;">9.8%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:63%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
-          <span class="warn-t" data-label="Alerts">2</span>
-          <span class="bad-t" data-label="Expiring">1 ⚠</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$1,340</span>
-          <span style="font-size:11px;color:#a33030;font-weight:500;" data-label="Cycle count">✗ Not done</span>
-          <span class="badge badge-warn" style="font-size:11px;" data-label="Order status"><i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span class="warn-t" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">9.8%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:63%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
+          <span class="warn-t" data-label="Alerts" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View lot alerts">2</span>
+          <span class="bad-t" data-label="Expiring" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View expiring lots">1 ⚠</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">$1,340</span>
+          <span style="font-size:11px;color:#a33030;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✗ Not done</span>
+          <span class="badge badge-warn" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending</span>
         </div>
 
         <!-- West Loop -->
@@ -1136,23 +1501,23 @@ function deepDiveLoc(locCode) {
             <p class="loc-name">West Loop</p>
             <p class="loc-sub">IL · Felicia G. · <span style="color:#a0700a;">WG: +21% syringes</span></p>
           </div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">7.9%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:32%;transform:translateX(-50%);width:5px;height:5px;background:#C8922A;border-radius:50%;top:-1px;"></div></div></span>
-          <span class="bad-t" data-label="Alerts">2</span>
-          <span style="color:#1C2B4A;font-size:12px;" data-label="Expiring">0</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$490</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 11 min</span>
-          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span class="good" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">7.9%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:32%;transform:translateX(-50%);width:5px;height:5px;background:#C8922A;border-radius:50%;top:-1px;"></div></div></span>
+          <span class="bad-t" data-label="Alerts" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View lot alerts">2</span>
+          <span style="color:#1C2B4A;font-size:12px;cursor:pointer;text-decoration:underline dotted;" data-label="Expiring" onclick="showScreen('lifecycle')" title="View expiring lots">0</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">$490</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✓ Done · 11 min</span>
+          <span class="badge badge-ok" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- Wheaton -->
         <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Wheaton</p><p class="loc-sub">IL · Megan H.</p></div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">8.7%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
-          <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
-          <span class="warn-t" data-label="Expiring">1</span>
-          <span style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">$437</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 18 min</span>
-          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span id="wheaton-cogs-val" class="good" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">…</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div id="wheaton-cogs-dot" style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
+          <span style="color:#1C2B4A;font-size:12px;cursor:pointer;text-decoration:underline dotted;" data-label="Alerts" onclick="showScreen('lifecycle')" title="View lot alerts">0</span>
+          <span class="warn-t" data-label="Expiring" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View expiring lots">1</span>
+          <span id="wheaton-gl-val" style="color:#1C2B4A;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">…</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✓ Done · 18 min</span>
+          <span id="wheaton-order-val" class="badge badge-ok" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- DEMO: Naperville (Chicagoland South) -->
@@ -1202,8 +1567,19 @@ function deepDiveLoc(locCode) {
 
     <!-- Ranked insight engine — top 3 -->
     <div style="background:#fff;border-top:0.5px solid #C8C4D8;padding:12px 20px;display:flex;flex-direction:column;gap:8px;">
-      <p style="font-size:10px;color:#4A5568;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Platform insights — ranked by dollar impact</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <p style="font-size:10px;color:#4A5568;text-transform:uppercase;letter-spacing:.05em;">Platform insights — ranked by dollar impact</p>
+          <span id="insights-refreshed-at" style="font-size:10px;color:#8A93A8;"></span>
+        </div>
+        <button id="refresh-insights-btn" onclick="refreshAllInsights()" style="display:flex;align-items:center;gap:5px;background:#F0EEFA;border:0.5px solid #C8C4D8;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:600;color:#1C2B4A;cursor:pointer;">
+          <i class="ti ti-refresh" id="refresh-insights-icon" style="font-size:12px;" aria-hidden="true"></i> Refresh insights
+        </button>
+      </div>
 
+      <div id="wheaton-insights"></div>
+
+      <div id="managed-insights"><!-- MANAGED-INSIGHTS-START -->
       <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
         <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-tool" style="color:#a33030;font-size:14px;" aria-hidden="true"></i>
@@ -1245,6 +1621,7 @@ function deepDiveLoc(locCode) {
           <p style="font-size:10px;color:#4A5568;margin-top:4px;">White goods</p>
         </div>
       </div>
+      <!-- MANAGED-INSIGHTS-END --></div>
 
       <div style="display:flex;justify-content:flex-end;margin-top:2px;">
         <button onclick="dbNav('ov');" style="background:none;border:none;color:#1C2B4A;font-size:11px;cursor:pointer;text-decoration:underline;padding:0;">View all insights in analytics dashboard →</span></button>
@@ -1285,7 +1662,7 @@ function deepDiveLoc(locCode) {
   </iframe>
 </div>
 <div id="ms-cycle" class="ms-screen">
-  <iframe id="cycle-iframe" src="medsync_cycle_count_live.html?v=20260622a"
+  <iframe id="cycle-iframe" src="medsync_cycle_count_live.html?v=20260622e"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Cycle Count">
   </iframe>
