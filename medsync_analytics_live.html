@@ -657,7 +657,7 @@ if (window.self !== window.top) {
           </div>
           <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg" id="ov-cogs">8.4%</span></div>
           <div class="mrow"><span class="mk">Target range</span><span class="mv">6.5–7.1%</span></div>
-          <div class="mrow"><span class="mk">Total revenue</span><span class="mv">$1.168M</span></div>
+          <div class="mrow"><span class="mk">Total revenue</span><span class="mv" id="ov-revenue">$1.168M</span></div>
           <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">$98,112</span></div>
           <div class="mrow"><span class="mk">Procurement savings</span><span class="mv cg" id="ov-sav">…</span></div>
           <div class="mrow"><span class="mk">Goods lost</span><span class="mv ca" id="ov-gl">…</span></div>
@@ -1081,6 +1081,16 @@ async function loadData() {
     if (ovCogsEl && whPct !== null) {
       ovCogsEl.textContent = whPct.toFixed(1) + '%';
       ovCogsEl.className = 'mv ' + (whPct > 7.1 ? 'cr' : whPct > 6.5 ? 'ca' : 'cg');
+    }
+    const ovRevEl = document.getElementById('ov-revenue');
+    if (ovRevEl) {
+      if (loc === 'wh' && whRev > 0) {
+        ovRevEl.textContent = '$' + (whRev / 1000).toFixed(0) + 'K';
+      } else if (loc === 'all') {
+        ovRevEl.textContent = '$1.168M'; // portfolio total — hardcoded until all locations have revenue data
+      } else {
+        ovRevEl.textContent = '—';
+      }
     }
 
     // Cache for export
