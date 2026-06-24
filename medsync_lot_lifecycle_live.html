@@ -716,7 +716,7 @@ async function loadLots() {
   setTableLoading(true);
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/lots?select=*,products(*),locations(name),users(full_name)&order=expiration_date.asc',
+      SUPA_URL + '/rest/v1/lots?select=*,products(*),locations(name),users(full_name)&location_id=in.(11111111-0000-0000-0000-000000000001,11111111-0000-0000-0000-000000000002,11111111-0000-0000-0000-000000000003,11111111-0000-0000-0000-000000000004)&order=expiration_date.asc',
       { headers: H }
     );
     const rows = await res.json();
