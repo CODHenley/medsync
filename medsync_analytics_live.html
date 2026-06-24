@@ -925,8 +925,7 @@ async function loadData() {
   let locFilter = '';
   if (loc !== 'all') {
     locFilter = `&location_id=eq.${LOC_IDS[loc]}`;
-  }
-  _currentLocFilter = locFilter; // share with loadPI / loadExpiry else if (_region !== 'all' && _regIds.length > 0) {
+  } else if (_region !== 'all' && _regIds.length > 0) {
     locFilter = `&location_id=in.(${_regIds.join(',')})`;
   } else if (_region !== 'all' && _regIds.length === 0) {
     // No real Supabase data for this region
@@ -939,6 +938,7 @@ async function loadData() {
     if(gb) gb.innerHTML = '';
     return;
   }
+  _currentLocFilter = locFilter;
 
   try {
     // ── 1. Goods lost totals ─────────────────────────────────
