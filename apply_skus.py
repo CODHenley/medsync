@@ -52,13 +52,13 @@ DISCONTINUED = [
 
 print("=== Applying SKUs ===")
 for name_fragment, sku in SKUS:
-    enc = urllib.parse.quote(f'*{name_fragment}*')
-    status = supa("PATCH", f"/rest/v1/products?name=ilike.{enc}", {"sku": sku})
+    enc = urllib.parse.quote(name_fragment, safe='')
+    status = supa("PATCH", f"/rest/v1/products?name=ilike.*{enc}*", {"sku": sku})
     print(f"  ✓ {name_fragment:<35} SKU: {sku}  (HTTP {status})")
 
 print("\n=== Removing discontinued products ===")
 for name in DISCONTINUED:
-    enc = urllib.parse.quote(name)
+    enc = urllib.parse.quote(name, safe='')
     status = supa("DELETE", f"/rest/v1/products?name=eq.{enc}")
     print(f"  ✗ removed: {name}  (HTTP {status})")
 
