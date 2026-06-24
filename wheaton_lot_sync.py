@@ -160,7 +160,8 @@ depleted = [(k, v) for k, v in lot_map.items() if v["qty_net"] <= 0]
 print(f"  {len(in_stock)} lots currently in stock (qty > 0)")
 print(f"  {len(depleted)} lots depleted/returned (qty ≤ 0)")
 
-# ── Parse expiration dates and build records ──────────────────────────────────
+# ── Parse expiration dates and build records (in-stock lots only) ─────────────
+lot_map = {k: v for k, v in lot_map.items() if v["qty_net"] > 0}
 today = date.today()
 records = []
 skipped_bad_exp = 0
