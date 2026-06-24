@@ -764,12 +764,13 @@ async function renderReorderSuggestions() {
   document.getElementById('btn-approve-all').style.display = 'none';
   document.getElementById('reorder-banner').style.display = 'none';
 
-  const locId = document.getElementById('sel-location').value || '28253';
+  const locId   = document.getElementById('sel-location').value || '28253';
+  const locUUID = LOC_UUID[locId] || locId;
 
   try {
-    // 1. Fetch current on-hand qty from lots
+    // 1. Fetch current on-hand qty from lots (lots table uses UUID location_id)
     const lotsData = await query('lots',
-      `select=notes,qty_remaining&location_id=eq.${locId}&qty_remaining=gt.0&limit=1000`
+      `select=notes,qty_remaining&location_id=eq.${locUUID}&qty_remaining=gt.0&limit=1000`
     );
     const onHandMap = {};
     for (const lot of lotsData) {
