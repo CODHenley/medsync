@@ -414,6 +414,13 @@ if (window.self !== window.top) {
           </div>
         </div>
         <div class="sum-card">
+          <div class="sum-icon" style="background:var(--purple-bg);">💊</div>
+          <div class="sum-body">
+            <div class="sum-v" id="s-lots">—</div>
+            <div class="sum-l">Lot events</div>
+          </div>
+        </div>
+        <div class="sum-card">
           <div class="sum-icon" style="background:#F0EEF8;">👤</div>
           <div class="sum-body">
             <div class="sum-v" id="s-users">—</div>
@@ -436,6 +443,7 @@ if (window.self !== window.top) {
             <div class="ttab" onclick="setTypeFilter('order',this)">Orders</div>
             <div class="ttab" onclick="setTypeFilter('receive',this)">Receiving</div>
             <div class="ttab" onclick="setTypeFilter('goods',this)">Goods Lost</div>
+            <div class="ttab" onclick="setTypeFilter('lot',this)">Lots</div>
             <div class="ttab" onclick="setTypeFilter('user',this)">Users</div>
           </div>
         </div>
@@ -572,6 +580,7 @@ function updateSummaryCards() {
   document.getElementById('s-orders').textContent   = scoped.filter(e=>e.type==='order').length;
   document.getElementById('s-receives').textContent = scoped.filter(e=>e.type==='receive').length;
   document.getElementById('s-goods').textContent    = scoped.filter(e=>e.type==='goods').length;
+  document.getElementById('s-lots').textContent     = scoped.filter(e=>e.type==='lot').length;
   document.getElementById('s-users').textContent    = scoped.filter(e=>e.type==='user').length;
 }
 
@@ -791,10 +800,10 @@ function closeModal() {
 
 // ── Helpers ───────────────────────────────────────────────────
 function typeClass(t) {
-  return t==='order'?'b-order':t==='receive'?'b-receive':t==='goods'?'b-goods':'b-user';
+  return t==='order'?'b-order':t==='receive'?'b-receive':t==='goods'?'b-goods':t==='lot'?'b-lot':'b-user';
 }
 function typeLabel(t) {
-  return t==='order'?'Order':t==='receive'?'Receiving':t==='goods'?'Goods Lost':t==='user'?'User':'System';
+  return t==='order'?'Order':t==='receive'?'Receiving':t==='goods'?'Goods Lost':t==='lot'?'Lot':t==='user'?'User':'System';
 }
 function fmtTs(ts) {
   const dt = new Date(ts);
