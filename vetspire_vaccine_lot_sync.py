@@ -66,51 +66,65 @@ except Exception as e:
     print(f"  Introspection not available: {e}")
     all_names = []
 
-# ── Attempt 1: immunizations query (confirmed in schema probe) ────────────────
-VACC_QUERY = """
-query($lid: ID!, $after: String) {
-    immunizations(locationId: $lid, first: 200, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        edges { node {
-            id
-            lotNumber
-            expirationDate
-            administeredOn
-            product { id name }
-        }}
+# ── Attempt 1: immunizations — returns plain list (no Connection wrapper) ─────
+# Error confirmed: "Cannot query field 'pageInfo' on type 'Immunization'"
+# → direct list response; field is "administered" not "administered"
+IMMU_QUERY = """
+query($lid: ID!) {
+    immunizations(locationId: $lid, first: 200) {
+        id
+        lotNumber
+        expirationDate
+        administered
+        product { id name }
     }
 }
 """
 
-# ── Attempt 2: listImmunizations ──────────────────────────────────────────────
-PVACC_QUERY = """
+# ── Attempt 2: listImmunizations — Connection with edges ──────────────────────
+# Error confirmed: field is "administered" not "administered"
+LIST_IMMU_QUERY = """
 query($lid: ID!) {
     listImmunizations(locationId: $lid, first: 200) {
         edges { node {
             id
             lotNumber
             expirationDate
-            administeredOn
+            administered
             product { id name }
         }}
     }
 }
 """
 
-# ── Attempt 3: immunization (singular) ───────────────────────────────────────
-INVLOTS_QUERY = """
+# ── Attempt 3: immunizationsDue — another known query from schema ─────────────
+IMMU_DUE_QUERY = """
 query($lid: ID!) {
-    immunization(locationId: $lid, first: 200) {
+    immunizationsDue(locationId: $lid, first: 200) {
         edges { node {
             id
             lotNumber
             expirationDate
-            administeredOn
+            administered
             product { id name }
         }}
     }
 }
 """
+
+def extract_nodes(result, key):
+    """Handle both plain-list and Connection response shapes."""
+    data = (result.get("data") or {}).get(key)
+    if not data:
+        return [], None, None
+    if isinstance(data, list):
+        # Plain list shape (immunizations)
+        return data, None, None
+    # Connection shape (edges/pageInfo)
+    edges = data.get("edges") or []
+    nodes = [e["node"] for e in edges if e.get("node")]
+    page_info = data.get("pageInfo") or {}
+    return nodes, page_info.get("hasNextPage"), page_info.get("endCursor")
 
 today_str = date.today().isoformat()
 upserted = 0
@@ -122,33 +136,26 @@ for loc in LOCATIONS:
     source = None
 
     for (label, query, conn_key) in [
-        ("immunizations",      VACC_QUERY,    "immunizations"),
-        ("listImmunizations",  PVACC_QUERY,   "listImmunizations"),
-        ("immunization",       INVLOTS_QUERY, "immunization"),
+        ("immunizations",     IMMU_QUERY,      "immunizations"),
+        ("listImmunizations", LIST_IMMU_QUERY, "listImmunizations"),
+        ("immunizationsDue",  IMMU_DUE_QUERY,  "immunizationsDue"),
     ]:
         try:
             result = gql(query, {"lid": loc["vetspire_id"]})
             if "errors" in result:
                 print(f"  {label}: {result['errors'][0].get('message','error')}")
                 continue
-            conn = (result.get("data") or {}).get(conn_key) or {}
-            edges = conn.get("edges") or []
-            nodes = [e["node"] for e in edges if e.get("node")]
+            batch, has_next, cursor = extract_nodes(result, conn_key)
+            nodes = list(batch)
             print(f"  {label}: {len(nodes)} records")
             source = label
 
-            # Handle pagination for vaccinations
-            page_info = conn.get("pageInfo") or {}
-            cursor = page_info.get("endCursor")
-            while page_info.get("hasNextPage") and cursor:
+            # Paginate Connection-style responses
+            while has_next and cursor:
                 try:
                     r2 = gql(query, {"lid": loc["vetspire_id"], "after": cursor})
-                    conn2 = (r2.get("data") or {}).get(conn_key) or {}
-                    edges2 = conn2.get("edges") or []
-                    more = [e["node"] for e in edges2 if e.get("node")]
+                    more, has_next, cursor = extract_nodes(r2, conn_key)
                     nodes.extend(more)
-                    page_info = conn2.get("pageInfo") or {}
-                    cursor = page_info.get("endCursor")
                 except Exception:
                     break
             break
@@ -173,7 +180,7 @@ for loc in LOCATIONS:
             skipped += 1
             continue
         key = (pid, lot_num)
-        if not lot_map.get(key) or (node.get("administeredOn") or "") > (lot_map[key].get("administeredOn") or ""):
+        if not lot_map.get(key) or (node.get("administered") or "") > (lot_map[key].get("administered") or ""):
             lot_map[key] = node
 
     print(f"  {len(lot_map)} unique (product, lot) pairs")
@@ -183,7 +190,7 @@ for loc in LOCATIONS:
         exp_raw = (node.get("expirationDate") or "").strip()
         prod = node.get("product") or {}
         pname = prod.get("name") or ""
-        administered = node.get("administeredOn") or today_str
+        administered = node.get("administered") or today_str
 
         exp_date = None
         if len(exp_raw) == 10 and "-" in exp_raw:
