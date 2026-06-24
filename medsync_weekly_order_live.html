@@ -335,11 +335,14 @@ const state = {
   allProducts:  [],        // for modal search
   submitted:    new Set(), // vendor names printed this session
   generated:    new Set(), // vendor names pushed to receiving this session
-  mtdRevenue:   0,
-  weekRevenue:  0,
-  externalSpend: 0,  // manually entered spend outside MedSync for this month
-  poSpend:       0,  // received MedSync POs this month
-  cogsPeriod:   'month',   // 'month' | 'week'
+  mtdRevenue:        0,
+  weekRevenue:       0,
+  estMonthRevenue:   0,   // seasonal estimate: projected full-month revenue
+  estWeekRevenue:    0,   // seasonal estimate: projected full-week revenue
+  estMonthLabel:     '',  // e.g. "June 2025 avg" or "4-wk trend"
+  externalSpend:     0,
+  poSpend:           0,
+  cogsPeriod:        'month',
 };
 
 function _generatedKey() { return 'medsync_generated_' + (state.locationId||'') + '_' + getWeekStart(); }
@@ -357,35 +360,61 @@ function _saveExternalSpend(v) {
 }
 
 async function loadCogsBudget() {
-  state.mtdRevenue   = 0;
-  state.weekRevenue  = 0;
-  state.poSpend      = 0;
+  state.mtdRevenue = state.weekRevenue = state.estMonthRevenue = state.estWeekRevenue = state.poSpend = 0;
+  state.estMonthLabel = '';
   if (!state.locationId) return;
   _loadExternalSpend();
-  // daily_revenue uses Vetspire integer location IDs, not Supabase UUIDs
   const VID_MAP = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
   const vid = VID_MAP[state.locationName];
   if (!vid) return;
   try {
-    const now    = new Date();
-    const today  = now.toISOString().slice(0,10);
-    const month1 = today.slice(0,7) + '-01';
+    const now       = new Date();
+    const today     = now.toISOString().slice(0,10);
+    const month1    = today.slice(0,7) + '-01';
+    const daysInMo  = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
     // Week start (Monday)
     const ws = new Date(now);
     ws.setDate(ws.getDate() - (ws.getDay() === 0 ? 6 : ws.getDay() - 1));
     const weekStart = ws.toISOString().slice(0,10);
-    // Fetch revenue + received MedSync POs in parallel
-    const [mRes, wRes, poRes] = await Promise.all([
+    // Prior year same month (seasonal baseline)
+    const pyMonth1 = (now.getFullYear()-1) + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+    const pyMonth2 = (now.getFullYear()-1) + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(daysInMo).padStart(2,'0');
+    // Trailing 8 weeks for trend (covers ~2 months of daily context)
+    const t8w = new Date(now); t8w.setDate(t8w.getDate() - 56);
+    const t8wStr = t8w.toISOString().slice(0,10);
+
+    const [mRes, wRes, poRes, pyRes, trendRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid + '&date=gte.' + month1 + '&date=lte.' + today, { headers: H }),
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid + '&date=gte.' + weekStart + '&date=lte.' + today, { headers: H }),
       fetch(SUPA_URL + '/rest/v1/po_items?select=gpo_price,order_qty&location_id=eq.' + state.locationId + '&status=eq.received&week_start=gte.' + month1, { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue,date&location_id=eq.' + vid + '&date=gte.' + pyMonth1 + '&date=lte.' + pyMonth2, { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue,date&location_id=eq.' + vid + '&date=gte.' + t8wStr + '&date=lte.' + today, { headers: H }),
     ]);
-    const mRows  = await mRes.json();
-    const wRows  = await wRes.json();
-    const poRows = await poRes.json();
+    const mRows    = await mRes.json();
+    const wRows    = await wRes.json();
+    const poRows   = await poRes.json();
+    const pyRows   = await pyRes.json();
+    const trendRows= await trendRes.json();
+
     if (Array.isArray(mRows))  state.mtdRevenue  = mRows.reduce((s,r)  => s + (parseFloat(r.revenue)||0), 0);
     if (Array.isArray(wRows))  state.weekRevenue = wRows.reduce((s,r)  => s + (parseFloat(r.revenue)||0), 0);
     if (Array.isArray(poRows)) state.poSpend     = poRows.reduce((s,r) => s + (parseFloat(r.gpo_price)||0)*(parseInt(r.order_qty)||0), 0);
+
+    // Seasonal estimate: prefer prior-year same month, fall back to 8-week trailing avg
+    if (Array.isArray(pyRows) && pyRows.length >= 15) {
+      const pyTotal = pyRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
+      state.estMonthRevenue = pyTotal;
+      state.estMonthLabel   = now.toLocaleString('default',{month:'long'}) + ' ' + (now.getFullYear()-1);
+      // Weekly estimate: prior-year same month daily avg × 5 business days
+      state.estWeekRevenue  = (pyTotal / pyRows.length) * 5;
+    } else if (Array.isArray(trendRows) && trendRows.length >= 14) {
+      // Trailing 8-week daily avg × days in month / week
+      const trendTotal = trendRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
+      const dailyAvg   = trendTotal / trendRows.length;
+      state.estMonthRevenue = dailyAvg * daysInMo;
+      state.estWeekRevenue  = dailyAvg * 5;
+      state.estMonthLabel   = '8-wk trend';
+    }
   } catch(e) {}
 }
 
@@ -962,18 +991,29 @@ function renderQueueView() {
   const gpoTotal      = state.queue.reduce((s,i)=>s+i.gpoPrice*i.orderQty,0);
   const isWeek        = state.cogsPeriod === 'week';
   const revenue       = isWeek ? state.weekRevenue : state.mtdRevenue;
+  const estRevenue    = isWeek ? state.estWeekRevenue : state.estMonthRevenue;
   const totalBudget   = revenue * 0.069;
+  const estBudget     = estRevenue * 0.069;
   const totalSpent    = state.externalSpend + state.poSpend;
   const available     = totalBudget - totalSpent;
-  const availVal      = revenue > 0 ? (available >= 0 ? `$${Math.round(available).toLocaleString()}` : `-$${Math.round(Math.abs(available)).toLocaleString()}`) : '—';
+  const estAvailable  = estBudget - totalSpent;
+  const availVal      = revenue > 0
+    ? (available >= 0 ? `$${Math.round(available).toLocaleString()}` : `-$${Math.round(Math.abs(available)).toLocaleString()}`)
+    : '—';
   const availColor    = revenue === 0 ? 'var(--mist)' : available > totalBudget * 0.25 ? '#16a34a' : available > 0 ? '#d97706' : '#dc2626';
   const spentParts    = [];
   if (state.externalSpend > 0) spentParts.push(`$${Math.round(state.externalSpend).toLocaleString()} external`);
-  if (state.poSpend > 0)       spentParts.push(`$${Math.round(state.poSpend).toLocaleString()} via MedSync POs`);
-  const spentStr      = spentParts.length ? spentParts.join(' + ') : '$0 spent';
+  if (state.poSpend > 0)       spentParts.push(`$${Math.round(state.poSpend).toLocaleString()} via MedSync`);
+  const spentStr      = spentParts.length ? spentParts.join(' + ') + ' spent · ' : '';
   const tooltipText   = revenue > 0
-    ? `6.9% × $${Math.round(revenue).toLocaleString()} revenue = $${Math.round(totalBudget).toLocaleString()} budget · ${spentStr} · $${Math.round(Math.max(0,available)).toLocaleString()} remaining`
-    : 'No revenue data for this location yet';
+    ? `6.9% × $${Math.round(revenue).toLocaleString()} actual revenue = $${Math.round(totalBudget).toLocaleString()} · ${spentStr}$${Math.round(Math.max(0,available)).toLocaleString()} available`
+    : `No actual revenue yet — seasonal estimate based on ${state.estMonthLabel||'historical data'}`;
+  const estLine       = estBudget > 0
+    ? `<div style="font-size:10px;color:#94a3b8;margin-top:1px;white-space:nowrap;"
+         title="Seasonal estimate: 6.9% × $${Math.round(estRevenue).toLocaleString()} (${state.estMonthLabel}) − spent">
+         Est. $${Math.round(Math.max(0,estAvailable)).toLocaleString()} · <em>${state.estMonthLabel}</em>
+       </div>`
+    : '';
 
   let html = `
     <div class="stat-bar">
@@ -984,8 +1024,9 @@ function renderQueueView() {
       <div class="sb-item"><div class="sb-val">$${gpoTotal.toFixed(2)}</div><div class="sb-label">Est. GPO total</div></div>
       <div class="sb-divider"></div>
       <div class="sb-item" title="${tooltipText}" style="cursor:default;">
-        <div class="sb-val" style="color:${availColor};font-weight:700;">${availVal}</div>
-        <div class="sb-label" style="display:flex;align-items:center;gap:5px;">
+        <div class="sb-val" style="color:${availColor};font-weight:700;line-height:1.2;">${availVal}</div>
+        ${estLine}
+        <div class="sb-label" style="display:flex;align-items:center;gap:5px;margin-top:3px;">
           <select onchange="setCogsPeriod(this.value)" onclick="event.stopPropagation()"
             style="font-size:10px;border:none;background:transparent;color:var(--mist);cursor:pointer;padding:0;outline:none;font-family:inherit;">
             <option value="month" ${!isWeek?'selected':''}>Monthly budget</option>
