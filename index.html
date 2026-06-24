@@ -1186,12 +1186,12 @@ function deepDiveLoc(locCode) {
         <!-- Lincoln Park -->
         <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Lincoln Park</p><p class="loc-sub">IL · Maria K.</p></div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">8.1%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:35%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
-          <span class="warn-t" data-label="Alerts">3</span>
-          <span class="bad-t" data-label="Expiring">2 ⚠</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$580</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 14 min</span>
-          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span class="good" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">8.1%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:35%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
+          <span class="warn-t" data-label="Alerts" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View lot alerts">3</span>
+          <span class="bad-t" data-label="Expiring" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View expiring lots">2 ⚠</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">$580</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✓ Done · 14 min</span>
+          <span class="badge badge-ok" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- Old Orchard -->
@@ -1200,12 +1200,12 @@ function deepDiveLoc(locCode) {
             <p class="loc-name">Old Orchard</p>
             <p class="loc-sub warn-t">IL · Taryn S. · <span style="color:#a33030;">WG: +38% gauze</span></p>
           </div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="warn-t" style="font-size:12px;font-weight:600;">9.8%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:63%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
-          <span class="warn-t" data-label="Alerts">2</span>
-          <span class="bad-t" data-label="Expiring">1 ⚠</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$1,340</span>
-          <span style="font-size:11px;color:#a33030;font-weight:500;" data-label="Cycle count">✗ Not done</span>
-          <span class="badge badge-warn" style="font-size:11px;" data-label="Order status"><i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span class="warn-t" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">9.8%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:63%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
+          <span class="warn-t" data-label="Alerts" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View lot alerts">2</span>
+          <span class="bad-t" data-label="Expiring" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View expiring lots">1 ⚠</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">$1,340</span>
+          <span style="font-size:11px;color:#a33030;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✗ Not done</span>
+          <span class="badge badge-warn" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending</span>
         </div>
 
         <!-- West Loop -->
@@ -1214,23 +1214,23 @@ function deepDiveLoc(locCode) {
             <p class="loc-name">West Loop</p>
             <p class="loc-sub">IL · Felicia G. · <span style="color:#a0700a;">WG: +21% syringes</span></p>
           </div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span class="good" style="font-size:12px;font-weight:600;">7.9%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:32%;transform:translateX(-50%);width:5px;height:5px;background:#C8922A;border-radius:50%;top:-1px;"></div></div></span>
-          <span class="bad-t" data-label="Alerts">2</span>
-          <span style="color:#1C2B4A;font-size:12px;" data-label="Expiring">0</span>
-          <span style="color:#a33030;font-size:12px;font-weight:500;" data-label="Goods lost">$490</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 11 min</span>
-          <span class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span class="good" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">7.9%</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div style="position:absolute;left:32%;transform:translateX(-50%);width:5px;height:5px;background:#C8922A;border-radius:50%;top:-1px;"></div></div></span>
+          <span class="bad-t" data-label="Alerts" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View lot alerts">2</span>
+          <span style="color:#1C2B4A;font-size:12px;cursor:pointer;text-decoration:underline dotted;" data-label="Expiring" onclick="showScreen('lifecycle')" title="View expiring lots">0</span>
+          <span style="color:#a33030;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">$490</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✓ Done · 11 min</span>
+          <span class="badge badge-ok" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- Wheaton -->
         <div class="tbl-row" data-region="Chicagoland">
           <div><p class="loc-name">Wheaton</p><p class="loc-sub">IL · Megan H.</p></div>
-          <span data-label="COGs" style="display:flex;flex-direction:column;gap:4px;"><span id="wheaton-cogs-val" class="good" style="font-size:12px;font-weight:600;">…</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div id="wheaton-cogs-dot" style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
-          <span style="color:#1C2B4A;font-size:12px;" data-label="Alerts">0</span>
-          <span class="warn-t" data-label="Expiring">1</span>
-          <span id="wheaton-gl-val" style="color:#1C2B4A;font-size:12px;font-weight:500;" data-label="Goods lost">…</span>
-          <span style="font-size:11px;color:#1C2B4A;font-weight:500;" data-label="Cycle count">✓ Done · 18 min</span>
-          <span id="wheaton-order-val" class="badge badge-ok" style="font-size:11px;" data-label="Order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
+          <span data-label="COGs" onclick="dbNav('cogs')" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;" title="View COGs analytics"><span id="wheaton-cogs-val" class="good" style="font-size:12px;font-weight:600;text-decoration:underline dotted;">…</span><div style="width:52px;height:3px;background:#E8E4F0;border-radius:2px;position:relative;"><div style="position:absolute;left:33%;width:34%;height:100%;background:#D5EDE0;border-radius:1px;"></div><div id="wheaton-cogs-dot" style="position:absolute;left:45%;transform:translateX(-50%);width:5px;height:5px;background:#2E8B57;border-radius:50%;top:-1px;"></div></div></span>
+          <span style="color:#1C2B4A;font-size:12px;cursor:pointer;text-decoration:underline dotted;" data-label="Alerts" onclick="showScreen('lifecycle')" title="View lot alerts">0</span>
+          <span class="warn-t" data-label="Expiring" onclick="showScreen('lifecycle')" style="cursor:pointer;text-decoration:underline dotted;" title="View expiring lots">1</span>
+          <span id="wheaton-gl-val" style="color:#1C2B4A;font-size:12px;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Goods lost" onclick="showScreen('goods')" title="View goods lost">…</span>
+          <span style="font-size:11px;color:#1C2B4A;font-weight:500;cursor:pointer;text-decoration:underline dotted;" data-label="Cycle count" onclick="showScreen('cycle')" title="Go to cycle count">✓ Done · 18 min</span>
+          <span id="wheaton-order-val" class="badge badge-ok" style="font-size:11px;cursor:pointer;" data-label="Order status" onclick="showScreen('procurement')" title="View order status"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted</span>
         </div>
 
         <!-- DEMO: Naperville (Chicagoland South) -->
