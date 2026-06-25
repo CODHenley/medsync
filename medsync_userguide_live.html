@@ -37,6 +37,19 @@
     font-weight: 500; letter-spacing: 0.5px;
   }
 
+  /* ── COUNTDOWN BADGE ── */
+  .countdown-banner {
+    background: var(--cream); border-bottom: 1px solid #e0d4b8;
+    padding: 8px 20px; display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--navy);
+  }
+  .countdown-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--navy); color: var(--gold);
+    font-size: 11px; font-weight: 700; padding: 4px 12px;
+    border-radius: 999px; letter-spacing: 0.5px;
+  }
+
   /* ── LAYOUT ── */
   .guide-layout {
     display: flex; max-width: 1080px; margin: 0 auto;
@@ -80,7 +93,7 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 24px; flex-shrink: 0;
   }
-  .sop-header-text {}
+  .sop-header-text { flex: 1; }
   .sop-tag {
     font-size: 10px; font-weight: 600; letter-spacing: 2px;
     text-transform: uppercase; color: var(--gold); margin-bottom: 4px;
@@ -159,6 +172,178 @@
 
   /* Section anchor scroll offset */
   .section-anchor { scroll-margin-top: 72px; }
+
+  /* ── QUIZ BUTTON AREA ── */
+  .quiz-footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 28px;
+    display: flex; align-items: center; gap: 14px;
+    background: #FAFAFA;
+  }
+  .quiz-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--navy); color: var(--white);
+    border: none; border-radius: 10px;
+    padding: 10px 20px; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+  }
+  .quiz-btn:hover { background: #2a3f6a; }
+  .quiz-btn.view-cert {
+    background: transparent; border: 2px solid var(--gold); color: var(--gold);
+  }
+  .quiz-btn.view-cert:hover { background: rgba(200,146,42,0.08); }
+
+  /* ── CERTIFIED BADGE (inline on card header) ── */
+  .cert-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--gold); color: var(--white);
+    font-size: 11px; font-weight: 700; padding: 4px 12px;
+    border-radius: 999px; letter-spacing: 0.5px;
+    margin-left: auto; flex-shrink: 0;
+  }
+
+  /* ── QUIZ MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(28,43,74,0.55);
+    z-index: 1000; display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .quiz-modal {
+    background: var(--white); border-radius: 20px;
+    width: 100%; max-width: 600px; max-height: 90vh;
+    overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+    display: flex; flex-direction: column;
+  }
+  .quiz-modal-header {
+    background: var(--navy); padding: 22px 28px;
+    border-radius: 20px 20px 0 0;
+    display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+  }
+  .quiz-modal-title { color: var(--white); font-size: 17px; font-weight: 600; flex: 1; }
+  .quiz-modal-close {
+    background: none; border: none; color: rgba(255,255,255,0.7);
+    font-size: 22px; cursor: pointer; padding: 2px 6px; line-height: 1;
+    border-radius: 6px;
+  }
+  .quiz-modal-close:hover { background: rgba(255,255,255,0.1); }
+  .quiz-modal-body { padding: 28px; flex: 1; }
+
+  .quiz-progress {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 24px;
+  }
+  .quiz-progress-dots { display: flex; gap: 6px; }
+  .quiz-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--border); transition: background 0.2s;
+  }
+  .quiz-dot.active { background: var(--navy); }
+  .quiz-dot.correct { background: #22C55E; }
+  .quiz-dot.wrong { background: #EF4444; }
+  .quiz-progress-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+  .quiz-question-text {
+    font-size: 16px; font-weight: 600; color: var(--navy);
+    line-height: 1.5; margin-bottom: 20px;
+  }
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .quiz-option {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px; border: 1.5px solid var(--border);
+    border-radius: 10px; cursor: pointer; font-size: 14px;
+    color: var(--navy); line-height: 1.4; transition: all 0.15s;
+    background: var(--white);
+  }
+  .quiz-option:hover:not(.submitted) { border-color: var(--navy); background: var(--bg); }
+  .quiz-option.selected { border-color: var(--navy); background: #EFF3FF; }
+  .quiz-option.correct { border-color: #22C55E; background: #EFFAF5; color: #166534; }
+  .quiz-option.wrong { border-color: #EF4444; background: #FEF2F2; color: #991B1B; }
+  .quiz-option.reveal-correct { border-color: #22C55E; background: #EFFAF5; color: #166534; }
+  .quiz-option-letter {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--bg); border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .quiz-option.selected .quiz-option-letter { background: var(--navy); border-color: var(--navy); color: var(--white); }
+  .quiz-option.correct .quiz-option-letter { background: #22C55E; border-color: #22C55E; color: var(--white); }
+  .quiz-option.wrong .quiz-option-letter { background: #EF4444; border-color: #EF4444; color: var(--white); }
+  .quiz-option.reveal-correct .quiz-option-letter { background: #22C55E; border-color: #22C55E; color: var(--white); }
+
+  .quiz-feedback {
+    padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 20px;
+    display: none;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: #EFFAF5; border-left: 3px solid #22C55E; color: #166534; }
+  .quiz-feedback.wrong { background: #FEF2F2; border-left: 3px solid #EF4444; color: #991B1B; }
+
+  .quiz-btn-row { display: flex; gap: 12px; align-items: center; }
+  .quiz-next-btn {
+    background: var(--navy); color: var(--white);
+    border: none; border-radius: 10px; padding: 12px 28px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: background 0.15s;
+  }
+  .quiz-next-btn:disabled { background: var(--border); cursor: default; }
+  .quiz-next-btn:not(:disabled):hover { background: #2a3f6a; }
+
+  /* ── RESULTS PANEL ── */
+  .quiz-results { text-align: center; padding: 12px 0; }
+  .quiz-results-score {
+    font-size: 52px; font-weight: 700; color: var(--navy); line-height: 1;
+    margin-bottom: 6px;
+  }
+  .quiz-results-sub { font-size: 15px; color: var(--muted); margin-bottom: 24px; }
+  .quiz-results-pass { color: #166534; font-weight: 600; }
+  .quiz-results-fail { color: #991B1B; font-weight: 600; }
+  .quiz-results-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* ── CERTIFICATE MODAL ── */
+  .cert-modal {
+    background: var(--white); border-radius: 20px;
+    width: 100%; max-width: 560px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  }
+  .cert-modal-inner {
+    padding: 40px 48px; text-align: center;
+  }
+  .cert-logo { font-size: 36px; margin-bottom: 8px; }
+  .cert-brand {
+    font-size: 13px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 28px;
+  }
+  .cert-border {
+    border: 2px solid var(--gold); border-radius: 12px;
+    padding: 28px 32px; margin-bottom: 24px;
+    background: linear-gradient(135deg, #fffdf7 0%, #fff 100%);
+  }
+  .cert-certifies { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .cert-name {
+    font-size: 26px; font-weight: 600; color: var(--navy);
+    margin-bottom: 12px; font-style: italic;
+  }
+  .cert-desc { font-size: 14px; color: var(--text); line-height: 1.5; margin-bottom: 12px; }
+  .cert-section-name { font-weight: 700; color: var(--gold); }
+  .cert-meta {
+    font-size: 12px; color: var(--muted);
+    display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+  }
+  .cert-meta span { display: flex; align-items: center; gap: 4px; }
+  .cert-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cert-print-btn {
+    background: var(--navy); color: var(--white);
+    border: none; border-radius: 10px; padding: 10px 24px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+  }
+  .cert-close-btn {
+    background: transparent; border: 1.5px solid var(--border);
+    color: var(--muted); border-radius: 10px; padding: 10px 24px;
+    font-size: 14px; cursor: pointer; font-family: inherit;
+  }
 </style>
 </head>
 <body>
@@ -167,6 +352,12 @@
   <button class="top-bar-back" onclick="goBack()">←</button>
   <span class="top-bar-title">📖 User Guide</span>
   <span class="top-bar-role" id="ug-role-badge"></span>
+</div>
+
+<!-- Countdown banner (only shown when account creation date is known) -->
+<div class="countdown-banner" id="countdown-banner" style="display:none;">
+  <span class="countdown-badge" id="countdown-badge"></span>
+  <span>to complete your onboarding training. Earn your certification by passing the quiz below.</span>
 </div>
 
 <div class="guide-layout">
@@ -209,6 +400,7 @@
           <div class="sop-tag">SOP · Staff</div>
           <div class="sop-title">Clinic Staff Guide — Daily Inventory Operations</div>
         </div>
+        <span class="cert-badge" id="cert-badge-staff" style="display:none;">✓ Certified</span>
       </div>
       <div class="sop-body">
 
@@ -312,6 +504,15 @@
         </div>
 
       </div>
+      <!-- Quiz footer -->
+      <div class="quiz-footer" id="quiz-footer-staff">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;">Knowledge Check</div>
+          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 3/5 to earn your Staff certification</div>
+        </div>
+        <button class="quiz-btn" id="quiz-btn-staff" onclick="openQuiz('staff')">📝 Take Quiz</button>
+        <button class="quiz-btn view-cert" id="cert-btn-staff" onclick="openCertificate('staff')" style="display:none;">🏅 View Certificate</button>
+      </div>
     </div>
 
     <!-- ════════════════════════════════
@@ -324,6 +525,7 @@
           <div class="sop-tag">SOP · Admin</div>
           <div class="sop-title">Practice Admin Guide — Location & User Management</div>
         </div>
+        <span class="cert-badge" id="cert-badge-admin" style="display:none;">✓ Certified</span>
       </div>
       <div class="sop-body">
 
@@ -500,6 +702,15 @@
         </div>
 
       </div>
+      <!-- Quiz footer -->
+      <div class="quiz-footer" id="quiz-footer-admin">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;">Knowledge Check</div>
+          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 3/5 to earn your Admin certification</div>
+        </div>
+        <button class="quiz-btn" id="quiz-btn-admin" onclick="openQuiz('admin')">📝 Take Quiz</button>
+        <button class="quiz-btn view-cert" id="cert-btn-admin" onclick="openCertificate('admin')" style="display:none;">🏅 View Certificate</button>
+      </div>
     </div>
 
     <!-- ════════════════════════════════
@@ -512,6 +723,7 @@
           <div class="sop-tag">SOP · MedSync Internal</div>
           <div class="sop-title">Platform Admin Guide — Provisioning & Support</div>
         </div>
+        <span class="cert-badge" id="cert-badge-medsync" style="display:none;">✓ Certified</span>
       </div>
       <div class="sop-body">
 
@@ -606,72 +818,599 @@
         </div>
 
       </div>
+      <!-- Quiz footer -->
+      <div class="quiz-footer" id="quiz-footer-medsync">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;">Knowledge Check</div>
+          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 3/5 to earn your MedSync Platform certification</div>
+        </div>
+        <button class="quiz-btn" id="quiz-btn-medsync" onclick="openQuiz('medsync')">📝 Take Quiz</button>
+        <button class="quiz-btn view-cert" id="cert-btn-medsync" onclick="openCertificate('medsync')" style="display:none;">🏅 View Certificate</button>
+      </div>
     </div>
 
   </div><!-- /guide-content -->
 </div><!-- /guide-layout -->
 
-<script>
-  const ROLE_SECTIONS = {
-    staff:             ['toc-staff-section'],
-    manager:           ['toc-staff-section', 'toc-admin-section'],
-    admin:             ['toc-staff-section', 'toc-admin-section'],
-    medsync_superadmin:['toc-staff-section', 'toc-admin-section', 'toc-medsync-section'],
-  };
+<!-- ════════════════ QUIZ MODAL ════════════════ -->
+<div class="modal-overlay hidden" id="quiz-overlay" onclick="handleOverlayClick(event)">
+  <div class="quiz-modal" onclick="event.stopPropagation()">
+    <div class="quiz-modal-header">
+      <span style="font-size:22px;">📝</span>
+      <span class="quiz-modal-title" id="quiz-modal-title">Knowledge Check</span>
+      <button class="quiz-modal-close" onclick="closeQuiz()">×</button>
+    </div>
+    <div class="quiz-modal-body" id="quiz-modal-body">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+</div>
 
-  function init() {
-    const stored = JSON.parse(
+<!-- ════════════════ CERTIFICATE MODAL ════════════════ -->
+<div class="modal-overlay hidden" id="cert-overlay" onclick="handleCertOverlayClick(event)">
+  <div class="cert-modal" onclick="event.stopPropagation()">
+    <div class="cert-modal-inner" id="cert-modal-inner">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+
+// ── Quiz question bank ─────────────────────────────────────────────
+const QUIZ_QUESTIONS = {
+  staff: [
+    {
+      q: 'When you dispense a medication in Vetspire, what do you need to do in MedSync?',
+      options: [
+        'Manually adjust the inventory count',
+        'Nothing — it syncs automatically',
+        'Submit a goods lost report',
+        'Flag it in the cycle count',
+      ],
+      correct: 1,
+    },
+    {
+      q: 'What should you do if your physical count differs from the system count during a cycle count?',
+      options: [
+        'Adjust the count to match the system',
+        'Skip the item and count it next time',
+        'Leave a note explaining the discrepancy, don\'t adjust without a note',
+        'Delete the item from the count',
+      ],
+      correct: 2,
+    },
+    {
+      q: 'What is MedSync\'s cycle count accuracy goal?',
+      options: ['85%', '90%', '95%', '99%'],
+      correct: 3,
+    },
+    {
+      q: 'When receiving new stock, what must you always enter for each item?',
+      options: [
+        'Price only',
+        'Quantity only',
+        'Quantity, lot number, and expiration date',
+        'Supplier name and quantity',
+      ],
+      correct: 2,
+    },
+    {
+      q: 'If a shipment arrives damaged, what should you do in MedSync?',
+      options: [
+        'Accept it and note it on paper',
+        'Refuse the delivery entirely',
+        'Use the Flag Issue button — your admin is notified immediately',
+        'Adjust the quantity and email your manager',
+      ],
+      correct: 2,
+    },
+  ],
+  admin: [
+    {
+      q: 'After you submit a new location request, how quickly does MedSync provision it?',
+      options: [
+        'Immediately',
+        'Within one business day',
+        'Within one week',
+        'After payment is confirmed',
+      ],
+      correct: 1,
+    },
+    {
+      q: 'Which role can add new locations within the plan limit?',
+      options: ['Staff', 'Receiver', 'Manager', 'Inventory Lead'],
+      correct: 2,
+    },
+    {
+      q: 'Where do you go to see month-over-month drug and supply costs?',
+      options: [
+        'Quarterly Report',
+        'Activity Log',
+        'Analytics → Supplier Breakdown tab',
+        'Procurement screen',
+      ],
+      correct: 2,
+    },
+    {
+      q: 'What triggers the upgrade banner in the New Location screen?',
+      options: [
+        'When you reach your plan limit',
+        'When you have 2 remaining location slots',
+        'When a payment fails',
+        'Monthly, automatically',
+      ],
+      correct: 1,
+    },
+    {
+      q: 'How do you deactivate a user in MedSync?',
+      options: [
+        'Delete their account from Supabase',
+        'Change their role to \'inactive\'',
+        'Click the user\'s name → Deactivate — session is immediately revoked',
+        'Contact MedSync support',
+      ],
+      correct: 2,
+    },
+  ],
+  medsync: [
+    {
+      q: 'What is Step 4 of the provisioning wizard?',
+      options: [
+        'Create the organization record',
+        'Assign Vetspire API token',
+        'Send welcome email with credentials',
+        'Set feature flags',
+      ],
+      correct: 2,
+    },
+    {
+      q: 'Where do you go to fix a billing tier mismatch for a customer?',
+      options: [
+        'Stripe dashboard directly',
+        'Platform Admin → org → Billing tab → Update Tier',
+        'Supabase SQL editor',
+        'Email the customer',
+      ],
+      correct: 1,
+    },
+    {
+      q: 'What does suspending an organization do immediately?',
+      options: [
+        'Deletes all their data',
+        'Sends them a warning email',
+        'Revokes all user sessions for that org',
+        'Cancels their Stripe subscription',
+      ],
+      correct: 2,
+    },
+    {
+      q: 'What role is required to access the Platform Admin portal?',
+      options: ['admin', 'manager', 'inventory_lead', 'medsync_superadmin'],
+      correct: 3,
+    },
+    {
+      q: 'When should you enable a feature flag for a customer?',
+      options: [
+        'As soon as it\'s built',
+        'Only when the feature is ready for their tier and technical setup, documented in Slack',
+        'Only for Enterprise customers',
+        'Never without a signed agreement',
+      ],
+      correct: 1,
+    },
+  ],
+};
+
+const SECTION_LABELS = {
+  staff: 'Staff Operations',
+  admin: 'Admin & Location Management',
+  medsync: 'MedSync Platform Admin',
+};
+
+// ── Session & state ────────────────────────────────────────────────
+const ROLE_SECTIONS = {
+  staff:             ['toc-staff-section'],
+  manager:           ['toc-staff-section', 'toc-admin-section'],
+  admin:             ['toc-staff-section', 'toc-admin-section'],
+  medsync_superadmin:['toc-staff-section', 'toc-admin-section', 'toc-medsync-section'],
+};
+
+let _session = null;
+let _completions = {}; // section -> completion record
+
+function getSession() {
+  if (_session) return _session;
+  try {
+    _session = JSON.parse(
       localStorage.getItem('medsync_session') ||
       sessionStorage.getItem('medsync_session') || '{}'
     );
-    const role = stored?.user?.role || stored?.role || 'staff';
+  } catch(e) { _session = {}; }
+  return _session;
+}
 
-    // Show role badge
-    const labels = {
-      staff: 'Staff', manager: 'Manager', admin: 'Admin',
-      medsync_superadmin: 'MedSync Admin',
-    };
-    document.getElementById('ug-role-badge').textContent = labels[role] || 'Staff';
+function getUserInfo() {
+  const s = getSession();
+  const user = s?.user || s;
+  return {
+    id: user?.id || user?.user_id || null,
+    email: user?.email || '',
+    name: user?.full_name || user?.name || user?.email || 'User',
+    org_id: user?.org_id || user?.organization_id || null,
+    role: user?.role || 'staff',
+    created_at: user?.created_at || null,
+    access_token: s?.access_token || null,
+  };
+}
 
-    // Hide TOC sections above role
-    const allowed = ROLE_SECTIONS[role] || ROLE_SECTIONS['staff'];
-    document.querySelectorAll('.guide-toc .toc-section').forEach(s => {
-      s.style.display = allowed.includes(s.id) ? '' : 'none';
+// ── Supabase helpers ───────────────────────────────────────────────
+async function saveCompletion(section, score) {
+  const u = getUserInfo();
+  if (!u.id) return;
+  const body = {
+    user_id: u.id,
+    user_email: u.email,
+    user_name: u.name,
+    org_id: u.org_id,
+    section,
+    score,
+    total: 5,
+    passed: score >= 3,
+  };
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': SUPA_KEY,
+    'Prefer': 'return=representation',
+  };
+  if (u.access_token) headers['Authorization'] = 'Bearer ' + u.access_token;
+  try {
+    await fetch(SUPA_URL + '/rest/v1/quiz_completions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
     });
+  } catch(e) { /* silent fail */ }
+}
 
-    // Hide SOP cards above role
-    if (role !== 'medsync_superadmin') {
-      document.getElementById('ms-overview')?.closest('.sop-card')?.style.setProperty('display','none');
-    }
-    if (role === 'staff') {
-      document.getElementById('admin-overview')?.closest('.sop-card')?.style.setProperty('display','none');
-    }
+async function loadCompletions() {
+  const u = getUserInfo();
+  if (!u.id) return;
+  const headers = { 'apikey': SUPA_KEY };
+  if (u.access_token) headers['Authorization'] = 'Bearer ' + u.access_token;
+  try {
+    const res = await fetch(
+      SUPA_URL + '/rest/v1/quiz_completions?select=*&user_id=eq.' + u.id + '&passed=eq.true&order=created_at.desc',
+      { headers }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    // Keep the most recent passing completion per section
+    rows.forEach(r => {
+      if (!_completions[r.section]) _completions[r.section] = r;
+    });
+    applyCompletionBadges();
+  } catch(e) { /* silent fail */ }
+}
 
-    // TOC active highlighting on scroll
-    const headings = document.querySelectorAll('.section-anchor');
-    const tocLinks = document.querySelectorAll('.toc-link');
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          const id = e.target.id;
-          tocLinks.forEach(l => {
-            l.classList.toggle('active', l.getAttribute('href') === '#' + id);
-          });
-        }
-      });
-    }, { rootMargin: '-20% 0px -70% 0px' });
-    headings.forEach(h => observer.observe(h));
+function applyCompletionBadges() {
+  ['staff', 'admin', 'medsync'].forEach(section => {
+    if (_completions[section]) {
+      showCertBadge(section);
+    }
+  });
+}
+
+function showCertBadge(section) {
+  const badge = document.getElementById('cert-badge-' + section);
+  if (badge) {
+    const u = getUserInfo();
+    const comp = _completions[section];
+    const dateStr = comp?.created_at
+      ? new Date(comp.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    badge.textContent = '✓ Certified';
+    badge.title = 'Certified ' + dateStr + ' — Score: ' + (comp?.score || '?') + '/5';
+    badge.style.display = '';
   }
+  // Swap buttons
+  const takeBtn = document.getElementById('quiz-btn-' + section);
+  const certBtn = document.getElementById('cert-btn-' + section);
+  if (takeBtn) takeBtn.style.display = 'none';
+  if (certBtn) certBtn.style.display = '';
+}
 
-  function goBack() {
-    if (document.referrer && document.referrer.includes(window.location.hostname)) {
-      history.back();
+// ── Countdown banner ───────────────────────────────────────────────
+function initCountdown() {
+  const u = getUserInfo();
+  if (!u.created_at) return;
+  const created = new Date(u.created_at);
+  const deadline = new Date(created.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+  if (daysLeft > 0 && daysLeft <= 30) {
+    const banner = document.getElementById('countdown-banner');
+    const badge = document.getElementById('countdown-badge');
+    if (banner && badge) {
+      badge.textContent = daysLeft + (daysLeft === 1 ? ' day' : ' days') + ' remaining';
+      banner.style.display = 'flex';
+    }
+  }
+}
+
+// ── Quiz state ─────────────────────────────────────────────────────
+let _quizSection = null;
+let _quizIndex = 0;
+let _quizAnswers = []; // index of selected answer per question
+let _quizSubmitted = []; // bool per question
+
+function openQuiz(section) {
+  _quizSection = section;
+  _quizIndex = 0;
+  _quizAnswers = new Array(5).fill(null);
+  _quizSubmitted = new Array(5).fill(false);
+  document.getElementById('quiz-modal-title').textContent =
+    'Knowledge Check — ' + SECTION_LABELS[section];
+  renderQuizQuestion();
+  document.getElementById('quiz-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeQuiz() {
+  document.getElementById('quiz-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('quiz-overlay')) closeQuiz();
+}
+
+function renderQuizQuestion() {
+  const questions = QUIZ_QUESTIONS[_quizSection];
+  const q = questions[_quizIndex];
+  const letters = ['A', 'B', 'C', 'D'];
+  const submitted = _quizSubmitted[_quizIndex];
+  const selected = _quizAnswers[_quizIndex];
+  const total = questions.length;
+
+  const dots = questions.map((_, i) => {
+    let cls = 'quiz-dot';
+    if (i === _quizIndex) cls += ' active';
+    else if (_quizSubmitted[i]) {
+      cls += _quizAnswers[i] === questions[i].correct ? ' correct' : ' wrong';
+    }
+    return '<div class="' + cls + '"></div>';
+  }).join('');
+
+  const optionsHtml = q.options.map((opt, i) => {
+    let cls = 'quiz-option';
+    if (!submitted) {
+      if (selected === i) cls += ' selected';
     } else {
-      window.location.href = 'medsync_portfolio_live.html';
+      if (i === q.correct) cls += ' correct';
+      else if (selected === i && i !== q.correct) cls += ' wrong';
     }
+    const clickAttr = submitted ? '' : 'onclick="selectOption(' + i + ')"';
+    return '<div class="' + cls + '"' + (submitted ? '' : ' style="cursor:pointer;"') + ' ' + clickAttr + '>' +
+      '<div class="quiz-option-letter">' + letters[i] + '</div>' +
+      '<span>' + opt + '</span>' +
+      '</div>';
+  }).join('');
+
+  let feedbackHtml = '';
+  if (submitted) {
+    const correct = selected === q.correct;
+    feedbackHtml = '<div class="quiz-feedback show ' + (correct ? 'correct' : 'wrong') + '">' +
+      (correct
+        ? '✓ Correct! Well done.'
+        : '✗ Not quite. The correct answer is <strong>' + letters[q.correct] + ': ' + q.options[q.correct] + '</strong>.') +
+      '</div>';
   }
 
-  init();
+  let btnHtml = '';
+  if (!submitted) {
+    btnHtml = '<div class="quiz-btn-row"><button class="quiz-next-btn" id="quiz-check-btn" ' +
+      (selected === null ? 'disabled' : '') + ' onclick="submitAnswer()">Check Answer</button></div>';
+  } else if (_quizIndex < total - 1) {
+    btnHtml = '<div class="quiz-btn-row"><button class="quiz-next-btn" onclick="nextQuestion()">Next Question →</button></div>';
+  } else {
+    btnHtml = '<div class="quiz-btn-row"><button class="quiz-next-btn" onclick="showResults()">See Results</button></div>';
+  }
+
+  document.getElementById('quiz-modal-body').innerHTML =
+    '<div class="quiz-progress">' +
+      '<div class="quiz-progress-dots">' + dots + '</div>' +
+      '<div class="quiz-progress-label">Question ' + (_quizIndex + 1) + ' of ' + total + '</div>' +
+    '</div>' +
+    '<div class="quiz-question-text">' + q.q + '</div>' +
+    '<div class="quiz-options">' + optionsHtml + '</div>' +
+    feedbackHtml +
+    btnHtml;
+}
+
+function selectOption(i) {
+  if (_quizSubmitted[_quizIndex]) return;
+  _quizAnswers[_quizIndex] = i;
+  renderQuizQuestion();
+}
+
+function submitAnswer() {
+  if (_quizAnswers[_quizIndex] === null) return;
+  _quizSubmitted[_quizIndex] = true;
+  renderQuizQuestion();
+}
+
+function nextQuestion() {
+  _quizIndex++;
+  renderQuizQuestion();
+}
+
+function showResults() {
+  const questions = QUIZ_QUESTIONS[_quizSection];
+  const score = _quizAnswers.reduce((acc, ans, i) => acc + (ans === questions[i].correct ? 1 : 0), 0);
+  const passed = score >= 3;
+
+  if (passed) {
+    // Save to Supabase
+    saveCompletion(_quizSection, score).then(() => {
+      // Record locally so cert badge appears immediately even if Supabase is slow
+      if (!_completions[_quizSection]) {
+        _completions[_quizSection] = {
+          section: _quizSection,
+          score,
+          user_name: getUserInfo().name,
+          created_at: new Date().toISOString(),
+        };
+      }
+      showCertBadge(_quizSection);
+    });
+  }
+
+  const resultClass = passed ? 'quiz-results-pass' : 'quiz-results-fail';
+  const resultMsg = passed
+    ? '🎉 You passed! Your certification has been recorded.'
+    : 'You didn\'t pass this time. Review the guide and try again.';
+
+  let actionsHtml = '';
+  if (passed) {
+    actionsHtml =
+      '<button class="quiz-next-btn" onclick="closeQuiz();openCertificate(\'' + _quizSection + '\')">View Certificate</button>' +
+      '<button style="background:transparent;border:1.5px solid var(--border);color:var(--muted);border-radius:10px;padding:12px 24px;font-size:14px;cursor:pointer;font-family:inherit;" onclick="closeQuiz()">Close</button>';
+  } else {
+    actionsHtml =
+      '<button class="quiz-next-btn" onclick="openQuiz(\'' + _quizSection + '\')">Try Again</button>' +
+      '<button style="background:transparent;border:1.5px solid var(--border);color:var(--muted);border-radius:10px;padding:12px 24px;font-size:14px;cursor:pointer;font-family:inherit;" onclick="closeQuiz()">Close</button>';
+  }
+
+  document.getElementById('quiz-modal-body').innerHTML =
+    '<div class="quiz-results">' +
+      '<div class="quiz-results-score">' + score + '/5</div>' +
+      '<div class="quiz-results-sub ' + resultClass + '">' + resultMsg + '</div>' +
+      '<div style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:24px;">' +
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500;">Your answers</div>' +
+        questions.map((q, i) => {
+          const correct = _quizAnswers[i] === q.correct;
+          return '<div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0;">' +
+            '<span style="color:' + (correct ? '#22C55E' : '#EF4444') + ';font-weight:700;">' + (correct ? '✓' : '✗') + '</span>' +
+            '<span style="color:var(--navy);">Q' + (i+1) + '</span>' +
+            '<span style="color:var(--muted);">' + q.q.slice(0, 55) + (q.q.length > 55 ? '…' : '') + '</span>' +
+            '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="quiz-results-actions">' + actionsHtml + '</div>' +
+    '</div>';
+}
+
+// ── Certificate modal ──────────────────────────────────────────────
+function openCertificate(section) {
+  const comp = _completions[section];
+  const u = getUserInfo();
+  const name = (comp && comp.user_name) || u.name || 'Unnamed User';
+  const score = comp?.score ?? '?';
+  const dateStr = comp?.created_at
+    ? new Date(comp.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    : new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const sectionLabel = SECTION_LABELS[section] || section;
+
+  document.getElementById('cert-modal-inner').innerHTML =
+    '<div class="cert-logo">💊</div>' +
+    '<div class="cert-brand">MedSync</div>' +
+    '<div class="cert-border">' +
+      '<div class="cert-certifies">This certifies that</div>' +
+      '<div class="cert-name">' + name + '</div>' +
+      '<div class="cert-desc">has successfully completed the<br>' +
+        '<span class="cert-section-name">' + sectionLabel + '</span><br>training and knowledge assessment</div>' +
+      '<div class="cert-meta">' +
+        '<span>📅 ' + dateStr + '</span>' +
+        '<span>🏆 Score: ' + score + '/5</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="cert-actions">' +
+      '<button class="cert-print-btn" onclick="window.print()">🖨️ Print Certificate</button>' +
+      '<button class="cert-close-btn" onclick="closeCertificate()">Close</button>' +
+    '</div>';
+
+  document.getElementById('cert-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCertificate() {
+  document.getElementById('cert-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function handleCertOverlayClick(e) {
+  if (e.target === document.getElementById('cert-overlay')) closeCertificate();
+}
+
+// ── Init ───────────────────────────────────────────────────────────
+function init() {
+  const u = getUserInfo();
+  const role = u.role;
+
+  // Show role badge
+  const labels = {
+    staff: 'Staff', manager: 'Manager', admin: 'Admin',
+    medsync_superadmin: 'MedSync Admin',
+  };
+  document.getElementById('ug-role-badge').textContent = labels[role] || 'Staff';
+
+  // Hide TOC sections above role
+  const allowed = ROLE_SECTIONS[role] || ROLE_SECTIONS['staff'];
+  document.querySelectorAll('.guide-toc .toc-section').forEach(s => {
+    s.style.display = allowed.includes(s.id) ? '' : 'none';
+  });
+
+  // Hide SOP cards above role
+  if (role !== 'medsync_superadmin') {
+    document.getElementById('ms-overview')?.closest('.sop-card')?.style.setProperty('display','none');
+  }
+  if (role === 'staff') {
+    document.getElementById('admin-overview')?.closest('.sop-card')?.style.setProperty('display','none');
+  }
+
+  // Hide quiz footers for sections the user can't see
+  if (role === 'staff') {
+    document.getElementById('quiz-footer-admin')?.style.setProperty('display','none');
+    document.getElementById('quiz-footer-medsync')?.style.setProperty('display','none');
+  } else if (role !== 'medsync_superadmin') {
+    document.getElementById('quiz-footer-medsync')?.style.setProperty('display','none');
+  }
+
+  // TOC active highlighting on scroll
+  const headings = document.querySelectorAll('.section-anchor');
+  const tocLinks = document.querySelectorAll('.toc-link');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        tocLinks.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  headings.forEach(h => observer.observe(h));
+
+  // Countdown
+  initCountdown();
+
+  // Load existing completions from Supabase
+  loadCompletions();
+}
+
+function goBack() {
+  if (document.referrer && document.referrer.includes(window.location.hostname)) {
+    history.back();
+  } else {
+    window.location.href = 'medsync_portfolio_live.html';
+  }
+}
+
+init();
 </script>
 </body>
 </html>

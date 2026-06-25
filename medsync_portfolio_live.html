@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings','training'];
 function showScreen(name) {
   if (name === 'cycle') {
     var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
@@ -41,6 +41,10 @@ function showScreen(name) {
   if (name==='actlog' && window._actlogLoaded !== true) {
     window._actlogLoaded = true;
     if (typeof loadEvents === 'function') setTimeout(loadEvents, 100);
+  }
+  if (name==='training' && window._trainingScreenLoaded !== true) {
+    window._trainingScreenLoaded = true;
+    if (typeof loadTrainingData === 'function') setTimeout(loadTrainingData, 100);
   }
   if (['order','receiving','goods','invoices'].indexOf(name) !== -1) {
     try {
@@ -1380,6 +1384,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-regions" onclick="closeMobileMenu();showScreen('regions')">🗺️ Manage Regions</div>
   <div class="asb-item" id="asb-admin-label" id="asb-settings" onclick="closeMobileMenu();showScreen('settings')">⚙️ Settings</div>
   <div class="asb-item" onclick="closeMobileMenu();window.location.href='medsync_userguide_live.html'">📖 User Guide</div>
+  <div class="asb-item" id="asb-training" onclick="closeMobileMenu();showScreen('training')">📋 Training Log</div>
 </div>
 <div id="app-content">
 <div id="ms-portfolio" class="ms-screen" style="background:#F5F3FA;display:block;"><div id="screen1">
@@ -1756,6 +1761,84 @@ function deepDiveLoc(locCode) {
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Admin Settings">
   </iframe>
+</div>
+<div id="ms-training" class="ms-screen" style="display:none;">
+  <div style="background:#F5F3FA;min-height:calc(100vh - 48px);padding:0;">
+    <!-- Nav bar -->
+    <div class="vp-nav">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:18px;">📋</span>
+        <span style="font-size:15px;font-weight:600;color:#fff;">Training Log</span>
+        <span id="training-nav-sub" style="font-size:12px;color:rgba(255,255,255,0.6);">Loading…</span>
+      </div>
+      <div class="vp-nav-r">
+        <div class="vp-avatar" id="training-avatar">MH</div>
+      </div>
+    </div>
+    <div style="max-width:900px;margin:0 auto;padding:32px 20px;">
+
+      <!-- Header -->
+      <div style="margin-bottom:28px;">
+        <h1 style="font-size:22px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Training &amp; Certification Log</h1>
+        <p style="font-size:14px;color:#6B7A99;" id="training-desc">Track quiz completions and certifications across your team.</p>
+      </div>
+
+      <!-- Loading state -->
+      <div id="training-loading" style="text-align:center;padding:48px;color:#6B7A99;font-size:14px;">
+        Loading training data…
+      </div>
+
+      <!-- Admin table view -->
+      <div id="training-admin-view" style="display:none;">
+        <div style="background:#fff;border-radius:16px;border:1px solid #E5E1F0;overflow:hidden;">
+          <div style="padding:20px 24px;border-bottom:1px solid #E5E1F0;display:flex;align-items:center;gap:12px;">
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:600;color:#1C2B4A;">All Completions</div>
+              <div style="font-size:12px;color:#6B7A99;margin-top:2px;" id="training-count-label">—</div>
+            </div>
+            <select id="training-filter-section" onchange="filterTrainingTable()"
+              style="border:1px solid #E5E1F0;border-radius:8px;padding:6px 12px;font-size:13px;color:#1C2B4A;background:#fff;">
+              <option value="">All sections</option>
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+              <option value="medsync">MedSync</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="background:#F5F3FA;">
+                  <th style="text-align:left;padding:12px 20px;font-size:11px;font-weight:700;color:#6B7A99;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;">Name</th>
+                  <th style="text-align:left;padding:12px 16px;font-size:11px;font-weight:700;color:#6B7A99;text-transform:uppercase;letter-spacing:1px;">Email</th>
+                  <th style="text-align:left;padding:12px 16px;font-size:11px;font-weight:700;color:#6B7A99;text-transform:uppercase;letter-spacing:1px;">Section</th>
+                  <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;color:#6B7A99;text-transform:uppercase;letter-spacing:1px;">Score</th>
+                  <th style="text-align:left;padding:12px 16px;font-size:11px;font-weight:700;color:#6B7A99;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;">Date</th>
+                  <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;color:#6B7A99;text-transform:uppercase;letter-spacing:1px;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="training-tbody">
+              </tbody>
+            </table>
+          </div>
+          <div id="training-empty" style="display:none;text-align:center;padding:40px;color:#6B7A99;font-size:14px;">
+            No completions found.
+          </div>
+        </div>
+      </div>
+
+      <!-- Staff cert card view -->
+      <div id="training-staff-view" style="display:none;">
+        <div id="training-cert-cards" style="display:flex;flex-direction:column;gap:16px;"></div>
+        <div id="training-no-certs" style="display:none;background:#fff;border-radius:16px;border:1px solid #E5E1F0;padding:40px;text-align:center;">
+          <div style="font-size:32px;margin-bottom:12px;">🎓</div>
+          <div style="font-size:16px;font-weight:600;color:#1C2B4A;margin-bottom:6px;">No certifications yet</div>
+          <div style="font-size:14px;color:#6B7A99;margin-bottom:20px;">Complete the quizzes in the User Guide to earn your certifications.</div>
+          <a href="medsync_userguide_live.html" style="background:#1C2B4A;color:#fff;text-decoration:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;">Go to User Guide →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
 </div>
 <div id="ms-toast"></div>
 
@@ -3337,6 +3420,174 @@ document.addEventListener('DOMContentLoaded', () => {
   buildSidebar('sb-admin-s10b', 'admin',    '#screen10b');
   buildSidebar('sb-recv-s6b',  'receiver', '#screen6b');
 });
+
+
+// ── Training Log ──────────────────────────────────────────────────
+const TRAINING_SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const TRAINING_SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+
+const TRAINING_SECTION_LABELS = {
+  staff: 'Staff Operations',
+  admin: 'Admin & Location Management',
+  medsync: 'MedSync Platform Admin',
+};
+
+let _trainingRows = [];
+let _trainingLoaded = false;
+
+function getTrainingSession() {
+  try {
+    return JSON.parse(
+      localStorage.getItem('medsync_session') ||
+      sessionStorage.getItem('medsync_session') || '{}'
+    );
+  } catch(e) { return {}; }
+}
+
+function getTrainingUser() {
+  var s = getTrainingSession();
+  var u = (s && s.user) ? s.user : s;
+  return {
+    id: (u && (u.id || u.user_id)) || null,
+    email: (u && u.email) || '',
+    name: (u && (u.full_name || u.name || u.email)) || 'User',
+    role: (u && u.role) || 'staff',
+    access_token: (s && s.access_token) || null,
+  };
+}
+
+function loadTrainingData() {
+  var u = getTrainingUser();
+  var isAdmin = (u.role === 'admin' || u.role === 'medsync_superadmin');
+
+  var loadingEl = document.getElementById('training-loading');
+  var adminView = document.getElementById('training-admin-view');
+  var staffView = document.getElementById('training-staff-view');
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (adminView) adminView.style.display = 'none';
+  if (staffView) staffView.style.display = 'none';
+
+  var navSub = document.getElementById('training-nav-sub');
+  var desc = document.getElementById('training-desc');
+  var avatar = document.getElementById('training-avatar');
+
+  if (u.name && avatar) {
+    var initials = u.name.split(' ').map(function(w){ return w[0] || ''; }).join('').slice(0,2).toUpperCase();
+    avatar.textContent = initials;
+  }
+
+  var url = TRAINING_SUPA_URL + '/rest/v1/quiz_completions?select=*&order=created_at.desc';
+  if (!isAdmin && u.id) {
+    url += '&user_id=eq.' + u.id;
+  }
+
+  var headers = { 'apikey': TRAINING_SUPA_KEY };
+  if (u.access_token) headers['Authorization'] = 'Bearer ' + u.access_token;
+
+  fetch(url, { headers }).then(function(res) {
+    return res.ok ? res.json() : [];
+  }).then(function(rows) {
+    _trainingRows = Array.isArray(rows) ? rows : [];
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (isAdmin) {
+      if (navSub) navSub.textContent = 'All team completions';
+      if (desc) desc.textContent = 'All quiz completions and certifications across your organization.';
+      renderTrainingAdminTable(_trainingRows);
+      if (adminView) adminView.style.display = 'block';
+    } else {
+      if (navSub) navSub.textContent = 'Your certifications';
+      if (desc) desc.textContent = 'Your completed training certifications.';
+      renderTrainingStaffCards(_trainingRows.filter(function(r){ return r.passed; }));
+      if (staffView) staffView.style.display = 'block';
+    }
+  }).catch(function() {
+    _trainingRows = [];
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (isAdmin) {
+      renderTrainingAdminTable([]);
+      if (adminView) adminView.style.display = 'block';
+    } else {
+      renderTrainingStaffCards([]);
+      if (staffView) staffView.style.display = 'block';
+    }
+  });
+}
+
+function renderTrainingAdminTable(rows) {
+  var tbody = document.getElementById('training-tbody');
+  var emptyEl = document.getElementById('training-empty');
+  var countLabel = document.getElementById('training-count-label');
+  if (!tbody) return;
+
+  var passed = rows.filter(function(r){ return r.passed; });
+  if (countLabel) countLabel.textContent = rows.length + ' completion' + (rows.length !== 1 ? 's' : '') +
+    ' · ' + passed.length + ' passed';
+
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  tbody.innerHTML = rows.map(function(r) {
+    var date = r.created_at
+      ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '—';
+    var sectionLabel = TRAINING_SECTION_LABELS[r.section] || r.section;
+    var passedBadge = r.passed
+      ? '<span style="background:#EFFAF5;color:#166534;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;">✓ Passed</span>'
+      : '<span style="background:#FEF2F2;color:#991B1B;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;">✗ Failed</span>';
+    return '<tr style="border-top:1px solid #F0EDF8;">' +
+      '<td style="padding:14px 20px;font-size:13px;font-weight:600;color:#1C2B4A;white-space:nowrap;">' + (r.user_name || '—') + '</td>' +
+      '<td style="padding:14px 16px;font-size:12px;color:#6B7A99;">' + (r.user_email || '—') + '</td>' +
+      '<td style="padding:14px 16px;font-size:13px;color:#1C2B4A;">' + sectionLabel + '</td>' +
+      '<td style="padding:14px 16px;font-size:14px;font-weight:700;color:#1C2B4A;text-align:center;">' + (r.score != null ? r.score : '?') + '/' + (r.total || 5) + '</td>' +
+      '<td style="padding:14px 16px;font-size:12px;color:#6B7A99;white-space:nowrap;">' + date + '</td>' +
+      '<td style="padding:14px 16px;text-align:center;">' + passedBadge + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function filterTrainingTable() {
+  var filter = document.getElementById('training-filter-section') ? document.getElementById('training-filter-section').value : '';
+  var filtered = filter ? _trainingRows.filter(function(r){ return r.section === filter; }) : _trainingRows;
+  renderTrainingAdminTable(filtered);
+}
+
+function renderTrainingStaffCards(rows) {
+  var container = document.getElementById('training-cert-cards');
+  var noEl = document.getElementById('training-no-certs');
+  if (!container) return;
+
+  if (!rows.length) {
+    container.style.display = 'none';
+    if (noEl) noEl.style.display = 'block';
+    return;
+  }
+  container.style.display = 'flex';
+  if (noEl) noEl.style.display = 'none';
+
+  container.innerHTML = rows.map(function(r) {
+    var date = r.created_at
+      ? new Date(r.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      : '—';
+    var sectionLabel = TRAINING_SECTION_LABELS[r.section] || r.section;
+    return '<div style="background:#fff;border-radius:16px;border:2px solid #C8922A;padding:28px 32px;display:flex;align-items:center;gap:24px;">' +
+      '<div style="width:56px;height:56px;border-radius:50%;background:rgba(200,146,42,0.12);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">🏅</div>' +
+      '<div style="flex:1;">' +
+        '<div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#C8922A;margin-bottom:4px;">Certified</div>' +
+        '<div style="font-size:18px;font-weight:700;color:#1C2B4A;margin-bottom:4px;">' + sectionLabel + '</div>' +
+        '<div style="font-size:13px;color:#6B7A99;">' + date + ' · Score: ' + (r.score != null ? r.score : '?') + '/' + (r.total || 5) + '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;flex-shrink:0;">' +
+        '<a href="medsync_userguide_live.html" style="background:#1C2B4A;color:#fff;text-decoration:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;">View Guide</a>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// loadTrainingData is called from showScreen when the training screen is first opened.
 
 
 // ── Boot ──────────────────────────────────────────────────────
