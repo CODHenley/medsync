@@ -369,8 +369,8 @@ function renderTypeScreen() {
     <div style="margin:18px 0 4px;">
       <div style="font-size:11px;font-weight:700;color:#1C2B4A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">What type of practice is this location?</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        ${['urgent_care','emergency','specialty','general'].map(t => {
-          const labels = {urgent_care:'🚨 Urgent Care',emergency:'🏥 Emergency (ER)',specialty:'🔬 Specialty',general:'🐾 General Practice'};
+        ${['urgent_care','er','specialty','general'].map(t => {
+          const labels = {urgent_care:'🚨 Urgent Care',er:'🏥 Emergency (ER)',specialty:'🔬 Specialty',general:'🐾 General Practice'};
           const sel = state.practiceType === t;
           return `<div onclick="selectPracticeType('${t}')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid ${sel?'#1C2B4A':'#DDD9EC'};border-radius:9px;cursor:pointer;font-size:12px;font-weight:${sel?700:500};background:${sel?'#E8F0FE':'#fff'};color:${sel?'#1C2B4A':'#4A5568'};transition:all .15s;">${labels[t]}</div>`;
         }).join('')}
@@ -444,7 +444,7 @@ function renderConfigScreen() {
           <option value="__new__" ${state.createNewRegion?'selected':''}>+ Create new region</option>
         </select>
       </div>
-      ${state.createNewRegion ? '<div class="field"><label>New region name</label><input type="text" placeholder="e.g. Chicagoland North" value="${state.regionName}" oninput="state.regionName=this.value" style="font-size:14px;"></div>' : ''}
+      ${state.createNewRegion ? `<div class="field"><label>New region name</label><input type="text" placeholder="e.g. Chicagoland North" value="${state.regionName}" oninput="state.regionName=this.value" style="font-size:14px;"></div>` : ''}
     </div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="state.screen='type';render()">← Back</button>
@@ -634,8 +634,8 @@ async function submitOrder() {
     state.screen = 'done';
     render();
   } catch(e) {
-    state.screen = 'done';
-    render();
+    showToast('Save failed: ' + e.message);
+    console.error(e);
   }
 }
 
@@ -725,6 +725,32 @@ async function testVetspire() {
 }
 
 async function connectPIMS() {
+  try {
+    var regionId = state.regionId;
+    if (state.createNewRegion && state.regionName.trim()) {
+      var rr = await fetch(SUPA_URL+'/rest/v1/regions', {
+        method:'POST', headers:{...H,'Prefer':'return=representation'},
+        body: JSON.stringify({name: state.regionName.trim()})
+      });
+      var rd = await rr.json();
+      regionId = Array.isArray(rd) ? rd[0]?.id : rd?.id;
+    }
+    var payload = {
+      name: state.locationName,
+      address: state.address || null,
+      practice_type: state.practiceType || null,
+      vetspire_location_id: state.vetspireLocId || null,
+    };
+    if (regionId) payload.region_id = regionId;
+    var locRes = await fetch(SUPA_URL+'/rest/v1/locations', {
+      method:'POST', headers:{...H,'Prefer':'return=representation'},
+      body: JSON.stringify(payload)
+    });
+    var locData = await locRes.json();
+    state.newLocationId = Array.isArray(locData) ? locData[0]?.id : locData?.id;
+  } catch(e) {
+    console.warn('Location save failed:', e);
+  }
   state.screen = 'done';
   render();
 }
