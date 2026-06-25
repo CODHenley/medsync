@@ -597,6 +597,14 @@ function showToast(msg) {
 }
 
 boot();
+
+function navHome() {
+  if (window.self !== window.top) {
+    window.parent.postMessage({type:'navigate',screen:'portfolio'},'*');
+  } else {
+    window.location.href = 'index.html';
+  }
+}
 </script>
 </body>
 </html>

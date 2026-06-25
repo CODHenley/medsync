@@ -10,6 +10,9 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
+.tb-home:hover{opacity:1;}
+.tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
 .tb-title{font-size:15px;font-weight:600;color:#fff;}
 .tb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
 .save-btn{padding:8px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
@@ -80,6 +83,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 </head>
 <body>
 <div class="topbar">
+  <div class="tb-home" onclick="navHome()" title="Home">
+    <img src="medsync_logo.png" alt="MedSync" style="height:22px;width:auto;border-radius:4px;">
+    <span class="tb-home-label">MedSync</span>
+  </div>
   <div>
     <div class="tb-title">Admin Settings</div>
     <div class="tb-sub" id="tb-sub">Loading…</div>

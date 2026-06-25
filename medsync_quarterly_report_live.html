@@ -21,6 +21,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* TOPBAR */
 .topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
+.tb-home:hover{opacity:1;}
+.tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
 .tb-left{display:flex;align-items:center;gap:10px;}
 .tb-title{font-size:14px;font-weight:600;color:var(--navy);}
 .tb-right{display:flex;gap:6px;align-items:center;}
@@ -119,6 +122,10 @@ select:focus{border-color:var(--navy);}
 <body>
 
 <div class="topbar">
+  <div class="tb-home" onclick="navHome()" title="Home">
+    <img src="medsync_logo.png" alt="MedSync" style="height:22px;width:auto;border-radius:4px;">
+    <span class="tb-home-label">MedSync</span>
+  </div>
   <div class="tb-left">
     <div class="tb-title">📊 Quarterly Inventory Report</div>
     <select id="year-sel" onchange="load()"></select>

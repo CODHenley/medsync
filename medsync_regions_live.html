@@ -10,6 +10,9 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
+.tb-home:hover{opacity:1;}
+.tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
 .tb-left{display:flex;align-items:center;gap:12px;}
 .tb-back{color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;display:flex;align-items:center;gap:4px;padding:4px 0;}
 .tb-back:hover{color:#fff;}
@@ -59,6 +62,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 </head>
 <body>
 <div class="topbar">
+  <div class="tb-home" onclick="navHome()" title="Home">
+    <img src="medsync_logo.png" alt="MedSync" style="height:22px;width:auto;border-radius:4px;">
+    <span class="tb-home-label">MedSync</span>
+  </div>
   <div class="tb-left">
     <a class="tb-back" href="medsync_settings_live.html">← Settings</a>
     <span class="tb-divider">/</span>

@@ -24,6 +24,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* TOPBAR */
 .topbar{background:var(--navy);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
+.tb-home:hover{opacity:1;}
+.tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
 .tb-left{display:flex;align-items:center;gap:12px;}
 .tb-title{font-size:14px;font-weight:500;color:#fff;}
 .tb-loc{font-size:11px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.1);padding:3px 10px;border-radius:20px;}
@@ -218,6 +221,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 <!-- TOPBAR -->
 <div class="topbar">
+  <div class="tb-home" onclick="navHome()" title="Home">
+    <img src="medsync_logo.png" alt="MedSync" style="height:22px;width:auto;border-radius:4px;">
+    <span class="tb-home-label">MedSync</span>
+  </div>
   <div class="tb-left">
     <span class="tb-title">Cycle Count</span>
     <select id="loc-label" onchange="window.location.href='medsync_cycle_count_live.html?location='+this.value" style="font-size:11px;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.1);padding:3px 10px;border-radius:20px;border:none;cursor:pointer;font-family:DM Sans,sans-serif;"><option value='Lincoln Park'>Lincoln Park</option><option value='Old Orchard'>Old Orchard</option><option value='West Loop'>West Loop</option><option value='Wheaton'>Wheaton</option></select>

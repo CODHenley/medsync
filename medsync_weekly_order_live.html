@@ -24,6 +24,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* ── TOPBAR ─────────────────────────────────────────────────── */
 .topbar{background:var(--navy);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
+.tb-home:hover{opacity:1;}
+.tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
 .tb-left{display:flex;align-items:center;gap:12px;}
 .tb-title{font-size:14px;font-weight:500;color:#fff;}
 select.loc-sel{background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.2);color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;padding:4px 10px;border-radius:7px;outline:none;height:30px;cursor:pointer;}
@@ -243,6 +246,10 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 
 <!-- TOPBAR -->
 <div class="topbar">
+  <div class="tb-home" onclick="navHome()" title="Home">
+    <img src="medsync_logo.png" alt="MedSync" style="height:22px;width:auto;border-radius:4px;">
+    <span class="tb-home-label">MedSync</span>
+  </div>
   <div class="tb-left">
     <span class="tb-title">Purchase Orders</span>
     <select class="loc-sel" id="loc-select" onchange="onLocChange()">
