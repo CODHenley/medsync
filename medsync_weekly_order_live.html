@@ -342,7 +342,7 @@ const state = {
   estMonthLabel:     '',  // e.g. "June 2025 avg" or "4-wk trend"
   externalSpend:     0,
   poSpend:           0,
-  cogsPeriod:        'month',
+  cogsPeriod:        'week',
 };
 
 function _generatedKey() { return 'medsync_generated_' + (state.locationId||'') + '_' + getWeekStart(); }
@@ -1029,8 +1029,8 @@ function renderQueueView() {
         <div class="sb-label" style="display:flex;align-items:center;gap:5px;margin-top:3px;">
           <select onchange="setCogsPeriod(this.value)" onclick="event.stopPropagation()"
             style="font-size:10px;border:none;background:transparent;color:var(--mist);cursor:pointer;padding:0;outline:none;font-family:inherit;">
-            <option value="month" ${!isWeek?'selected':''}>Monthly budget</option>
             <option value="week"  ${isWeek?'selected':''}>Weekly budget</option>
+            <option value="month" ${!isWeek?'selected':''}>Monthly budget</option>
           </select>
           <span onclick="openSpendModal()" title="Enter purchases made outside MedSync"
             style="color:var(--mist);cursor:pointer;font-size:11px;line-height:1;" class="ti ti-pencil"></span>
