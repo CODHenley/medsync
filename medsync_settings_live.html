@@ -9,8 +9,11 @@
 :root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#DDD9EC;--bg:#F5F3FA;--amber:#C8922A;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
-.topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;flex-shrink:0;}
+.topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .tb-title{font-size:15px;font-weight:600;color:#fff;}
+.tb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
+.save-btn{padding:8px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.save-btn:hover{opacity:.9;}
 .shell{max-width:860px;margin:0 auto;padding:24px 20px 48px;display:flex;flex-direction:column;gap:20px;}
 .section-title{font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
 .card{background:#fff;border:0.5px solid var(--border);border-radius:14px;overflow:hidden;}
@@ -77,7 +80,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 </head>
 <body>
 <div class="topbar">
-  <div class="tb-title">Admin Settings</div>
+  <div>
+    <div class="tb-title">Admin Settings</div>
+    <div class="tb-sub" id="tb-sub">Loading…</div>
+  </div>
 </div>
 
 <div class="shell">
@@ -783,7 +789,6 @@ async function saveBillingInfo() {
     billing_contact_name: document.getElementById('bb-billing-name').value.trim() || null,
     billing_email:        document.getElementById('bb-billing-email').value.trim() || null,
     billing_phone:        document.getElementById('bb-billing-phone').value.trim() || null,
-    payment_terms:        document.getElementById('bb-payment-terms').value || null,
     ach_bank_name:        document.getElementById('bb-ach-bank').value.trim() || null,
     ach_account_holder:   document.getElementById('bb-ach-holder').value.trim() || null,
     ach_routing_number:   document.getElementById('bb-ach-routing').value.trim() || null,
@@ -816,7 +821,7 @@ function applyBillingLockUI(billing_updated_at) {
   const notice = document.getElementById('billing-lock-notice');
   const countdown = document.getElementById('billing-lock-countdown');
   const saveBtn = document.getElementById('billing-save-btn');
-  const fields = ['bb-billing-name','bb-billing-email','bb-billing-phone','bb-payment-terms',
+  const fields = ['bb-billing-name','bb-billing-email','bb-billing-phone',
     'bb-ach-bank','bb-ach-holder','bb-ach-routing','bb-ach-account','bb-ach-type',
     'bb-cc-holder','bb-cc-last4','bb-cc-brand','bb-cc-exp'];
   if (locked) {
@@ -836,9 +841,18 @@ function applyBillingLockUI(billing_updated_at) {
   }
 }
 
+const NAV_MAP = {
+  users:       'medsync_users_live.html',
+  regions:     'medsync_regions_live.html',
+  newlocation: 'medsync_newlocation_live.html',
+  actlog:      'medsync_activity_log_live.html',
+};
 function nav(screen) {
   if (window.self !== window.top) {
     window.parent.postMessage({type:'navigate',screen:screen},'*');
+  } else {
+    var url = NAV_MAP[screen];
+    if (url) window.location.href = url;
   }
 }
 
@@ -872,9 +886,12 @@ function showToast(msg) {
 
 // Load saved settings on boot
 (function() {
-  // Populate profile fields from logged-in user
+  // Topbar user identity
   try {
     var u = JSON.parse(localStorage.getItem('medsync_user') || '{}');
+    var sub = document.getElementById('tb-sub');
+    if (sub) sub.textContent = 'Admin Settings' + (u.full_name ? ' · ' + u.full_name : '');
+    // Populate profile fields from logged-in user
     if (u.full_name) {
       var pc = document.querySelector('input[value="Megan Henley"]');
       if (pc) pc.value = u.full_name;
@@ -922,7 +939,7 @@ window.addEventListener('message', function(e) {
 </script>
 
 <!-- ── Billing OTP Modal ─────────────────────────────────────────── -->
-<div id="billing-otp-modal" style="display:none;position:fixed;inset:0;background:rgba(28,43,74,.55);z-index:9000;display:none;align-items:center;justify-content:center;">
+<div id="billing-otp-modal" style="display:none;position:fixed;inset:0;background:rgba(28,43,74,.55);z-index:9000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:16px;padding:32px 28px;width:360px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.18);text-align:center;">
     <div style="font-size:28px;margin-bottom:10px;">🔐</div>
     <div style="font-size:15px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Verify your identity</div>
