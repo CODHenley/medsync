@@ -459,50 +459,7 @@ if (window.self !== window.top) {
           <div class="sec-sub">Lots requiring immediate attention</div>
         </div>
         <div class="alert-strip" id="alert-strip">
-          <div class="alert-row ar-red" onclick="openLot('LOT-0041')">
-            <div class="ar-icon">🔴</div>
-            <div class="ar-body">
-              <div class="ar-title">Ketamine HCl 10mg/ml · <span style="font-family:'DM Mono',monospace;font-size:11px;">LOT-0041</span> <span class="b-dea" style="margin-left:4px;">DEA III</span></div>
-              <div class="ar-sub">Expired May 14, 2026 · Not yet disposed · Old Orchard</div>
-            </div>
-            <div class="ar-right">
-              <span class="ar-days cr">Expired 15d ago</span>
-              <span class="badge b-expired">Disposal required</span>
-            </div>
-          </div>
-          <div class="alert-row ar-red" onclick="openLot('LOT-0088')">
-            <div class="ar-icon">🔴</div>
-            <div class="ar-body">
-              <div class="ar-title">Dexmedetomidine 0.5mg/ml · <span style="font-family:'DM Mono',monospace;font-size:11px;">LOT-0088</span></div>
-              <div class="ar-sub">Expired May 20, 2026 · Not yet disposed · West Loop</div>
-            </div>
-            <div class="ar-right">
-              <span class="ar-days cr">Expired 9d ago</span>
-              <span class="badge b-expired">Disposal required</span>
-            </div>
-          </div>
-          <div class="alert-row ar-amber" onclick="openLot('LOT-0073')">
-            <div class="ar-icon">🟡</div>
-            <div class="ar-body">
-              <div class="ar-title">Maropitant Citrate 10mg/ml · <span style="font-family:'DM Mono',monospace;font-size:11px;">LOT-0073</span></div>
-              <div class="ar-sub">Expires Jun 8, 2026 · 3 vials remaining · Lincoln Park</div>
-            </div>
-            <div class="ar-right">
-              <span class="ar-days ca">10 days left</span>
-              <span class="badge b-soon">Expiring soon</span>
-            </div>
-          </div>
-          <div class="alert-row ar-purple" onclick="openLot('LOT-0029')">
-            <div class="ar-icon">🟣</div>
-            <div class="ar-body">
-              <div class="ar-title">Tramadol 50mg tabs · <span style="font-family:'DM Mono',monospace;font-size:11px;">LOT-0029</span> <span class="b-dea" style="margin-left:4px;">DEA IV</span> <span class="b-bio" style="margin-left:4px;">BIENNIAL</span></div>
-              <div class="ar-sub">Biennial inventory due Jun 15, 2026 · Wheaton · last counted Jan 2024</div>
-            </div>
-            <div class="ar-right">
-              <span class="ar-days cp">17 days to count</span>
-              <span class="badge b-cs">DEA compliance</span>
-            </div>
-          </div>
+          <div style="padding:12px;color:var(--mist);font-size:12px;">Loading alerts…</div>
         </div>
       </div>
 
@@ -951,6 +908,7 @@ function filterTable() {
 }
 
 let _editingLotDbId = null;
+let _lookedUpProductId = null;
 
 function openAddLotModal(lot) {
   _editingLotDbId = lot ? lot.dbId : null;
@@ -976,11 +934,12 @@ function openAddLotModal(lot) {
   } else {
     if (title) title.textContent = 'Add lot manually';
     if (saveBtn) saveBtn.textContent = 'Save lot';
+    _lookedUpProductId = null;
     ['al-sku','al-product','al-lotnum','al-exp','al-qty','al-vendor'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const src = document.getElementById('al-source'); if (src) src.selectedIndex = 0;
-    const loc = document.getElementById('al-loc');   if (loc) loc.selectedIndex = 0;
+    const loc = document.getElementById('al-loc');   if (loc) loc.value = '11111111-0000-0000-0000-000000000004';
     const skuStatus = document.getElementById('al-sku-status'); if (skuStatus) skuStatus.style.display = 'none';
   }
   const err = document.getElementById('al-error'); if (err) err.style.display = 'none';
@@ -1117,17 +1076,18 @@ async function alSkuLookupVal(raw) {
   statusEl.style.color = 'var(--mist)';
   statusEl.textContent = 'Looking up…';
 
+  _lookedUpProductId = null;
   try {
     let rows = [];
     const ndcRes = await fetch(
-      SUPA_URL + '/rest/v1/products?select=name,vendor,ndc&ndc=eq.' + encodeURIComponent(raw) + '&limit=1',
+      SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&ndc=eq.' + encodeURIComponent(raw) + '&limit=1',
       { headers: H }
     );
     rows = await ndcRes.json();
 
     if (!Array.isArray(rows) || !rows.length) {
       const nameRes = await fetch(
-        SUPA_URL + '/rest/v1/products?select=name,vendor,ndc&name=ilike.' +
+        SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&name=ilike.' +
         encodeURIComponent('%' + raw + '%') + '&order=name.asc&limit=1',
         { headers: H }
       );
@@ -1136,6 +1096,7 @@ async function alSkuLookupVal(raw) {
 
     if (Array.isArray(rows) && rows.length) {
       const hit = rows[0];
+      _lookedUpProductId = hit.id || null;
       document.getElementById('al-product').value = hit.name || '';
       if (hit.vendor) document.getElementById('al-vendor').value = hit.vendor;
       document.getElementById('al-product-suggestions').style.display = 'none';
@@ -1200,20 +1161,22 @@ async function submitAddLot() {
         })
       });
     } else {
+      const newLot = {
+        location_id:     locId,
+        lot_number:      lotNum,
+        qty_received:    qty,
+        qty_remaining:   qty,
+        received_date:   today,
+        expiration_date: expDate,
+        status:          status,
+        vendor:          vendor || null,
+        notes:           product + (source ? ' · ' + source : ''),
+      };
+      if (_lookedUpProductId) newLot.product_id = _lookedUpProductId;
       res = await fetch(SUPA_URL + '/rest/v1/lots', {
         method: 'POST',
         headers: { ...H, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location_id:     locId,
-          lot_number:      lotNum,
-          qty_received:    qty,
-          qty_remaining:   qty,
-          received_date:   today,
-          expiration_date: expDate,
-          status:          status,
-          vendor:          vendor || null,
-          notes:           source,
-        })
+        body: JSON.stringify(newLot)
       });
     }
     if (!res.ok) {
