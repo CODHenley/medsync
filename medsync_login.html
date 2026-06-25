@@ -43,9 +43,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
 .loading .btn-text{display:none;}
 .divider{border:none;border-top:0.5px solid var(--border);margin:20px 0;}
 .demo-label{font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
-.demo-pills{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
-.demo-pill{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:0.5px solid var(--border);background:#FAFAF8;color:var(--mist);transition:all .12s;}
-.demo-pill.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+
 .demo-grid{display:flex;flex-direction:column;gap:6px;}
 .demo-btn{padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:#FAFAF8;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:space-between;transition:all .1s;border:none;width:100%;text-align:left;}
 .demo-btn:hover{background:#F0EEF8;}
@@ -100,15 +98,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
         <div class="spinner"></div>
         <span class="btn-text">Sign in</span>
       </button>
-      <hr class="divider">
-      <div class="demo-label">Demo accounts</div>
-      <div class="demo-pills">
-        <span class="demo-pill active" onclick="filterDemo('admin',this)">Admin</span>
-        <span class="demo-pill" onclick="filterDemo('manager',this)">Manager</span>
-        <span class="demo-pill" onclick="filterDemo('lead',this)">Inv. Lead</span>
-        <span class="demo-pill" onclick="filterDemo('receiver',this)">Receiver</span>
+      <div id="recent-logins-section" style="display:none;">
+        <hr class="divider">
+        <div class="demo-label">Recent logins</div>
+        <div class="demo-grid" id="demo-grid"></div>
       </div>
-      <div class="demo-grid" id="demo-grid"></div>
     </div>
     <div class="card-footer">MedSync · Scout Veterinary Urgent Care · Thurlow Veterinary Services</div>
   </div>
@@ -166,6 +160,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
       document.getElementById('email').value = recentLogins[0].email;
       document.getElementById('remember-me').checked = true;
     }
+    renderRecentLogins();
   } catch(e) {}
 })();
 
@@ -258,13 +253,8 @@ async function signIn() {
   }
 }
 
-const PILL_TO_ROLE = { admin:'admin', manager:'manager', lead:'inventory_lead', receiver:'receiver' };
-const ROLE_META = {
-  admin:          { badge:'db-admin', label:'Admin' },
-  manager:        { badge:'db-mgr',   label:'Manager' },
-  inventory_lead: { badge:'db-lead',  label:'Inv. Lead' },
-  receiver:       { badge:'db-recv',  label:'Receiver' },
-};
+const ROLE_LABELS = { admin:'Admin', manager:'Manager', inventory_lead:'Inv. Lead', receiver:'Receiver', hospital_manager:'Manager', clinical:'Manager' };
+const ROLE_BADGE  = { admin:'db-admin', manager:'db-mgr', inventory_lead:'db-lead', receiver:'db-recv' };
 
 function getRecentLogins() {
   try { return JSON.parse(localStorage.getItem('medsync_recent_logins') || '[]'); }
@@ -277,32 +267,27 @@ function saveRecentLogin(email, name, role) {
   localStorage.setItem('medsync_recent_logins', JSON.stringify(logins.slice(0, 30)));
 }
 
-function filterDemo(pillKey, pill) {
-  document.querySelectorAll('.demo-pill').forEach(p => p.classList.remove('active'));
-  pill.classList.add('active');
-  const role = PILL_TO_ROLE[pillKey];
-  const logins = getRecentLogins().filter(l => l.role === role).slice(0, 3);
+function renderRecentLogins() {
+  const logins = getRecentLogins().slice(0, 4);
+  const section = document.getElementById('recent-logins-section');
   const grid = document.getElementById('demo-grid');
-  if (!logins.length) {
-    grid.innerHTML = '<div style="font-size:11px;color:var(--mist);padding:6px 2px;">No recent logins</div>';
-    return;
-  }
-  const meta = ROLE_META[role] || { badge:'db-admin', label:role };
-  grid.innerHTML = logins.map(u => `
-    <button class="demo-btn" onclick="demoLogin('${u.email}')">
+  if (!logins.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  grid.innerHTML = logins.map(u => {
+    const badge = ROLE_BADGE[u.role] || 'db-admin';
+    const label = ROLE_LABELS[u.role] || u.role;
+    return `<button class="demo-btn" onclick="quickLogin('${u.email}')">
       <div><div class="demo-name">${u.name || u.email}</div><div class="demo-role">${u.email}</div></div>
-      <span class="demo-badge ${meta.badge}">${meta.label}</span>
-    </button>`).join('');
+      <span class="demo-badge ${badge}">${label}</span>
+    </button>`;
+  }).join('');
 }
 
-// Init — show admin tab
-filterDemo('admin', document.querySelector('.demo-pill'));
-
-function demoLogin(email) {
+function quickLogin(email) {
   document.getElementById('email').value = email;
-  document.getElementById('password').value = 'MedSync2026!';
+  document.getElementById('password').value = '';
+  document.getElementById('password').focus();
   document.getElementById('error-box').classList.remove('show');
-  setTimeout(signIn, 200);
 }
 
 async function forgotPassword() {
