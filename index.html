@@ -253,7 +253,7 @@ async function loadWheatonInsights() {
 
   try {
     const [lotsRes, glRes, cogsRes, revRes] = await Promise.all([
-      fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,quantity_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&order=expiration_date.asc', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,qty_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&order=expiration_date.asc', { headers: _H }),
       fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H }),
       fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
       fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
@@ -273,7 +273,7 @@ async function loadWheatonInsights() {
         const exp  = l.expiration_date;
         const daysLeft = Math.round((new Date(exp) - now) / 86400000);
         const urgency  = daysLeft <= 14 ? 'bad' : 'warn';
-        const qty  = l.quantity_remaining != null ? l.quantity_remaining + ' remaining' : '';
+        const qty  = l.qty_remaining != null ? l.qty_remaining + ' remaining' : '';
         cards.push({
           urgency: urgency,
           icon: 'ti-alert-triangle',
@@ -420,7 +420,7 @@ async function refreshAllInsights() {
   try {
     const [glRows, lots, diRows] = await Promise.all([
       sg(`/rest/v1/goods_lost?select=location_id,value_lost,product_name&created_at=gte.${days30ago}&order=value_lost.desc&limit=200`),
-      sg(`/rest/v1/lots?select=expiration_date,quantity_remaining,location_id,products(name)&expiration_date=gte.${today}&expiration_date=lte.${days60fwd}&order=expiration_date.asc&limit=50`),
+      sg(`/rest/v1/lots?select=expiration_date,qty_remaining,location_id,products(name)&expiration_date=gte.${today}&expiration_date=lte.${days60fwd}&order=expiration_date.asc&limit=50`),
       sg(`/rest/v1/dispensed_items?select=product_name,location_name,unit_cost,quantity&dispensed_at=gte.${days30ago}&sku=not.is.null&limit=2000`),
     ]);
 
@@ -459,7 +459,7 @@ async function refreshAllInsights() {
       const daysLeft = exp ? Math.round((new Date(exp) - now) / 864e5) : 999;
       const prodName = (lot.products || {}).name || 'Unknown product';
       const locName  = LOC[lot.location_id] || 'Unknown location';
-      const qty      = lot.quantity_remaining;
+      const qty      = lot.qty_remaining;
       const urgency  = daysLeft <= 14 ? 'bad' : 'warn';
       cards.push({ dollar: 10000 - daysLeft, html: makeCard(
         'ti-alert-triangle',
