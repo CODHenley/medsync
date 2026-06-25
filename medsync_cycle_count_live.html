@@ -241,6 +241,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   <span class="due-next" id="due-next-label"></span>
 </div>
 
+<!-- DEMO DATA WARNING -->
+<div id="demo-data-warning" style="display:none;background:#7c3aed22;border:1px solid #7c3aed55;border-radius:8px;padding:10px 14px;margin:10px 16px 0;font-size:12px;color:#c4b5fd;">
+  ⚠ No inventory snapshot found for this location — showing demo products. Real data will appear after the daily sync runs.
+</div>
+
 <!-- TABS -->
 <div class="tabs">
   <div class="tab" id="tab-a" onclick="switchTab('A')">
@@ -990,8 +995,13 @@ async function init() {
 
   // Load products (real or demo)
   let rawProducts = null;
+  let usingDemo = false;
   if (currentLocation) rawProducts = await loadProducts(currentLocation);
-  if (!rawProducts || rawProducts.length === 0) rawProducts = DEMO_PRODUCTS;
+  if (!rawProducts || rawProducts.length === 0) { rawProducts = DEMO_PRODUCTS; usingDemo = true; }
+
+  // Warn staff if showing demo data
+  var demoWarn = document.getElementById('demo-data-warning');
+  if (demoWarn) demoWarn.style.display = usingDemo ? 'block' : 'none';
 
   products = groupProducts(rawProducts);
 
@@ -1156,14 +1166,15 @@ function togglePhysicalCount() {
 
 async function pcStartSession() {
   var mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
-  var _locMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
+  var _vidMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
   pcState.locationName = currentLocation || new URLSearchParams(window.location.search).get('location') || 'Lincoln Park';
-  pcState.locationId = _locMap[pcState.locationName] || '23083';
+  pcState.locationId   = _vidMap[pcState.locationName] || '23083'; // Vetspire ID — used only for snapshot lookup
+  var supaLocationId   = currentLocationId; // Supabase UUID — used for FK writes
   var res = await fetch(SUPA_URL + '/rest/v1/physical_count_sessions', {
     method: 'POST',
     headers: { ...H, 'Prefer': 'return=representation' },
     body: JSON.stringify({
-      location_id: pcState.locationId,
+      location_id: supaLocationId,
       location_name: pcState.locationName,
       started_by: mu.full_name || mu.email || 'Unknown',
       status: 'in_progress'
