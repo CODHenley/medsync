@@ -501,8 +501,7 @@ async function refreshAllInsights() {
     const top3 = cards.slice(0,3);
 
     if (managed && top3.length) {
-      managed.innerHTML =
-        '<!-- MANAGED-INSIGHTS-START -->
+      managed.innerHTML = `
       <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
         <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-pill" style="color:#a0700a;font-size:14px;" aria-hidden="true"></i>
@@ -528,8 +527,7 @@ async function refreshAllInsights() {
           <span class="badge badge-bad" style="font-size:11px;">$950</span>
           <p style="font-size:10px;color:#4A5568;margin-top:4px;">Goods lost</p>
         </div>
-      </div>
-      <!-- MANAGED-INSIGHTS-END -->';
+      </div>`;
     }
 
     // Also refresh Wheaton-specific insights
