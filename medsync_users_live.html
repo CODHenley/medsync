@@ -710,6 +710,14 @@ function showToast(msg, isError) {
 }
 
 boot();
+
+function navHome() {
+  if (window.self !== window.top) {
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+  } else {
+    window.location.href = 'medsync_portfolio_live.html';
+  }
+}
 </script>
 </body>
 </html>

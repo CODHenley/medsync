@@ -1676,6 +1676,14 @@ async function startCheckout() {
   }
 }
 
+function navHome() {
+  if (window.self !== window.top) {
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+  } else {
+    window.location.href = 'medsync_portfolio_live.html';
+  }
+}
+
 async function sendUpgradeNudgeEmail(adminName, adminEmail, orgName, tierLabel, slotsLeft) {
   const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 20px;"><tr><td align="center">
