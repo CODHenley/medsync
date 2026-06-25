@@ -256,12 +256,7 @@ async function redirectUser(token) {
       showToast('✓ Welcome back, ' + (stored.full_name.split(' ')[0] || 'there') + '!');
       console.log('Auth success:', stored);
       setTimeout(() => {
-        // Role-based routing
-        if (stored.role === 'medsync_superadmin') {
-          window.location.href = 'medsync_platform_admin.html';
-        } else {
-          window.location.href = 'medsync_portfolio_live.html';
-        }
+        window.location.href = 'medsync_portfolio_live.html';
       }, 1500);
     }
   } catch(e) {
