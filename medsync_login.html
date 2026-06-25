@@ -145,7 +145,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     if (sess && sess.access_token && sess.expires_at) {
       const exp = new Date(sess.expires_at * 1000);
       if (exp > new Date()) {
-        window.location.replace('index.html');
+        window.location.replace('medsync_portfolio_live.html');
         return;
       }
     }
@@ -241,7 +241,7 @@ async function signIn() {
     store.setItem('medsync_user', JSON.stringify(stored));
     saveRecentLogin(email, stored.full_name, stored.role);
     showToast('✓ Welcome back, ' + stored.full_name.split(' ')[0] + '!');
-    setTimeout(() => { window.location.replace('index.html'); }, 600);
+    setTimeout(() => { window.location.replace('medsync_portfolio_live.html'); }, 600);
 
   } catch(err) {
     errorBox.textContent = 'Connection error. Please try again.';

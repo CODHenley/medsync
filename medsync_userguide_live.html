@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync — User Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1C2B4A; --gold: #C8922A; --gold-light: #E8B355;
+    --cream: #F5EDD8; --bg: #F5F3FA; --white: #fff;
+    --text: #1C2B4A; --muted: #6B7A99; --border: #E5E1F0;
+  }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    background: var(--navy); color: var(--white);
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 20px; height: 48px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .top-bar-back {
+    background: none; border: none; color: rgba(255,255,255,0.7);
+    font-size: 20px; cursor: pointer; padding: 4px 6px; border-radius: 6px;
+    transition: background 0.15s; line-height: 1;
+  }
+  .top-bar-back:hover { background: rgba(255,255,255,0.1); }
+  .top-bar-title { font-size: 15px; font-weight: 600; }
+  .top-bar-role {
+    margin-left: auto; font-size: 12px; color: var(--gold);
+    font-weight: 500; letter-spacing: 0.5px;
+  }
+
+  /* ── LAYOUT ── */
+  .guide-layout {
+    display: flex; max-width: 1080px; margin: 0 auto;
+    padding: 32px 20px; gap: 32px; align-items: flex-start;
+  }
+
+  /* ── SIDEBAR TOC ── */
+  .guide-toc {
+    width: 220px; flex-shrink: 0; position: sticky; top: 72px;
+  }
+  .toc-section { margin-bottom: 24px; }
+  .toc-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .toc-link {
+    display: block; font-size: 13px; color: var(--muted);
+    text-decoration: none; padding: 4px 8px; border-radius: 6px;
+    margin-bottom: 2px; transition: background 0.15s, color 0.15s;
+  }
+  .toc-link:hover { background: var(--white); color: var(--navy); }
+  .toc-link.active { background: var(--white); color: var(--navy); font-weight: 600; }
+  @media(max-width:700px) { .guide-toc { display: none; } }
+
+  /* ── CONTENT ── */
+  .guide-content { flex: 1; min-width: 0; }
+
+  /* ── SOP CARD ── */
+  .sop-card {
+    background: var(--white); border-radius: 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 32px; overflow: hidden;
+  }
+  .sop-header {
+    background: var(--navy); padding: 24px 28px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .sop-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: rgba(200,146,42,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .sop-header-text {}
+  .sop-tag {
+    font-size: 10px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 4px;
+  }
+  .sop-title { font-size: 18px; font-weight: 600; color: var(--white); }
+  .sop-body { padding: 28px; }
+
+  .sop-intro {
+    font-size: 15px; color: var(--muted); line-height: 1.7;
+    margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border);
+  }
+
+  /* Step blocks */
+  .step-group { margin-bottom: 28px; }
+  .step-group-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 14px;
+  }
+  .step-list { display: flex; flex-direction: column; gap: 12px; }
+  .step-row {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px 16px; background: var(--bg); border-radius: 10px;
+  }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 999px;
+    background: var(--navy); color: var(--gold);
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .step-content { flex: 1; }
+  .step-title { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 3px; }
+  .step-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .step-note {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 6px; font-size: 12px; color: var(--gold);
+    background: rgba(200,146,42,0.08); padding: 3px 10px; border-radius: 999px;
+  }
+
+  /* Tips / callouts */
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;
+    font-size: 13px; line-height: 1.6; display: flex; gap: 10px;
+  }
+  .callout-info { background: #EFF3FF; border-left: 3px solid #4A6CF7; }
+  .callout-warn { background: #FFF8EC; border-left: 3px solid var(--gold); }
+  .callout-success { background: #EFFAF5; border-left: 3px solid #22C55E; }
+  .callout-icon { font-size: 16px; flex-shrink: 0; }
+  .callout-text { color: var(--navy); }
+
+  /* Role badge */
+  .role-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px;
+    letter-spacing: 0.5px;
+  }
+  .rb-staff { background: #EFF3FF; color: #4A6CF7; }
+  .rb-admin { background: rgba(200,146,42,0.12); color: var(--gold); }
+  .rb-medsync { background: rgba(28,43,74,0.08); color: var(--navy); }
+
+  /* Feature grid inside SOP */
+  .feature-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .feature-chip {
+    background: var(--bg); border-radius: 10px; padding: 14px 16px;
+    border: 1px solid var(--border);
+  }
+  .feature-chip-icon { font-size: 20px; margin-bottom: 6px; }
+  .feature-chip-name { font-size: 13px; font-weight: 600; color: var(--navy); }
+  .feature-chip-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Divider */
+  .sop-divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* Section anchor scroll offset */
+  .section-anchor { scroll-margin-top: 72px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <button class="top-bar-back" onclick="goBack()">←</button>
+  <span class="top-bar-title">📖 User Guide</span>
+  <span class="top-bar-role" id="ug-role-badge"></span>
+</div>
+
+<div class="guide-layout">
+
+  <!-- TOC SIDEBAR -->
+  <nav class="guide-toc" id="guide-toc">
+    <div class="toc-section" id="toc-staff-section">
+      <div class="toc-label">Staff Guide</div>
+      <a class="toc-link" href="#staff-overview">Overview</a>
+      <a class="toc-link" href="#staff-inventory">Inventory & Cycle Count</a>
+      <a class="toc-link" href="#staff-receiving">Receiving</a>
+      <a class="toc-link" href="#staff-tips">Tips & Best Practices</a>
+    </div>
+    <div class="toc-section" id="toc-admin-section">
+      <div class="toc-label">Admin Guide</div>
+      <a class="toc-link" href="#admin-overview">Overview</a>
+      <a class="toc-link" href="#admin-locations">Managing Locations</a>
+      <a class="toc-link" href="#admin-users">Managing Users</a>
+      <a class="toc-link" href="#admin-analytics">Analytics & Budget</a>
+      <a class="toc-link" href="#admin-upgrade">Upgrading Your Plan</a>
+    </div>
+    <div class="toc-section" id="toc-medsync-section">
+      <div class="toc-label">MedSync Platform</div>
+      <a class="toc-link" href="#ms-overview">Overview</a>
+      <a class="toc-link" href="#ms-provision">Provisioning Orgs</a>
+      <a class="toc-link" href="#ms-support">Support Workflows</a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <div class="guide-content">
+
+    <!-- ════════════════════════════════
+         SOP 1 — STAFF
+    ════════════════════════════════ -->
+    <div class="sop-card section-anchor" id="staff-overview">
+      <div class="sop-header">
+        <div class="sop-icon">🐾</div>
+        <div class="sop-header-text">
+          <div class="sop-tag">SOP · Staff</div>
+          <div class="sop-title">Clinic Staff Guide — Daily Inventory Operations</div>
+        </div>
+      </div>
+      <div class="sop-body">
+
+        <p class="sop-intro">
+          This guide covers everything a clinic staff member needs to know to use MedSync day-to-day. MedSync keeps your inventory accurate, helps you catch discrepancies early, and syncs directly with Vetspire so you're never double-entering data.
+        </p>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">🔗</span>
+          <span class="callout-text"><strong>Vetspire Integration:</strong> When you dispense a medication or supply in Vetspire, MedSync automatically decrements the quantity — no manual adjustment needed for dispensed items.</span>
+        </div>
+
+        <div class="step-group" id="staff-inventory">
+          <div class="step-group-title">Inventory & Cycle Counts</div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Log in to MedSync</div>
+                <div class="step-desc">Go to <strong>medsync.vet</strong> and log in with the email and password provided by your admin. Your dashboard shows only your location's inventory.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Run your assigned cycle count</div>
+                <div class="step-desc">Navigate to <strong>Cycle Count</strong> in the sidebar. Your admin will assign which section (e.g., "Controlled Substances", "Surgical Supplies") to count. Scan or type quantities on hand.</div>
+                <div class="step-note">⏱ Most cycle counts take 10–20 minutes</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Flag variances</div>
+                <div class="step-desc">If your physical count differs from the system count, leave a note explaining the discrepancy (broken vial, damaged packaging, etc.). Do <em>not</em> adjust the count without a note.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Submit the count</div>
+                <div class="step-desc">Tap <strong>Submit Count</strong>. Your admin is notified automatically of any flagged variances. You'll see a green confirmation when it's received.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sop-divider"></div>
+
+        <div class="step-group" id="staff-receiving">
+          <div class="step-group-title">Receiving New Stock</div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Open the Receiving screen</div>
+                <div class="step-desc">Go to <strong>Receiving</strong> in the sidebar. Select the purchase order matching your delivery, or create a new receipt if no PO exists.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Enter quantities received</div>
+                <div class="step-desc">For each item, enter the quantity received and the lot number / expiration date from the packaging. Verify the unit of measure matches what's in the system.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Flag short shipments or damage</div>
+                <div class="step-desc">If a line item is shorted or received damaged, use the <strong>Flag Issue</strong> button. Your admin and the procurement team are notified immediately.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Confirm receipt</div>
+                <div class="step-desc">Tap <strong>Complete Receiving</strong>. Inventory is updated in real time and the purchase order is marked received.</div>
+                <div class="step-note">✓ Inventory updates are immediate — no waiting for nightly syncs</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sop-divider"></div>
+
+        <div class="step-group" id="staff-tips">
+          <div class="step-group-title">Tips & Best Practices</div>
+          <div class="callout callout-success">
+            <span class="callout-icon">✅</span>
+            <span class="callout-text"><strong>Count accuracy goal: 99%.</strong> Even small variances add up. When in doubt, count again before submitting.</span>
+          </div>
+          <div class="callout callout-warn">
+            <span class="callout-icon">⚠️</span>
+            <span class="callout-text"><strong>Never skip expiration dates</strong> when receiving. Lot lifecycle tracking depends on this data for recall and expiration alerts.</span>
+          </div>
+          <div class="callout callout-info">
+            <span class="callout-icon">💡</span>
+            <span class="callout-text"><strong>Already dispensed in Vetspire?</strong> Don't manually adjust that item in MedSync — the Vetspire integration will handle it automatically within a few minutes.</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         SOP 2 — ADMIN
+    ════════════════════════════════ -->
+    <div class="sop-card section-anchor" id="admin-overview">
+      <div class="sop-header">
+        <div class="sop-icon">🏥</div>
+        <div class="sop-header-text">
+          <div class="sop-tag">SOP · Admin</div>
+          <div class="sop-title">Practice Admin Guide — Location & User Management</div>
+        </div>
+      </div>
+      <div class="sop-body">
+
+        <p class="sop-intro">
+          As a Practice Admin (Super Admin), you manage users, locations, and billing for your organization. This guide walks through the key workflows you'll use regularly.
+        </p>
+
+        <div class="feature-row">
+          <div class="feature-chip">
+            <div class="feature-chip-icon">📍</div>
+            <div class="feature-chip-name">Locations</div>
+            <div class="feature-chip-desc">Add &amp; manage practice locations</div>
+          </div>
+          <div class="feature-chip">
+            <div class="feature-chip-icon">👥</div>
+            <div class="feature-chip-name">Users</div>
+            <div class="feature-chip-desc">Invite staff, set roles</div>
+          </div>
+          <div class="feature-chip">
+            <div class="feature-chip-icon">📊</div>
+            <div class="feature-chip-name">Analytics</div>
+            <div class="feature-chip-desc">Budget &amp; spend reporting</div>
+          </div>
+          <div class="feature-chip">
+            <div class="feature-chip-icon">💳</div>
+            <div class="feature-chip-name">Billing</div>
+            <div class="feature-chip-desc">Plan &amp; location limits</div>
+          </div>
+        </div>
+
+        <div class="step-group" id="admin-locations">
+          <div class="step-group-title">Adding a New Location</div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Go to New Location Setup</div>
+                <div class="step-desc">From the sidebar, tap <strong>New Location</strong>. You'll see your current plan details and available location slots.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Check your location limit</div>
+                <div class="step-desc">Your plan shows how many locations are included. If you're at 2 remaining slots, you'll see an upgrade prompt. Contact MedSync to discuss if you need more.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Fill in location details</div>
+                <div class="step-desc">Enter the location name, address, and primary contact. Assign it to a region (or create a new region). Add the Vetspire location ID if applicable.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Submit — MedSync activates it</div>
+                <div class="step-desc">Once submitted, MedSync provisions the location within one business day. You'll receive a confirmation email when it's active.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sop-divider"></div>
+
+        <div class="step-group" id="admin-users">
+          <div class="step-group-title">Inviting & Managing Users</div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Open Manage Users</div>
+                <div class="step-desc">Tap <strong>Manage Users</strong> in the sidebar. You'll see all users in your organization and their current roles.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Create a new user</div>
+                <div class="step-desc">Tap <strong>+ New User</strong>. Enter their name, email, role (<em>staff</em> or <em>manager</em>), and assign their location(s). A welcome email is sent automatically with their login credentials.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Roles explained</div>
+                <div class="step-desc">
+                  <strong>Staff</strong> — can view inventory, run cycle counts, and receive stock for their assigned location.<br>
+                  <strong>Manager</strong> — all staff permissions plus procurement, analytics, and can add locations within plan limit.<br>
+                  <strong>Super Admin</strong> — full organizational access including user management and billing.
+                </div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Deactivate a user</div>
+                <div class="step-desc">Click the user's name → <strong>Deactivate</strong>. Their session is immediately revoked and they cannot log back in. Their historical data is preserved.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sop-divider"></div>
+
+        <div class="step-group" id="admin-analytics">
+          <div class="step-group-title">Budget Analytics & Reporting</div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Access Analytics</div>
+                <div class="step-desc">Select <strong>Analytics</strong> from the sidebar. Choose a date range and filter by location or roll up to the full organization.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Review spend trends</div>
+                <div class="step-desc">The spend chart shows month-over-month drug and supply costs. Use the <strong>Supplier Breakdown</strong> tab to identify consolidation opportunities.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Quarterly reports</div>
+                <div class="step-desc">Open <strong>Quarterly Report</strong> for a one-page PDF-ready summary of inventory value, top spend categories, and cycle count compliance rates.</div>
+                <div class="step-note">📥 Export as PDF for board or ownership reporting</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sop-divider"></div>
+
+        <div class="step-group" id="admin-upgrade">
+          <div class="step-group-title">Upgrading Your Plan</div>
+          <div class="callout callout-info">
+            <span class="callout-icon">💳</span>
+            <span class="callout-text">Plan upgrades are handled through MedSync's secure Stripe checkout. Your new location limit is active immediately after payment.</span>
+          </div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Click "Upgrade MedSync Package"</div>
+                <div class="step-desc">The upgrade option appears in the New Location screen when you're near your plan limit, or you can request an upgrade through the banner that appears at 2 remaining slots.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Select your new tier</div>
+                <div class="step-desc">Review the available plans and location limits. Select the tier that fits your growth plans. You'll see your current plan highlighted.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Complete Stripe checkout</div>
+                <div class="step-desc">You're redirected to a secure Stripe checkout. Enter your payment details. Your card is charged the new monthly subscription immediately.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Return to MedSync — new limits are active</div>
+                <div class="step-desc">After payment, you're returned to the New Location screen with your updated slot count. No page refresh needed.</div>
+                <div class="step-note">✓ Plan updates are instant — no waiting for manual approval</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         SOP 3 — MEDSYNC SUPERADMIN
+    ════════════════════════════════ -->
+    <div class="sop-card section-anchor" id="ms-overview">
+      <div class="sop-header">
+        <div class="sop-icon">⚙️</div>
+        <div class="sop-header-text">
+          <div class="sop-tag">SOP · MedSync Internal</div>
+          <div class="sop-title">Platform Admin Guide — Provisioning & Support</div>
+        </div>
+      </div>
+      <div class="sop-body">
+
+        <p class="sop-intro">
+          This section is for MedSync internal staff with <code>medsync_superadmin</code> access. It covers provisioning new customer organizations, managing billing records, and handling support escalations through the Platform Admin portal.
+        </p>
+
+        <div class="callout callout-warn">
+          <span class="callout-icon">🔒</span>
+          <span class="callout-text"><strong>Restricted access.</strong> The Platform Admin portal is at <strong>medsync_platform_admin.html</strong> and requires a <code>medsync_superadmin</code> role. Never share login credentials. Each team member has their own account.</span>
+        </div>
+
+        <div class="step-group" id="ms-provision">
+          <div class="step-group-title">Provisioning a New Organization</div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Log in to Platform Admin</div>
+                <div class="step-desc">Navigate to <strong>medsync_platform_admin.html</strong> and log in with your MedSync superadmin credentials. You'll land on the Organizations dashboard.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Click "Provision New Organization"</div>
+                <div class="step-desc">Fill in the organization name, admin name, admin email, tier (plan), and Vetspire API token if provided. Review all fields before proceeding.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Step through the provisioning wizard</div>
+                <div class="step-desc">
+                  <strong>Step 1:</strong> Create Supabase auth account.<br>
+                  <strong>Step 2:</strong> Create public profile in <code>users</code> table.<br>
+                  <strong>Step 3:</strong> Create <code>organizations</code> record with tier and limit.<br>
+                  <strong>Step 4:</strong> Send welcome email with credentials (automatic).
+                </div>
+                <div class="step-note">✉️ Welcome email is sent automatically at step 4</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Confirm and record</div>
+                <div class="step-desc">After provisioning, the organization appears in the org list. Verify the tier, location limit, and that the admin's role shows as <code>admin</code>. Log the provisioning event in the activity log.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sop-divider"></div>
+
+        <div class="step-group" id="ms-support">
+          <div class="step-group-title">Support Escalation Workflows</div>
+          <div class="step-list">
+            <div class="step-row">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Billing issue — tier mismatch</div>
+                <div class="step-desc">In Platform Admin → select the organization → <strong>Billing</strong> tab. Review the change log. If the tier doesn't match what Stripe shows, use the <strong>Update Tier</strong> control to manually correct it, and note the reason.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">User locked out</div>
+                <div class="step-desc">Go to the org → <strong>Users</strong> tab → find the user → <strong>Reset Password</strong>. This sends a Supabase password reset email directly to the user's inbox.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Suspending an organization</div>
+                <div class="step-desc">Use the <strong>Suspend Org</strong> toggle in Platform Admin only for non-payment or Terms of Service violations. Document the reason in the notes field. Suspension immediately revokes all user sessions for that org.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Feature flag overrides</div>
+                <div class="step-desc">The <strong>Feature Flags</strong> tab lets you toggle beta features per organization. Enable only features that are ready for the org's tier and technical setup. Document in Slack when enabling for a customer.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout callout-success">
+          <span class="callout-icon">📞</span>
+          <span class="callout-text"><strong>Escalation path:</strong> Platform issues → <a href="mailto:admin@medsync.vet" style="color:var(--navy);">admin@medsync.vet</a> → Megan Henley. For Stripe billing disputes, all MedSync team members can access the Stripe dashboard.</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /guide-content -->
+</div><!-- /guide-layout -->
+
+<script>
+  const ROLE_SECTIONS = {
+    staff:             ['toc-staff-section'],
+    manager:           ['toc-staff-section', 'toc-admin-section'],
+    admin:             ['toc-staff-section', 'toc-admin-section'],
+    medsync_superadmin:['toc-staff-section', 'toc-admin-section', 'toc-medsync-section'],
+  };
+
+  function init() {
+    const stored = JSON.parse(
+      localStorage.getItem('medsync_session') ||
+      sessionStorage.getItem('medsync_session') || '{}'
+    );
+    const role = stored?.user?.role || stored?.role || 'staff';
+
+    // Show role badge
+    const labels = {
+      staff: 'Staff', manager: 'Manager', admin: 'Admin',
+      medsync_superadmin: 'MedSync Admin',
+    };
+    document.getElementById('ug-role-badge').textContent = labels[role] || 'Staff';
+
+    // Hide TOC sections above role
+    const allowed = ROLE_SECTIONS[role] || ROLE_SECTIONS['staff'];
+    document.querySelectorAll('.guide-toc .toc-section').forEach(s => {
+      s.style.display = allowed.includes(s.id) ? '' : 'none';
+    });
+
+    // Hide SOP cards above role
+    if (role !== 'medsync_superadmin') {
+      document.getElementById('ms-overview')?.closest('.sop-card')?.style.setProperty('display','none');
+    }
+    if (role === 'staff') {
+      document.getElementById('admin-overview')?.closest('.sop-card')?.style.setProperty('display','none');
+    }
+
+    // TOC active highlighting on scroll
+    const headings = document.querySelectorAll('.section-anchor');
+    const tocLinks = document.querySelectorAll('.toc-link');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const id = e.target.id;
+          tocLinks.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+          });
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    headings.forEach(h => observer.observe(h));
+  }
+
+  function goBack() {
+    if (document.referrer && document.referrer.includes(window.location.hostname)) {
+      history.back();
+    } else {
+      window.location.href = 'medsync_portfolio_live.html';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
