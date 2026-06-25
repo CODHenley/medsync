@@ -1381,23 +1381,24 @@ async function provNext() {
         body: JSON.stringify({ email: adminEmail, password: adminPass, email_confirm: true })
       });
       const authData = await authRes.json();
+      if (!authRes.ok) throw new Error('Auth user creation failed: ' + (authData.msg || authData.error_description || JSON.stringify(authData)));
       const authId = authData.id || authData.user?.id;
+      if (!authId) throw new Error('Auth user created but no ID returned');
 
       // 3. Insert into users table
-      if (authId) {
-        await fetch(SUPA_URL + '/rest/v1/users', {
-          method: 'POST',
-          headers: { ...H, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({
-            id:              authId,
-            email:           adminEmail,
-            full_name:       adminName,
-            role:            'admin',
-            organization_id: provOrgId,
-            status:          'active',
-          })
-        });
-      }
+      const profileRes = await fetch(SUPA_URL + '/rest/v1/users', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          id:              authId,
+          email:           adminEmail,
+          full_name:       adminName,
+          role:            'admin',
+          organization_id: provOrgId,
+          status:          'active',
+        })
+      });
+      if (!profileRes.ok) throw new Error('User profile insert failed: ' + await profileRes.text());
 
       // Step 3 — billing & branding
       provStep = 3;
@@ -1893,14 +1894,15 @@ async function submitSuperAdmin() {
       body: JSON.stringify({email, password:pass, email_confirm:true})
     });
     const authData = await authRes.json();
+    if (!authRes.ok) throw new Error('Auth creation failed: ' + (authData.msg || authData.error_description || JSON.stringify(authData)));
     const authId = authData.id || authData.user?.id;
+    if (!authId) throw new Error('Auth user created but no ID returned');
     // Insert into users table with superadmin role
-    if (authId) {
-      await fetch(SUPA_URL+'/rest/v1/users', {
-        method:'POST', headers:{...H,'Prefer':'return=minimal'},
-        body: JSON.stringify({id:authId, email, full_name:name, role:'medsync_superadmin', status:'active'})
-      });
-    }
+    const profileRes = await fetch(SUPA_URL+'/rest/v1/users', {
+      method:'POST', headers:{...H,'Prefer':'return=minimal'},
+      body: JSON.stringify({id:authId, email, full_name:name, role:'medsync_superadmin', status:'active'})
+    });
+    if (!profileRes.ok) throw new Error('Profile insert failed: ' + await profileRes.text());
     btn.disabled=false; btn.textContent='Create super admin';
     closeAddSuperAdmin();
     showToast('✓ Super admin created: '+email);

@@ -657,9 +657,13 @@ async function createUser() {
       body: JSON.stringify({ email, password: pass })
     });
     const signData = await signRes.json();
+    if (!signRes.ok) {
+      showMsg('Auth signup failed: ' + (signData.msg || signData.error_description || signData.message || JSON.stringify(signData)), 'error');
+      return;
+    }
     const userId = signData.id || (signData.user && signData.user.id);
     if (!userId) {
-      showMsg('Auth signup failed: ' + (signData.msg || signData.message || JSON.stringify(signData)), 'error');
+      showMsg('Auth signup failed: no user ID returned.', 'error');
       return;
     }
 
@@ -682,7 +686,7 @@ async function createUser() {
     }
 
     const emailSent = await sendWelcomeEmail(name, email, pass, role);
-    showMsg(name + ' created as ' + (ROLE_LABELS[role] || role) + (emailSent ? '. Welcome email sent.' : '. (Welcome email could not be sent.)'), emailSent ? 'success' : 'success');
+    showMsg(name + ' created as ' + (ROLE_LABELS[role] || role) + (emailSent ? '. Welcome email sent.' : '. (Welcome email could not be sent.)'), emailSent ? 'success' : 'warning');
     document.getElementById('new-name').value = '';
     document.getElementById('new-email').value = '';
     document.getElementById('new-pass').value = 'MedSync2026!';
