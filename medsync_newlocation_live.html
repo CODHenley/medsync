@@ -139,11 +139,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   </div>
 </div>
 
+<div id="upgrade-banner"></div>
 <div class="shell" id="shell"></div>
+
+<!-- Upgrade modal -->
+<div id="upgrade-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:#1C2B4A;">Upgrade your MedSync plan</div>
+        <div style="font-size:12px;color:#8A93A8;margin-top:3px;">Select a plan to expand your available locations</div>
+      </div>
+      <button onclick="closeUpgradeModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#8A93A8;line-height:1;padding:0 0 0 16px;">×</button>
+    </div>
+    <div id="upgrade-tiers" style="padding:20px 28px;display:flex;flex-direction:column;gap:10px;"></div>
+    <div style="padding:0 28px 24px;">
+      <button id="upgrade-cta" onclick="startCheckout()" disabled style="width:100%;padding:14px;background:#1C2B4A;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;opacity:.4;transition:opacity .15s;">Select a plan above</button>
+      <div id="upgrade-error" style="font-size:11px;color:#a33030;text-align:center;margin-top:8px;display:none;"></div>
+    </div>
+  </div>
+</div>
 
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const STRIPE_PK = 'pk_test_51TmKRLIjmNR61KaqAVxjESmM4Y0hxPJWQQHuKCAnY81kwrogKEjloVG3wipL1La1JhGxCQXaYmckQARdozsXrXHG00yfUfcLDk';
+const EDGE_URL  = 'https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1';
+const RESEND_KEY = 're_hR35LhRB_FAhsnArv1k7g4RZHn9yWgxWh';
+const UPGRADE_TIERS = [
+  { key:'small_group', label:'Small Group', limit:3,   monthly:249, priceId:'price_1TmKWkIjmNR61KaqHr8zyrgE' },
+  { key:'mid_group',   label:'Mid Group',   limit:6,   monthly:349, priceId:'price_1TmKXUIjmNR61KaqebIlQejh' },
+  { key:'large_group', label:'Large Group', limit:12,  monthly:449, priceId:'price_1TmKXzIjmNR61KaqfmTAspyV' },
+  { key:'enterprise',  label:'Enterprise',  limit:999, monthly:499, priceId:'price_1TmKYSIjmNR61KaqhprY7zkC' },
+];
 const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
 const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
 
@@ -1455,7 +1483,7 @@ async function checkLocationLimit() {
 
     // Use anon headers for final fetch — orgs table has anon_all policy, not authenticated policy
     const [orgRes, locRes] = await Promise.all([
-      fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit&id=eq.${orgId}`, { headers: Hanon }),
+      fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit,contact_email,contact_name&id=eq.${orgId}`, { headers: Hanon }),
       fetch(SUPA_URL + `/rest/v1/locations?select=id&organization_id=eq.${orgId}`, { headers: Hanon }),
     ]);
     const orgs = await orgRes.json();
@@ -1488,22 +1516,55 @@ async function checkLocationLimit() {
       topbarSub.innerHTML = `${TIER_LABELS[org.tier]||org.tier} plan &nbsp;·&nbsp; <span style="color:${pct>=100?'#f0a0a0':pct>=80?'#E8B84B':'rgba(255,255,255,.5)'}">${count} / ${limit===999?'∞':limit} locations used</span>`;
     }
 
+    // Check for post-payment return
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('upgraded') === '1') {
+      document.getElementById('upgrade-banner').innerHTML = `
+        <div style="max-width:860px;margin:16px auto 0;padding:0 20px;">
+          <div style="background:#E8F5EE;border:0.5px solid #a0d8b0;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:18px;">✅</span>
+            <div style="flex:1;font-size:13px;color:#1a5c35;font-weight:500;">Plan upgraded successfully! Your new location slots are now available.</div>
+            <button onclick="this.closest('div[style]').parentElement.remove()" style="background:none;border:none;cursor:pointer;color:#8A93A8;font-size:16px;">×</button>
+          </div>
+        </div>`;
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     if (count >= limit && limit !== 999) {
-      // Block — show upgrade message instead of wizard
       document.getElementById('shell').innerHTML = `
         <div style="background:#FDECEA;border:0.5px solid #f0a0a0;border-radius:14px;padding:36px;text-align:center;max-width:520px;margin:40px auto;">
           <div style="font-size:36px;margin-bottom:12px;">🔒</div>
           <div style="font-size:16px;font-weight:600;color:#a33030;margin-bottom:8px;">Location limit reached</div>
-          <div style="font-size:12px;color:#a33030;line-height:1.7;margin-bottom:16px;">
+          <div style="font-size:12px;color:#a33030;line-height:1.7;margin-bottom:20px;">
             Your <strong>${TIER_LABELS[org.tier]||org.tier}</strong> plan allows up to <strong>${limit} location${limit===1?'':'s'}</strong>.<br>
             You've used all ${limit} slot${limit===1?'':'s'}.
           </div>
-          <div style="font-size:12px;color:#4A5568;padding:12px 16px;background:rgba(255,255,255,.6);border-radius:9px;line-height:1.7;">
-            To add more locations, contact MedSync to upgrade your plan.<br>
-            <strong>hello@medsync.vet</strong>
-          </div>
+          <button onclick="openUpgradeModal('${org.tier}','${orgId}')" style="background:#1C2B4A;color:#fff;border:none;border-radius:9px;padding:12px 28px;font-size:13px;font-weight:700;cursor:pointer;">Upgrade MedSync Package →</button>
         </div>`;
       return;
+    }
+
+    // Warning banner at 2 slots remaining
+    if (limit !== 999 && (limit - count) <= 2) {
+      document.getElementById('upgrade-banner').innerHTML = `
+        <div style="max-width:860px;margin:16px auto 0;padding:0 20px;">
+          <div style="background:#FEF3E2;border:0.5px solid #f0c060;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:18px;">⚠️</span>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:#7a4a00;">Only ${limit - count} location slot${limit-count===1?'':'s'} remaining</div>
+              <div style="font-size:11px;color:#a06020;margin-top:2px;">You're on the <strong>${TIER_LABELS[org.tier]||org.tier}</strong> plan (${count} of ${limit} locations used). Upgrade to add more.</div>
+            </div>
+            <button onclick="openUpgradeModal('${org.tier}','${orgId}')" style="background:#1C2B4A;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Upgrade Package</button>
+          </div>
+        </div>`;
+      // Send one-time notification email to org admin
+      const nudgeKey = 'medsync_upgrade_nudge_' + orgId;
+      if (!localStorage.getItem(nudgeKey) && (org.contact_email || userEmail)) {
+        const adminEmail = org.contact_email || userEmail;
+        const adminName  = org.contact_name || adminEmail;
+        sendUpgradeNudgeEmail(adminName, adminEmail, org.name, TIER_LABELS[org.tier]||org.tier, limit - count);
+        localStorage.setItem(nudgeKey, '1');
+      }
     }
 
     render();
@@ -1513,6 +1574,138 @@ async function checkLocationLimit() {
 }
 
 checkLocationLimit();
+
+// ── Upgrade modal ─────────────────────────────────────────────────────────
+let _upgradeTier = null;
+let _upgradeOrgId = null;
+let _upgradeCurrentTier = null;
+
+const TIER_ORDER = ['solo','small_group','mid_group','large_group','enterprise'];
+
+function openUpgradeModal(currentTier, orgId) {
+  _upgradeCurrentTier = currentTier;
+  _upgradeOrgId = orgId;
+  _upgradeTier = null;
+
+  const available = UPGRADE_TIERS.filter(t => TIER_ORDER.indexOf(t.key) > TIER_ORDER.indexOf(currentTier));
+  const TIER_LABELS = { solo:'Solo',small_group:'Small Group',mid_group:'Mid Group',large_group:'Large Group',enterprise:'Enterprise' };
+  const currentDef = { solo:{limit:1,monthly:149}, small_group:{limit:3,monthly:249}, mid_group:{limit:6,monthly:349}, large_group:{limit:12,monthly:449}, enterprise:{limit:999,monthly:499} }[currentTier] || {limit:0,monthly:0};
+
+  const tiersHtml = `
+    <div style="background:#F8F7FC;border-radius:10px;padding:14px 16px;margin-bottom:4px;border:2px solid #DDD9EC;opacity:.7;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <span style="font-size:11px;font-weight:700;background:#1C2B4A;color:#fff;padding:2px 8px;border-radius:10px;margin-right:8px;">CURRENT</span>
+          <span style="font-size:14px;font-weight:600;color:#1C2B4A;">${TIER_LABELS[currentTier]||currentTier}</span>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:15px;font-weight:700;color:#1C2B4A;">$${currentDef.monthly}<span style="font-size:11px;font-weight:400;color:#8A93A8;">/mo</span></div>
+          <div style="font-size:11px;color:#8A93A8;">${currentDef.limit === 999 ? 'Unlimited' : 'Up to ' + currentDef.limit} location${currentDef.limit===1?'':'s'}</div>
+        </div>
+      </div>
+    </div>
+    ${available.map(t => `
+    <div id="upgrade-opt-${t.key}" onclick="selectUpgradeTier('${t.key}')" style="border:2px solid #DDD9EC;border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#1C2B4A;">${t.label}</div>
+          <div style="font-size:11px;color:#8A93A8;margin-top:2px;">${t.limit === 999 ? 'Unlimited locations' : 'Up to ' + t.limit + ' locations'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:15px;font-weight:700;color:#1C2B4A;">$${t.monthly}<span style="font-size:11px;font-weight:400;color:#8A93A8;">/mo</span></div>
+          <div style="font-size:11px;color:#2E8B57;">+${t.limit===999?'∞':t.limit - currentDef.limit} more slot${t.limit-currentDef.limit===1?'':'s'}</div>
+        </div>
+      </div>
+    </div>`).join('')}`;
+
+  document.getElementById('upgrade-tiers').innerHTML = tiersHtml;
+  document.getElementById('upgrade-cta').disabled = true;
+  document.getElementById('upgrade-cta').style.opacity = '.4';
+  document.getElementById('upgrade-cta').textContent = 'Select a plan above';
+  document.getElementById('upgrade-error').style.display = 'none';
+  document.getElementById('upgrade-modal').style.display = 'flex';
+}
+
+function closeUpgradeModal() {
+  document.getElementById('upgrade-modal').style.display = 'none';
+}
+
+function selectUpgradeTier(key) {
+  _upgradeTier = key;
+  document.querySelectorAll('[id^="upgrade-opt-"]').forEach(el => {
+    el.style.borderColor = '#DDD9EC';
+    el.style.background = '#fff';
+  });
+  const sel = document.getElementById('upgrade-opt-' + key);
+  if (sel) { sel.style.borderColor = '#1C2B4A'; sel.style.background = '#F0EEF8'; }
+  const tier = UPGRADE_TIERS.find(t => t.key === key);
+  const btn = document.getElementById('upgrade-cta');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  btn.textContent = `Upgrade to ${tier.label} — $${tier.monthly}/mo →`;
+}
+
+async function startCheckout() {
+  const tier = UPGRADE_TIERS.find(t => t.key === _upgradeTier);
+  if (!tier || !_upgradeOrgId) return;
+  const btn = document.getElementById('upgrade-cta');
+  btn.disabled = true;
+  btn.textContent = 'Redirecting to payment…';
+  document.getElementById('upgrade-error').style.display = 'none';
+  try {
+    const r = await fetch(EDGE_URL + '/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({
+        org_id:      _upgradeOrgId,
+        new_tier:    tier.key,
+        price_id:    tier.priceId,
+        success_url: window.location.origin + '/medsync_newlocation_live.html?upgraded=1',
+        cancel_url:  window.location.href,
+      })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.url) throw new Error(data.error || 'Could not create checkout session');
+    window.location.href = data.url;
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = `Upgrade to ${tier.label} — $${tier.monthly}/mo →`;
+    const errEl = document.getElementById('upgrade-error');
+    errEl.textContent = 'Payment setup failed: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function sendUpgradeNudgeEmail(adminName, adminEmail, orgName, tierLabel, slotsLeft) {
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 20px;"><tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
+  <tr><td style="background:#1C2B4A;padding:28px 40px;text-align:center;">
+    <div style="color:#fff;font-size:20px;font-weight:700;">MedSync</div>
+    <div style="color:#a8b8d0;font-size:12px;margin-top:3px;">Plan Usage Alert</div>
+  </td></tr>
+  <tr><td style="padding:32px 40px;">
+    <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1C2B4A;">You're almost out of location slots</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.6;">Hi ${adminName.split(' ')[0]}, your organization <strong>${orgName}</strong> is on the <strong>${tierLabel}</strong> plan and has only <strong>${slotsLeft} location slot${slotsLeft===1?'':'s'}</strong> remaining.</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">Upgrade your plan now to keep adding locations without interruption.</p>
+    <div style="text-align:center;margin:0 0 8px;">
+      <a href="https://medsync.vet/medsync_newlocation_live.html" style="display:inline-block;background:#C9A84C;color:#1C2B4A;text-decoration:none;font-weight:700;font-size:15px;padding:14px 36px;border-radius:8px;">Upgrade My Plan →</a>
+    </div>
+  </td></tr>
+  <tr><td style="background:#f8f9fb;padding:16px 40px;text-align:center;border-top:1px solid #eee;">
+    <p style="margin:0;font-size:11px;color:#aaa;">MedSync · medsync.vet</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'MedSync <insights@medsync.vet>', to: [adminEmail], subject: `Action needed: only ${slotsLeft} location slot${slotsLeft===1?'':'s'} remaining on your MedSync plan`, html })
+    });
+  } catch(e) { /* non-fatal */ }
+}
 </script>
 </body>
 </html>
