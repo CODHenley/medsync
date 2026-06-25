@@ -25,6 +25,11 @@ jobs:
       - name: Run insights refresh
         run: python3 monday_insights_refresh.py
 
+      - name: Send weekly insights email
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: python3 monday_email.py
+
       - name: Push changes
         run: |
           git config user.name  "MedSync Insights Bot"
