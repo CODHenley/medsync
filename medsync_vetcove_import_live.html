@@ -437,7 +437,8 @@ function renderPreview() {
       cats.map(c => `<option value="${c}"${c === row.cat ? ' selected' : ''}>${c}</option>`).join('') +
       '</select>';
 
-    const dateDisp = row.dateRaw ? new Date(row.dateRaw).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+    const _d = row.dateRaw ? new Date(row.dateRaw) : null;
+    const dateDisp = (_d && !isNaN(_d)) ? _d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : (row.dateRaw ? row.dateRaw.substring(0,10) : '—');
 
     return `<tr id="row-${idx}" class="${row.skip ? 'skip' : ''}">
       <td><button class="skip-toggle" data-idx="${idx}" onclick="toggleSkip(this)" title="${row.skip ? 'Include' : 'Skip'}">${row.skip ? '⊕' : '⊖'}</button></td>
@@ -482,6 +483,9 @@ function updateSummary() {
 async function doImport() {
   const toImport = parsedRows.filter(r => !r.skip);
   if (!toImport.length) return;
+
+  const noLoc = toImport.filter(r => !r.loc).length;
+  if (noLoc && !confirm(`${noLoc} row${noLoc > 1 ? 's have' : ' has'} no location assigned and will be skipped. Continue with the remaining ${toImport.length - noLoc} rows?`)) return;
 
   document.getElementById('btn-import').disabled = true;
   document.getElementById('btn-import').textContent = 'Importing…';
