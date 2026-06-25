@@ -1203,16 +1203,17 @@ async function suspendOrg() {
   const confirmed = confirm(`${newStatus === 'suspended' ? 'Suspend' : 'Reactivate'} ${org.name}?`);
   if (!confirmed) return;
   try {
-    await fetch(SUPA_URL + `/rest/v1/organizations?id=eq.${selectedOrgId}`, {
+    const r = await fetch(SUPA_URL + `/rest/v1/organizations?id=eq.${selectedOrgId}`, {
       method: 'PATCH',
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ status: newStatus })
     });
+    if (!r.ok) throw new Error(await r.text());
     showToast(`✓ ${org.name} ${newStatus}`);
     loadDashboard();
     document.getElementById('detail-section').style.display = 'none';
   } catch(e) {
-    showToast('⚠ Could not update org');
+    showToast('⚠ Could not update org: ' + e.message);
   }
 }
 
@@ -1535,6 +1536,7 @@ async function loadBillingChanges() {
   const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
   try {
     const res = await fetch(SUPA_URL+'/rest/v1/billing_change_log?select=*&order=changed_at.desc&limit=50', {headers:H});
+    if (!res.ok) throw new Error(await res.text());
     const rows = await res.json();
     if (!Array.isArray(rows) || !rows.length) {
       document.getElementById('billing-changes-section').style.display = 'none';
@@ -1583,19 +1585,14 @@ async function markBillingChangeReviewed(id) {
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
   const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
   // Get current admin email from session
-  let reviewedBy = '';
-  try {
-    const s = JSON.parse(sessionStorage.getItem('medsync_admin_session') || '{}');
-    reviewedBy = s.email || '';
-  } catch(e) {}
-  await fetch(SUPA_URL+'/rest/v1/billing_change_log?id=eq.'+id, {
+  const reviewedBy = SESSION?.user?.email || document.getElementById('tb-user')?.textContent || '';
+  const patchRes = await fetch(SUPA_URL+'/rest/v1/billing_change_log?id=eq.'+id, {
     method: 'PATCH',
     headers: H,
     body: JSON.stringify({ reviewed: true, reviewed_at: new Date().toISOString(), reviewed_by: reviewedBy })
   });
-  // Reload the list
+  if (!patchRes.ok) { showToast('⚠ Could not mark as reviewed'); return; }
   loadBillingChanges();
-  // Show toast if available
   showToast('✓ Billing change marked as verified');
 }
 
@@ -1648,8 +1645,8 @@ function showBillingDetailModal(org) {
   overlay.id = 'bill-detail-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
   overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
-  const payments = getPayments(org.name);
-  const flags = typeof loadFlags === 'function' ? loadFlags(org.name) : [];
+  const payments = getPayments(org.id);
+  const flags = typeof loadFlags === 'function' ? loadFlags(org.id) : [];
   const payRows = payments.length
     ? payments.map(p => `<tr><td style="font-size:11px;padding:6px 10px;">${p.date}</td><td style="padding:6px 10px;font-weight:600;">$${p.amount}</td><td style="font-size:11px;color:#8A93A8;padding:6px 10px;">${p.method}</td><td style="padding:6px 10px;"><span style="background:${p.status==='paid'?'#2E8B57':'#C0392B'};color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">${p.status.toUpperCase()}</span></td></tr>`).join('')
     : '<tr><td colspan="4" style="padding:10px;color:#8A93A8;font-size:12px;">No payment history</td></tr>';
@@ -1848,6 +1845,7 @@ const _origDoLogin = window.doLogin;
 async function loadSuperAdmins() {
   try {
     const res = await fetch(SUPA_URL+'/rest/v1/users?select=id,full_name,email,created_at&role=eq.medsync_superadmin&order=created_at.asc', {headers:H});
+    if (!res.ok) throw new Error(await res.text());
     const admins = await res.json();
     const tbody = document.getElementById('superadmin-tbody');
     if (!tbody) return;
@@ -1930,11 +1928,16 @@ async function submitSuperAdmin() {
 
 async function removeSuperAdmin(id, email) {
   if (!confirm('Revoke super admin access for '+email+'?')) return;
-  await fetch(SUPA_URL+'/rest/v1/users?id=eq.'+id, {
-    method:'PATCH', headers:H, body:JSON.stringify({role:'staff'})
-  });
-  showToast('Access revoked for '+email);
-  loadSuperAdmins();
+  try {
+    const r = await fetch(SUPA_URL+'/rest/v1/users?id=eq.'+id, {
+      method:'PATCH', headers:H, body:JSON.stringify({role:'staff'})
+    });
+    if (!r.ok) throw new Error(await r.text());
+    showToast('Access revoked for '+email);
+    loadSuperAdmins();
+  } catch(e) {
+    showToast('⚠ Could not revoke access: ' + e.message);
+  }
 }
 
 
