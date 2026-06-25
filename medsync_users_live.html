@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MedSync · User Management</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
 <style>
 :root{--navy:#1C2B4A;--green:#2E8B57;--green-bg:#E8F5EE;--amber:#C8922A;--amber-bg:#FEF3E2;--red:#C0392B;--red-bg:#FDECEA;--mist:#8A93A8;--border:#DDD9EC;--surface:#FFFFFF;--purple:#5B3FA8;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -559,6 +560,8 @@ async function createUser() {
       headers: { ...H, 'Prefer': 'return=minimal' },
       body: JSON.stringify({
           id: userId, email, full_name: name, role, is_active: true,
+          location_id: ['manager','receiver','inventory_lead'].includes(role)
+            ? (document.getElementById('new-loc').value || null) : null,
           access_scope:         scopeData.scope,
           access_region_id:     scopeData.region_id,
           access_location_ids:  scopeData.location_ids,
