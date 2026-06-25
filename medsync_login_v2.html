@@ -253,16 +253,21 @@ async function redirectUser(token) {
         location_name: user.locations  ? user.locations.name : ''
       };
       localStorage.setItem('medsync_user', JSON.stringify(stored));
-      showToast('✓ Signed in as ' + stored.full_name + ' (' + stored.role + ')');
+      showToast('✓ Welcome back, ' + (stored.full_name.split(' ')[0] || 'there') + '!');
       console.log('Auth success:', stored);
       setTimeout(() => {
-        window.location.href = 'medsync_analytics_live.html';
+        // Role-based routing
+        if (stored.role === 'medsync_superadmin') {
+          window.location.href = 'medsync_platform_admin.html';
+        } else {
+          window.location.href = 'medsync_portfolio_live.html';
+        }
       }, 1500);
     }
   } catch(e) {
     console.log('Redirecting from catch block');
     showToast('✓ Signed in — redirecting…');
-    setTimeout(() => { window.location.href = 'medsync_analytics_live.html'; }, 1500);
+    setTimeout(() => { window.location.href = 'medsync_portfolio_live.html'; }, 1500);
   }
 }
 
