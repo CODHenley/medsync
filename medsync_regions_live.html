@@ -10,6 +10,10 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tb-left{display:flex;align-items:center;gap:12px;}
+.tb-back{color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;display:flex;align-items:center;gap:4px;padding:4px 0;}
+.tb-back:hover{color:#fff;}
+.tb-divider{color:rgba(255,255,255,.3);font-size:14px;}
 .tb-title{font-size:15px;font-weight:600;color:#fff;}
 .tb-sub{font-size:11px;color:rgba(255,255,255,.5);}
 .shell{max-width:960px;margin:0 auto;padding:24px 20px 48px;}
@@ -18,22 +22,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .btn-primary{padding:10px 20px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .btn-secondary{padding:9px 16px;border:0.5px solid var(--border);background:#fff;color:var(--navy);border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .btn-danger{padding:7px 12px;border:0.5px solid #E0AAAA;background:#FEF0F0;color:var(--red);border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-danger:hover{background:#FBDADA;}
 .region-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:24px;}
 .region-card{background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
 .region-head{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border);}
 .region-name{font-size:14px;font-weight:600;}
 .region-count{font-size:11px;color:var(--mist);}
-.region-actions{display:flex;gap:6px;}
+.region-actions{display:flex;gap:6px;flex-shrink:0;}
 .loc-list{padding:10px 0;}
 .loc-item{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:0.5px solid #F8F7FC;gap:8px;}
 .loc-item:last-child{border-bottom:none;}
-.loc-name{font-size:12px;font-weight:500;flex:1;}
-.loc-sub{font-size:10px;color:var(--mist);}
-.move-btn{font-size:10px;padding:3px 8px;border:0.5px solid var(--border);background:#F8F7FC;border-radius:5px;cursor:pointer;color:var(--mist);font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.loc-name{font-size:12px;font-weight:500;}
+.loc-sub{font-size:10px;color:var(--mist);margin-top:1px;}
+.move-btn{font-size:10px;padding:3px 8px;border:0.5px solid var(--border);background:#F8F7FC;border-radius:5px;cursor:pointer;color:var(--mist);font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;}
 .move-btn:hover{background:#E4E0F0;color:var(--navy);}
 .no-region{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
 .no-region-title{font-size:13px;font-weight:600;margin-bottom:8px;color:var(--gold);}
-.unassigned-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #F5F3FA;}
+.unassigned-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #F5F3FA;gap:8px;}
 .unassigned-item:last-child{border-bottom:none;}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;}
 .modal{background:#fff;border-radius:14px;padding:24px;width:440px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.2);}
@@ -42,9 +47,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .field label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
 .field input,.field select{padding:10px 12px;border:0.5px solid var(--border);border-radius:9px;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;background:#fff;color:var(--navy);}
 .btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;}
+.btn-row-split{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:12px;}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s;}
 .toast.show{opacity:1;}
-.nav{display:none;}
+.delete-warning{font-size:12px;color:var(--red);margin-top:8px;display:none;}
 @media(max-width:768px){
   .region-grid{grid-template-columns:1fr;}
   .shell{padding:16px 12px;}
@@ -53,9 +59,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 </head>
 <body>
 <div class="topbar">
-  <div>
-    <div class="tb-title">Manage Regions</div>
-    <div class="tb-sub" id="tb-sub">Loading…</div>
+  <div class="tb-left">
+    <a class="tb-back" href="medsync_settings_live.html">← Settings</a>
+    <span class="tb-divider">/</span>
+    <div>
+      <div class="tb-title">Manage Regions</div>
+      <div class="tb-sub" id="tb-sub">Loading…</div>
+    </div>
   </div>
 </div>
 <div class="shell">
@@ -74,10 +84,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div class="modal-title" id="modal-title">Create new region</div>
       <div class="field"><label>Region name</label><input id="modal-name" type="text" placeholder="e.g. Chicagoland North"></div>
       <div class="field"><label>Description (optional)</label><input id="modal-desc" type="text" placeholder="e.g. Northern Illinois locations"></div>
-      <div class="btn-row">
-        <button class="btn-secondary" onclick="hideModal()">Cancel</button>
-        <button class="btn-primary" id="modal-submit" onclick="submitRegionModal()">Create</button>
+      <div class="btn-row-split">
+        <div><button class="btn-danger" id="modal-delete-btn" style="display:none;" onclick="confirmDeleteRegion()">Delete region</button></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" onclick="hideModal()">Cancel</button>
+          <button class="btn-primary" id="modal-submit" onclick="submitRegionModal()">Create</button>
+        </div>
       </div>
+      <div class="delete-warning" id="delete-warning"></div>
     </div>
   </div>
 </div>
@@ -87,7 +101,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   <div class="modal-bg" onclick="hideMoveModal()">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-title">Move location to region</div>
-      <div style="font-size:13px;font-weight:500;margin-bottom:14px;" id="move-loc-name"></div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px;" id="move-loc-name"></div>
+      <div style="font-size:11px;color:var(--mist);margin-bottom:14px;" id="move-loc-sub"></div>
       <div class="field">
         <label>Assign to region</label>
         <select id="move-region-sel">
@@ -110,7 +125,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
 const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
 
-var _regions = [], _locations = [], _editRegionId = null, _movingLocId = null, _movingLocName = '';
+var _regions = [], _locations = [], _editRegionId = null, _movingLocId = null;
 
 async function boot() {
   var mu = {}; try{ mu = JSON.parse(localStorage.getItem('medsync_user')||'{}'); }catch(e){}
@@ -124,18 +139,25 @@ async function loadRegions() {
   try {
     var r = await fetch(SUPA_URL+'/rest/v1/regions?select=id,name,description&order=name', {headers:H});
     var d = await r.json();
-    if (!Array.isArray(d)) { console.error('regions error:', d); }
     _regions = Array.isArray(d) ? d : [];
   } catch(e) { console.error('loadRegions:', e); _regions = []; }
 }
 
 async function loadLocations() {
   try {
-    var r = await fetch(SUPA_URL+'/rest/v1/locations?select=id,name,region_id&order=name', {headers:H});
+    var r = await fetch(SUPA_URL+'/rest/v1/locations?select=id,name,city,state,practice_type,region_id&order=name', {headers:H});
     var d = await r.json();
-    if (!Array.isArray(d)) { console.error('locations error:', d); }
     _locations = Array.isArray(d) ? d : [];
   } catch(e) { console.error('loadLocations:', e); _locations = []; }
+}
+
+function locSubtext(l) {
+  var parts = [];
+  if (l.city && l.state) parts.push(l.city+', '+l.state);
+  else if (l.city) parts.push(l.city);
+  else if (l.state) parts.push(l.state);
+  if (l.practice_type) parts.push(l.practice_type);
+  return parts.join(' · ');
 }
 
 function renderAll() {
@@ -148,15 +170,21 @@ function renderAll() {
       var locs = _locations.filter(function(l){ return l.region_id === reg.id; });
       html += '<div class="region-card">';
       html += '<div class="region-head">';
-      html += '<div><div class="region-name">'+reg.name+'</div>';
-      if (reg.description) html += '<div class="region-count">'+reg.description+'</div>';
+      html += '<div><div class="region-name">'+esc(reg.name)+'</div>';
+      if (reg.description) html += '<div class="region-count">'+esc(reg.description)+'</div>';
       html += '<div class="region-count" style="margin-top:2px;">'+locs.length+' location'+(locs.length!==1?'s':'')+'</div></div>';
-      html += '<div class="region-actions"><button class="btn-secondary rename-btn" data-id="'+reg.id+'" style="font-size:11px;padding:5px 10px;">✏️ Rename</button></div>';
+      html += '<div class="region-actions">';
+      html += '<button class="btn-secondary rename-btn" data-id="'+reg.id+'" style="font-size:11px;padding:5px 10px;">✏️ Rename</button>';
+      html += '</div>';
       html += '</div>';
       html += '<div class="loc-list">';
       if (locs.length) {
         locs.forEach(function(l){
-          html += '<div class="loc-item"><div><div class="loc-name">'+l.name+'</div></div>';
+          var sub = locSubtext(l);
+          html += '<div class="loc-item">';
+          html += '<div><div class="loc-name">'+esc(l.name)+'</div>';
+          if (sub) html += '<div class="loc-sub">'+esc(sub)+'</div>';
+          html += '</div>';
           html += '<button class="move-btn do-move" data-id="'+l.id+'">Move →</button></div>';
         });
       } else {
@@ -173,7 +201,11 @@ function renderAll() {
   if (unassigned.length) {
     var uhtml = '<div class="no-region"><div class="no-region-title">⚠ Unassigned locations ('+unassigned.length+')</div>';
     unassigned.forEach(function(l){
-      uhtml += '<div class="unassigned-item"><div class="loc-name">'+l.name+'</div>';
+      var sub = locSubtext(l);
+      uhtml += '<div class="unassigned-item">';
+      uhtml += '<div><div class="loc-name">'+esc(l.name)+'</div>';
+      if (sub) uhtml += '<div class="loc-sub">'+esc(sub)+'</div>';
+      uhtml += '</div>';
       uhtml += '<button class="move-btn do-move" data-id="'+l.id+'">Assign to region →</button></div>';
     });
     uhtml += '</div>';
@@ -182,7 +214,6 @@ function renderAll() {
     uc.innerHTML = '<div style="color:var(--green);font-size:12px;padding:8px 0;">✓ All locations are assigned to a region.</div>';
   }
 
-  // Event delegation — no onclick strings needed
   document.querySelectorAll('.rename-btn').forEach(function(btn){
     btn.addEventListener('click', function(){ showRenameRegion(this.dataset.id); });
   });
@@ -198,6 +229,8 @@ function showCreateRegion() {
   document.getElementById('modal-submit').textContent = 'Create';
   document.getElementById('modal-name').value = '';
   document.getElementById('modal-desc').value = '';
+  document.getElementById('modal-delete-btn').style.display = 'none';
+  document.getElementById('delete-warning').style.display = 'none';
   document.getElementById('region-modal').style.display = 'block';
   setTimeout(function(){ document.getElementById('modal-name').focus(); }, 100);
 }
@@ -205,30 +238,67 @@ function showCreateRegion() {
 function showRenameRegion(id) {
   _editRegionId = id;
   var reg = _regions.find(function(r){ return r.id===id; });
-  document.getElementById('modal-title').textContent = 'Rename region';
+  document.getElementById('modal-title').textContent = 'Edit region';
   document.getElementById('modal-submit').textContent = 'Save';
   document.getElementById('modal-name').value = reg ? reg.name : '';
   document.getElementById('modal-desc').value = reg ? (reg.description||'') : '';
+  document.getElementById('modal-delete-btn').style.display = '';
+  document.getElementById('delete-warning').style.display = 'none';
   document.getElementById('region-modal').style.display = 'block';
+  setTimeout(function(){ document.getElementById('modal-name').focus(); }, 100);
 }
 
-function hideModal() { document.getElementById('region-modal').style.display = 'none'; }
+function hideModal() {
+  document.getElementById('region-modal').style.display = 'none';
+  document.getElementById('delete-warning').style.display = 'none';
+}
+
+document.getElementById('modal-name').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') submitRegionModal();
+});
+document.getElementById('modal-desc').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') submitRegionModal();
+});
 
 async function submitRegionModal() {
   var name = document.getElementById('modal-name').value.trim();
   var desc = document.getElementById('modal-desc').value.trim();
   if (!name) { showToast('Please enter a region name'); return; }
   if (_editRegionId) {
-    await fetch(SUPA_URL+'/rest/v1/regions?id=eq.'+_editRegionId, {
+    var r = await fetch(SUPA_URL+'/rest/v1/regions?id=eq.'+_editRegionId, {
       method:'PATCH', headers:H, body: JSON.stringify({name:name, description:desc||null})
     });
-    showToast('Region renamed');
+    if (!r.ok) { showToast('Error saving — check console'); return; }
+    showToast('Region saved');
   } else {
-    await fetch(SUPA_URL+'/rest/v1/regions', {
+    var r = await fetch(SUPA_URL+'/rest/v1/regions', {
       method:'POST', headers:{...H,'Prefer':'return=minimal'}, body: JSON.stringify({name:name, description:desc||null})
     });
+    if (!r.ok) { showToast('Error creating region — check console'); return; }
     showToast('Region created: '+name);
   }
+  hideModal();
+  await Promise.all([loadRegions(), loadLocations()]);
+  renderAll();
+}
+
+function confirmDeleteRegion() {
+  var locs = _locations.filter(function(l){ return l.region_id === _editRegionId; });
+  var warn = document.getElementById('delete-warning');
+  if (locs.length > 0) {
+    warn.textContent = 'Cannot delete — '+locs.length+' location'+(locs.length!==1?'s are':' is')+' assigned to this region. Move them first.';
+    warn.style.display = 'block';
+    return;
+  }
+  var reg = _regions.find(function(r){ return r.id===_editRegionId; });
+  if (!confirm('Delete region "'+( reg ? reg.name : '')+'"? This cannot be undone.')) return;
+  deleteRegion(_editRegionId);
+}
+
+async function deleteRegion(id) {
+  var r = await fetch(SUPA_URL+'/rest/v1/regions?id=eq.'+id, {method:'DELETE', headers:H});
+  if (!r.ok) { showToast('Error deleting region'); return; }
+  showToast('Region deleted');
   hideModal();
   await Promise.all([loadRegions(), loadLocations()]);
   renderAll();
@@ -238,13 +308,11 @@ async function submitRegionModal() {
 function showMoveModal(locId) {
   _movingLocId = locId;
   var loc = _locations.find(function(l){ return l.id===locId; });
-  _movingLocName = loc ? loc.name : '';
-  document.getElementById('move-loc-name').textContent = _movingLocName;
+  document.getElementById('move-loc-name').textContent = loc ? loc.name : '';
+  document.getElementById('move-loc-sub').textContent = loc ? locSubtext(loc) : '';
   var sel = document.getElementById('move-region-sel');
   sel.innerHTML = '<option value="">— Unassigned —</option>'+
-    _regions.map(function(r){ return '<option value="'+r.id+'">'+r.name+'</option>'; }).join('');
-  // Pre-select current
-  var loc = _locations.find(function(l){ return l.id===locId; });
+    _regions.map(function(r){ return '<option value="'+r.id+'">'+esc(r.name)+'</option>'; }).join('');
   if (loc && loc.region_id) sel.value = loc.region_id;
   document.getElementById('move-modal').style.display = 'block';
 }
@@ -253,11 +321,13 @@ function hideMoveModal() { document.getElementById('move-modal').style.display =
 
 async function submitMove() {
   var regionId = document.getElementById('move-region-sel').value || null;
-  await fetch(SUPA_URL+'/rest/v1/locations?id=eq.'+_movingLocId, {
+  var r = await fetch(SUPA_URL+'/rest/v1/locations?id=eq.'+_movingLocId, {
     method:'PATCH', headers:H, body: JSON.stringify({region_id: regionId})
   });
+  if (!r.ok) { showToast('Error moving location'); return; }
+  var loc = _locations.find(function(l){ return l.id===_movingLocId; });
   var rname = regionId ? (_regions.find(function(r){return r.id===regionId;})||{}).name : 'Unassigned';
-  showToast(_movingLocName+' moved to '+rname);
+  showToast((loc ? loc.name : 'Location')+' → '+rname);
   hideMoveModal();
   await loadLocations();
   renderAll();
@@ -267,6 +337,10 @@ function showToast(msg) {
   var t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(function(){ t.classList.remove('show'); }, 2800);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 boot();
