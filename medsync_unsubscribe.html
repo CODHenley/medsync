@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync · Email Preferences</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#DDD9EC;--bg:#F5F3FA;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.card{background:#fff;border:0.5px solid var(--border);border-radius:16px;padding:40px 36px;width:440px;max-width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.07);}
+.logo{font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;}
+.icon{font-size:40px;margin-bottom:16px;}
+.title{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px;}
+.sub{font-size:13px;color:var(--mist);line-height:1.6;margin-bottom:28px;}
+.btn-primary{display:inline-block;padding:12px 32px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;width:100%;}
+.btn-primary:hover{opacity:.9;}
+.btn-secondary{display:inline-block;padding:11px 32px;background:#fff;color:var(--navy);border:0.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;width:100%;margin-top:10px;}
+.btn-secondary:hover{background:#F5F3FA;}
+.spinner{width:32px;height:32px;border:3px solid #F0EEF8;border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.settings-link{font-size:11px;color:var(--mist);margin-top:24px;text-decoration:none;}
+.settings-link:hover{color:var(--navy);}
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="logo">MedSync</div>
+  <div class="spinner" id="spinner"></div>
+  <div class="title" id="title">Updating your preference…</div>
+  <div class="sub" id="sub"></div>
+  <div id="actions"></div>
+</div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+const SETTINGS_URL = 'medsync_settings_live.html';
+const LOGIN_URL    = 'medsync_login.html';
+
+function qs(key) {
+  return new URLSearchParams(window.location.search).get(key) || '';
+}
+
+function showResult(icon, title, sub, actions) {
+  document.getElementById('spinner').style.display = 'none';
+  document.getElementById('icon-placeholder') && (document.getElementById('icon-placeholder').style.display = '');
+  var iconEl = document.createElement('div');
+  iconEl.className = 'icon';
+  iconEl.textContent = icon;
+  document.getElementById('spinner').parentNode.insertBefore(iconEl, document.getElementById('spinner'));
+  document.getElementById('title').textContent = title;
+  document.getElementById('sub').textContent   = sub;
+  document.getElementById('actions').innerHTML = actions;
+}
+
+async function run() {
+  var uid    = qs('uid');
+  var action = qs('action'); // 'unsubscribe' or 'resubscribe'
+
+  if (!uid || !action) {
+    showResult('❓', 'Invalid link',
+      'This link is missing required parameters. Visit Settings to manage your email preferences.',
+      '<a href="'+SETTINGS_URL+'" class="btn-primary">Open Settings</a>');
+    return;
+  }
+
+  var enabled = action === 'resubscribe';
+
+  try {
+    var r = await fetch(SUPA_URL+'/rest/v1/users?id=eq.'+encodeURIComponent(uid), {
+      method: 'PATCH', headers: H,
+      body: JSON.stringify({email_insights_enabled: enabled})
+    });
+
+    if (!r.ok) throw new Error('patch failed: '+r.status);
+
+    if (!enabled) {
+      showResult('✅', 'You\'ve been unsubscribed',
+        'You won\'t receive Monday insights emails anymore. You can resubscribe anytime from Settings or by clicking the link in a future email.',
+        '<a href="medsync_unsubscribe.html?uid='+encodeURIComponent(uid)+'&action=resubscribe" class="btn-secondary">Resubscribe</a>'
+        + '<br><a href="'+LOGIN_URL+'" class="btn-secondary" style="margin-top:8px;">Open MedSync</a>');
+    } else {
+      showResult('🎉', 'You\'re back on the list!',
+        'You\'ll receive Monday insights emails again starting next week. Manage your preferences anytime in Settings.',
+        '<a href="'+LOGIN_URL+'" class="btn-primary">Open MedSync</a>');
+    }
+
+  } catch(e) {
+    showResult('⚠️', 'Something went wrong',
+      'We couldn\'t update your preference right now. Please try again or manage it from Settings.',
+      '<a href="'+SETTINGS_URL+'" class="btn-secondary">Open Settings</a>');
+  }
+}
+
+run();
+</script>
+</body>
+</html>

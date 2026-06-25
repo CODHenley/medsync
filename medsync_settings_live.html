@@ -453,6 +453,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     </div>
   </div>
 
+  <!-- ── Notification Preferences ───────────────────────────── -->
+  <div>
+    <div class="section-title">Notification preferences</div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Weekly insights email</div><div class="card-sub">Sent every Monday at 8am CT with inventory insights, KPIs, and ordering focus</div></div>
+      </div>
+      <div class="card-body">
+        <div class="thresh-row">
+          <div>
+            <div class="thresh-label">Monday insights email</div>
+            <div class="thresh-sub" id="notif-desc">Receive weekly inventory insights, upcoming tasks, and ordering priorities in your inbox</div>
+          </div>
+          <div class="thresh-ctrl">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="email-insights-toggle" style="width:16px;height:16px;cursor:pointer;accent-color:var(--navy);" onchange="saveEmailInsightsPref(this.checked)">
+              <span id="email-insights-label" style="font-size:12px;color:var(--mist);">Loading…</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Quick Links ──────────────────────────────────────────── -->
   <div>
     <div class="section-title">Admin shortcuts</div>
@@ -863,6 +887,51 @@ function saveKey(type) {
   showToast(type === 'vc' ? 'Vetcove key saved' : 'Vetspire key saved');
 }
 
+// ── Email insights preference ─────────────────────────────────────────────
+var _notifUserId = null;
+
+async function loadEmailInsightsPref() {
+  var toggle = document.getElementById('email-insights-toggle');
+  var label  = document.getElementById('email-insights-label');
+  var desc   = document.getElementById('notif-desc');
+  try {
+    var mu = _sGetMu();
+    var userId = mu.id || _settSess.user?.id || _sJwtSub(_settSess.access_token);
+    if (!userId) { label.textContent = 'Sign in to manage'; toggle.disabled = true; return; }
+    _notifUserId = userId;
+    var r = await fetch(SUPA_URL+'/rest/v1/users?select=email_insights_enabled&id=eq.'+userId, {headers:_settH});
+    var d = await r.json();
+    var enabled = (Array.isArray(d) && d[0] && d[0].email_insights_enabled !== false);
+    toggle.checked = enabled;
+    label.textContent = enabled ? 'Subscribed' : 'Unsubscribed';
+    if (!enabled) desc.textContent = 'You are currently unsubscribed. Turn on to resume weekly emails.';
+  } catch(e) {
+    label.textContent = 'Unable to load';
+    toggle.disabled = true;
+  }
+}
+
+async function saveEmailInsightsPref(enabled) {
+  var label = document.getElementById('email-insights-label');
+  var desc  = document.getElementById('notif-desc');
+  if (!_notifUserId) { showToast('Could not identify user'); return; }
+  try {
+    var r = await fetch(SUPA_URL+'/rest/v1/users?id=eq.'+_notifUserId, {
+      method: 'PATCH', headers: _settH,
+      body: JSON.stringify({email_insights_enabled: enabled})
+    });
+    if (!r.ok) throw new Error('patch failed');
+    label.textContent = enabled ? 'Subscribed' : 'Unsubscribed';
+    desc.textContent  = enabled
+      ? 'Receive weekly inventory insights, upcoming tasks, and ordering priorities in your inbox'
+      : 'You are currently unsubscribed. Turn on to resume weekly emails.';
+    showToast(enabled ? '✓ Subscribed to weekly insights' : 'Unsubscribed from weekly insights');
+  } catch(e) {
+    showToast('Error saving preference — try again');
+    document.getElementById('email-insights-toggle').checked = !enabled;
+  }
+}
+
 function saveSettings() {
   var settings = {
     cogs_min:         document.getElementById('cogs-min').value,
@@ -923,6 +992,7 @@ function showToast(msg) {
     document.getElementById('vs-key').placeholder = '••••••• (saved)';
   }
   loadBillingBranding();
+  loadEmailInsightsPref();
 })();
 
 // Toggle label sync
