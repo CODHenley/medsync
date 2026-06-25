@@ -1035,14 +1035,16 @@ function getSession() {
 
 function getUserInfo() {
   const s = getSession();
-  const user = s?.user || s;
+  const sessionUser = s?.user || s;
+  let profileUser = {};
+  try { profileUser = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) {}
   return {
-    id: user?.id || user?.user_id || null,
-    email: user?.email || '',
-    name: user?.full_name || user?.name || user?.email || 'User',
-    org_id: user?.org_id || user?.organization_id || null,
-    role: user?.role || 'staff',
-    created_at: user?.created_at || null,
+    id: sessionUser?.id || sessionUser?.user_id || null,
+    email: sessionUser?.email || profileUser?.email || '',
+    name: profileUser?.full_name || profileUser?.name || sessionUser?.full_name || sessionUser?.name || sessionUser?.email || 'User',
+    org_id: profileUser?.org_id || profileUser?.organization_id || sessionUser?.org_id || null,
+    role: profileUser?.role || sessionUser?.role || 'staff',
+    created_at: profileUser?.created_at || sessionUser?.created_at || null,
     access_token: s?.access_token || null,
   };
 }
