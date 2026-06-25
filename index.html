@@ -502,9 +502,34 @@ async function refreshAllInsights() {
 
     if (managed && top3.length) {
       managed.innerHTML =
-        '<!-- MANAGED-INSIGHTS-START -->\n' +
-        top3.map(c => '      ' + c.html).join('\n') +
-        '\n      <!-- MANAGED-INSIGHTS-END -->';
+        '<!-- MANAGED-INSIGHTS-START -->
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
+        <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-pill" style="color:#a0700a;font-size:14px;" aria-hidden="true"></i>
+        </div>
+        <div style="flex:1;">
+          <p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">Top cost driver — Catalyst Chem 17</p>
+          <p style="font-size:11px;color:#4A5568;line-height:1.5;">$1,312 in dispensed cost over 30 days. Highest volume at Wheaton. Verify par levels and review substitution options.</p>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <span class="badge badge-warn" style="font-size:11px;">$1,312</span>
+          <p style="font-size:10px;color:#4A5568;margin-top:4px;">Cost driver</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff5f5;border:0.5px solid #f5c6c6;border-radius:8px;">
+        <div style="width:30px;height:30px;border-radius:7px;background:#fde8e8;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-alert-circle" style="color:#a33030;font-size:14px;" aria-hidden="true"></i>
+        </div>
+        <div style="flex:1;">
+          <p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">Goods lost — Lincoln Park · top location this period</p>
+          <p style="font-size:11px;color:#4A5568;line-height:1.5;">19 submissions totaling $950 in the last 30 days. Highest single item: PureVax Recombinant FeLV Vaccine.</p>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <span class="badge badge-bad" style="font-size:11px;">$950</span>
+          <p style="font-size:10px;color:#4A5568;margin-top:4px;">Goods lost</p>
+        </div>
+      </div>
+      <!-- MANAGED-INSIGHTS-END -->';
     }
 
     // Also refresh Wheaton-specific insights
