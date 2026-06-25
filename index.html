@@ -46,11 +46,9 @@
   }
   .nav-logo-mark {
     width: 36px; height: 36px; border-radius: 8px;
-    background: var(--gold);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 16px; color: var(--white);
-    letter-spacing: -0.5px;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
   }
+  .nav-logo-mark img { width: 36px; height: 36px; object-fit: contain; }
   .nav-logo-text {
     font-size: 18px; font-weight: 600; color: var(--white); letter-spacing: -0.3px;
   }
@@ -373,7 +371,7 @@
 <!-- ── NAV ── -->
 <nav>
   <a class="nav-logo" href="#">
-    <div class="nav-logo-mark">MS</div>
+    <div class="nav-logo-mark"><img src="medsync_logo.png" alt="MedSync"></div>
     <span class="nav-logo-text">MedSync</span>
   </a>
   <ul class="nav-links">
