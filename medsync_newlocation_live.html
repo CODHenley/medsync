@@ -270,14 +270,21 @@ DENOVO_SETS.general = [
   {cat:'Injectables',name:'Acepromazine 10mg/mL',sku:'17478023535',qty:1,section:'Pharmacy'},
 ];
 
-// ER adds more ICU/critical care
-DENOVO_SETS.er = [...DENOVO_SETS.urgent_care,
+// ER: same medication types as Urgent Care (no preventatives), 2x quantities on
+// medications/consumables, plus additional ICU-critical equipment.
+const ER_EQUIPMENT_CATS = new Set(['Medical Equipment']);
+DENOVO_SETS.er = [
+  // Base UC items — filter preventatives, double non-equipment quantities
+  ...DENOVO_SETS.urgent_care
+    .filter(i => i.cat !== 'Preventatives')
+    .map(i => ER_EQUIPMENT_CATS.has(i.cat) ? {...i} : {...i, qty: i.qty * 2}),
+  // Additional ICU / critical care equipment & medications
   {cat:'Medical Equipment',name:'Covetrus ProMAX Syringe Pump',sku:'Covetrus ProMAX Syringe',qty:2,section:'ICU'},
   {cat:'Medical Equipment',name:'EMMA Capnograph (EtCO2 Monitor)',sku:'Masimo EMMA',qty:2,section:'Surgery / ICU'},
   {cat:'Injectables',name:'Epinephrine 1mg/mL',sku:'400002',qty:4,section:'Pharmacy'},
-  {cat:'Injectables',name:'Atropine Injection',sku:'641602110',section:'Pharmacy',qty:4},
-  {cat:'Controlled Substances',name:'Propofol 10mg/mL',sku:'1117',qty:4,section:'Pharmacy'},
-  {cat:'Controlled Substances',name:'Fentanyl 50mcg/mL',sku:'50383004316',qty:2,section:'Pharmacy'},
+  {cat:'Injectables',name:'Atropine Injection',sku:'641602110',qty:4,section:'Pharmacy'},
+  {cat:'Controlled Substances',name:'Propofol 10mg/mL',sku:'1117',qty:8,section:'Pharmacy'},
+  {cat:'Controlled Substances',name:'Fentanyl 50mcg/mL',sku:'50383004316',qty:4,section:'Pharmacy'},
 ];
 
 // Specialty adds more diagnostics and specialized equipment
