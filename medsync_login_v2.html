@@ -171,8 +171,14 @@ document.getElementById('nav-logo').src = 'data:image/png;base64,iVBORw0KGgoAAAA
 
 // ── Check if already signed in ────────────────────────────────
 async function checkSession() {
+  // Skip auto-login if user clicked "Log In" from the marketing page
+  const fromMarketing = document.referrer.includes('index.html') ||
+    document.referrer === window.location.origin + '/' ||
+    document.referrer === 'https://medsync.vet/' ||
+    new URLSearchParams(window.location.search).get('fresh') === '1';
+
   const stored = localStorage.getItem('medsync_session');
-  if (stored) {
+  if (stored && !fromMarketing) {
     try {
       const sess = JSON.parse(stored);
       if (sess.access_token && new Date(sess.expires_at * 1000) > new Date()) {
