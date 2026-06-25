@@ -796,7 +796,7 @@ async function fetchRecentPOItems() {
     const fields = ['location_name', 'location', 'location_id'];
     for (const field of fields) {
       try {
-        data = await supa('GET', `/rest/v1/po_items?${field}=eq.${encodeURIComponent(state.locationName)}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,unit_price,status`);
+        data = await supa('GET', `/rest/v1/po_items?${field}=eq.${encodeURIComponent(state.locationName)}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,gpo_price,status`);
         if (Array.isArray(data) && data.length > 0) break;
         if (Array.isArray(data)) break; // 0 results is still a valid response
       } catch(e) { /* try next field */ }
@@ -828,14 +828,15 @@ function reconcileItems(invoiceItems, poItems) {
     if (bestScore < 0.30 || !bestPO) {
       return { ...item, matchStatus: 'not_on_po', matchScore: bestScore };
     }
-    const priceVar = item.unitPriceInvoiced != null && bestPO.unit_price != null
-      ? Math.round((item.unitPriceInvoiced - bestPO.unit_price) * 10000) / 10000 : null;
+    const poPrice = bestPO.gpo_price ?? bestPO.unit_price;
+    const priceVar = item.unitPriceInvoiced != null && poPrice != null
+      ? Math.round((item.unitPriceInvoiced - poPrice) * 10000) / 10000 : null;
     const qtyVar = item.qtyInvoiced != null && bestPO.qty_ordered != null
       ? item.qtyInvoiced - bestPO.qty_ordered : null;
     let status = 'matched';
     if (priceVar != null && Math.abs(priceVar) > 0.005) status = 'price_discrepancy';
     else if (qtyVar != null && qtyVar !== 0) status = 'qty_mismatch';
-    return { ...item, matchStatus: status, matchScore: bestScore, poItemId: bestPO.id, poProdName: bestPO.product_name, qtyOrdered: bestPO.qty_ordered, unitPriceOrdered: bestPO.unit_price, priceVariance: priceVar, qtyVariance: qtyVar };
+    return { ...item, matchStatus: status, matchScore: bestScore, poItemId: bestPO.id, poProdName: bestPO.product_name, qtyOrdered: bestPO.qty_ordered, unitPriceOrdered: poPrice, priceVariance: priceVar, qtyVariance: qtyVar };
   });
 }
 
@@ -876,6 +877,18 @@ async function saveInvoice(parsed, reconciledItems, fileName) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Auto-select location from parent frame if available
 window.addEventListener('message', e => {
+  // Handle { type: 'setLocation', loc: 'Wheaton' } from index.html
+  if (e.data?.type === 'setLocation' && e.data.loc) {
+    const locName = e.data.loc;
+    const locId = Object.entries(LOC_NAMES).find(([,v]) => v === locName)?.[0];
+    if (locId) {
+      document.getElementById('loc-select').value = locId;
+      state.locationId   = locId;
+      state.locationName = locName;
+      loadInvoices();
+    }
+  }
+  // Legacy: { locationId: '28253' }
   if (e.data?.locationId) {
     document.getElementById('loc-select').value = e.data.locationId;
     state.locationId   = e.data.locationId;

@@ -42,7 +42,7 @@ function showScreen(name) {
     window._actlogLoaded = true;
     if (typeof loadEvents === 'function') setTimeout(loadEvents, 100);
   }
-  if (['order','receiving','goods'].indexOf(name) !== -1) {
+  if (['order','receiving','goods','invoices'].indexOf(name) !== -1) {
     try {
       var mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
       if (mu.role === 'manager' && mu.locations && mu.locations[0]) {
