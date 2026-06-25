@@ -461,7 +461,7 @@ async function loadLocations() {
 
 async function loadProducts() {
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size&order=name', { headers: H });
+    const res = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size,unit_price&order=name', { headers: H });
     let prods = await res.json();
     // Fallback if columns missing or auth error returns an object
     if (!Array.isArray(prods)) {
@@ -474,7 +474,7 @@ async function loadProducts() {
       const opt = document.createElement('option');
       opt.value = p.id;
       opt.textContent = p.name;
-      opt.dataset.price = getPriceEstimate(p.name);
+      opt.dataset.price = p.unit_price || getPriceEstimate(p.name);
       opt.dataset.unit = p.dispensing_unit || 'units';
       opt.dataset.pkgSize = p.package_size || 1;
       sel.appendChild(opt);
@@ -507,11 +507,11 @@ async function loadHistory() {
   try {
     const glPctThresh = (function(){try{return parseFloat(JSON.parse(localStorage.getItem('medsync_settings')||'{}').gl_pct_thresh)||10;}catch(e){return 10;}})();
     const cogsRes = await fetch(
-      SUPA_URL + `/rest/v1/po_items?select=unit_price,qty_ordered&location_id=eq.${state.locationId}&status=in.(received)&added_at=gte.${monthStart}`,
+      SUPA_URL + `/rest/v1/po_items?select=gpo_price,order_qty&location_id=eq.${state.locationId}&status=in.(received)&added_at=gte.${monthStart}`,
       { headers: H }
     );
     const cogsRows = await cogsRes.json();
-    const totalCOGS = Array.isArray(cogsRows) ? cogsRows.reduce((s,r) => s + (Number(r.unit_price||0) * Number(r.qty_ordered||0)), 0) : 0;
+    const totalCOGS = Array.isArray(cogsRows) ? cogsRows.reduce((s,r) => s + (Number(r.gpo_price||0) * Number(r.order_qty||0)), 0) : 0;
     const glPct = totalCOGS > 0 ? (total / totalCOGS * 100) : 0;
     const banner = document.getElementById('gl-pct-banner');
     if (glPct > glPctThresh && total > 0) {
@@ -683,7 +683,7 @@ async function submitLoss() {
           qty: state.qty
         }
       })
-    }).catch(() => {});
+    }).catch(e => console.warn('Activity log write failed:', e));
 
     // Show success
     document.getElementById('success-detail').textContent =
