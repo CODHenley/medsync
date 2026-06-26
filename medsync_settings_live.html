@@ -6,7 +6,7 @@
 <title>MedSync · Admin Settings</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#DDD9EC;--bg:#F5F3FA;--amber:#C8922A;}
+:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#B8B0D0;--bg:#EDE8F8;--amber:#C8922A;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -35,13 +35,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .status-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;}
 .pill-ok{background:#E8F5EE;color:var(--green);}
 .pill-pending{background:#FEF3E2;color:var(--amber);}
-.pill-soon{background:#F0EEF8;color:var(--mist);}
+.pill-soon{background:#E8E2F6;color:var(--mist);}
 .int-api{position:relative;}
-.int-api input{width:100%;padding:8px 70px 8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;background:#F8F7FC;color:var(--navy);}
+.int-api input{width:100%;padding:8px 70px 8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;background:#F0EBF8;color:var(--navy);}
 .int-api button{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:4px 10px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
 /* Threshold rows */
-.thresh-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #F5F3FA;}
+.thresh-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #EDE8F8;}
 .thresh-row:last-child{border-bottom:none;}
 .thresh-label{font-size:13px;font-weight:500;}
 .thresh-sub{font-size:11px;color:var(--mist);margin-top:2px;}
@@ -52,7 +52,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 /* Quick links */
 .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
 .ql-tile{border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;background:#fff;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;}
-.ql-tile:hover{border-color:#9B8EC4;background:#F8F7FC;}
+.ql-tile:hover{border-color:#9B8EC4;background:#F0EBF8;}
 .ql-icon{font-size:20px;}
 .ql-name{font-size:12px;font-weight:600;}
 .ql-desc{font-size:10px;color:var(--mist);margin-top:1px;}
@@ -112,7 +112,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="field"><label>Contact email</label><input type="email" value="mhenley@scoutcare.com"></div>
         </div>
         <div class="profile-row">
-          <div class="field"><label>Platform URL</label><input type="text" value="medsync.vet" readonly style="background:#F8F7FC;color:var(--mist);"></div>
+          <div class="field"><label>Platform URL</label><input type="text" value="medsync.vet" readonly style="background:#F0EBF8;color:var(--mist);"></div>
           <div class="field"><label>Timezone</label><select><option>America/Chicago (CT)</option><option>America/New_York (ET)</option><option>America/Denver (MT)</option><option>America/Los_Angeles (PT)</option></select></div>
         </div>
       </div>
@@ -152,7 +152,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="field"><label>Billing phone</label><input id="bb-billing-phone" type="tel" placeholder="e.g. (312) 555-0100"></div>
           <div class="field">
             <label>Payment terms</label>
-            <div style="padding:10px 14px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:12px;color:var(--navy);line-height:1.6;">
+            <div style="padding:10px 14px;background:#F0EBF8;border:0.5px solid var(--border);border-radius:9px;font-size:12px;color:var(--navy);line-height:1.6;">
               Billed monthly on the <strong>1st of each month</strong>. Plans starting mid-month are prorated based on days remaining in that month.
             </div>
           </div>
@@ -214,7 +214,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="profile-row">
             <div class="field" style="grid-column:span 2;">
               <label>Current plan</label>
-              <div id="bb-plan-display" style="padding:12px 16px;background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);line-height:1.7;">Loading…</div>
+              <div id="bb-plan-display" style="padding:12px 16px;background:#F0EBF8;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);line-height:1.7;">Loading…</div>
               <div style="margin-top:8px;padding:12px 16px;background:#E8F4EE;border:0.5px solid #b0ddd0;border-radius:9px;font-size:12px;color:#1a5c3a;line-height:1.7;">
                 <strong>Enrollment fee:</strong> $500 one-time (non-refundable). Covers on-site physical count and 30-day supported launch.<br>
                 <strong>90-day money-back guarantee:</strong> Cancel within 90 days of your start date for a full refund, returned within 60 days of your cancellation date.
@@ -740,7 +740,7 @@ async function initiateBillingSave() {
 
 function showBillingOTPModal() {
   ['otp-d1','otp-d2','otp-d3','otp-d4','otp-d5','otp-d6'].forEach(function(id){
-    var el = document.getElementById(id); if (el) { el.value = ''; el.style.borderColor = '#DDD9EC'; }
+    var el = document.getElementById(id); if (el) { el.value = ''; el.style.borderColor = '#B8B0D0'; }
   });
   document.getElementById('otp-error').style.display = 'none';
   var m = document.getElementById('billing-otp-modal');
@@ -1030,12 +1030,12 @@ function navHome() {
     <div style="font-size:15px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Verify your identity</div>
     <div id="otp-subtext" style="font-size:12px;color:#6B7A99;margin-bottom:20px;line-height:1.6;">A 6-digit code has been sent to your email.<br>Enter it below to confirm the billing update.</div>
     <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">
-      <input id="otp-d1" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d2')" onkeydown="otpBack(event,this,null)">
-      <input id="otp-d2" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d3')" onkeydown="otpBack(event,this,'otp-d1')">
-      <input id="otp-d3" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d4')" onkeydown="otpBack(event,this,'otp-d2')">
-      <input id="otp-d4" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d5')" onkeydown="otpBack(event,this,'otp-d3')">
-      <input id="otp-d5" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d6')" onkeydown="otpBack(event,this,'otp-d4')">
-      <input id="otp-d6" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #DDD9EC;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,null)"     onkeydown="otpBack(event,this,'otp-d5')">
+      <input id="otp-d1" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #B8B0D0;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d2')" onkeydown="otpBack(event,this,null)">
+      <input id="otp-d2" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #B8B0D0;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d3')" onkeydown="otpBack(event,this,'otp-d1')">
+      <input id="otp-d3" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #B8B0D0;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d4')" onkeydown="otpBack(event,this,'otp-d2')">
+      <input id="otp-d4" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #B8B0D0;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d5')" onkeydown="otpBack(event,this,'otp-d3')">
+      <input id="otp-d5" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #B8B0D0;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,'otp-d6')" onkeydown="otpBack(event,this,'otp-d4')">
+      <input id="otp-d6" maxlength="1" style="width:40px;height:48px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid #B8B0D0;border-radius:9px;color:#1C2B4A;" oninput="otpDigit(this,null)"     onkeydown="otpBack(event,this,'otp-d5')">
     </div>
     <div id="otp-error" style="font-size:12px;color:#C0392B;margin-bottom:10px;display:none;">Incorrect code — please try again.</div>
     <button id="otp-confirm-btn" onclick="confirmBillingOTP()" style="width:100%;padding:12px;background:#1C2B4A;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;">Confirm &amp; Save Billing</button>

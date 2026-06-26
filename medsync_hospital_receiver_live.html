@@ -9,7 +9,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --navy:#1C2B4A;--gold:#C8922A;--gold-light:#E8B84B;
-  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
   --bg:#fff;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;
   --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
@@ -34,7 +34,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 
 /* Task buttons */
 .task-btn{padding:16px;border:0.5px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .12s;text-align:left;width:100%;font-family:'DM Sans',sans-serif;}
-.task-btn:hover{background:#F0EEF8;border-color:var(--navy);}
+.task-btn:hover{background:#E8E2F6;border-color:var(--navy);}
 .task-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .task-title{font-size:14px;font-weight:600;color:var(--navy);}
 .task-sub{font-size:11px;color:var(--mist);margin-top:2px;}
@@ -56,7 +56,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .scan-items{margin-top:12px;display:flex;flex-direction:column;gap:4px;}
 .scan-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;font-size:12px;}
 .scan-item.confirmed{background:var(--green-bg);}
-.scan-item.pending{background:#F5F3FA;}
+.scan-item.pending{background:#EDE8F8;}
 .si-name{font-weight:500;}
 .si-badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;}
 .b-ok{background:var(--green-bg);color:var(--green);}
@@ -73,8 +73,8 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .loss-opt{flex:1;padding:8px 4px;border-radius:8px;border:0.5px solid;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .loss-opt-exp{background:#FEF0F0;border-color:#E0AAAA;color:#C0392B;}
 .loss-opt-dmg{background:#FEF3E2;border-color:#E0C080;color:#A06020;}
-.loss-opt-cancel{background:#F5F3FA;border-color:var(--border);color:var(--mist);}
-.btn-secondary:hover{background:#F0EEF8;}
+.loss-opt-cancel{background:#EDE8F8;border-color:var(--border);color:var(--mist);}
+.btn-secondary:hover{background:#E8E2F6;}
 
 /* Success */
 .success-card{background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:32px 22px;text-align:center;}

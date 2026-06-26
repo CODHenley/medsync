@@ -10,27 +10,27 @@
 :root{
   --navy:#1C2B4A;--navy-mid:#243459;
   --gold:#C8922A;--gold-light:#E8B84B;--gold-pale:#FDF8EE;
-  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
-  --bg:#F5F3FA;--surface:#fff;
+  --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
+  --bg:#EDE8F8;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;
   --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
   --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
-  --purple:#534AB7;--purple-bg:#EEEDFE;
+  --purple:#534AB7;--purple-bg:#E4DAF2;
 }
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;line-height:1.5;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 /* TOPBAR */
-.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.topbar{background:var(--navy);border-bottom:none;padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
 .tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
 .tb-home:hover{opacity:1;}
 .tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
 .tb-left{display:flex;align-items:center;gap:10px;}
-.tb-title{font-size:14px;font-weight:600;color:var(--navy);}
+.tb-title{font-size:14px;font-weight:600;color:#fff;}
 .tb-right{display:flex;gap:6px;align-items:center;}
 select{padding:5px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);cursor:pointer;outline:none;height:30px;}
 select:focus{border-color:var(--navy);}
 .btn{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;height:30px;}
-.btn:hover{background:#F0EEF8;}
+.btn:hover{background:#E8E2F6;}
 .btn-primary{background:var(--navy);color:#fff;border-color:var(--navy);}
 .btn-primary:hover{background:var(--navy-mid);}
 
@@ -58,18 +58,18 @@ select:focus{border-color:var(--navy);}
 
 /* QUARTERLY TABLE */
 .q-table{width:100%;border-collapse:collapse;}
-.q-table thead tr{background:#F8F7FC;}
+.q-table thead tr{background:#F0EBF8;}
 .q-table th{padding:9px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);}
 .q-table th.right,.q-table td.right{text-align:right;}
-.q-table td{padding:12px 14px;font-size:12px;border-bottom:0.5px solid #F5F3FA;}
+.q-table td{padding:12px 14px;font-size:12px;border-bottom:0.5px solid #EDE8F8;}
 .q-table tr:last-child td{border-bottom:none;}
-.q-table tr.total-row{background:#F8F7FC;font-weight:600;}
+.q-table tr.total-row{background:#F0EBF8;font-weight:600;}
 .q-table tr.total-row td{border-top:0.5px solid var(--border);border-bottom:none;}
 .q-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
 .q-badge.q1{background:#EEF2FE;color:#3B5BDB;}
 .q-badge.q2{background:#E1F5EE;color:var(--green);}
 .q-badge.q3{background:#FDF8EE;color:var(--gold);}
-.q-badge.q4{background:#F0EEF8;color:var(--purple);}
+.q-badge.q4{background:#E8E2F6;color:var(--purple);}
 .q-badge.current{box-shadow:0 0 0 1.5px currentColor;}
 .mono{font-family:'DM Mono',monospace;font-size:11px;}
 
@@ -93,10 +93,10 @@ select:focus{border-color:var(--navy);}
 
 /* TOP SKUs TABLE */
 .sku-table{width:100%;border-collapse:collapse;}
-.sku-table thead tr{background:#F8F7FC;}
+.sku-table thead tr{background:#F0EBF8;}
 .sku-table th{padding:9px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);}
 .sku-table th.right,.sku-table td.right{text-align:right;}
-.sku-table td{padding:10px 14px;font-size:12px;border-bottom:0.5px solid #F5F3FA;}
+.sku-table td{padding:10px 14px;font-size:12px;border-bottom:0.5px solid #EDE8F8;}
 .sku-table tr:last-child td{border-bottom:none;}
 .sku-rank{font-size:10px;font-weight:700;color:var(--mist);font-family:'DM Mono',monospace;width:24px;display:inline-block;}
 .sku-spend-bar{height:4px;border-radius:2px;background:var(--navy);opacity:.35;margin-top:3px;}

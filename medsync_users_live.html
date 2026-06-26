@@ -7,9 +7,9 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
 <style>
-:root{--navy:#1C2B4A;--green:#2E8B57;--green-bg:#E8F5EE;--amber:#C8922A;--amber-bg:#FEF3E2;--red:#C0392B;--red-bg:#FDECEA;--mist:#8A93A8;--border:#DDD9EC;--surface:#FFFFFF;--purple:#5B3FA8;}
+:root{--navy:#1C2B4A;--green:#2E8B57;--green-bg:#E8F5EE;--amber:#C8922A;--amber-bg:#FEF3E2;--red:#C0392B;--red-bg:#FDECEA;--mist:#8A93A8;--border:#B8B0D0;--surface:#FFFFFF;--purple:#5B3FA8;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-size:13px;}
+body{font-family:'DM Sans',sans-serif;background:#EDE8F8;color:var(--navy);font-size:13px;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
 .tb-home:hover{opacity:1;}
@@ -43,7 +43,7 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .rg-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:4px;}
 .rg-dot.full{background:var(--green);}
 .rg-dot.limited{background:var(--amber);}
-.rg-dot.none{background:#DDD9EC;}
+.rg-dot.none{background:#B8B0D0;}
 .rg-legend{display:flex;align-items:center;gap:14px;margin-top:12px;padding-top:10px;border-top:0.5px solid var(--border);}
 .rg-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--mist);}
 @media(max-width:560px){.rg-grid{grid-template-columns:1fr;}}
@@ -53,7 +53,7 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .card-body{padding:20px;}
 
 /* User rows */
-.user-row{display:grid;grid-template-columns:1fr 110px 130px 180px;align-items:center;padding:11px 0;border-bottom:0.5px solid #F5F3FA;gap:8px;}
+.user-row{display:grid;grid-template-columns:1fr 110px 130px 180px;align-items:center;padding:11px 0;border-bottom:0.5px solid #EDE8F8;gap:8px;}
 .user-row:last-child{border-bottom:none;}
 .user-row.inactive{opacity:.5;}
 .user-info{min-width:0;}
@@ -75,10 +75,10 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 /* Status pill */
 .status-pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;}
 .sp-active{background:var(--green-bg);color:var(--green);}
-.sp-inactive{background:#F0EEF8;color:var(--mist);}
+.sp-inactive{background:#E8E2F6;color:var(--mist);}
 
 /* Table column headers */
-.col-headers{display:grid;grid-template-columns:1fr 110px 130px 180px;padding:8px 20px;background:#F8F7FC;border-bottom:0.5px solid var(--border);}
+.col-headers{display:grid;grid-template-columns:1fr 110px 130px 180px;padding:8px 20px;background:#F0EBF8;border-bottom:0.5px solid var(--border);}
 .col-label{font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
 .col-label.center{text-align:center;}
 .action-group{display:flex;gap:5px;}
@@ -105,11 +105,11 @@ body{font-family:'DM Sans',sans-serif;background:#F5F3FA;color:var(--navy);font-
 .scope-radios{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
 .scope-radio{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:0.5px solid var(--border);border-radius:9px;transition:border-color .12s;}
 .scope-radio:hover{border-color:#9B8EC4;}
-.scope-radio.selected{border-color:var(--navy);background:#F8F7FC;}
+.scope-radio.selected{border-color:var(--navy);background:#F0EBF8;}
 .scope-radio input[type=radio]{width:14px;height:14px;accent-color:var(--navy);flex-shrink:0;}
 .scope-radio-label{font-size:13px;font-weight:500;color:var(--navy);}
 .scope-radio-sub{font-size:11px;color:var(--mist);margin-top:1px;}
-.scope-sub-field{margin-top:10px;padding:12px;background:#F8F7FC;border-radius:9px;border:0.5px solid var(--border);}
+.scope-sub-field{margin-top:10px;padding:12px;background:#F0EBF8;border-radius:9px;border:0.5px solid var(--border);}
 .loc-checkboxes{display:flex;flex-direction:column;gap:7px;max-height:160px;overflow-y:auto;}
 .loc-check{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;}
 .loc-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--navy);}
