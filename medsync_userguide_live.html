@@ -672,7 +672,7 @@
       <div class="quiz-footer" id="quiz-footer-staff">
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;">Knowledge Check</div>
-          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 3/5 to earn your Staff certification</div>
+          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 4/5 to earn your Staff certification</div>
         </div>
         <button class="quiz-btn" id="quiz-btn-staff" onclick="openQuiz('staff')">📝 Take Quiz</button>
         <button class="quiz-btn view-cert" id="cert-btn-staff" onclick="openCertificate('staff')" style="display:none;">🏅 View Certificate</button>
@@ -1094,7 +1094,7 @@
       <div class="quiz-footer" id="quiz-footer-admin">
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;">Knowledge Check</div>
-          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 3/5 to earn your Admin certification</div>
+          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 4/5 to earn your Admin certification</div>
         </div>
         <button class="quiz-btn" id="quiz-btn-admin" onclick="openQuiz('admin')">📝 Take Quiz</button>
         <button class="quiz-btn view-cert" id="cert-btn-admin" onclick="openCertificate('admin')" style="display:none;">🏅 View Certificate</button>
@@ -1263,7 +1263,7 @@
       <div class="quiz-footer" id="quiz-footer-medsync">
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;">Knowledge Check</div>
-          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 3/5 to earn your MedSync Platform certification</div>
+          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 4/5 to earn your MedSync Platform certification</div>
         </div>
         <button class="quiz-btn" id="quiz-btn-medsync" onclick="openQuiz('medsync')">📝 Take Quiz</button>
         <button class="quiz-btn view-cert" id="cert-btn-medsync" onclick="openCertificate('medsync')" style="display:none;">🏅 View Certificate</button>
@@ -1502,7 +1502,7 @@ async function saveCompletion(section, score) {
     section,
     score,
     total: 5,
-    passed: score >= 3,
+    passed: score >= 4,
   };
   const headers = {
     'Content-Type': 'application/json',
@@ -1694,7 +1694,7 @@ function nextQuestion() {
 function showResults() {
   const questions = QUIZ_QUESTIONS[_quizSection];
   const score = _quizAnswers.reduce((acc, ans, i) => acc + (ans === questions[i].correct ? 1 : 0), 0);
-  const passed = score >= 3;
+  const passed = score >= 4;
 
   if (passed) {
     // Save to Supabase
