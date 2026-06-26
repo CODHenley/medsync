@@ -404,8 +404,8 @@
   .sandbox-guide-body .quiz-footer { padding: 14px 0 0; }
   /* Resize handle */
   .sandbox-resize {
-    width: 4px; background: var(--border); cursor: col-resize; flex-shrink: 0;
-    transition: background 0.15s;
+    width: 6px; background: var(--border); cursor: col-resize; flex-shrink: 0;
+    transition: background 0.15s; touch-action: none;
   }
   .sandbox-resize:hover { background: var(--gold); }
   @media(max-width: 800px) {
@@ -1990,6 +1990,7 @@ function openSandbox(section) {
   document.getElementById('sandbox-iframe').src = page;
   document.getElementById('sandbox-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  initSandboxResize();
 }
 
 function closeSandbox() {
@@ -1998,28 +1999,26 @@ function closeSandbox() {
   document.body.style.overflow = '';
 }
 
-// Drag-to-resize the guide panel
-(function() {
-  let dragging = false, startX, startW;
-  document.addEventListener('mousedown', e => {
-    if (!e.target.classList.contains('sandbox-resize')) return;
-    dragging = true;
+// Drag-to-resize the guide panel — pointer capture keeps events locked to handle
+function initSandboxResize() {
+  const handle = document.getElementById('sandbox-resize');
+  if (!handle) return;
+  let startX, startW;
+  handle.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
     startX = e.clientX;
+    startW = document.getElementById('sandbox-guide-panel').offsetWidth;
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!handle.hasPointerCapture(e.pointerId)) return;
     const panel = document.getElementById('sandbox-guide-panel');
-    startW = panel.offsetWidth;
-    document.body.style.userSelect = 'none';
+    panel.style.width = Math.max(260, Math.min(600, startW + (startX - e.clientX))) + 'px';
   });
-  document.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    const panel = document.getElementById('sandbox-guide-panel');
-    const newW = Math.max(260, Math.min(600, startW + (startX - e.clientX)));
-    panel.style.width = newW + 'px';
+  handle.addEventListener('pointerup', e => {
+    handle.releasePointerCapture(e.pointerId);
   });
-  document.addEventListener('mouseup', () => {
-    dragging = false;
-    document.body.style.userSelect = '';
-  });
-})();
+}
 
 init();
 </script>
