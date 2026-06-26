@@ -1,0 +1,58 @@
+name: Revenue Backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Start date (YYYY-MM-DD). Leave blank to use 'days' instead."
+        required: false
+        default: ""
+      end_date:
+        description: "End date (YYYY-MM-DD). Leave blank for today."
+        required: false
+        default: ""
+      days:
+        description: "Days back from end date (used only if start_date is blank)."
+        required: false
+        default: "30"
+      location:
+        description: "Single location to backfill. Leave blank for all 4."
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - "Wheaton"
+          - "Lincoln Park"
+          - "Old Orchard"
+          - "West Loop"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run revenue backfill
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.start_date }}" ]; then
+            ARGS="$ARGS --start ${{ inputs.start_date }}"
+          fi
+          if [ -n "${{ inputs.end_date }}" ]; then
+            ARGS="$ARGS --end ${{ inputs.end_date }}"
+          fi
+          if [ -n "${{ inputs.days }}" ] && [ -z "${{ inputs.start_date }}" ]; then
+            ARGS="$ARGS --days ${{ inputs.days }}"
+          fi
+          if [ -n "${{ inputs.location }}" ]; then
+            ARGS="$ARGS --location \"${{ inputs.location }}\""
+          fi
+          echo "Running: python3 all_locations_revenue_backfill.py $ARGS"
+          eval python3 all_locations_revenue_backfill.py $ARGS
