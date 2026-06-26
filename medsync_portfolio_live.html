@@ -182,8 +182,14 @@ async function loadRecognition() {
       const parts = [];
       if (topLead.gl > 0) parts.push(topLead.gl + ' goods lost');
       if (topLead.po > 0) parts.push(topLead.po + ' PO' + (topLead.po > 1 ? 's' : '') + ' processed');
+      // Store lead name so loadUserProfiles can patch avatar once profiles are ready
+      leadEl.dataset.leadName = topLead.name;
+      const _leadProfile = window._userProfiles && window._userProfiles[topLead.name];
+      const _leadAvatar = _leadProfile && _leadProfile.avatar_b64
+        ? '<img src="' + _leadProfile.avatar_b64 + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #B0CCF0;" alt="' + topLead.name + '">'
+        : '<div style="width:44px;height:44px;border-radius:50%;background:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⭐</div>';
       leadEl.innerHTML =
-        '<div style="font-size:26px;line-height:1;flex-shrink:0;">⭐</div>' +
+        _leadAvatar +
         '<div>' +
           '<div style="font-size:9px;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Most Consistent Inventory Lead</div>' +
           '<div style="font-size:14px;font-weight:700;color:#1C2B4A;">' + topLead.name + '</div>' +
@@ -2910,6 +2916,22 @@ async function loadUserProfiles() {
 
     // Re-render table if already loaded to pick up avatars
     if (typeof renderTable === 'function') renderTable();
+
+    // Patch recognition lead card avatar now that profiles are loaded
+    const leadEl = document.getElementById('rec-lead');
+    if (leadEl && leadEl.dataset.leadName) {
+      const lp = window._userProfiles[leadEl.dataset.leadName];
+      if (lp && lp.avatar_b64) {
+        const avatarEl = leadEl.querySelector('img, div[style*="border-radius:50%"]');
+        if (avatarEl) {
+          const img = document.createElement('img');
+          img.src = lp.avatar_b64;
+          img.style.cssText = 'width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #B0CCF0;';
+          img.alt = leadEl.dataset.leadName;
+          avatarEl.replaceWith(img);
+        }
+      }
+    }
   } catch(e) {
     console.warn('Could not load user profiles:', e);
   }
