@@ -951,26 +951,12 @@ async function loadData() {
 
     // ── 2. PO Items — procurement savings + compliance ───────
     const poItems = await query('po_items',
-      `select=qty_ordered,unit_price,list_price,savings_category,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
+      `select=qty_ordered,unit_price,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
     );
 
-    // Calculate live procurement savings from (list_price - unit_price) × qty_ordered
-    const SAV_LABELS = {
-      'GPO':          'GPO discount capture',
-      'Vetcove':      'Vetcove best-price routing',
-      'SKU':          'SKU optimization',
-      'Consolidation':'Order consolidation'
-    };
-    const SAV_ORDER = ['GPO','Vetcove','SKU','Consolidation'];
+    // list_price column not yet in schema — savings breakdown unavailable
     const savByCategory = {};
-    poItems.forEach(i => {
-      const cat = i.savings_category;
-      if (!cat || i.list_price == null) return;
-      const saving = (Number(i.list_price) - Number(i.unit_price || 0)) * (Number(i.qty_ordered) || 1);
-      if (saving <= 0) return;
-      savByCategory[cat] = (savByCategory[cat] || 0) + saving;
-    });
-    const totalSav = Object.values(savByCategory).reduce((s, v) => s + v, 0);
+    const totalSav = 0;
     renderSavingsTable(savByCategory, totalSav, from, to);
 
     var _el;

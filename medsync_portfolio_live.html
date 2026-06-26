@@ -2439,7 +2439,7 @@ function showToast(msg) {
 function refresh() { loadData(); }
 
 // ── Boot ─────────────────────────────────────────────────────
-loadData();
+document.addEventListener('DOMContentLoaded', function() { setTimeout(loadData, 200); });
 
 
 // ── Supabase config ──────────────────────────────────────────
