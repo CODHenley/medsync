@@ -2368,6 +2368,7 @@ function obRenderMeetings(data) {
         <button onclick="obDeleteMeeting(${data.meetings.length-1-i})" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--mist);">✕</button>
       </div>
       <div class="ob-meeting-note">${m.note || '<em style="color:var(--mist);">No notes</em>'}</div>
+      ${m.followup ? `<div style="margin-top:6px;font-size:10px;font-weight:600;color:#a0700a;background:#FFF8F0;border:0.5px solid #f0d070;border-radius:6px;padding:3px 8px;display:inline-block;">⏰ Follow-up: ${m.followup}</div>` : ''}
     </div>`).join('');
 }
 
@@ -2405,8 +2406,15 @@ function obAddMeeting() {
               </label>`).join('')}
           </div>
         </div>
+        <div id="ob-followup-row" style="display:none;background:#FFF8F0;border:0.5px solid #f0d070;border-radius:9px;padding:12px 14px;display:none;flex-direction:column;gap:8px;">
+          <div style="font-size:11px;font-weight:700;color:#a0700a;">Required when pulse is below Good</div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Follow-up check-in date <span style="color:#a33030;">*</span></div>
+            <input type="date" id="ob-m-followup" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;width:100%;">
+          </div>
+        </div>
         <div>
-          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Notes</div>
+          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Notes <span id="ob-note-required" style="color:#a33030;display:none;">*</span></div>
           <textarea id="ob-m-note" rows="4" placeholder="What was discussed, action items, follow-ups…" style="width:100%;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;"></textarea>
         </div>
       </div>
@@ -2430,6 +2438,11 @@ function obSelectPulse(label) {
       lbl.style.background = ''; lbl.style.borderColor = 'var(--border)'; lbl.style.color = 'var(--mist)';
     }
   });
+  const needsFollowup = ['Neutral','Concerned','Frustrated'].includes(label);
+  const followupRow = document.getElementById('ob-followup-row');
+  const noteReq = document.getElementById('ob-note-required');
+  if (followupRow) followupRow.style.display = needsFollowup ? 'flex' : 'none';
+  if (noteReq) noteReq.style.display = needsFollowup ? '' : 'none';
 }
 
 function obSaveMeeting(btn) {
@@ -2438,10 +2451,14 @@ function obSaveMeeting(btn) {
   const note = document.getElementById('ob-m-note').value.trim();
   const pulseEl = document.querySelector('input[name="ob-m-pulse"]:checked');
   const pulse = pulseEl ? pulseEl.value : null;
+  const followup = document.getElementById('ob-m-followup')?.value || null;
+  const needsFollowup = ['Neutral','Concerned','Frustrated'].includes(pulse);
   if (!date) { showToast('Pick a date'); return; }
+  if (needsFollowup && !note) { showToast('Add a note explaining the concern'); document.getElementById('ob-m-note').focus(); return; }
+  if (needsFollowup && !followup) { showToast('Set a follow-up check-in date'); document.getElementById('ob-m-followup').focus(); return; }
   const data = obLoad(obSelectedOrg);
   data.meetings = data.meetings || [];
-  data.meetings.push({ date: new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), type, note, pulse });
+  data.meetings.push({ date: new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), type, note, pulse, followup: followup ? new Date(followup+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : null });
   obSave(obSelectedOrg, data);
   btn.closest('div[style*="position:fixed"]').remove();
   obRenderMeetings(data);
