@@ -1055,8 +1055,6 @@ function renderQueueView() {
     : `No actual revenue yet — seasonal estimate based on ${state.estMonthLabel||'historical data'}`;
   const estVal        = isWeek ? state.estWeekRevenue : state.estMonthRevenue;
 
-  const estDisplay    = estVal > 0 ? '$' + Math.round(estVal).toLocaleString() : '—';
-  const estLabel      = isWeek ? 'Weekly est.' : 'Monthly est.';
   let html = `
     <div class="stat-bar">
       <div class="sb-item"><div class="sb-val">${state.queue.length}</div><div class="sb-label">Items queued</div></div>
@@ -1074,11 +1072,6 @@ function renderQueueView() {
             <option value="month" ${!isWeek?'selected':''}>Monthly</option>
           </select>
         </div>
-      </div>
-      <div class="sb-divider"></div>
-      <div class="sb-item" title="${state.estMonthLabel||'Seasonal estimate'}">
-        <div class="sb-val" style="color:var(--navy);font-weight:700;">${estDisplay}</div>
-        <div class="sb-label">${estLabel} · <em style="text-transform:none;">${state.estMonthLabel||'—'}</em></div>
       </div>
       <div class="sb-divider"></div>
       <div class="sb-item" title="${tooltipText}" style="cursor:default;">
