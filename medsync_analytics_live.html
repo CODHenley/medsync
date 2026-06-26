@@ -1021,9 +1021,9 @@ async function loadData() {
     const ksavs = document.getElementById('k-sav-s');
     if (loc === 'wh' || loc === 'all') {
       const [pDiRes, pRevRes] = await Promise.all([
-        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.28253'
+        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_UUID
               + '&dispensed_at=gte.' + pFromStr + '&dispensed_at=lte.' + pToStr + '&sku=not.is.null', { headers: HEADERS }),
-        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.28253'
+        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_UUID
               + '&date=gte.' + pFromDate + '&date=lte.' + pToDate, { headers: HEADERS }),
       ]);
       const pDiRows  = await pDiRes.json();

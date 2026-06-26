@@ -1203,10 +1203,8 @@ async function pcSuggest(val) {
   var sugg = document.getElementById('pc-suggestions');
   if (!val || val.length < 2) { sugg.style.display = 'none'; return; }
   var url = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand&product_name=ilike.' + encodeURIComponent('%' + val + '%') + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=10';
-  console.log('pcSuggest URL:', url);
   var res = await fetch(url, { headers: H });
   var rows = await res.json();
-  console.log('pcSuggest rows:', rows);
   if (!Array.isArray(rows)) { console.error('pcSuggest error:', rows); sugg.style.display = 'none'; return; }
   // Deduplicate by product name (multiple snapshot dates may exist per product)
   var seen = {}, unique = [];
