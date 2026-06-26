@@ -342,11 +342,10 @@ async function loadWheatonCOGs() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const today = now.toISOString().split('T')[0];
-  const WHEATON_ID = '28253';
   try {
     const [cogsRes, revRes] = await Promise.all([
-      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_ID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
-      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_ID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
+      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
     ]);
     const cogsRows = await cogsRes.json();
     const revRows  = await revRes.json();
