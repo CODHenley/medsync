@@ -1559,18 +1559,18 @@ function deepDiveLoc(locCode) {
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;">
         <div onclick="dbNav('cogs')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px 18px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">
           <div style="font-size:11px;color:#fff;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Portfolio COGs</div>
-          <div style="font-size:28px;font-weight:700;color:#6FE0A0;line-height:1;">8.4%</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;">Target 8–10% · on track</div>
+          <div id="hero-cogs-val" style="font-size:28px;font-weight:700;color:#6FE0A0;line-height:1;">—</div>
+          <div id="hero-cogs-sub" style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;">Loading…</div>
         </div>
         <div onclick="dbNav('gl')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px 18px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">
           <div style="font-size:11px;color:#fff;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Goods Lost MTD</div>
-          <div style="font-size:28px;font-weight:700;color:#E8C76A;line-height:1;">$2,847</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;">↑ $340 vs prior month</div>
+          <div id="hero-gl-val" style="font-size:28px;font-weight:700;color:#E8C76A;line-height:1;">—</div>
+          <div id="hero-gl-sub" style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;">Loading…</div>
         </div>
         <div onclick="showScreen('lifecycle')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px 18px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">
           <div style="font-size:11px;color:#fff;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Expiring &lt;30 Days</div>
-          <div style="font-size:28px;font-weight:700;color:#FF8A80;line-height:1;">4</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;">Across 3 locations · review now</div>
+          <div id="hero-exp-val" style="font-size:28px;font-weight:700;color:#FF8A80;line-height:1;">—</div>
+          <div id="hero-exp-sub" style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;">Loading…</div>
         </div>
       </div>
     </div>
@@ -2195,6 +2195,11 @@ async function loadData() {
     const kgl = document.getElementById('k-gl');
     kgl.textContent = fmt$(totalGL);
     kgl.className = totalGL > 0 ? 'kpi-v ca' : 'kpi-v cm';
+    // Update hero tile
+    const heroGlVal = document.getElementById('hero-gl-val');
+    const heroGlSub = document.getElementById('hero-gl-sub');
+    if (heroGlVal) { heroGlVal.textContent = fmt$(totalGL); heroGlVal.style.color = totalGL > 0 ? '#E8C76A' : 'var(--green)'; }
+    if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? glRows.length + ' incident' + (glRows.length !== 1 ? 's' : '') : 'No losses this period';
 
     // Goods lost by category
     const byCategory = {};
@@ -2242,12 +2247,8 @@ async function loadData() {
     kwg.textContent = expiring.length + ' lot' + (expiring.length !== 1 ? 's' : '') + ' flagged';
     kwg.className = expiring.length > 0 ? 'kpi-v ca' : 'kpi-v cg';
 
-    // COGs by location — use goods lost as proxy until revenue data exists
-    renderCOGSBars(glRows, loc);
-
-    // ── 4. KPI: COGs placeholder (needs revenue table later) ─
-    document.getElementById('k-cogs').textContent = '8.4%';
-    document.getElementById('k-cogs').className = 'kpi-v cg';
+    // ── 4. COGs: live from daily_revenue + goods_lost (or dispensed fallback) ─
+    await loadLiveCOGs(loc, from, to);
 
     // Overview sidebar
     document.getElementById('ov-gl').textContent = fmt$(totalGL);
@@ -2281,34 +2282,90 @@ function renderGLBars(byCategory, total) {
   }).join('') || '<div style="color:var(--mist);font-size:11px;padding:8px 0;">No goods lost entries for this period.</div>';
 }
 
-// ── Render COGs bars by location ─────────────────────────────
-function renderCOGSBars(glRows, loc) {
+// ── Live COGs from Supabase ───────────────────────────────────
+async function loadLiveCOGs(loc, from, to) {
   const container = document.getElementById('cogs-bars');
-  if (!container) return;
-  // Group GL by location as a proxy metric
-  const byLoc = {};
-  glRows.forEach(r => {
-    const name = LOC_NAMES[r.location_id] || r.location_id;
-    byLoc[name] = (byLoc[name] || 0) + (Number(r.value_lost) || 0);
-  });
-  // Show all 4 locations with static COGs % (will be live once revenue table added)
-  const staticCOGs = [
-    { name:'Lincoln Park', pct:7.6, color:'var(--green)' },
-    { name:'Old Orchard',  pct:9.8, color:'var(--amber)' },
-    { name:'West Loop',    pct:7.9, color:'var(--green)' },
-    { name:'Wheaton',      pct:8.1, color:'var(--green)' }
-  ];
-  const filtered = loc === 'all' ? staticCOGs
-    : staticCOGs.filter(l => l.name === (LOC_NAMES[LOC_IDS[loc]] || ''));
-  const max = 10; // 10% = full bar
-  container.innerHTML = filtered.map(l => {
-    const w = Math.round((l.pct/max)*100);
-    return `<div class="br">
-      <div class="br-loc">${l.name}</div>
-      <div class="br-track"><div class="br-fill" style="width:${w}%;background:${l.color};">${l.pct}%</div></div>
-      <div class="br-val" style="color:${l.color};">${l.pct}%</div>
-    </div>`;
-  }).join('');
+  if (container) container.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px;">Loading COGs…</div>';
+
+  const locList = loc === 'all'
+    ? ['11111111-0000-0000-0000-000000000001','11111111-0000-0000-0000-000000000002',
+       '11111111-0000-0000-0000-000000000003','11111111-0000-0000-0000-000000000004']
+    : [LOC_IDS[loc]];
+
+  const locFilter = locList.map(id => `location_id.eq.${id}`).join(',');
+  const COGS_TARGET = 9.0; // % threshold for green/amber/red
+
+  try {
+    const [revRes, spendRes] = await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${locFilter})`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+      }),
+      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${locFilter})`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+      })
+    ]);
+    const revRows   = revRes.ok   ? await revRes.json()   : [];
+    const spendRows = spendRes.ok ? await spendRes.json() : [];
+
+    // Aggregate by location
+    const revByLoc = {}, spendByLoc = {};
+    revRows.forEach(r   => { revByLoc[r.location_id]   = (revByLoc[r.location_id]   || 0) + (Number(r.revenue)   || 0); });
+    spendRows.forEach(r => { spendByLoc[r.location_id] = (spendByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+
+    const allLocs = [
+      { id:'11111111-0000-0000-0000-000000000001', name:'Lincoln Park' },
+      { id:'11111111-0000-0000-0000-000000000002', name:'Old Orchard'  },
+      { id:'11111111-0000-0000-0000-000000000003', name:'West Loop'    },
+      { id:'11111111-0000-0000-0000-000000000004', name:'Wheaton'      }
+    ];
+    const filtered = loc === 'all' ? allLocs : allLocs.filter(l => l.id === LOC_IDS[loc]);
+
+    let totalRev = 0, totalSpend = 0;
+    const bars = filtered.map(l => {
+      const rev   = revByLoc[l.id]   || 0;
+      const spend = spendByLoc[l.id] || 0;
+      totalRev   += rev;
+      totalSpend += spend;
+      const pct   = rev > 0 ? (spend / rev) * 100 : 0;
+      const color = pct === 0 ? '#aaa' : pct <= COGS_TARGET ? 'var(--green)' : pct <= 12 ? 'var(--amber)' : 'var(--red)';
+      const w     = pct > 0 ? Math.min(Math.round((pct / 15) * 100), 100) : 0;
+      const label = pct > 0 ? pct.toFixed(1) + '%' : 'No data';
+      const revLabel = rev > 0 ? ' · $' + (rev/1000).toFixed(0) + 'K rev' : '';
+      return `<div class="br">
+        <div class="br-loc">${l.name}${revLabel}</div>
+        <div class="br-track"><div class="br-fill" style="width:${w}%;background:${color};">${pct > 0 ? pct.toFixed(1)+'%' : ''}</div></div>
+        <div class="br-val" style="color:${color};">${label}</div>
+      </div>`;
+    });
+
+    if (container) container.innerHTML = bars.join('');
+
+    // Update hero KPI tile
+    const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
+    updateHeroCOGs(portCogs, totalRev, totalSpend);
+
+    // Update k-cogs summary element
+    const kCogs = document.getElementById('k-cogs');
+    if (kCogs) kCogs.textContent = portCogs !== null ? portCogs.toFixed(1) + '%' : '—';
+
+  } catch(e) {
+    console.error('loadLiveCOGs error:', e);
+    if (container) container.innerHTML = '<div style="color:#e57373;font-size:12px;padding:8px;">Failed to load COGs</div>';
+  }
+}
+
+function updateHeroCOGs(portCogs, totalRev, totalSpend) {
+  const valEl = document.getElementById('hero-cogs-val');
+  const subEl = document.getElementById('hero-cogs-sub');
+  if (!valEl) return;
+  if (portCogs === null) { valEl.textContent = '—'; if (subEl) subEl.textContent = 'No data'; return; }
+  valEl.textContent = portCogs.toFixed(1) + '%';
+  const color = portCogs <= 9 ? 'var(--green)' : portCogs <= 12 ? 'var(--amber)' : 'var(--red)';
+  valEl.style.color = color;
+  if (subEl) {
+    const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);
+    subEl.textContent = spendFmt + ' drug spend';
+  }
 }
 
 // ── Render order compliance ───────────────────────────────────
@@ -2450,6 +2507,12 @@ function updateKPIs() {
   document.getElementById('kpi-soon30').textContent  = soon30;
   document.getElementById('kpi-soon60').textContent  = soon60;
   document.getElementById('kpi-expired').textContent = expired;
+  // Update hero tile
+  const expCount = soon30 + soon60;
+  const heroExpVal = document.getElementById('hero-exp-val');
+  const heroExpSub = document.getElementById('hero-exp-sub');
+  if (heroExpVal) { heroExpVal.textContent = expCount; heroExpVal.style.color = expCount > 5 ? '#FF8A80' : expCount > 0 ? '#E8C76A' : 'var(--green)'; }
+  if (heroExpSub) heroExpSub.textContent = expired > 0 ? expired + ' already expired' : expCount > 0 ? 'within 60 days' : 'All lots current';
   document.getElementById('kpi-cs').textContent      = cs;
 }
 
