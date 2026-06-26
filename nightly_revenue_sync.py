@@ -67,6 +67,25 @@ def supa_upsert(records):
         print(f"  Supabase error {e.code}: {e.read().decode()[:200]}")
         return e.code
 
+# Paid-only field resolution — None-safe, never touches `total` (which includes open invoices)
+_PAID_FIELDS = ("paid", "paidTotal", "paidRevenue", "collected")
+
+def _paid_field(rec):
+    """Return the name of the first paid-specific field present in rec, or 'none'."""
+    for f in _PAID_FIELDS:
+        if rec.get(f) is not None:
+            return f
+    return "none"
+
+def _pick_paid(rec):
+    """Return the value of the first paid-specific field, or 0.0 if none found."""
+    for f in _PAID_FIELDS:
+        val = rec.get(f)
+        if val is not None:
+            return float(val)
+    return 0.0
+
+
 def main():
     token = os.environ.get("VETSPIRE_API_TOKEN", "").strip()
     if not token:
@@ -82,6 +101,7 @@ def main():
     print(f"\n=== Nightly Revenue Sync — pulling {target_date} ===")
 
     records = []
+    _fields_logged = False
     for loc_name, loc_id in LOCATIONS.items():
         print(f"  {loc_name} ({loc_id})...", end=" ", flush=True)
         result = gql(token, SALES_QUERY, {"lids": [loc_id], "s": target_date, "e": target_date})
@@ -91,14 +111,21 @@ def main():
         raw = result.get("data", {}).get("salesReport", "[]")
         rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
         rec = rows[0] if rows else {}
-        # Use paid/collected revenue only — excludes open and due invoices
-        total = float(rec.get("collected") or rec.get("paid") or rec.get("paidTotal") or rec.get("total") or 0)
-        print(f"${total:,.2f}")
+        if not _fields_logged and rec:
+            print(f"\n  [DEBUG] salesReport keys: {list(rec.keys())}")
+            print(f"  [DEBUG] first record: {rec}")
+            _fields_logged = True
+        # Paid-only: try paid-specific fields first using None-safe checks.
+        # Do NOT use Python `or` (treats 0.0 as falsy and falls through to total).
+        # Priority: paid → paidTotal → paidRevenue → collected (finalized, incl. due)
+        # Never fall back to `total` — that includes open/in-progress invoices.
+        revenue = _pick_paid(rec)
+        print(f"${revenue:,.2f}  (field: {_paid_field(rec)})")
         records.append({
             "date":          target_date,
             "location_id":   loc_id,
             "location_name": loc_name,
-            "revenue":       total,
+            "revenue":       revenue,
             "pulled_at":     datetime.now(timezone.utc).isoformat(),
         })
 
