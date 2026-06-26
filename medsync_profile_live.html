@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedSync — My Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: #EDE8F8; color: #1C2B4A; min-height: 100vh; }
+
+/* ── Nav ── */
+.pf-nav {
+  background: #1C2B4A;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.pf-nav-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.pf-nav-back:hover { color: #fff; }
+.pf-nav-back svg { width: 16px; height: 16px; }
+.pf-nav-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.15); }
+.pf-nav-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); }
+.pf-nav-logo { margin-left: auto; }
+
+/* ── Page layout ── */
+.pf-page { max-width: 900px; margin: 0 auto; padding: 28px 20px 48px; }
+.pf-page-title { font-size: 22px; font-weight: 700; color: #1C2B4A; margin-bottom: 6px; }
+.pf-page-sub { font-size: 13px; color: #8A93A8; margin-bottom: 24px; }
+
+/* ── Two-column layout ── */
+.pf-cols {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 680px) {
+  .pf-cols { grid-template-columns: 1fr; }
+}
+
+/* ── Card ── */
+.pf-card {
+  background: #fff;
+  border: 1px solid #DCD4EC;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.pf-card-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #E8E2F6;
+}
+.pf-card-header h3 { font-size: 14px; font-weight: 700; color: #1C2B4A; }
+.pf-card-header p { font-size: 11px; color: #8A93A8; margin-top: 2px; }
+.pf-card-body { padding: 20px; }
+
+/* ── Avatar card (left) ── */
+.pf-avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 20px;
+}
+.pf-avatar-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #1C2B4A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  border: 3px solid #DCD4EC;
+  flex-shrink: 0;
+}
+.pf-avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+.pf-avatar-name { font-size: 15px; font-weight: 700; color: #1C2B4A; text-align: center; }
+.pf-avatar-role { font-size: 11px; color: #8A93A8; text-align: center; }
+
+.pf-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F0EEFA;
+  border: 1px solid #DDD9EC;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1C2B4A;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.pf-upload-btn:hover { background: #E4DCFA; }
+input[type="file"] { display: none; }
+
+.pf-bio-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #8A93A8;
+  margin-bottom: 6px;
+  display: block;
+  text-align: left;
+  width: 100%;
+}
+.pf-bio-textarea {
+  width: 100%;
+  border: 1px solid #DCD4EC;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  color: #1C2B4A;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.pf-bio-textarea:focus { outline: none; border-color: #C8922A; box-shadow: 0 0 0 3px rgba(200,146,42,0.12); }
+.pf-char-count { font-size: 10px; color: #8A93A8; text-align: right; margin-top: 4px; }
+
+.pf-save-bio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #C8922A;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  align-self: flex-end;
+}
+.pf-save-bio-btn:hover { background: #a0700a; }
+
+/* ── Form fields (right card) ── */
+.pf-form { display: flex; flex-direction: column; gap: 16px; }
+.pf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .pf-row { grid-template-columns: 1fr; } }
+
+.pf-field { display: flex; flex-direction: column; gap: 5px; }
+.pf-field label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8A93A8; }
+.pf-field input, .pf-field select {
+  border: 1px solid #DCD4EC;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #1C2B4A;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+.pf-field input:focus { outline: none; border-color: #C8922A; box-shadow: 0 0 0 3px rgba(200,146,42,0.12); }
+.pf-field input[readonly], .pf-field input.readonly {
+  background: #F8F7FC;
+  color: #8A93A8;
+  cursor: default;
+}
+.pf-field input[readonly]:focus { border-color: #DCD4EC; box-shadow: none; }
+.pf-role-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #EDE8F8;
+  border: 1px solid #DCD4EC;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1C2B4A;
+  width: fit-content;
+}
+
+.pf-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #1C2B4A;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+.pf-save-btn:hover { background: #2a3f6a; }
+
+/* ── Password card ── */
+.pf-pw-note {
+  background: #F0EEFA;
+  border: 1px solid #DCD4EC;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #6B7A99;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+.pf-pw-note a { color: #C8922A; text-decoration: none; }
+.pf-pw-note a:hover { text-decoration: underline; }
+
+/* ── Toast ── */
+.pf-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1C2B4A;
+  color: #fff;
+  padding: 11px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(28,43,74,0.25);
+  z-index: 9999;
+  transition: transform 0.3s ease;
+  white-space: nowrap;
+}
+.pf-toast.show { transform: translateX(-50%) translateY(0); }
+.pf-toast.success { background: #0F6E56; }
+.pf-toast.error { background: #a33030; }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="pf-nav">
+  <a href="medsync_portfolio_live.html" class="pf-nav-back">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 12L6 8l4-4"/>
+    </svg>
+    Dashboard
+  </a>
+  <div class="pf-nav-divider"></div>
+  <span class="pf-nav-title">My Profile</span>
+  <div class="pf-nav-logo">
+    <svg width="100" height="22" viewBox="0 0 130 28" aria-label="MedSync">
+      <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#F5EDD8"/>
+      <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#E8B84B"/>
+      <line x1="28" y1="4" x2="28" y2="24" stroke="#1C2B4A" stroke-width="1.2"/>
+      <line x1="19" y1="9" x2="19" y2="23" stroke="rgba(28,43,74,0.7)" stroke-width="1.3" stroke-linecap="round"/>
+      <path d="M 19 11 C 15 13 15 16 19 18 C 23 20 23 22 19 23" fill="none" stroke="rgba(28,43,74,0.7)" stroke-width="1" stroke-linecap="round"/>
+      <path d="M 19 11 C 23 13 23 16 19 18 C 15 20 15 22 19 23" fill="none" stroke="rgba(28,43,74,0.7)" stroke-width="1" stroke-linecap="round"/>
+      <path d="M 19 9 C 16 7 12 6 10 8 C 12 8 16 9 19 9 Z" fill="rgba(28,43,74,0.7)"/>
+      <path d="M 19 9 C 22 7 26 6 28 8 C 26 8 22 9 19 9 Z" fill="rgba(28,43,74,0.7)"/>
+      <text x="50" y="18" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" font-weight="300" fill="rgba(245,237,216,0.9)">Med<tspan font-weight="700" fill="#E8B84B">Sync</tspan></text>
+    </svg>
+  </div>
+</nav>
+
+<!-- Page -->
+<main class="pf-page">
+  <div class="pf-page-title" id="pf-page-heading">My Profile</div>
+  <div class="pf-page-sub">Manage your personal information, photo, and bio.</div>
+
+  <div class="pf-cols">
+    <!-- Left: Avatar + Bio -->
+    <div class="pf-card">
+      <div class="pf-avatar-wrap">
+        <div class="pf-avatar-circle" id="pf-avatar-circle">
+          <span id="pf-avatar-initials">MH</span>
+        </div>
+        <div>
+          <div class="pf-avatar-name" id="pf-display-name">MedSync User</div>
+          <div class="pf-avatar-role" id="pf-display-role">Staff</div>
+        </div>
+        <button class="pf-upload-btn" onclick="document.getElementById('pf-photo-input').click()">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13l3-3 2 2 4-5 3 5H2z"/><circle cx="5" cy="5" r="1.5"/></svg>
+          Upload Photo
+        </button>
+        <input type="file" id="pf-photo-input" accept="image/*" onchange="handlePhotoUpload(this)">
+
+        <div style="width:100%;">
+          <label class="pf-bio-label" for="pf-bio">Bio / Fun Statement</label>
+          <textarea class="pf-bio-textarea" id="pf-bio" maxlength="200" placeholder="Share something fun about yourself…" oninput="updateCharCount()"></textarea>
+          <div class="pf-char-count"><span id="pf-char-count">0</span>/200</div>
+        </div>
+
+        <button class="pf-save-bio-btn" onclick="saveBio()">Save Bio &amp; Photo</button>
+      </div>
+    </div>
+
+    <!-- Right: Profile details -->
+    <div class="pf-card">
+      <div class="pf-card-header">
+        <h3>Profile Details</h3>
+        <p>Your name and contact information</p>
+      </div>
+      <div class="pf-card-body">
+        <div class="pf-form">
+          <div class="pf-row">
+            <div class="pf-field">
+              <label for="pf-first-name">First Name</label>
+              <input type="text" id="pf-first-name" placeholder="First name">
+            </div>
+            <div class="pf-field">
+              <label for="pf-last-name">Last Name</label>
+              <input type="text" id="pf-last-name" placeholder="Last name">
+            </div>
+          </div>
+          <div class="pf-field">
+            <label for="pf-email">Email Address</label>
+            <input type="email" id="pf-email" readonly placeholder="your@email.com" title="Email changes require admin. Contact support@medsync.vet.">
+          </div>
+          <div class="pf-field">
+            <label for="pf-phone">Phone Number</label>
+            <input type="tel" id="pf-phone" placeholder="(555) 000-0000">
+          </div>
+          <div class="pf-row">
+            <div class="pf-field">
+              <label>Role</label>
+              <div><span class="pf-role-badge" id="pf-role-badge">Staff</span></div>
+            </div>
+            <div class="pf-field">
+              <label>Location</label>
+              <input type="text" id="pf-location" readonly class="readonly">
+            </div>
+          </div>
+          <div style="padding-top:4px;">
+            <button class="pf-save-btn" onclick="saveProfile()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password card -->
+  <div class="pf-card" style="max-width:900px;">
+    <div class="pf-card-header">
+      <h3>Password</h3>
+      <p>Account security settings</p>
+    </div>
+    <div class="pf-card-body">
+      <div class="pf-pw-note">
+        Password changes are managed by your MedSync administrator.
+        Contact <a href="mailto:support@medsync.vet">support@medsync.vet</a> to update your password.
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Toast -->
+<div class="pf-toast" id="pf-toast"></div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+
+function getUserInfo() {
+  try {
+    const s = localStorage.getItem('medsync_session');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return { name: 'MedSync User', role: 'staff', email: '', locationId: '', locationName: '' };
+}
+
+let _currentAvatarB64 = null;
+
+function showToast(msg, type) {
+  const t = document.getElementById('pf-toast');
+  t.textContent = msg;
+  t.className = 'pf-toast' + (type ? ' ' + type : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function updateCharCount() {
+  const v = document.getElementById('pf-bio').value;
+  document.getElementById('pf-char-count').textContent = v.length;
+}
+
+function setAvatarDisplay(b64, name) {
+  const circle = document.getElementById('pf-avatar-circle');
+  const initEl = document.getElementById('pf-avatar-initials');
+  if (b64) {
+    // Show image
+    circle.innerHTML = '<img src="' + b64 + '" alt="Profile photo">';
+  } else {
+    // Show initials
+    const parts = (name || '?').split(' ');
+    const ini = parts.map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+    initEl.textContent = ini;
+    circle.innerHTML = '';
+    circle.appendChild(initEl);
+  }
+}
+
+function handlePhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const MAX = 400;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      _currentAvatarB64 = canvas.toDataURL('image/jpeg', 0.85);
+      setAvatarDisplay(_currentAvatarB64, document.getElementById('pf-display-name').textContent);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function loadProfile() {
+  const user = getUserInfo();
+  const userId = user.email || user.id || user.name || '';
+  const name = user.name || user.full_name || 'MedSync User';
+  const role = user.role || 'staff';
+  const locationName = user.locationName || user.location || '';
+
+  // Set basic nav info from session
+  document.getElementById('pf-display-name').textContent = name;
+  document.getElementById('pf-display-role').textContent = role;
+  document.getElementById('pf-page-heading').textContent = 'My Profile';
+  document.getElementById('pf-email').value = user.email || '';
+  document.getElementById('pf-location').value = locationName;
+
+  const roleBadge = document.getElementById('pf-role-badge');
+  roleBadge.textContent = role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  // Show initials by default
+  const parts = name.split(' ');
+  const ini = parts.map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+  document.getElementById('pf-avatar-initials').textContent = ini;
+
+  if (!userId) return;
+
+  try {
+    const res = await fetch(
+      SUPA_URL + '/rest/v1/user_profiles?user_id=eq.' + encodeURIComponent(userId) + '&limit=1',
+      { headers: H }
+    );
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      const p = data[0];
+      if (p.first_name) document.getElementById('pf-first-name').value = p.first_name;
+      if (p.last_name) document.getElementById('pf-last-name').value = p.last_name;
+      if (p.email) document.getElementById('pf-email').value = p.email;
+      if (p.phone) document.getElementById('pf-phone').value = p.phone;
+      if (p.bio) {
+        document.getElementById('pf-bio').value = p.bio;
+        updateCharCount();
+      }
+      if (p.avatar_b64) {
+        _currentAvatarB64 = p.avatar_b64;
+        setAvatarDisplay(p.avatar_b64, name);
+      } else {
+        setAvatarDisplay(null, name);
+      }
+      // Update display name from first/last if present
+      if (p.first_name || p.last_name) {
+        const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
+        document.getElementById('pf-display-name').textContent = fullName;
+      }
+    } else {
+      setAvatarDisplay(null, name);
+      // Pre-fill first/last from session name
+      const nameParts = name.split(' ');
+      if (nameParts.length >= 2) {
+        document.getElementById('pf-first-name').value = nameParts[0];
+        document.getElementById('pf-last-name').value = nameParts.slice(1).join(' ');
+      } else if (nameParts.length === 1) {
+        document.getElementById('pf-first-name').value = nameParts[0];
+      }
+    }
+  } catch(err) {
+    console.error('Profile load error:', err);
+    setAvatarDisplay(null, name);
+  }
+}
+
+async function saveProfile() {
+  const user = getUserInfo();
+  const userId = user.email || user.id || user.name || '';
+  if (!userId) { showToast('Not logged in', 'error'); return; }
+
+  const btn = document.querySelector('.pf-save-btn');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+
+  const firstName = document.getElementById('pf-first-name').value.trim();
+  const lastName = document.getElementById('pf-last-name').value.trim();
+  const phone = document.getElementById('pf-phone').value.trim();
+  const email = document.getElementById('pf-email').value.trim();
+
+  const payload = {
+    user_id: userId,
+    first_name: firstName,
+    last_name: lastName,
+    email: email,
+    phone: phone,
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/user_profiles', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    // Update display name
+    const fullName = [firstName, lastName].filter(Boolean).join(' ');
+    if (fullName) document.getElementById('pf-display-name').textContent = fullName;
+
+    showToast('Profile saved!', 'success');
+  } catch(err) {
+    console.error(err);
+    showToast('Could not save profile', 'error');
+  } finally {
+    btn.textContent = 'Save Changes';
+    btn.disabled = false;
+  }
+}
+
+async function saveBio() {
+  const user = getUserInfo();
+  const userId = user.email || user.id || user.name || '';
+  if (!userId) { showToast('Not logged in', 'error'); return; }
+
+  const btn = document.querySelector('.pf-save-bio-btn');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+
+  const bio = document.getElementById('pf-bio').value.trim();
+
+  const payload = {
+    user_id: userId,
+    bio: bio,
+    updated_at: new Date().toISOString(),
+  };
+  if (_currentAvatarB64) payload.avatar_b64 = _currentAvatarB64;
+
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/user_profiles', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    showToast('Bio & photo saved!', 'success');
+  } catch(err) {
+    console.error(err);
+    showToast('Could not save bio', 'error');
+  } finally {
+    btn.textContent = 'Save Bio & Photo';
+    btn.disabled = false;
+  }
+}
+
+// Init
+loadProfile();
+</script>
+</body>
+</html>
