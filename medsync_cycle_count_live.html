@@ -351,7 +351,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   <div class="success-sub" id="s-sub">Activity log updated.</div>
   <button class="success-btn" onclick="closeSuccess()">Done</button>
 </div>
-
+<script src="medsync_locations.js"></script>
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
@@ -852,7 +852,7 @@ async function submitCount() {
   // Writeback counted products to Vetspire (Wheaton only)
   let vetspireSynced = 0;
   if (currentLocation === 'Wheaton') {
-    const _locMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
+    const _locMap = VID_MAP;
     const locationId = _locMap[currentLocation];
     const toWrite = prods.filter(p => p.actual !== null && p.vetspireProductId);
     for (const p of toWrite) {
@@ -1168,7 +1168,7 @@ function togglePhysicalCount() {
 
 async function pcStartSession() {
   var mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
-  var _vidMap = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
+  var _vidMap = VID_MAP;
   pcState.locationName = currentLocation || new URLSearchParams(window.location.search).get('location') || 'Lincoln Park';
   pcState.locationId   = _vidMap[pcState.locationName] || '23083'; // Vetspire ID — used only for snapshot lookup
   var supaLocationId   = currentLocationId; // Supabase UUID — used for FK writes

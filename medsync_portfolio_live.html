@@ -6,6 +6,7 @@
 <title>MedSync — Scout Veterinary</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="medsync_locations.js"></script>
 <script>
 // These run synchronously before body renders
 var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings','training'];
@@ -82,7 +83,6 @@ async function loadRecognition() {
     const _SUPA2 = 'https://aemkdummdrmxtwrkggjw.supabase.co';
     const _KEY2  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
     const _H2    = { 'apikey': _KEY2, 'Authorization': 'Bearer ' + _KEY2 };
-    const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
     const [glRes, usersRes, poRes, whGlRes, whPoRes, managersRes, receiversRes, actLogRes, cycleRes] = await Promise.all([
       fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: _H2 }),
@@ -342,11 +342,10 @@ async function loadWheatonCOGs() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const today = now.toISOString().split('T')[0];
-  const WHEATON_ID = '28253';
   try {
     const [cogsRes, revRes] = await Promise.all([
-      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_ID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
-      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_ID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
+      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
     ]);
     const cogsRows = await cogsRes.json();
     const revRows  = await revRes.json();
@@ -376,8 +375,6 @@ async function loadWheatonInsights() {
   const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
   const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
   const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
-  const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
-  const WHEATON_VID  = '28253';
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const today      = now.toISOString().split('T')[0];
@@ -512,12 +509,7 @@ async function refreshAllInsights() {
   const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
   const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
   const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
-  const LOC   = {
-    '11111111-0000-0000-0000-000000000001': 'Lincoln Park',
-    '11111111-0000-0000-0000-000000000002': 'Old Orchard',
-    '11111111-0000-0000-0000-000000000003': 'West Loop',
-    '11111111-0000-0000-0000-000000000004': 'Wheaton',
-  };
+  const LOC   = LOC_NAMES;
   const now        = new Date();
   const today      = now.toISOString().split('T')[0];
   const days30ago  = new Date(now - 30*864e5).toISOString().split('T')[0];
@@ -2159,20 +2151,6 @@ function getDateRange(dr) {
   }
   return { from: from.toISOString(), to: to.toISOString() };
 }
-
-// ── Location ID map ──────────────────────────────────────────
-const LOC_IDS = {
-  lp: '11111111-0000-0000-0000-000000000001',
-  oo: '11111111-0000-0000-0000-000000000002',
-  wl: '11111111-0000-0000-0000-000000000003',
-  wh: '11111111-0000-0000-0000-000000000004'
-};
-const LOC_NAMES = {
-  '11111111-0000-0000-0000-000000000001': 'Lincoln Park',
-  '11111111-0000-0000-0000-000000000002': 'Old Orchard',
-  '11111111-0000-0000-0000-000000000003': 'West Loop',
-  '11111111-0000-0000-0000-000000000004': 'Wheaton'
-};
 
 // ── GL Category colors ───────────────────────────────────────
 const GL_COLORS = {

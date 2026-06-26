@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Invoice Reconciliation</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<script src="medsync_locations.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -155,7 +156,7 @@ const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-const LOC_NAMES = { '23083':'Lincoln Park','24356':'West Loop','27390':'Old Orchard','28253':'Wheaton' };
+const VID_NAMES = Object.fromEntries(LOCS.map(l => [l.vid, l.name]));
 
 // Address fingerprints for each location — used to detect if the invoice is for the wrong location
 const LOC_FINGERPRINTS = {
@@ -187,7 +188,7 @@ async function supa(method, path, body) {
 // ── Location ──────────────────────────────────────────────────────────────────
 function onLocationChange() {
   state.locationId   = document.getElementById('loc-select').value;
-  state.locationName = LOC_NAMES[state.locationId] || '';
+  state.locationName = VID_NAMES[state.locationId] || '';
   if (state.locationId) loadInvoices();
 }
 
@@ -880,7 +881,7 @@ window.addEventListener('message', e => {
   // Handle { type: 'setLocation', loc: 'Wheaton' } from index.html
   if (e.data?.type === 'setLocation' && e.data.loc) {
     const locName = e.data.loc;
-    const locId = Object.entries(LOC_NAMES).find(([,v]) => v === locName)?.[0];
+    const locId = Object.entries(VID_NAMES).find(([,v]) => v === locName)?.[0];
     if (locId) {
       document.getElementById('loc-select').value = locId;
       state.locationId   = locId;
@@ -892,7 +893,7 @@ window.addEventListener('message', e => {
   if (e.data?.locationId) {
     document.getElementById('loc-select').value = e.data.locationId;
     state.locationId   = e.data.locationId;
-    state.locationName = LOC_NAMES[state.locationId] || e.data.locationId;
+    state.locationName = VID_NAMES[state.locationId] || e.data.locationId;
     loadInvoices();
   }
 });
