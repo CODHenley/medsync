@@ -1241,7 +1241,7 @@ function pcSelectSuggestion(el) {
     var found = null;
     for (var ci = 0; ci < candidates.length && !found; ci++) {
       var cval = candidates[ci];
-      var ndcUrl = SUPA_URL + '/rest/v1/products?select=name,vetspire_id,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_id.eq.' + encodeURIComponent(cval) + ')&limit=1';
+      var ndcUrl = SUPA_URL + '/rest/v1/products?select=name,vetspire_product_id,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_product_id.eq.' + encodeURIComponent(cval) + ')&limit=1';
       var ndcRes = await fetch(ndcUrl, { headers: H });
       var ndcRows = await ndcRes.json();
       if (Array.isArray(ndcRows) && ndcRows.length) found = ndcRows[0].name;
