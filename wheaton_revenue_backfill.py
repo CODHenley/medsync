@@ -100,7 +100,9 @@ while cursor <= today:
         _debug_shown = True
     rec = records[0] if records else {}
     # Use paid/collected revenue only — excludes open and due invoices
-    revenue = float(rec.get("collected") or rec.get("paid") or rec.get("paidTotal") or rec.get("total") or 0)
+    # Paid-only, None-safe: paid > paidTotal > paidRevenue > collected; never `total` (includes open)
+    _PAID = ("paid","paidTotal","paidRevenue","collected")
+    revenue = next((float(v) for f in _PAID if (v := rec.get(f)) is not None), 0.0)
 
     status = supa_upsert([{
         "date":          s,

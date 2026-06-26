@@ -111,7 +111,9 @@ for loc_name, loc_id in LOCATIONS:
         raw     = r.get("data", {}).get("salesReport", "[]")
         records = json.loads(raw) if isinstance(raw, str) else (raw or [])
         rec     = records[0] if records else {}
-        revenue = float(rec.get("collected") or rec.get("paid") or rec.get("paidTotal") or rec.get("total") or 0)
+        # Paid-only, None-safe: paid > paidTotal > paidRevenue > collected; never `total` (includes open)
+    _PAID = ("paid","paidTotal","paidRevenue","collected")
+    revenue = next((float(v) for f in _PAID if (v := rec.get(f)) is not None), 0.0)
 
         status = supa_upsert([{
             "date":          s,
