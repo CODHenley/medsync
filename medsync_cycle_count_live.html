@@ -1232,15 +1232,22 @@ function pcSelectSuggestion(el) {
 
   var snaps = [];
 
-  // 1. If input looks like a barcode (all digits, 8+ chars), try NDC lookup first
+  // 1. If input looks like a barcode (all digits, 8+ chars), try SKU/NDC/UPC lookup
   if (/^\d{8,}$/.test(q)) {
-    var ndcUrl = SUPA_URL + '/rest/v1/products?select=name,vetspire_id,ndc&or=(ndc.eq.' + encodeURIComponent(q) + ',upc.eq.' + encodeURIComponent(q) + ')&limit=1';
-    var ndcRes = await fetch(ndcUrl, { headers: H });
-    var ndcRows = await ndcRes.json();
-    if (Array.isArray(ndcRows) && ndcRows.length) {
-      var productName = ndcRows[0].name;
-      // Now look up inventory snapshot by product name
-      var snapUrl = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand&product_name=ilike.' + encodeURIComponent('%' + productName + '%') + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1';
+    // Build list of values to try: raw barcode, plus SKU extracted from UPC-A wrapper (strip leading digit + last checkdigit)
+    var candidates = [q];
+    if (q.length === 12) candidates.push(q.slice(1, 11)); // UPC-A: leading digit + 10-digit SKU + checkdigit
+    if (q.length === 13) candidates.push(q.slice(1, 12)); // EAN-13 variant
+    var found = null;
+    for (var ci = 0; ci < candidates.length && !found; ci++) {
+      var cval = candidates[ci];
+      var ndcUrl = SUPA_URL + '/rest/v1/products?select=name,vetspire_id,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_id.eq.' + encodeURIComponent(cval) + ')&limit=1';
+      var ndcRes = await fetch(ndcUrl, { headers: H });
+      var ndcRows = await ndcRes.json();
+      if (Array.isArray(ndcRows) && ndcRows.length) found = ndcRows[0].name;
+    }
+    if (found) {
+      var snapUrl = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand&product_name=ilike.' + encodeURIComponent('%' + found + '%') + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1';
       var snapRes = await fetch(snapUrl, { headers: H });
       snaps = await snapRes.json();
     }

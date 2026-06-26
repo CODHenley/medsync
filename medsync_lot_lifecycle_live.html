@@ -1063,13 +1063,22 @@ async function alSkuLookupVal(raw) {
   _lookedUpProductId = null;
   try {
     let rows = [];
-    const ndcRes = await fetch(
-      SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&ndc=eq.' + encodeURIComponent(raw) + '&limit=1',
-      { headers: H }
-    );
-    rows = await ndcRes.json();
+    // Build candidates: raw value + SKU extracted from UPC-A/EAN-13 wrapper
+    const candidates = [raw];
+    if (/^\d{12}$/.test(raw)) candidates.push(raw.slice(1, 11));
+    if (/^\d{13}$/.test(raw)) candidates.push(raw.slice(1, 12));
 
-    if (!Array.isArray(rows) || !rows.length) {
+    for (const cval of candidates) {
+      if (rows.length) break;
+      const ndcRes = await fetch(
+        SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_id.eq.' + encodeURIComponent(cval) + ')&limit=1',
+        { headers: H }
+      );
+      rows = await ndcRes.json();
+      if (!Array.isArray(rows)) rows = [];
+    }
+
+    if (!rows.length) {
       const nameRes = await fetch(
         SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&name=ilike.' +
         encodeURIComponent('%' + raw + '%') + '&order=name.asc&limit=1',
