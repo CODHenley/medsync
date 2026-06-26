@@ -1349,7 +1349,7 @@ function deepDiveLoc(locCode) {
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
       <span id="ms-role" style="font-size:10px;padding:3px 10px;border-radius:20px;background:rgba(200,146,42,.25);color:#E8B84B;font-weight:500;">Admin</span>
-    <div id="ms-avatar" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;">MH</div>
+    <a href="medsync_profile_live.html" title="My Profile" style="text-decoration:none;"><div id="ms-avatar" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;cursor:pointer;overflow:hidden;">MH</div></a>
     <button onclick="signOut()" style="background:none;border:0.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;">Sign out</button>
   </div>
 </nav>
@@ -2878,7 +2878,7 @@ window._userProfiles = {};
 async function loadUserProfiles() {
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/user_profiles?select=user_id,first_name,last_name,avatar_b64,bio&avatar_b64=not.is.null',
+      SUPA_URL + '/rest/v1/user_profiles?select=user_id,first_name,last_name,avatar_b64,bio',
       { headers: H }
     );
     const rows = await res.json();
@@ -2886,7 +2886,26 @@ async function loadUserProfiles() {
     rows.forEach(function(p) {
       var name = [p.first_name, p.last_name].filter(Boolean).join(' ');
       if (name) window._userProfiles[name] = { avatar_b64: p.avatar_b64, bio: p.bio || '' };
+      if (p.user_id) window._userProfiles[p.user_id] = { avatar_b64: p.avatar_b64, bio: p.bio || '' };
     });
+
+    // Swap every #ms-avatar to photo if current user has one
+    const u = getUserInfo();
+    const myProfile = window._userProfiles[u.email] || window._userProfiles[u.name];
+    document.querySelectorAll('#ms-avatar').forEach(function(el) {
+      if (myProfile && myProfile.avatar_b64) {
+        el.innerHTML = '<img src="' + myProfile.avatar_b64 + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" alt="My profile">';
+        el.style.background = 'transparent';
+        el.style.padding = '0';
+        el.style.overflow = 'hidden';
+      }
+      // Ensure clickable to profile page
+      if (!el.closest('a')) {
+        el.style.cursor = 'pointer';
+        el.onclick = function() { window.location.href = 'medsync_profile_live.html'; };
+      }
+    });
+
     // Re-render table if already loaded to pick up avatars
     if (typeof renderTable === 'function') renderTable();
   } catch(e) {
