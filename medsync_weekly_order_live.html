@@ -504,12 +504,7 @@ const VENDORS = {
 };
 
 function inferVendor(name) {
-  const n = name.toLowerCase();
-  if (/gauze|bandage|tape|wrap|syringe|needle|catheter|glove|gown|drape|swab|cotton|alcohol pad|tongue depress|staple|suture|e-collar|lancet|culture/.test(n))
-    return 'Patterson Veterinary';
-  if (/tablet|capsule|chewable|oral|suspension|syrup|trazodone|prednisolone|amoxicillin|metronidazole|carprofen|gabapentin|meloxicam|cerenia|tramadol/.test(n))
-    return 'Covetrus';
-  return 'MWI Animal Health';
+  return 'Unknown';
 }
 
 function vendorBadge(vendor) {
@@ -600,28 +595,7 @@ function getWeekStart() {
 }
 
 // ── Price helpers ────────────────────────────────────────────────────────────
-function getPrice(name) {
-  const map = { 'Ketamine':142,'Propofol':95,'Alfaxalone':112,'Fentanyl':185,'Midazolam':68,
-    'Dexmedetomidine':124,'Butorphanol':88,'Hydromorphone':218,'Buprenorphine':188,'Diazepam':58,
-    'Epinephrine':38,'Atropine':42,'Insulin':78,'Rabies':18,'FVRCP':22,'DA2PP':24,'Bordetella':19,
-    'Gabapentin':48.50,'Maropitant':84.20,'Cerenia':84.20,'Tramadol':62,'Meloxicam':22.40,
-    'Ondansetron':38.40,'Carprofen':118,'Prednisolone':32,'Trazodone':28,'Enrofloxacin':64,
-    'Dexamethasone':44,'Famotidine':36,'Amoxicillin':52,'Metronidazole':38,'LRS':8,'NaCl':7,
-    'Dextrose':24,'Gauze':18,'Bandage':22,'Tape':16,'Syringe':45,'Catheter':68,
-    'Glove':52,'Drape':95,'Culture':44,'Alcohol':24,'Cotton':12,'Heartworm':88,
-    'Ear Cleaner':28,'Tongue':12,'Wrap':18 };
-  for (const [k,v] of Object.entries(map)) if (name.includes(k)) return v;
-  return 45.00;
-}
-
-function getMin(name) {
-  const map = { 'Ketamine':5,'Propofol':4,'Alfaxalone':3,'Dexmedetomidine':3,'Butorphanol':3,
-    'Hydromorphone':5,'Buprenorphine':5,'Epinephrine':6,'Atropine':4,'Insulin':2,
-    'Rabies':10,'FVRCP':10,'DA2PP':10,'Gabapentin':50,'Maropitant':5,'Cerenia':5,
-    'Meloxicam':3,'Ondansetron':3,'Carprofen':20,'Gauze':4,'Syringe':2,'Glove':3 };
-  for (const [k,v] of Object.entries(map)) if (name.includes(k)) return v;
-  return 5;
-}
+// getPrice and getMin removed — prices and mins now live in Supabase products table
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 async function boot() {
@@ -858,15 +832,15 @@ async function loadQueue() {
           // Order qty is in Vetcove purchase units (bottles, boxes, etc.)
           const orderQty     = Math.max(1, Math.ceil((max - oh) / pkgSize));
           // Use verified Vetcove historical price; fall back to hardcoded estimate
-          const unit         = p.unit_price || getPrice(p.name);
-          const gpo          = Math.round(unit * 0.88 * 100) / 100;
+          const unit         = p.unit_price || 0;
+          const gpo          = unit > 0 ? Math.round(unit * 0.88 * 100) / 100 : 0;
           // Display name: Vetspire canonical name if mapped, otherwise Vetcove name
           const displayName  = p.vetspire_product_name || p.name;
           autoAdd.push({
             location_id:    state.locationId,
             product_id:     p.id,
             product_name:   displayName,
-            vendor:         p.vendor || inferVendor(p.name),
+            vendor:         p.vendor || 'Unknown',
             qty_ordered:    orderQty,
             unit_price:     unit,
             gpo_price:      gpo,
@@ -927,14 +901,14 @@ async function loadQueue() {
         id:              item.id,
         productId:       item.product_id,
         productName:     displayName,
-        vendor:          item.vendor || inferVendor(item.product_name),
+        vendor:          item.vendor || 'Unknown',
         onHand:          freshOH,
         dispensingUnit:  prod.dispensing_unit || '',   // Vetspire unit (capsules, mL…)
         purchaseUnit:    prod.purchase_unit   || '',   // Vetcove unit (bottle, box…)
         packageSize:     prod.package_size    || 1,
         orderQty:        freshOrderQty,
-        unitPrice:       item.unit_price  || getPrice(item.product_name),
-        gpoPrice:        item.gpo_price   || Math.round((prod.unit_price || getPrice(item.product_name))*0.88*100)/100,
+        unitPrice:       item.unit_price  || prod.unit_price || 0,
+        gpoPrice:        item.gpo_price   || (prod.unit_price ? Math.round(prod.unit_price * 0.88 * 100) / 100 : 0),
         priceYear:       prod.price_year  || null,
         autoFlagged:        item.auto_flagged,
         needsCountReview:   isNegativeCount,
@@ -946,7 +920,9 @@ async function loadQueue() {
     state.allProducts = Array.isArray(products) ? products.map(p => ({
       id:           p.id,
       name:         p.name,
-      vendor:       p.vendor || inferVendor(p.name),
+      vendor:       p.vendor || 'Unknown',
+      unit_price:   p.unit_price || 0,
+      qtyMin:       p.qty_min   || 5,
       onHand:       onHand[p.id] || 0,
       dispensingUnit: p.dispensing_unit || '',
       purchaseUnit:   p.purchase_unit   || '',
@@ -1113,7 +1089,7 @@ function renderQueueView() {
 function buildQueueTable(items) {
   const rows = items.map(item => {
     const idx      = state.queue.indexOf(item);
-    const isLow    = item.onHand < getMin(item.productName);
+    const isLow    = item.onHand < (item.qtyMin || 5);
     const lineEst  = (item.gpoPrice * item.orderQty).toFixed(2);
     // On hand: Vetspire dispensing units (capsules, mL, tablets…)
     const ohLabel  = item.dispensingUnit ? `${item.onHand} ${item.dispensingUnit}` : item.onHand;
@@ -1535,8 +1511,8 @@ async function addSelectedToQueue() {
   if (!selectedProduct) return;
   const qty    = parseInt(document.getElementById('modal-qty').value) || 1;
   const vendor = document.getElementById('modal-vendor').value;
-  const unit   = getPrice(selectedProduct.name);
-  const gpo    = Math.round(unit * 0.88 * 100) / 100;
+  const unit   = selectedProduct.unit_price || 0;
+  const gpo    = unit > 0 ? Math.round(unit * 0.88 * 100) / 100 : 0;
   const wk     = getWeekStart();
 
   const newItem = {
