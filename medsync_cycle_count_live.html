@@ -1232,15 +1232,21 @@ function pcSelectSuggestion(el) {
 
   var snaps = [];
 
-  // 1. If input looks like a barcode (all digits, 8+ chars), try SKU/NDC/UPC lookup
+  // 1. If input looks like a barcode (all digits, 8+ chars), try SKU lookup via dispensed_items
   if (/^\d{8,}$/.test(q)) {
-    // Build list of values to try: raw barcode, plus SKU extracted from UPC-A wrapper (strip leading digit + last checkdigit)
+    // Candidates: raw value + SKU stripped from UPC-A/EAN-13 wrapper
     var candidates = [q];
-    if (q.length === 12) candidates.push(q.slice(1, 11)); // UPC-A: leading digit + 10-digit SKU + checkdigit
-    if (q.length === 13) candidates.push(q.slice(1, 12)); // EAN-13 variant
+    if (q.length === 12) candidates.push(q.slice(1, 11)); // UPC-A → 10-digit SKU
+    if (q.length === 13) candidates.push(q.slice(1, 12)); // EAN-13 → 11-digit
     var found = null;
     for (var ci = 0; ci < candidates.length && !found; ci++) {
       var cval = candidates[ci];
+      // Try dispensed_items.sku (most reliably populated from Vetspire)
+      var skuUrl = SUPA_URL + '/rest/v1/dispensed_items?select=product_name&sku=eq.' + encodeURIComponent(cval) + '&product_name=not.is.null&order=dispensed_at.desc&limit=1';
+      var skuRes = await fetch(skuUrl, { headers: H });
+      var skuRows = await skuRes.json();
+      if (Array.isArray(skuRows) && skuRows.length) { found = skuRows[0].product_name; break; }
+      // Also try products table ndc + vetspire_product_id
       var ndcUrl = SUPA_URL + '/rest/v1/products?select=name,vetspire_product_id,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_product_id.eq.' + encodeURIComponent(cval) + ')&limit=1';
       var ndcRes = await fetch(ndcUrl, { headers: H });
       var ndcRows = await ndcRes.json();
