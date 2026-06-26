@@ -34,9 +34,9 @@ query($lids:[ID!], $s:Date, $e:Date){
 }
 """
 
-# Paid-only field resolution — None-safe, never touches `total` (includes open invoices).
-# Priority: paid > paidTotal > paidRevenue > collected (finalized = paid + due).
-_PAID_FIELDS = ("paid", "paidTotal", "paidRevenue", "collected")
+# Field resolution — None-safe. Priority: paid > paidTotal > paidRevenue > collected > total.
+# `total` includes open invoices but is used as last resort when the API token only returns it.
+_PAID_FIELDS = ("paid", "paidTotal", "paidRevenue", "collected", "total")
 
 def _pick_paid(rec):
     for f in _PAID_FIELDS:

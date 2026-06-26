@@ -67,8 +67,9 @@ def supa_upsert(records):
         print(f"  Supabase error {e.code}: {e.read().decode()[:200]}")
         return e.code
 
-# Paid-only field resolution — None-safe, never touches `total` (which includes open invoices)
-_PAID_FIELDS = ("paid", "paidTotal", "paidRevenue", "collected")
+# Field resolution — None-safe. Priority: paid > paidTotal > paidRevenue > collected > total.
+# `total` includes open invoices but is used as last resort when the API token only returns it.
+_PAID_FIELDS = ("paid", "paidTotal", "paidRevenue", "collected", "total")
 
 def _paid_field(rec):
     """Return the name of the first paid-specific field present in rec, or 'none'."""
