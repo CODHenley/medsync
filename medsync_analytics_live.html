@@ -354,7 +354,7 @@ html, body { margin: 0 !important; padding: 0 !important; }
 .pi-leg span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--mist);}
 .pi-dot{width:8px;height:8px;border-radius:2px;}
 @keyframes spin { to { transform: rotate(360deg); } }</style>
-
+<script src="medsync_locations.js"></script>
 <script>
 
 var _currentLocFilter = '';  // set by loadData, consumed by loadPI/loadExpiry
@@ -860,20 +860,6 @@ function getDateRange(dr) {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-// ── Location ID map ──────────────────────────────────────────
-const LOC_IDS = {
-  lp: '11111111-0000-0000-0000-000000000001',
-  oo: '11111111-0000-0000-0000-000000000002',
-  wl: '11111111-0000-0000-0000-000000000003',
-  wh: '11111111-0000-0000-0000-000000000004'
-};
-const LOC_NAMES = {
-  '11111111-0000-0000-0000-000000000001': 'Lincoln Park',
-  '11111111-0000-0000-0000-000000000002': 'Old Orchard',
-  '11111111-0000-0000-0000-000000000003': 'West Loop',
-  '11111111-0000-0000-0000-000000000004': 'Wheaton'
-};
-
 // ── GL Category colors ───────────────────────────────────────
 const GL_COLORS = {
   'Diagnostic duplicate': '#6B4FBB',
@@ -1012,8 +998,6 @@ async function loadData() {
     kwg.className = expiring.length > 0 ? 'kpi-v ca' : 'kpi-v cg';
 
     // ── 4. Live COGs for Wheaton from daily_revenue + dispensed_items ──────
-    const WHEATON_VID  = '28253';
-    const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
     const [diRes, revRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID
             + '&dispensed_at=gte.' + from + '&dispensed_at=lte.' + to + '&sku=not.is.null', { headers: HEADERS }),
