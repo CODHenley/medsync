@@ -1070,6 +1070,18 @@ async function alSkuLookupVal(raw) {
 
     for (const cval of candidates) {
       if (rows.length) break;
+      // Try dispensed_items.sku first (most reliably populated from Vetspire)
+      const skuRes = await fetch(
+        SUPA_URL + '/rest/v1/dispensed_items?select=product_name,vetspire_product_id&sku=eq.' + encodeURIComponent(cval) + '&product_name=not.is.null&order=dispensed_at.desc&limit=1',
+        { headers: H }
+      );
+      const skuRows = await skuRes.json();
+      if (Array.isArray(skuRows) && skuRows.length) {
+        // Reshape to match expected products row shape
+        rows = [{ id: null, name: skuRows[0].product_name, vendor: null, ndc: null }];
+        break;
+      }
+      // Fallback: products table by ndc / vetspire_product_id
       const ndcRes = await fetch(
         SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_product_id.eq.' + encodeURIComponent(cval) + ')&limit=1',
         { headers: H }
