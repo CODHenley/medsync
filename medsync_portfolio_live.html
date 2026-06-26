@@ -566,6 +566,18 @@ window.addEventListener('blur', function() {
   }
 });
 document.addEventListener('DOMContentLoaded', function() {
+  // Dynamic date and time-of-day greeting
+  (function() {
+    var now = new Date();
+    var h = now.getHours();
+    var salutation = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    var dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+    var monthDay = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    var dateEl = document.getElementById('brief-date');
+    var greetEl = document.getElementById('brief-greeting');
+    if (dateEl) dateEl.textContent = dayName + ', ' + monthDay;
+    if (greetEl) greetEl.textContent = salutation + ' — portfolio is looking healthy.';
+  })();
   document.getElementById('app-body').addEventListener('click', function() {
     var sb = document.getElementById('app-sidebar');
     if (sb && sb.style.display === 'block') { closeMobileMenu(); }
@@ -1428,8 +1440,8 @@ function deepDiveLoc(locCode) {
     <div style="background:linear-gradient(135deg,#1C2B4A 0%,#2a3f6a 100%);padding:24px 28px 20px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
         <div>
-          <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:6px;" id="brief-date">Thursday, June 26</div>
-          <div style="font-size:22px;font-weight:700;color:#fff;line-height:1.25;margin-bottom:6px;" id="brief-greeting">Good morning — portfolio is looking healthy.</div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:6px;" id="brief-date"></div>
+          <div style="font-size:22px;font-weight:700;color:#fff;line-height:1.25;margin-bottom:6px;" id="brief-greeting"></div>
           <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5;" id="brief-sub">3 of 4 locations on track · <span style="color:#E8C76A;">Old Orchard order pending — 58m to cutoff</span></div>
         </div>
         <!-- Region filter -->
