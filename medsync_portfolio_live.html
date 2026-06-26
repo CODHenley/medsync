@@ -2890,8 +2890,10 @@ async function loadUserProfiles() {
     });
 
     // Swap every #ms-avatar to photo if current user has one
-    const u = getUserInfo();
-    const myProfile = window._userProfiles[u.email] || window._userProfiles[u.name];
+    // Read directly from medsync_user (set by login) since getUserInfo() reads medsync_session
+    let _mu = {};
+    try { _mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+    const myProfile = window._userProfiles[_mu.email] || window._userProfiles[_mu.full_name];
     document.querySelectorAll('#ms-avatar').forEach(function(el) {
       if (myProfile && myProfile.avatar_b64) {
         el.innerHTML = '<img src="' + myProfile.avatar_b64 + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" alt="My profile">';
