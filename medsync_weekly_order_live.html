@@ -245,12 +245,7 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 <body>
 
 <!-- TOPBAR -->
-<div class="topbar">
-  <div class="tb-home" onclick="navHome()" title="Home">
-    <img src="medsync_logo.png" alt="MedSync" style="height:22px;width:auto;border-radius:4px;">
-    <span class="tb-home-label">MedSync</span>
-  </div>
-  <div class="tb-left">
+<div class="topbar"><div class="tb-left">
     <span class="tb-title">Purchase Orders</span>
     <select class="loc-sel" id="loc-select" onchange="onLocChange()">
       <option value="">Select location…</option>
