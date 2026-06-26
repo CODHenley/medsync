@@ -83,18 +83,26 @@ async function loadRecognition() {
     const _KEY2  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
     const _H2    = { 'apikey': _KEY2, 'Authorization': 'Bearer ' + _KEY2 };
     const WHEATON_UUID = '11111111-0000-0000-0000-000000000004';
-    const [glRes, usersRes, poRes, whGlRes, whPoRes] = await Promise.all([
+    const [glRes, usersRes, poRes, whGlRes, whPoRes, managersRes, receiversRes, actLogRes, cycleRes] = await Promise.all([
       fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/po_items?select=status,submitted_at&location_id=eq.' + WHEATON_UUID + '&order=submitted_at.desc&limit=1', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=in.(manager,hospital_manager)&is_active=eq.true', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.receiver&is_active=eq.true', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/activity_log?select=user_id,event_type&created_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + monthStart, { headers: _H2 }),
     ]);
-    const glData    = await glRes.json();
-    const leadsData = await usersRes.json();
-    const poData    = await poRes.json();
-    const whGlData  = await whGlRes.json();
-    const whPoData  = await whPoRes.json();
+    const glData       = await glRes.json();
+    const leadsData    = await usersRes.json();
+    const poData       = await poRes.json();
+    const whGlData     = await whGlRes.json();
+    const whPoData     = await whPoRes.json();
+    const managersData = await managersRes.json();
+    const receiversData= await receiversRes.json();
+    const actLogData   = await actLogRes.json();
+    const cycleData    = await cycleRes.json();
 
     // ── Wheaton: live goods lost $ ────────────────────────────────────────────
     const glEl = document.getElementById('wheaton-gl-val');
@@ -203,6 +211,99 @@ async function loadRecognition() {
           '<div style="font-size:12px;color:#8A93A8;">No activity recorded yet this month.</div>' +
         '</div>';
     }
+
+    // ── Award 3: Top Manager ──────────────────────────────────────────────
+    const mgrEl = document.getElementById('rec-manager');
+    if (mgrEl) {
+      // Score = POs submitted from their location × 2 + cycle counts completed at their location
+      const cycleByLoc = {};
+      if (Array.isArray(cycleData)) {
+        cycleData.forEach(function(c) {
+          if (c.location_id && (c.status || '').toLowerCase() === 'completed') {
+            cycleByLoc[c.location_id] = (cycleByLoc[c.location_id] || 0) + 1;
+          }
+        });
+      }
+      let topMgr = null, topMgrScore = -1;
+      if (Array.isArray(managersData)) {
+        managersData.forEach(function(u) {
+          const po = poByLoc[u.location_id] || 0;
+          const cc = cycleByLoc[u.location_id] || 0;
+          const score = po * 2 + cc;
+          if (score > topMgrScore) {
+            topMgrScore = score;
+            topMgr = { name: u.full_name, locName: u.locations && u.locations.name ? u.locations.name : '', score, po, cc };
+          }
+        });
+      }
+      if (topMgr && topMgr.score > 0) {
+        mgrEl.dataset.leadName = topMgr.name;
+        const mgrProfile = window._userProfiles && window._userProfiles[topMgr.name];
+        const mgrAvatar = mgrProfile && mgrProfile.avatar_b64
+          ? '<img src="' + mgrProfile.avatar_b64 + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #90D8B0;" alt="' + topMgr.name + '">'
+          : '<div style="width:44px;height:44px;border-radius:50%;background:#2E8B57;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🏆</div>';
+        const mgrParts = [];
+        if (topMgr.po > 0) mgrParts.push(topMgr.po + ' PO' + (topMgr.po > 1 ? 's' : '') + ' submitted');
+        if (topMgr.cc > 0) mgrParts.push(topMgr.cc + ' cycle count' + (topMgr.cc > 1 ? 's' : '') + ' done');
+        mgrEl.innerHTML = mgrAvatar +
+          '<div>' +
+            '<div style="font-size:9px;font-weight:700;color:#2E8B57;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Top Manager</div>' +
+            '<div style="font-size:14px;font-weight:700;color:#1C2B4A;">' + topMgr.name + '</div>' +
+            '<div style="font-size:11px;color:#2E8B57;margin-top:2px;">' + (topMgr.locName ? topMgr.locName + ' · ' : '') + mgrParts.join(' · ') + '</div>' +
+          '</div>';
+      } else {
+        mgrEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">🏆</div><div><div style="font-size:9px;font-weight:700;color:#2E8B57;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Top Manager</div><div style="font-size:12px;color:#8A93A8;">No activity recorded yet this month.</div></div>';
+      }
+    }
+
+    // ── Award 4: Most Engaged Receiver ────────────────────────────────────
+    const recvEl = document.getElementById('rec-receiver');
+    if (recvEl) {
+      // Score = activity_log rows with event_type containing 'Receiving' or 'receiving', grouped by user_id
+      const actByUser = {};
+      if (Array.isArray(actLogData)) {
+        actLogData.forEach(function(r) {
+          if (!r.user_id) return;
+          const t = (r.event_type || '').toLowerCase();
+          if (t.includes('receiv')) actByUser[r.user_id] = (actByUser[r.user_id] || 0) + 1;
+        });
+      }
+      // Also count receiving_sessions by matching receiver users to their location's session count
+      let topRecv = null, topRecvScore = -1;
+      if (Array.isArray(receiversData)) {
+        receiversData.forEach(function(u) {
+          const acts = actByUser[u.id] || 0;
+          // Also count po_items received at their location as proxy
+          const poRecv = Array.isArray(poData) ? poData.filter(function(p) {
+            return p.location_id === u.location_id && (p.status || '').toLowerCase() === 'received';
+          }).length : 0;
+          const score = acts * 3 + poRecv;
+          if (score > topRecvScore) {
+            topRecvScore = score;
+            topRecv = { name: u.full_name, locName: u.locations && u.locations.name ? u.locations.name : '', score, acts, poRecv };
+          }
+        });
+      }
+      if (topRecv && topRecv.score > 0) {
+        recvEl.dataset.leadName = topRecv.name;
+        const recvProfile = window._userProfiles && window._userProfiles[topRecv.name];
+        const recvAvatar = recvProfile && recvProfile.avatar_b64
+          ? '<img src="' + recvProfile.avatar_b64 + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #E0A0CC;" alt="' + topRecv.name + '">'
+          : '<div style="width:44px;height:44px;border-radius:50%;background:#9B4D8A;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📦</div>';
+        const recvParts = [];
+        if (topRecv.acts > 0) recvParts.push(topRecv.acts + ' receiving event' + (topRecv.acts > 1 ? 's' : ''));
+        if (topRecv.poRecv > 0) recvParts.push(topRecv.poRecv + ' PO' + (topRecv.poRecv > 1 ? 's' : '') + ' received');
+        recvEl.innerHTML = recvAvatar +
+          '<div>' +
+            '<div style="font-size:9px;font-weight:700;color:#9B4D8A;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Most Engaged Receiver</div>' +
+            '<div style="font-size:14px;font-weight:700;color:#1C2B4A;">' + topRecv.name + '</div>' +
+            '<div style="font-size:11px;color:#9B4D8A;margin-top:2px;">' + (topRecv.locName ? topRecv.locName + ' · ' : '') + recvParts.join(' · ') + '</div>' +
+          '</div>';
+      } else {
+        recvEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">📦</div><div><div style="font-size:9px;font-weight:700;color:#9B4D8A;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">' + monthName + ' · Most Engaged Receiver</div><div style="font-size:12px;color:#8A93A8;">No activity recorded yet this month.</div></div>';
+      }
+    }
+
   } catch(e) {
     if (locEl) locEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">🏅</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
     if (leadEl) leadEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">⭐</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
@@ -1500,13 +1601,21 @@ function deepDiveLoc(locCode) {
     <div style="padding:20px 28px;display:flex;flex-direction:column;gap:24px;">
 
     <!-- ── RECOGNITION ── -->
-    <div id="recognition-strip" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div id="recognition-strip" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
       <div id="rec-location" style="background:linear-gradient(135deg,#FFFBF0,#FFF3D0);border:1px solid #E8D080;border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;min-height:88px;">
         <div style="width:44px;height:44px;border-radius:12px;background:#F5C842;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🏅</div>
         <div style="color:#8A93A8;font-size:13px;">Loading…</div>
       </div>
       <div id="rec-lead" style="background:linear-gradient(135deg,#F0F7FF,#E0EEFF);border:1px solid #B0CCF0;border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;min-height:88px;">
-        <div style="width:44px;height:44px;border-radius:12px;background:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⭐</div>
+        <div style="width:44px;height:44px;border-radius:50%;background:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⭐</div>
+        <div style="color:#8A93A8;font-size:13px;">Loading…</div>
+      </div>
+      <div id="rec-manager" style="background:linear-gradient(135deg,#F0FFF8,#D8F5E8);border:1px solid #90D8B0;border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;min-height:88px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:#2E8B57;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🏆</div>
+        <div style="color:#8A93A8;font-size:13px;">Loading…</div>
+      </div>
+      <div id="rec-receiver" style="background:linear-gradient(135deg,#FFF0F8,#F5D8EE);border:1px solid #E0A0CC;border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;min-height:88px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:#9B4D8A;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📦</div>
         <div style="color:#8A93A8;font-size:13px;">Loading…</div>
       </div>
     </div>
@@ -2929,21 +3038,26 @@ async function loadUserProfiles() {
     // Re-render table if already loaded to pick up avatars
     if (typeof renderTable === 'function') renderTable();
 
-    // Patch recognition lead card avatar now that profiles are loaded
-    const leadEl = document.getElementById('rec-lead');
-    if (leadEl && leadEl.dataset.leadName) {
-      const lp = window._userProfiles[leadEl.dataset.leadName];
+    // Patch all recognition card avatars now that profiles are loaded
+    [
+      { id: 'rec-lead',     border: '#B0CCF0' },
+      { id: 'rec-manager',  border: '#90D8B0' },
+      { id: 'rec-receiver', border: '#E0A0CC' },
+    ].forEach(function(card) {
+      const el = document.getElementById(card.id);
+      if (!el || !el.dataset.leadName) return;
+      const lp = window._userProfiles[el.dataset.leadName];
       if (lp && lp.avatar_b64) {
-        const avatarEl = leadEl.querySelector('img, div[style*="border-radius:50%"]');
+        const avatarEl = el.querySelector('img, div[style*="border-radius:50%"]');
         if (avatarEl) {
           const img = document.createElement('img');
           img.src = lp.avatar_b64;
-          img.style.cssText = 'width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #B0CCF0;';
-          img.alt = leadEl.dataset.leadName;
+          img.style.cssText = 'width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ' + card.border + ';';
+          img.alt = el.dataset.leadName;
           avatarEl.replaceWith(img);
         }
       }
-    }
+    });
   } catch(e) {
     console.warn('Could not load user profiles:', e);
   }
