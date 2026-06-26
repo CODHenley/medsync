@@ -376,16 +376,21 @@ async function loadCogsBudget() {
   if (!vid) return;
   try {
     const now       = new Date();
-    const today     = now.toISOString().slice(0,10);
+    // Use local date to avoid UTC rollover causing off-by-one at month boundaries
+    const todayLocal = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    const today     = todayLocal;
     const month1    = today.slice(0,7) + '-01';
+    const dayOfMonth = now.getDate(); // current day within the month
     const daysInMo  = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-    // Week start (Monday)
-    const ws = new Date(now);
+    // Week start (Monday) — also use local date arithmetic
+    const ws = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     ws.setDate(ws.getDate() - (ws.getDay() === 0 ? 6 : ws.getDay() - 1));
-    const weekStart = ws.toISOString().slice(0,10);
-    // Prior year same month (seasonal baseline)
+    const weekStart = ws.getFullYear() + '-' + String(ws.getMonth()+1).padStart(2,'0') + '-' + String(ws.getDate()).padStart(2,'0');
+    // Prior year same month (seasonal baseline) — only up to same day-of-month for apples-to-apples MTD
     const pyMonth1 = (now.getFullYear()-1) + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
-    const pyMonth2 = (now.getFullYear()-1) + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(daysInMo).padStart(2,'0');
+    const pyDayOfMo = new Date(now.getFullYear()-1, now.getMonth()+1, 0).getDate(); // days in prior year's same month
+    const pyDayCap  = Math.min(dayOfMonth, pyDayOfMo); // don't overshoot if prior year month is shorter
+    const pyMonth2 = (now.getFullYear()-1) + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(pyDayCap).padStart(2,'0');
     // Trailing 8 weeks for trend (covers ~2 months of daily context)
     const t8w = new Date(now); t8w.setDate(t8w.getDate() - 56);
     const t8wStr = t8w.toISOString().slice(0,10);
@@ -407,13 +412,15 @@ async function loadCogsBudget() {
     if (Array.isArray(wRows))  state.weekRevenue = wRows.reduce((s,r)  => s + (parseFloat(r.revenue)||0), 0);
     if (Array.isArray(poRows)) state.poSpend     = poRows.reduce((s,r) => s + (parseFloat(r.gpo_price)||0)*(parseInt(r.order_qty)||0), 0);
 
-    // Seasonal estimate: prefer prior-year same month, fall back to 8-week trailing avg
-    if (Array.isArray(pyRows) && pyRows.length >= 15) {
-      const pyTotal = pyRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
-      state.estMonthRevenue = pyTotal;
+    // Seasonal estimate: prefer prior-year same month (same days MTD), fall back to 8-week trailing avg
+    if (Array.isArray(pyRows) && pyRows.length >= 10) {
+      const pyMtdTotal = pyRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
+      // Scale up to full month projection: pyMtdTotal / days_so_far × days_in_month
+      const pyDailyAvg = pyMtdTotal / Math.max(pyRows.length, 1);
+      state.estMonthRevenue = pyDailyAvg * daysInMo; // full-month projection
       state.estMonthLabel   = now.toLocaleString('default',{month:'long'}) + ' ' + (now.getFullYear()-1);
-      // Weekly estimate: prior-year same month daily avg × 5 business days
-      state.estWeekRevenue  = (pyTotal / pyRows.length) * 5;
+      // Weekly estimate: prior-year same-period daily avg × 5 business days
+      state.estWeekRevenue  = pyDailyAvg * 5;
     } else if (Array.isArray(trendRows) && trendRows.length >= 14) {
       // Trailing 8-week daily avg × days in month / week
       const trendTotal = trendRows.reduce((s,r) => s + (parseFloat(r.revenue)||0), 0);
