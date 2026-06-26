@@ -159,6 +159,47 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .run-btn:hover{background:#162238;}
 /* Email preview */
 .email-preview{background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;max-width:560px;margin:0 auto;}
+
+/* ── ONBOARDING TAB ── */
+.ob-pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.ob-col{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
+.ob-col-head{padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.ob-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.ob-col-count{font-size:10px;color:var(--mist);background:#F5F3FA;padding:2px 8px;border-radius:10px;font-weight:600;}
+.ob-col-body{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:80px;}
+.ob-card{background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;padding:10px 12px;cursor:pointer;transition:box-shadow .15s;}
+.ob-card:hover{box-shadow:0 2px 10px rgba(28,43,74,.1);}
+.ob-card-name{font-size:12px;font-weight:600;margin-bottom:2px;}
+.ob-card-sub{font-size:10px;color:var(--mist);}
+.ob-card-days{font-size:10px;margin-top:6px;font-weight:600;}
+.ob-card-days.urgent{color:#a33030;}
+.ob-card-days.warn{color:#a0700a;}
+.ob-card-days.ok{color:#0F6E56;}
+.ob-empty{font-size:11px;color:var(--mist);text-align:center;padding:14px 0;}
+/* Detail panel */
+.ob-detail{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
+.ob-detail-head{padding:14px 18px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.ob-phase-bar{display:flex;gap:0;border-bottom:0.5px solid var(--border);}
+.ob-phase-tab{padding:10px 18px;font-size:12px;font-weight:500;color:var(--mist);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-0.5px;}
+.ob-phase-tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600;}
+.ob-phase-panel{display:none;padding:18px;}.ob-phase-panel.active{display:block;}
+/* Checklist */
+.ob-check-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:0.5px solid #F5F3FA;}
+.ob-check-item:last-child{border-bottom:none;}
+.ob-check-cb{width:16px;height:16px;accent-color:var(--navy);cursor:pointer;margin-top:1px;flex-shrink:0;}
+.ob-check-label{font-size:12px;flex:1;}
+.ob-check-label.done{text-decoration:line-through;color:var(--mist);}
+/* Meeting log */
+.ob-meeting{background:#F8F7FC;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+.ob-meeting-date{font-size:10px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.ob-meeting-note{font-size:12px;color:var(--slate);}
+/* Support tickets */
+.ob-ticket{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:0.5px solid #F5F3FA;font-size:12px;}
+.ob-ticket:last-child{border-bottom:none;}
+.ob-ticket-status{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.status-open{background:#E74C3C;}
+.status-in_progress{background:#C8922A;}
+.status-resolved{background:#2E8B57;}
 .email-header{background:#1C2B4A;padding:24px 32px;text-align:center;}
 .email-body{padding:32px;}
 .email-footer{background:#F8F7FC;padding:16px 32px;text-align:center;font-size:10px;color:var(--mist);border-top:0.5px solid var(--border);}
@@ -234,6 +275,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     <div class="tab-item" id="tab-billing" onclick="switchTab('billing')">Billing <span id="billing-badge" style="display:none;background:#E74C3C;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle;">0</span></div>
     <div class="tab-item" id="tab-admins" onclick="switchTab('admins')">Super Admins</div>
     <div class="tab-item" id="tab-growth" onclick="switchTab('growth')">Growth</div>
+    <div class="tab-item" id="tab-onboarding" onclick="switchTab('onboarding')">Onboarding <span id="onboarding-badge" style="display:none;background:#C8922A;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle;">0</span></div>
   </div>
 
   <!-- ── ORGS TAB ── -->
@@ -616,6 +658,147 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   </div><!-- /panel-growth -->
 
 
+  <!-- ── ONBOARDING TAB ── -->
+  <div class="tab-panel" id="panel-onboarding">
+  <div class="content">
+
+    <!-- Pipeline board -->
+    <div class="ob-pipeline" id="ob-pipeline">
+      <div class="ob-col">
+        <div class="ob-col-head"><span class="ob-col-title" style="color:#534AB7;">Setup Paid</span><span class="ob-col-count" id="ob-count-setup">0</span></div>
+        <div class="ob-col-body" id="ob-col-setup"></div>
+      </div>
+      <div class="ob-col">
+        <div class="ob-col-head"><span class="ob-col-title" style="color:#C8922A;">Go-Live (2 wks)</span><span class="ob-col-count" id="ob-count-golive">0</span></div>
+        <div class="ob-col-body" id="ob-col-golive"></div>
+      </div>
+      <div class="ob-col">
+        <div class="ob-col-head"><span class="ob-col-title" style="color:#0F6E56;">60-Day Trial</span><span class="ob-col-count" id="ob-count-trial">0</span></div>
+        <div class="ob-col-body" id="ob-col-trial"></div>
+      </div>
+      <div class="ob-col">
+        <div class="ob-col-head"><span class="ob-col-title" style="color:var(--navy);">Active + Support</span><span class="ob-col-count" id="ob-count-active">0</span></div>
+        <div class="ob-col-body" id="ob-col-active"></div>
+      </div>
+    </div>
+
+    <!-- Per-customer detail -->
+    <div class="ob-detail" id="ob-detail" style="display:none;">
+      <div class="ob-detail-head">
+        <div>
+          <div class="section-title" id="ob-detail-name">—</div>
+          <div style="font-size:11px;color:var(--mist);margin-top:2px;" id="ob-detail-sub"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn" style="font-size:11px;" onclick="obAdvancePhase()">Advance phase →</button>
+          <button class="btn" style="font-size:11px;" onclick="document.getElementById('ob-detail').style.display=\'none\'">✕ Close</button>
+        </div>
+      </div>
+      <div class="ob-phase-bar">
+        <div class="ob-phase-tab active" id="ob-ptab-setup" onclick="obSwitchPhase('setup')">1 · Setup</div>
+        <div class="ob-phase-tab" id="ob-ptab-golive" onclick="obSwitchPhase('golive')">2 · Go-Live</div>
+        <div class="ob-phase-tab" id="ob-ptab-trial" onclick="obSwitchPhase('trial')">3 · 60-Day Trial</div>
+        <div class="ob-phase-tab" id="ob-ptab-active" onclick="obSwitchPhase('active')">4 · Active</div>
+      </div>
+
+      <!-- Phase 1: Setup -->
+      <div class="ob-phase-panel active" id="ob-panel-setup">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Setup checklist</div>
+            <div id="ob-setup-checks"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Key dates</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div>
+                <div style="font-size:10px;color:var(--mist);margin-bottom:3px;">Setup fee paid</div>
+                <div style="font-size:12px;font-weight:500;" id="ob-setup-fee-date">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--mist);margin-bottom:3px;">Target go-live date</div>
+                <input type="date" id="ob-golive-target" style="padding:6px 8px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;" onchange="obSaveDates()">
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--mist);margin-bottom:3px;">Account rep</div>
+                <input type="text" id="ob-acct-rep" placeholder="e.g. Megan Henley" style="padding:6px 8px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;width:100%;" onchange="obSaveDates()">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2: Go-Live -->
+      <div class="ob-phase-panel" id="ob-panel-golive">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">2-week go-live tracker</div>
+            <div id="ob-golive-checks"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Training notes</div>
+            <textarea id="ob-training-notes" rows="5" placeholder="Staff training notes, issues encountered, follow-up items…" style="width:100%;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;" onchange="obSaveNotes('training')"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 3: Trial -->
+      <div class="ob-phase-panel" id="ob-panel-trial">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Weekly meeting log</div>
+              <button class="btn" style="font-size:10px;padding:4px 10px;" onclick="obAddMeeting()">+ Log meeting</button>
+            </div>
+            <div id="ob-meetings"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Trial status</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+              <div>
+                <div style="font-size:10px;color:var(--mist);margin-bottom:3px;">Trial start date</div>
+                <input type="date" id="ob-trial-start" style="padding:6px 8px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;" onchange="obSaveDates()">
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--mist);margin-bottom:3px;">Trial end date (auto +60d)</div>
+                <div style="font-size:12px;font-weight:500;" id="ob-trial-end-disp">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--mist);margin-bottom:3px;">Days remaining</div>
+                <div style="font-size:18px;font-weight:700;" id="ob-trial-days-remaining">—</div>
+              </div>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Trial notes</div>
+            <textarea id="ob-trial-notes" rows="4" placeholder="Conversion likelihood, usage observations, decision-maker notes…" style="width:100%;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;" onchange="obSaveNotes('trial')"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 4: Active -->
+      <div class="ob-phase-panel" id="ob-panel-active">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Support tickets</div>
+              <button class="btn" style="font-size:10px;padding:4px 10px;" onclick="obAddTicket()">+ New ticket</button>
+            </div>
+            <div id="ob-tickets">
+              <div class="ob-ticket" style="font-size:10px;color:var(--mist);font-style:italic;display:block;padding:8px 0;">No open tickets.</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Account notes</div>
+            <textarea id="ob-active-notes" rows="6" placeholder="Ongoing support notes, renewal conversations, expansion opportunities…" style="width:100%;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;" onchange="obSaveNotes('active')"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /ob-detail -->
+
+  </div><!-- /content -->
+  </div><!-- /panel-onboarding -->
+
+
 </div><!-- /app -->
 
 <div class="modal-bg" id="provision-modal">
@@ -941,6 +1124,7 @@ async function loadDashboard() {
     document.getElementById('stat-users').textContent  = ALL_USERS.length;
 
     renderOrgTable();
+    renderOnboardingTab();
     // Load billing change badge in background
     loadBillingChanges();
   } catch(e) {
@@ -1520,6 +1704,7 @@ function switchTab(tab) {
   if (tab === 'billing') { renderBillingTab(); loadBillingChanges(); }
   if (tab === 'admins') loadSuperAdmins();
   if (tab === 'growth') renderGrowthTab();
+  if (tab === 'onboarding') renderOnboardingTab();
 }
 
 // ── Billing tab ───────────────────────────────────────────────
@@ -1943,6 +2128,412 @@ async function removeSuperAdmin(id, email) {
 
 function openEditOrg() {
   showToast('Edit org — coming soon');
+}
+
+// ── Onboarding tab ───────────────────────────────────────────────────────────
+const OB_PHASES = ['setup','golive','trial','active'];
+
+const OB_SETUP_CHECKS = [
+  'Setup fee ($500) received & recorded',
+  'Organization provisioned in MedSync',
+  'Admin user credentials sent to customer',
+  'Kick-off call scheduled',
+  'Physical inventory count date confirmed',
+  'Data import / product catalog configured',
+  'Staff training session scheduled',
+  'Account rep assigned',
+  'Customer signed license agreement',
+  'Go-live date confirmed',
+];
+
+const OB_GOLIVE_CHECKS = [
+  'Week 1: On-site physical inventory count complete',
+  'Week 1: Products imported & verified',
+  'Week 1: Min/max par levels set',
+  'Week 1: Inventory Leads trained on cycle count',
+  'Week 1: First cycle count completed',
+  'Week 2: Receiving workflow trained',
+  'Week 2: Weekly order workflow trained',
+  'Week 2: Lot lifecycle & expiry alerts reviewed',
+  'Week 2: Invoice reconciliation walkthrough done',
+  'Week 2: Go-live sign-off from customer',
+];
+
+function obKey(orgId) { return 'medsync_ob_' + orgId; }
+function obLoad(orgId) {
+  try { return JSON.parse(localStorage.getItem(obKey(orgId)) || 'null') || obDefault(orgId); }
+  catch(e) { return obDefault(orgId); }
+}
+function obSave(orgId, data) { localStorage.setItem(obKey(orgId), JSON.stringify(data)); }
+function obDefault(orgId) {
+  const org = ALL_ORGS.find(o => o.id === orgId);
+  return {
+    phase: 'setup',
+    setupFeeDate: org?.created_at ? org.created_at.split('T')[0] : '',
+    golivTarget: '',
+    acctRep: '',
+    trialStart: '',
+    setupChecks: OB_SETUP_CHECKS.map(() => false),
+    goliveChecks: OB_GOLIVE_CHECKS.map(() => false),
+    trainingNotes: '',
+    trialNotes: '',
+    activeNotes: '',
+    meetings: [],
+    tickets: [],
+  };
+}
+
+let obSelectedOrg = null;
+let obCurrentPhase = 'setup';
+
+function renderOnboardingTab() {
+  const cols = { setup:[], golive:[], trial:[], active:[] };
+  ALL_ORGS.forEach(org => {
+    const data = obLoad(org.id);
+    cols[data.phase] = cols[data.phase] || [];
+    cols[data.phase].push({ org, data });
+  });
+
+  let needsAttention = 0;
+  OB_PHASES.forEach(phase => {
+    const col = document.getElementById('ob-col-' + phase);
+    const countEl = document.getElementById('ob-count-' + phase);
+    const items = cols[phase] || [];
+    countEl.textContent = items.length;
+    if (!items.length) {
+      col.innerHTML = '<div class="ob-empty">None</div>';
+      return;
+    }
+    col.innerHTML = items.map(({ org, data }) => {
+      const daysInfo = obDaysInfo(data, phase);
+      if (daysInfo.urgent) needsAttention++;
+      return `<div class="ob-card" onclick="obOpenDetail('${org.id}')">
+        <div class="ob-card-name">${org.name}</div>
+        <div class="ob-card-sub">${data.acctRep ? 'Rep: ' + data.acctRep : org.tier ? tierLabel(org.tier) : ''}</div>
+        ${daysInfo.text ? `<div class="ob-card-days ${daysInfo.cls}">${daysInfo.text}</div>` : ''}
+      </div>`;
+    }).join('');
+  });
+
+  const badge = document.getElementById('onboarding-badge');
+  if (needsAttention > 0) { badge.textContent = needsAttention; badge.style.display = 'inline-block'; }
+  else badge.style.display = 'none';
+}
+
+function obDaysInfo(data, phase) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (phase === 'golive' && data.golivTarget) {
+    const target = new Date(data.golivTarget);
+    const diff = Math.round((target - today) / 86400000);
+    if (diff < 0) return { text: Math.abs(diff) + 'd overdue', cls: 'urgent', urgent: true };
+    if (diff <= 3) return { text: diff + 'd to go-live', cls: 'warn', urgent: false };
+    return { text: diff + 'd to go-live', cls: 'ok', urgent: false };
+  }
+  if (phase === 'trial' && data.trialStart) {
+    const start = new Date(data.trialStart);
+    const end = new Date(start); end.setDate(end.getDate() + 60);
+    const diff = Math.round((end - today) / 86400000);
+    if (diff <= 0) return { text: 'Trial ended', cls: 'urgent', urgent: true };
+    if (diff <= 7) return { text: diff + 'd left in trial', cls: 'warn', urgent: true };
+    return { text: diff + 'd left in trial', cls: 'ok', urgent: false };
+  }
+  return { text: '', cls: '', urgent: false };
+}
+
+function obOpenDetail(orgId) {
+  obSelectedOrg = orgId;
+  const org = ALL_ORGS.find(o => o.id === orgId);
+  const data = obLoad(orgId);
+  obCurrentPhase = data.phase;
+
+  document.getElementById('ob-detail-name').textContent = org.name;
+  document.getElementById('ob-detail-sub').textContent =
+    (data.acctRep ? 'Account rep: ' + data.acctRep + ' · ' : '') + tierLabel(org.tier) + ' · Phase: ' + obPhaseLabel(data.phase);
+
+  // Key dates
+  document.getElementById('ob-setup-fee-date').textContent = data.setupFeeDate
+    ? new Date(data.setupFeeDate + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
+  document.getElementById('ob-golive-target').value = data.golivTarget || '';
+  document.getElementById('ob-acct-rep').value = data.acctRep || '';
+  document.getElementById('ob-trial-start').value = data.trialStart || '';
+  obUpdateTrialDates(data.trialStart);
+
+  // Checklist: setup
+  document.getElementById('ob-setup-checks').innerHTML = OB_SETUP_CHECKS.map((label, i) => `
+    <div class="ob-check-item">
+      <input type="checkbox" class="ob-check-cb" id="ob-sc-${i}" ${data.setupChecks[i] ? 'checked' : ''}
+        onchange="obToggleCheck('setup',${i},this.checked)">
+      <label class="ob-check-label ${data.setupChecks[i] ? 'done' : ''}" for="ob-sc-${i}">${label}</label>
+    </div>`).join('');
+
+  // Checklist: go-live
+  document.getElementById('ob-golive-checks').innerHTML = OB_GOLIVE_CHECKS.map((label, i) => `
+    <div class="ob-check-item">
+      <input type="checkbox" class="ob-check-cb" id="ob-gc-${i}" ${data.goliveChecks[i] ? 'checked' : ''}
+        onchange="obToggleCheck('golive',${i},this.checked)">
+      <label class="ob-check-label ${data.goliveChecks[i] ? 'done' : ''}" for="ob-gc-${i}">${label}</label>
+    </div>`).join('');
+
+  // Notes
+  document.getElementById('ob-training-notes').value = data.trainingNotes || '';
+  document.getElementById('ob-trial-notes').value = data.trialNotes || '';
+  document.getElementById('ob-active-notes').value = data.activeNotes || '';
+
+  // Meetings
+  obRenderMeetings(data);
+
+  // Tickets
+  obRenderTickets(data);
+
+  // Phase tabs
+  obSwitchPhase(data.phase);
+
+  document.getElementById('ob-detail').style.display = '';
+  document.getElementById('ob-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function obPhaseLabel(p) {
+  return { setup:'Setup', golive:'Go-Live', trial:'60-Day Trial', active:'Active + Support' }[p] || p;
+}
+
+function obSwitchPhase(phase) {
+  obCurrentPhase = phase;
+  OB_PHASES.forEach(p => {
+    document.getElementById('ob-ptab-' + p).classList.toggle('active', p === phase);
+    document.getElementById('ob-panel-' + p).classList.toggle('active', p === phase);
+  });
+}
+
+function obToggleCheck(type, idx, val) {
+  if (!obSelectedOrg) return;
+  const data = obLoad(obSelectedOrg);
+  if (type === 'setup') data.setupChecks[idx] = val;
+  else data.goliveChecks[idx] = val;
+  const lbl = document.getElementById('ob-' + (type==='setup'?'sc':'gc') + '-' + idx).nextElementSibling;
+  if (lbl) lbl.className = 'ob-check-label' + (val ? ' done' : '');
+  obSave(obSelectedOrg, data);
+  renderOnboardingTab();
+}
+
+function obSaveDates() {
+  if (!obSelectedOrg) return;
+  const data = obLoad(obSelectedOrg);
+  data.golivTarget = document.getElementById('ob-golive-target').value;
+  data.acctRep = document.getElementById('ob-acct-rep').value.trim();
+  data.trialStart = document.getElementById('ob-trial-start').value;
+  obUpdateTrialDates(data.trialStart);
+  obSave(obSelectedOrg, data);
+  renderOnboardingTab();
+  const org = ALL_ORGS.find(o => o.id === obSelectedOrg);
+  document.getElementById('ob-detail-sub').textContent =
+    (data.acctRep ? 'Account rep: ' + data.acctRep + ' · ' : '') + tierLabel(org?.tier) + ' · Phase: ' + obPhaseLabel(data.phase);
+}
+
+function obUpdateTrialDates(trialStart) {
+  const endEl = document.getElementById('ob-trial-end-disp');
+  const daysEl = document.getElementById('ob-trial-days-remaining');
+  if (!trialStart) { if(endEl) endEl.textContent = '—'; if(daysEl) daysEl.textContent = '—'; return; }
+  const start = new Date(trialStart + 'T12:00:00');
+  const end = new Date(start); end.setDate(end.getDate() + 60);
+  if (endEl) endEl.textContent = end.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((end - today) / 86400000);
+  if (daysEl) {
+    daysEl.textContent = diff <= 0 ? 'Ended' : diff + ' days';
+    daysEl.style.color = diff <= 0 ? '#a33030' : diff <= 7 ? '#a0700a' : '#0F6E56';
+  }
+}
+
+function obSaveNotes(type) {
+  if (!obSelectedOrg) return;
+  const data = obLoad(obSelectedOrg);
+  if (type === 'training') data.trainingNotes = document.getElementById('ob-training-notes').value;
+  else if (type === 'trial') data.trialNotes = document.getElementById('ob-trial-notes').value;
+  else if (type === 'active') data.activeNotes = document.getElementById('ob-active-notes').value;
+  obSave(obSelectedOrg, data);
+}
+
+function obRenderMeetings(data) {
+  const el = document.getElementById('ob-meetings');
+  if (!el) return;
+  if (!data.meetings || !data.meetings.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--mist);">No meetings logged yet.</div>';
+    return;
+  }
+  el.innerHTML = [...data.meetings].reverse().map((m, i) => `
+    <div class="ob-meeting">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="ob-meeting-date">${m.date}${m.type ? ' · ' + m.type : ''}</div>
+        <button onclick="obDeleteMeeting(${data.meetings.length-1-i})" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--mist);">✕</button>
+      </div>
+      <div class="ob-meeting-note">${m.note || '<em style="color:var(--mist);">No notes</em>'}</div>
+    </div>`).join('');
+}
+
+function obAddMeeting() {
+  if (!obSelectedOrg) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(28,43,74,.45);z-index:200;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:420px;max-width:92vw;padding:24px;box-shadow:0 8px 32px rgba(28,43,74,.2);" onclick="event.stopPropagation()">
+      <div style="font-size:15px;font-weight:600;margin-bottom:16px;">Log meeting</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Date</div>
+          <input type="date" id="ob-m-date" value="${new Date().toISOString().split('T')[0]}" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;width:100%;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Meeting type</div>
+          <select id="ob-m-type" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;width:100%;">
+            <option>Weekly check-in</option>
+            <option>Kick-off call</option>
+            <option>Training session</option>
+            <option>Go-live review</option>
+            <option>Trial review</option>
+            <option>Ad hoc support</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Notes</div>
+          <textarea id="ob-m-note" rows="4" placeholder="What was discussed, action items, follow-ups…" style="width:100%;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="this.closest('div[style]').parentElement.remove()" style="padding:9px 18px;border:0.5px solid var(--border);background:#fff;border-radius:8px;font-size:12px;cursor:pointer;">Cancel</button>
+        <button onclick="obSaveMeeting(this)" style="padding:9px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+
+function obSaveMeeting(btn) {
+  const date = document.getElementById('ob-m-date').value;
+  const type = document.getElementById('ob-m-type').value;
+  const note = document.getElementById('ob-m-note').value.trim();
+  if (!date) { showToast('Pick a date'); return; }
+  const data = obLoad(obSelectedOrg);
+  data.meetings = data.meetings || [];
+  data.meetings.push({ date: new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), type, note });
+  obSave(obSelectedOrg, data);
+  btn.closest('div[style*="position:fixed"]').remove();
+  obRenderMeetings(data);
+  showToast('✓ Meeting logged');
+}
+
+function obDeleteMeeting(idx) {
+  if (!obSelectedOrg) return;
+  const data = obLoad(obSelectedOrg);
+  data.meetings.splice(idx, 1);
+  obSave(obSelectedOrg, data);
+  obRenderMeetings(data);
+}
+
+function obRenderTickets(data) {
+  const el = document.getElementById('ob-tickets');
+  if (!el) return;
+  const tickets = data.tickets || [];
+  if (!tickets.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--mist);padding:8px 0;">No tickets yet.</div>';
+    return;
+  }
+  el.innerHTML = tickets.map((t, i) => `
+    <div class="ob-ticket">
+      <div class="ob-ticket-status status-${t.status}" title="${t.status}"></div>
+      <div>
+        <div style="font-weight:500;">${t.title}</div>
+        <div style="font-size:10px;color:var(--mist);">${t.date}${t.note ? ' · ' + t.note : ''}</div>
+      </div>
+      <div>
+        <select onchange="obUpdateTicketStatus(${i},this.value)" style="font-size:10px;padding:3px 6px;border:0.5px solid var(--border);border-radius:5px;font-family:inherit;">
+          <option value="open" ${t.status==='open'?'selected':''}>Open</option>
+          <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+          <option value="resolved" ${t.status==='resolved'?'selected':''}>Resolved</option>
+        </select>
+      </div>
+      <button onclick="obDeleteTicket(${i})" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--mist);">✕</button>
+    </div>`).join('');
+}
+
+function obAddTicket() {
+  if (!obSelectedOrg) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(28,43,74,.45);z-index:200;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;width:400px;max-width:92vw;padding:24px;box-shadow:0 8px 32px rgba(28,43,74,.2);" onclick="event.stopPropagation()">
+      <div style="font-size:15px;font-weight:600;margin-bottom:16px;">New support ticket</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Subject</div>
+          <input type="text" id="ob-t-title" placeholder="e.g. Can't log in, data import issue…" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;width:100%;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Notes</div>
+          <textarea id="ob-t-note" rows="3" placeholder="Details, steps to reproduce, resolution notes…" style="width:100%;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="this.closest('div[style]').parentElement.remove()" style="padding:9px 18px;border:0.5px solid var(--border);background:#fff;border-radius:8px;font-size:12px;cursor:pointer;">Cancel</button>
+        <button onclick="obSaveTicket(this)" style="padding:9px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Create ticket</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+
+function obSaveTicket(btn) {
+  const title = document.getElementById('ob-t-title').value.trim();
+  if (!title) { showToast('Enter a subject'); return; }
+  const note = document.getElementById('ob-t-note').value.trim();
+  const data = obLoad(obSelectedOrg);
+  data.tickets = data.tickets || [];
+  data.tickets.unshift({
+    title, note, status: 'open',
+    date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})
+  });
+  obSave(obSelectedOrg, data);
+  btn.closest('div[style*="position:fixed"]').remove();
+  obRenderTickets(data);
+  showToast('✓ Ticket created');
+}
+
+function obUpdateTicketStatus(idx, status) {
+  if (!obSelectedOrg) return;
+  const data = obLoad(obSelectedOrg);
+  if (data.tickets[idx]) data.tickets[idx].status = status;
+  obSave(obSelectedOrg, data);
+  obRenderTickets(data);
+}
+
+function obDeleteTicket(idx) {
+  if (!obSelectedOrg) return;
+  const data = obLoad(obSelectedOrg);
+  data.tickets.splice(idx, 1);
+  obSave(obSelectedOrg, data);
+  obRenderTickets(data);
+}
+
+function obAdvancePhase() {
+  if (!obSelectedOrg) return;
+  const data = obLoad(obSelectedOrg);
+  const idx = OB_PHASES.indexOf(data.phase);
+  if (idx >= OB_PHASES.length - 1) { showToast('Already in final phase'); return; }
+  const next = OB_PHASES[idx + 1];
+  if (!confirm('Move ' + ALL_ORGS.find(o=>o.id===obSelectedOrg)?.name + ' to "' + obPhaseLabel(next) + '"?')) return;
+  data.phase = next;
+  // Auto-set trial start if advancing to trial
+  if (next === 'trial' && !data.trialStart) {
+    data.trialStart = new Date().toISOString().split('T')[0];
+    document.getElementById('ob-trial-start').value = data.trialStart;
+    obUpdateTrialDates(data.trialStart);
+  }
+  obSave(obSelectedOrg, data);
+  obSwitchPhase(next);
+  renderOnboardingTab();
+  const org = ALL_ORGS.find(o => o.id === obSelectedOrg);
+  document.getElementById('ob-detail-sub').textContent =
+    (data.acctRep ? 'Account rep: ' + data.acctRep + ' · ' : '') + tierLabel(org?.tier) + ' · Phase: ' + obPhaseLabel(next);
+  showToast('✓ Moved to ' + obPhaseLabel(next));
 }
 
 // ── Toast ─────────────────────────────────────────────────────
