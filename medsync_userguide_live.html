@@ -2014,25 +2014,20 @@ function buildSandboxToc(role) {
     {
       id: 'toc-staff-section', label: 'Staff Guide',
       links: [
-        { anchor: 'staff-overview',  label: 'Overview & Roles' },
-        { anchor: 'staff-dashboard', label: 'Your Dashboard' },
         { anchor: 'staff-cycle',     label: 'Cycle Count' },
         { anchor: 'staff-receiving', label: 'Receiving' },
         { anchor: 'staff-order',     label: 'Weekly Order' },
         { anchor: 'staff-goods',     label: 'Goods Lost' },
-        { anchor: 'staff-tips',      label: 'Tips & Best Practices' },
       ]
     },
     {
       id: 'toc-admin-section', label: 'Admin Guide',
       links: [
-        { anchor: 'admin-overview',   label: 'Overview' },
         { anchor: 'admin-portfolio',  label: 'Portfolio Dashboard' },
         { anchor: 'admin-analytics',  label: 'Analytics & Reports' },
         { anchor: 'admin-lifecycle',  label: 'Lot Lifecycle' },
         { anchor: 'admin-procurement',label: 'Procurement' },
         { anchor: 'admin-actlog',     label: 'Activity Log' },
-        { anchor: 'admin-ops',        label: 'Operations Screens' },
         { anchor: 'admin-invoices',   label: 'Invoice Reconciliation' },
         { anchor: 'admin-users',      label: 'Managing Users' },
         { anchor: 'admin-locations',  label: 'New Location Setup' },
@@ -2044,10 +2039,7 @@ function buildSandboxToc(role) {
     {
       id: 'toc-medsync-section', label: 'MedSync Platform',
       links: [
-        { anchor: 'ms-overview',   label: 'Overview' },
-        { anchor: 'ms-provision',  label: 'Provisioning Orgs' },
-        { anchor: 'ms-support',    label: 'Support Workflows' },
-        { anchor: 'ms-billing',    label: 'Billing & Stripe' },
+        { anchor: 'ms-overview', label: 'Platform Admin' },
       ]
     },
   ];
@@ -2068,7 +2060,7 @@ function buildSandboxToc(role) {
 }
 
 function openSandbox(section) {
-  const firstAnchor = section === 'admin' ? 'admin-overview' : section === 'medsync' ? 'ms-overview' : 'staff-overview';
+  const firstAnchor = section === 'admin' ? 'admin-portfolio' : section === 'medsync' ? 'ms-overview' : 'staff-cycle';
   const page  = SECTION_PAGE_MAP[firstAnchor] || 'medsync_portfolio_live.html';
   const label = SANDBOX_LABELS[section] || 'MedSync';
   const role  = getUserInfo().role;
