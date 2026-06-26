@@ -58,7 +58,7 @@ hr.sb-div{border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;}
 .tb-home:hover{opacity:1;}
 .tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
 .tb-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.tb-title{font-size:15px;font-weight:500;flex-shrink:0;}
+.tb-title{font-size:15px;font-weight:600;color:#fff;flex-shrink:0;}
 .search-wrap{position:relative;display:flex;align-items:center;}
 .search-icon{position:absolute;left:9px;font-size:14px;color:var(--mist);pointer-events:none;}
 .search-wrap input{padding:5px 10px 5px 30px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);outline:none;width:200px;height:30px;}
@@ -359,8 +359,9 @@ if (window.self !== window.top) {
   <div class="main-area">
 
     <!-- TOPBAR -->
-    <div class="topbar"><div class="tb-left">
-        <div class="tb-title">Activity Log</div>
+    <div class="topbar">
+      <div class="tb-title" style="color:#fff;flex-shrink:0;">Activity Log</div>
+      <div class="tb-left">
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
           <input type="text" id="ev-search" placeholder="Search user, event, location…" oninput="renderTable()">
