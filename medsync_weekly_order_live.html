@@ -1040,7 +1040,8 @@ function renderQueueView() {
       <div class="sb-item" title="${tooltipText}" style="cursor:default;">
         <div class="sb-val" style="color:${availColor};font-weight:700;line-height:1.2;">${availVal}</div>
         ${estLine}
-        <div class="sb-label" style="display:flex;align-items:center;gap:5px;margin-top:3px;">
+        <div style="font-size:10px;color:var(--mist);margin-top:2px;">Vetspire totals (Paid + Due)</div>
+        <div class="sb-label" style="display:flex;align-items:center;gap:5px;margin-top:2px;">
           <select onchange="setCogsPeriod(this.value)" onclick="event.stopPropagation()"
             style="font-size:10px;border:none;background:transparent;color:var(--mist);cursor:pointer;padding:0;outline:none;font-family:inherit;">
             <option value="week"  ${isWeek?'selected':''}>Weekly budget</option>
