@@ -578,17 +578,13 @@ if (window.self !== window.top) {
         <!-- Procurement savings -->
         <div class="card">
           <div class="card-head">
-            <div class="card-title">Procurement savings — YTD</div>
-            <div class="card-sub">vs. list price baseline · all locations</div>
+            <div class="card-title" id="sav-title">Procurement savings</div>
+            <div class="card-sub">vs. list price · (list_price − unit_price) × qty</div>
           </div>
           <table>
             <thead><tr><th>Savings driver</th><th>Amount</th><th>Share</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>GPO discount capture</td><td style="font-weight:500;color:var(--green);" id="gpo-row-amt">$9,840</td><td>53%</td><td><span class="badge b-ok">On track</span></td></tr>
-              <tr><td>Vetcove best-price routing</td><td style="font-weight:500;color:var(--green);">$5,120</td><td>28%</td><td><span class="badge b-ok">On track</span></td></tr>
-              <tr><td>SKU optimization</td><td style="font-weight:500;color:var(--green);">$2,460</td><td>13%</td><td><span class="badge b-ok">On track</span></td></tr>
-              <tr><td>Order consolidation</td><td style="font-weight:500;color:var(--green);">$1,000</td><td>6%</td><td><span class="badge b-ok">On track</span></td></tr>
-              <tr style="background:#F8F7FB;"><td style="font-weight:600;">Total YTD</td><td style="font-weight:700;color:var(--green);" id="total-ytd-table">$18,420</td><td style="color:var(--mist);">$44K pace</td><td><span class="badge b-ok">↑ 12% vs prior yr</span></td></tr>
+            <tbody id="sav-tbody">
+              <tr><td colspan="4" style="color:var(--mist);font-size:12px;text-align:center;padding:16px;">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -969,10 +965,28 @@ async function loadData() {
 
     // ── 2. PO Items — procurement savings + compliance ───────
     const poItems = await query('po_items',
-      `select=qty_ordered,unit_price,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
+      `select=qty_ordered,unit_price,list_price,savings_category,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
     );
 
-    let totalSav = 0; // populated after live COGs computed below
+    // Calculate live procurement savings from (list_price - unit_price) × qty_ordered
+    const SAV_LABELS = {
+      'GPO':          'GPO discount capture',
+      'Vetcove':      'Vetcove best-price routing',
+      'SKU':          'SKU optimization',
+      'Consolidation':'Order consolidation'
+    };
+    const SAV_ORDER = ['GPO','Vetcove','SKU','Consolidation'];
+    const savByCategory = {};
+    poItems.forEach(i => {
+      const cat = i.savings_category;
+      if (!cat || i.list_price == null) return;
+      const saving = (Number(i.list_price) - Number(i.unit_price || 0)) * (Number(i.qty_ordered) || 1);
+      if (saving <= 0) return;
+      savByCategory[cat] = (savByCategory[cat] || 0) + saving;
+    });
+    const totalSav = Object.values(savByCategory).reduce((s, v) => s + v, 0);
+    renderSavingsTable(savByCategory, totalSav, from, to);
+
     var _el;
 
     // Order compliance — derive from po_items week coverage
@@ -1036,7 +1050,6 @@ async function loadData() {
       if (priorPct !== null && whRev > 0 && whPct !== null) {
         const delta      = priorPct - whPct;
         const dollarDelta = (delta / 100) * whRev;
-        totalSav = dollarDelta;
         if (ksav)  { ksav.textContent = (dollarDelta >= 0 ? '+' : '') + fmt$(dollarDelta); ksav.className = dollarDelta >= 0 ? 'kpi-v cg' : 'kpi-v cr'; }
         if (ksavs) ksavs.textContent = (delta >= 0 ? '↓ ' : '↑ ') + Math.abs(delta).toFixed(1) + '% COGs vs. prior period';
       } else {
@@ -1057,7 +1070,7 @@ async function loadData() {
     const compRate  = allOrders.length > 0 ? Math.round(onTimeAll / allOrders.length * 100) : 100;
 
     document.getElementById('ov-gl').textContent = fmt$(totalGL);
-    document.getElementById('ov-sav').textContent = totalSav !== 0 ? (totalSav >= 0 ? '+' : '') + fmt$(totalSav) : '—';
+    document.getElementById('ov-sav').textContent = totalSav > 0 ? '+' + fmt$(totalSav) : '—';
     document.getElementById('ov-comp').textContent = compRate + '%';
     document.getElementById('ov-lots').textContent = expiring.length + ' flagged';
 
@@ -1194,11 +1207,13 @@ async function renderCOGSBars(glRows, loc, _unused) {
       kcogsEl.textContent = '—'; kcogsEl.className = 'kpi-v cm';
     }
 
-    // Update overview revenue
+    // Update overview revenue + drug spend
     const ovRevEl = document.getElementById('ov-revenue');
     if (ovRevEl && totalRev > 0) {
       ovRevEl.textContent = totalRev >= 1000000 ? '$' + (totalRev/1000000).toFixed(2) + 'M' : '$' + (totalRev/1000).toFixed(0) + 'K';
     }
+    const ovDsEl = document.getElementById('ov-drug-spend');
+    if (ovDsEl) ovDsEl.textContent = totalSpend > 0 ? fmt$(totalSpend) : '—';
 
     // Update export cache COGs rows
     if (window._analyticsCache) {
@@ -1254,6 +1269,66 @@ function renderCompliance(orders, loc) {
       </div>`;
     }).join('');
   }
+}
+
+// ── Render procurement savings table ─────────────────────────
+function renderSavingsTable(savByCategory, totalSav, from, to) {
+  const tbody = document.getElementById('sav-tbody');
+  const titleEl = document.getElementById('sav-title');
+  if (!tbody) return;
+
+  // Update card title with period
+  if (titleEl) {
+    const fromLabel = from ? new Date(from + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
+    const toLabel   = to   ? new Date(to   + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
+    titleEl.textContent = 'Procurement savings' + (fromLabel ? ' — ' + fromLabel + (toLabel !== fromLabel ? ' – ' + toLabel : '') : '');
+  }
+
+  const SAV_ORDER = ['GPO','Vetcove','SKU','Consolidation'];
+  const SAV_LABELS = {
+    'GPO':          'GPO discount capture',
+    'Vetcove':      'Vetcove best-price routing',
+    'SKU':          'SKU optimization',
+    'Consolidation':'Order consolidation'
+  };
+
+  // Merge any unexpected categories
+  const allCats = [...new Set([...SAV_ORDER, ...Object.keys(savByCategory)])];
+  const rows = allCats.filter(cat => (savByCategory[cat] || 0) > 0 || SAV_ORDER.includes(cat));
+
+  if (totalSav === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--mist);font-size:12px;text-align:center;padding:16px;">
+      No savings data yet — set <code>list_price</code> and <code>savings_category</code> on PO items to track savings.
+    </td></tr>`;
+    return;
+  }
+
+  // Annual pace estimate (scale current period to 12 months)
+  let periodDays = 30;
+  try { periodDays = Math.max(1, (new Date(to) - new Date(from)) / 864e5 + 1); } catch(e) {}
+  const pace = totalSav / periodDays * 365;
+
+  tbody.innerHTML = rows.map(cat => {
+    const amt = savByCategory[cat] || 0;
+    const share = totalSav > 0 ? Math.round((amt / totalSav) * 100) : 0;
+    const badge = amt > 0 ? '<span class="badge b-ok">On track</span>' : '<span class="badge" style="background:#eee;color:#999;">No data</span>';
+    const color = amt > 0 ? 'font-weight:500;color:var(--green);' : 'color:var(--mist);';
+    const label = SAV_LABELS[cat] || cat;
+    return `<tr>
+      <td>${label}</td>
+      <td style="${color}">${amt > 0 ? fmt$(amt) : '—'}</td>
+      <td>${amt > 0 ? share + '%' : '—'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('') + `<tr style="background:#F8F7FB;">
+    <td style="font-weight:600;">Total</td>
+    <td style="font-weight:700;color:var(--green);">${fmt$(totalSav)}</td>
+    <td style="color:var(--mist);">${pace >= 1000 ? '$' + (pace/1000).toFixed(0) + 'K' : fmt$(pace)} pace/yr</td>
+    <td><span class="badge b-ok">↑ live</span></td>
+  </tr>`;
+
+  // Update export cache
+  if (window._analyticsCache) window._analyticsCache.totalSav = totalSav;
 }
 
 // ── Sidebar panel switcher ───────────────────────────────────
