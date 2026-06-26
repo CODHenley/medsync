@@ -359,7 +359,7 @@ if (window.self !== window.top) {
   });
 }
 </script>
-
+<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
 <body>
 
@@ -995,7 +995,7 @@ function alSelectProduct(el) {
 }
 
 let _skuStream = null;
-let _skuDetectInterval = null;
+let _skuReader = null;
 
 function openSkuScanner() {
   document.getElementById('sku-manual-input').value = '';
@@ -1024,33 +1024,15 @@ async function _startSkuCamera() {
     msg.style.display = 'none';
     aim.style.display = 'block';
 
-    if ('BarcodeDetector' in window) {
-      const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','data_matrix','qr_code'] });
-      _skuDetectInterval = setInterval(async () => {
-        if (video.readyState < 2) return;
-        try {
-          const barcodes = await detector.detect(video);
-          if (barcodes.length) {
-            clearInterval(_skuDetectInterval);
-            _skuDetectInterval = null;
-            const val = barcodes[0].rawValue;
-            _stopSkuCamera();
-            document.getElementById('sku-scanner-modal').classList.remove('open');
-            alSkuLookupVal(val);
-          }
-        } catch(_) {}
-      }, 350);
-    } else {
-      msgText.textContent = 'Auto-detect not supported in this browser — use manual entry below';
-      msg.style.display = 'flex';
-      msg.style.flexDirection = 'column';
-      msg.style.position = 'absolute';
-      msg.style.bottom = '10px';
-      msg.style.background = 'rgba(0,0,0,.6)';
-      msg.style.borderRadius = '6px';
-      msg.style.padding = '6px 12px';
-      msg.style.fontSize = '11px';
-    }
+    _skuReader = new ZXing.BrowserMultiFormatReader();
+    _skuReader.decodeFromStream(_skuStream, video, (result, err) => {
+      if (result) {
+        const val = result.getText();
+        _stopSkuCamera();
+        document.getElementById('sku-scanner-modal').classList.remove('open');
+        alSkuLookupVal(val);
+      }
+    });
   } catch(e) {
     video.style.display = 'none';
     msg.style.display = 'block';
@@ -1059,7 +1041,7 @@ async function _startSkuCamera() {
 }
 
 function _stopSkuCamera() {
-  if (_skuDetectInterval) { clearInterval(_skuDetectInterval); _skuDetectInterval = null; }
+  if (_skuReader) { try { _skuReader.reset(); } catch(_) {} _skuReader = null; }
   if (_skuStream) { _skuStream.getTracks().forEach(t => t.stop()); _skuStream = null; }
   const video = document.getElementById('sku-video');
   if (video) { video.srcObject = null; video.style.display = 'none'; }
