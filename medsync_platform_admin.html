@@ -2360,10 +2360,11 @@ function obRenderMeetings(data) {
     el.innerHTML = '<div style="font-size:11px;color:var(--mist);">No meetings logged yet.</div>';
     return;
   }
+  const PULSE_MAP = { Great:'😄', Good:'🙂', Neutral:'😐', Concerned:'😟', Frustrated:'😤' };
   el.innerHTML = [...data.meetings].reverse().map((m, i) => `
     <div class="ob-meeting">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div class="ob-meeting-date">${m.date}${m.type ? ' · ' + m.type : ''}</div>
+        <div class="ob-meeting-date">${m.date}${m.type ? ' · ' + m.type : ''}${m.pulse ? ' <span title="Team pulse: ' + m.pulse + '" style="font-size:15px;vertical-align:middle;">' + PULSE_MAP[m.pulse] + '</span>' : ''}</div>
         <button onclick="obDeleteMeeting(${data.meetings.length-1-i})" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--mist);">✕</button>
       </div>
       <div class="ob-meeting-note">${m.note || '<em style="color:var(--mist);">No notes</em>'}</div>
@@ -2394,6 +2395,17 @@ function obAddMeeting() {
           </select>
         </div>
         <div>
+          <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Team pulse check</div>
+          <div style="display:flex;gap:8px;">
+            ${[['😄','Great'],['🙂','Good'],['😐','Neutral'],['😟','Concerned'],['😤','Frustrated']].map(([emoji,label]) =>
+              `<label style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border:0.5px solid var(--border);border-radius:9px;cursor:pointer;font-size:10px;color:var(--mist);transition:all .12s;" id="ob-pulse-lbl-${label}" onclick="obSelectPulse('${label}')">
+                <input type="radio" name="ob-m-pulse" id="ob-m-pulse-${label}" value="${label}" style="display:none;">
+                <span style="font-size:22px;line-height:1;">${emoji}</span>
+                <span>${label}</span>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div>
           <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Notes</div>
           <textarea id="ob-m-note" rows="4" placeholder="What was discussed, action items, follow-ups…" style="width:100%;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;"></textarea>
         </div>
@@ -2407,14 +2419,29 @@ function obAddMeeting() {
   document.body.appendChild(overlay);
 }
 
+function obSelectPulse(label) {
+  document.getElementById('ob-m-pulse-' + label).checked = true;
+  ['Great','Good','Neutral','Concerned','Frustrated'].forEach(l => {
+    const lbl = document.getElementById('ob-pulse-lbl-' + l);
+    if (!lbl) return;
+    if (l === label) {
+      lbl.style.background = '#F0EEF8'; lbl.style.borderColor = 'var(--navy)'; lbl.style.color = 'var(--navy)';
+    } else {
+      lbl.style.background = ''; lbl.style.borderColor = 'var(--border)'; lbl.style.color = 'var(--mist)';
+    }
+  });
+}
+
 function obSaveMeeting(btn) {
   const date = document.getElementById('ob-m-date').value;
   const type = document.getElementById('ob-m-type').value;
   const note = document.getElementById('ob-m-note').value.trim();
+  const pulseEl = document.querySelector('input[name="ob-m-pulse"]:checked');
+  const pulse = pulseEl ? pulseEl.value : null;
   if (!date) { showToast('Pick a date'); return; }
   const data = obLoad(obSelectedOrg);
   data.meetings = data.meetings || [];
-  data.meetings.push({ date: new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), type, note });
+  data.meetings.push({ date: new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), type, note, pulse });
   obSave(obSelectedOrg, data);
   btn.closest('div[style*="position:fixed"]').remove();
   obRenderMeetings(data);
