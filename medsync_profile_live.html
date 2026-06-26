@@ -377,10 +377,20 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
 function getUserInfo() {
-  try {
-    const s = localStorage.getItem('medsync_session');
-    if (s) return JSON.parse(s);
-  } catch(e) {}
+  // Try medsync_user first (used by portfolio/main app), then medsync_session fallback
+  for (const store of [localStorage, sessionStorage]) {
+    for (const key of ['medsync_user', 'medsync_session']) {
+      try {
+        const raw = store.getItem(key);
+        if (raw) {
+          const u = JSON.parse(raw);
+          // Normalize: full_name → name
+          if (u.full_name && !u.name) u.name = u.full_name;
+          if (u.name || u.email) return u;
+        }
+      } catch(e) {}
+    }
+  }
   return { name: 'MedSync User', role: 'staff', email: '', locationId: '', locationName: '' };
 }
 
@@ -444,7 +454,7 @@ async function loadProfile() {
   const userId = user.email || user.id || user.name || '';
   const name = user.name || user.full_name || 'MedSync User';
   const role = user.role || 'staff';
-  const locationName = user.locationName || user.location || '';
+  const locationName = user.locationName || user.location_name || user.location || '';
 
   // Set basic nav info from session
   document.getElementById('pf-display-name').textContent = name;
