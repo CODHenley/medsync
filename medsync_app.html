@@ -6,6 +6,7 @@
 <title>MedSync — Scout Veterinary</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="medsync_locations.js"></script>
 <script>
 // These run synchronously before body renders
 var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cyclecount','users','settings','regions','newlocation'];
@@ -882,20 +883,6 @@ function getDateRange(dr) {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-// ── Location ID map ──────────────────────────────────────────
-const LOC_IDS = {
-  lp: '11111111-0000-0000-0000-000000000001',
-  oo: '11111111-0000-0000-0000-000000000002',
-  wl: '11111111-0000-0000-0000-000000000003',
-  wh: '11111111-0000-0000-0000-000000000004'
-};
-const LOC_NAMES = {
-  '11111111-0000-0000-0000-000000000001': 'Lincoln Park',
-  '11111111-0000-0000-0000-000000000002': 'Old Orchard',
-  '11111111-0000-0000-0000-000000000003': 'West Loop',
-  '11111111-0000-0000-0000-000000000004': 'Wheaton'
-};
-
 // ── GL Category colors ───────────────────────────────────────
 const GL_COLORS = {
   'Diagnostic duplicate': '#6B4FBB',
@@ -1053,12 +1040,7 @@ function renderCOGSBars(glRows, loc) {
 
 // ── Render order compliance ───────────────────────────────────
 function renderCompliance(orders, loc) {
-  const locs = [
-    { id:'11111111-0000-0000-0000-000000000001', name:'Lincoln Park' },
-    { id:'11111111-0000-0000-0000-000000000002', name:'Old Orchard'  },
-    { id:'11111111-0000-0000-0000-000000000003', name:'West Loop'    },
-    { id:'11111111-0000-0000-0000-000000000004', name:'Wheaton'      }
-  ];
+  const locs = LOCS.map(l => ({ id: l.uuid, name: l.name }));
   const filtered = loc === 'all' ? locs : locs.filter(l => l.id === LOC_IDS[loc]);
   // Compliance table
   const tbody = document.getElementById('comp-tbody');
