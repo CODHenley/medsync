@@ -1071,7 +1071,7 @@ async function alSkuLookupVal(raw) {
     for (const cval of candidates) {
       if (rows.length) break;
       const ndcRes = await fetch(
-        SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_id.eq.' + encodeURIComponent(cval) + ')&limit=1',
+        SUPA_URL + '/rest/v1/products?select=id,name,vendor,ndc&or=(ndc.eq.' + encodeURIComponent(cval) + ',vetspire_product_id.eq.' + encodeURIComponent(cval) + ')&limit=1',
         { headers: H }
       );
       rows = await ndcRes.json();
