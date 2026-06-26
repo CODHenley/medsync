@@ -134,6 +134,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);min-height:100vh;disp
     </div>
 </div>
 <div id="toast"></div>
+
+<!-- Profile incomplete alert -->
+<div id="profile-alert-overlay" style="display:none;position:fixed;inset:0;background:rgba(28,43,74,.55);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 8px 40px rgba(28,43,74,.18);">
+    <div style="background:var(--navy);padding:20px 24px 16px;">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Profile Setup</div>
+      <div style="font-size:17px;font-weight:500;color:#fff;">Your profile is incomplete</div>
+    </div>
+    <div style="padding:20px 24px;">
+      <p style="font-size:13px;color:#4A5568;line-height:1.6;margin-bottom:8px;">Please complete your profile so your teammates can see who you are — add your contact info, a photo, and a fun statement.</p>
+      <ul id="profile-missing-list" style="font-size:12px;color:var(--red);margin:10px 0 18px 16px;line-height:1.8;"></ul>
+      <div style="display:flex;gap:10px;">
+        <button onclick="goToProfile()" style="flex:1;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Complete My Profile</button>
+        <button onclick="dismissProfileAlert()" style="padding:10px 16px;background:#F5F3FA;color:var(--navy);border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;">Later</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
@@ -241,6 +259,26 @@ async function signIn() {
     store.setItem('medsync_user', JSON.stringify(stored));
     saveRecentLogin(email, stored.full_name, stored.role);
     showToast('✓ Welcome back, ' + stored.full_name.split(' ')[0] + '!');
+
+    // Check if profile is complete
+    try {
+      const pRes = await fetch(SUPA_URL + '/rest/v1/user_profiles?select=first_name,last_name,phone,bio&user_id=eq.' + encodeURIComponent(email), {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token }
+      });
+      const profiles = await pRes.json();
+      const p = (profiles && profiles[0]) || {};
+      const missing = [];
+      if (!p.first_name || !p.last_name) missing.push('First and last name');
+      if (!p.phone) missing.push('Phone number');
+      if (!p.bio) missing.push('Fun statement / bio');
+      if (missing.length) {
+        const list = document.getElementById('profile-missing-list');
+        list.innerHTML = missing.map(m => `<li>${m}</li>`).join('');
+        document.getElementById('profile-alert-overlay').style.display = 'flex';
+        return; // don't auto-redirect; buttons handle navigation
+      }
+    } catch(e) { /* non-blocking — proceed on error */ }
+
     setTimeout(() => { window.location.replace('medsync_portfolio_live.html'); }, 600);
 
   } catch(err) {
@@ -299,6 +337,14 @@ async function forgotPassword() {
     body: JSON.stringify({ email, redirectTo: window.location.href.split('?')[0].split('#')[0] })
   });
   showToast('✓ Check your email for a reset link');
+}
+
+function goToProfile() {
+  window.location.replace('medsync_profile_live.html');
+}
+function dismissProfileAlert() {
+  document.getElementById('profile-alert-overlay').style.display = 'none';
+  window.location.replace('medsync_portfolio_live.html');
 }
 
 let toastT = null;
