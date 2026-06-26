@@ -232,9 +232,15 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
     </div>
     <div class="card-body">
       <div id="msg" class="msg"></div>
-      <div class="field">
-        <label>Full name</label>
-        <input id="new-name" type="text" placeholder="First name Last name…">
+      <div style="display:flex;gap:12px;">
+        <div class="field" style="flex:1;">
+          <label>First name</label>
+          <input id="new-first" type="text" placeholder="First name">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Last name</label>
+          <input id="new-last" type="text" placeholder="Last name">
+        </div>
       </div>
       <div class="field">
         <label>Email</label>
@@ -642,13 +648,15 @@ async function sendWelcomeEmail(name, email, pass, role) {
 }
 
 async function createUser() {
-  const name  = document.getElementById('new-name').value.trim();
+  const firstName = document.getElementById('new-first').value.trim();
+  const lastName  = document.getElementById('new-last').value.trim();
+  const name  = [firstName, lastName].filter(Boolean).join(' ');
   const email = document.getElementById('new-email').value.trim();
   const pass  = document.getElementById('new-pass').value.trim();
   const role  = document.getElementById('new-role').value;
   const scopeData = getSelectedScope();
 
-  if (!name || !email || !pass) { showMsg('Please fill in all fields.', 'error'); return; }
+  if (!firstName || !lastName || !email || !pass) { showMsg('Please fill in all fields.', 'error'); return; }
 
   try {
     const signRes = await fetch(SUPA_URL + '/auth/v1/signup', {
@@ -687,7 +695,8 @@ async function createUser() {
 
     const emailSent = await sendWelcomeEmail(name, email, pass, role);
     showMsg(name + ' created as ' + (ROLE_LABELS[role] || role) + (emailSent ? '. Welcome email sent.' : '. (Welcome email could not be sent.)'), emailSent ? 'success' : 'warning');
-    document.getElementById('new-name').value = '';
+    document.getElementById('new-first').value = '';
+    document.getElementById('new-last').value = '';
     document.getElementById('new-email').value = '';
     document.getElementById('new-pass').value = 'MedSync2026!';
     await loadUsers();
