@@ -400,8 +400,8 @@
   .sandbox-guide-body {
     flex: 1; overflow-y: auto; padding: 18px;
   }
-  .sandbox-guide-body .sop-body { padding: 0; }
-  .sandbox-guide-body .quiz-footer { padding: 14px 0 0; }
+  .stoc-link:hover { background: var(--bg) !important; color: var(--navy) !important; }
+  .stoc-link.stoc-active { background: var(--navy) !important; color: var(--white) !important; font-weight: 600; }
   /* Resize handle */
   .sandbox-resize {
     width: 6px; background: var(--border); cursor: col-resize; flex-shrink: 0;
@@ -1962,34 +1962,127 @@ function goBack() {
 }
 
 // ── Sandbox ────────────────────────────────────────────────────────
-const SANDBOX_PAGES = {
-  staff:   'medsync_cycle_count_live.html',
-  admin:   'medsync_portfolio_live.html',
-  medsync: 'medsync_platform_admin.html',
+// Maps each TOC anchor to the MedSync screen to show in the iframe
+const SECTION_PAGE_MAP = {
+  'staff-overview':  'medsync_cycle_count_live.html',
+  'staff-dashboard': 'medsync_cycle_count_live.html',
+  'staff-cycle':     'medsync_cycle_count_live.html',
+  'staff-receiving': 'medsync_hospital_receiver_live.html',
+  'staff-order':     'medsync_weekly_order_live.html',
+  'staff-goods':     'medsync_goods_lost_live.html',
+  'staff-tips':      'medsync_cycle_count_live.html',
+  'admin-overview':  'medsync_portfolio_live.html',
+  'admin-portfolio': 'medsync_portfolio_live.html',
+  'admin-analytics': 'medsync_analytics_live.html',
+  'admin-lifecycle': 'medsync_lot_lifecycle_live.html',
+  'admin-procurement':'medsync_weekly_order_live.html',
+  'admin-actlog':    'medsync_activity_log_live.html',
+  'admin-ops':       'medsync_weekly_order_live.html',
+  'admin-invoices':  'medsync_invoice_reconcile_live.html',
+  'admin-users':     'medsync_users_live.html',
+  'admin-locations': 'medsync_newlocation_live.html',
+  'admin-regions':   'medsync_regions_live.html',
+  'admin-settings':  'medsync_settings_live.html',
+  'admin-training':  'medsync_portfolio_live.html',
+  'ms-overview':     'medsync_platform_admin.html',
+  'ms-provision':    'medsync_platform_admin.html',
+  'ms-support':      'medsync_platform_admin.html',
+  'ms-billing':      'medsync_platform_admin.html',
 };
+
 const SANDBOX_LABELS = {
   staff:   'Staff Operations',
   admin:   'Practice Admin',
   medsync: 'MedSync Platform',
 };
 
-function openSandbox(section) {
-  const page  = SANDBOX_PAGES[section] || 'medsync_portfolio_live.html';
-  const label = SANDBOX_LABELS[section] || 'MedSync';
+function setSandboxPage(anchorId) {
+  const page = SECTION_PAGE_MAP[anchorId];
+  if (!page) return;
+  const iframe = document.getElementById('sandbox-iframe');
+  if (iframe.src.endsWith(page)) return; // already showing it
+  iframe.src = page;
+  // Highlight active link in sandbox TOC
+  document.querySelectorAll('#sandbox-toc .stoc-link').forEach(l => {
+    l.classList.toggle('stoc-active', l.dataset.anchor === anchorId);
+  });
+}
 
-  // Clone the SOP body for the guide panel
-  const sopCard = document.getElementById(section + '-overview')?.closest('.sop-card');
-  const guidePanel = document.getElementById('sandbox-guide-body');
-  if (sopCard && guidePanel) {
-    guidePanel.innerHTML = sopCard.querySelector('.sop-body')?.innerHTML || '';
-    // Remove nested sandbox/quiz buttons from the cloned panel to keep it clean
-    guidePanel.querySelectorAll('.sandbox-btn,.quiz-btn').forEach(b => b.remove());
+function buildSandboxToc(role) {
+  const allowed = ROLE_SECTIONS[role] || ROLE_SECTIONS['staff'];
+  const sections = [
+    {
+      id: 'toc-staff-section', label: 'Staff Guide',
+      links: [
+        { anchor: 'staff-overview',  label: 'Overview & Roles' },
+        { anchor: 'staff-dashboard', label: 'Your Dashboard' },
+        { anchor: 'staff-cycle',     label: 'Cycle Count' },
+        { anchor: 'staff-receiving', label: 'Receiving' },
+        { anchor: 'staff-order',     label: 'Weekly Order' },
+        { anchor: 'staff-goods',     label: 'Goods Lost' },
+        { anchor: 'staff-tips',      label: 'Tips & Best Practices' },
+      ]
+    },
+    {
+      id: 'toc-admin-section', label: 'Admin Guide',
+      links: [
+        { anchor: 'admin-overview',   label: 'Overview' },
+        { anchor: 'admin-portfolio',  label: 'Portfolio Dashboard' },
+        { anchor: 'admin-analytics',  label: 'Analytics & Reports' },
+        { anchor: 'admin-lifecycle',  label: 'Lot Lifecycle' },
+        { anchor: 'admin-procurement',label: 'Procurement' },
+        { anchor: 'admin-actlog',     label: 'Activity Log' },
+        { anchor: 'admin-ops',        label: 'Operations Screens' },
+        { anchor: 'admin-invoices',   label: 'Invoice Reconciliation' },
+        { anchor: 'admin-users',      label: 'Managing Users' },
+        { anchor: 'admin-locations',  label: 'New Location Setup' },
+        { anchor: 'admin-regions',    label: 'Manage Regions' },
+        { anchor: 'admin-settings',   label: 'Settings' },
+        { anchor: 'admin-training',   label: 'Training Log' },
+      ]
+    },
+    {
+      id: 'toc-medsync-section', label: 'MedSync Platform',
+      links: [
+        { anchor: 'ms-overview',   label: 'Overview' },
+        { anchor: 'ms-provision',  label: 'Provisioning Orgs' },
+        { anchor: 'ms-support',    label: 'Support Workflows' },
+        { anchor: 'ms-billing',    label: 'Billing & Stripe' },
+      ]
+    },
+  ];
+
+  let html = '';
+  for (const sec of sections) {
+    if (!allowed.includes(sec.id)) continue;
+    html += `<div style="margin-bottom:20px;">
+      <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${sec.label}</div>`;
+    for (const lnk of sec.links) {
+      html += `<a class="stoc-link" data-anchor="${lnk.anchor}"
+        style="display:block;font-size:13px;color:var(--muted);text-decoration:none;padding:5px 8px;border-radius:6px;margin-bottom:2px;cursor:pointer;"
+        onclick="setSandboxPage('${lnk.anchor}')">${lnk.label}</a>`;
+    }
+    html += '</div>';
   }
+  document.getElementById('sandbox-toc').innerHTML = html;
+}
+
+function openSandbox(section) {
+  const firstAnchor = section === 'admin' ? 'admin-overview' : section === 'medsync' ? 'ms-overview' : 'staff-overview';
+  const page  = SECTION_PAGE_MAP[firstAnchor] || 'medsync_portfolio_live.html';
+  const label = SANDBOX_LABELS[section] || 'MedSync';
+  const role  = getUserInfo().role;
+
+  buildSandboxToc(role);
 
   document.getElementById('sandbox-section-title').textContent = label + ' — Practice Mode';
   document.getElementById('sandbox-iframe').src = page;
   document.getElementById('sandbox-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+
+  // Highlight the first link for this section
+  setTimeout(() => setSandboxPage(firstAnchor), 50);
+
   initSandboxResize();
 }
 
@@ -2051,7 +2144,7 @@ init();
         <span class="sandbox-guide-header-title">📖 Guide</span>
         <button class="sandbox-guide-toggle" onclick="document.getElementById('sandbox-guide-panel').style.display='none'">Hide</button>
       </div>
-      <div class="sandbox-guide-body" id="sandbox-guide-body"></div>
+      <div class="sandbox-guide-body" id="sandbox-toc"></div>
     </div>
   </div>
 </div>
