@@ -300,7 +300,7 @@ select.nav-sel option{background:var(--navy);}
     </div>
   </div>
 </div>
-
+<script src="medsync_locations.js"></script>
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
@@ -811,7 +811,7 @@ async function completeSession() {
       try {
         const expParts = (line.expDate||"").split("/");
         const expDate = expParts.length===2 ? expParts[1]+"-"+expParts[0].padStart(2,"0")+"-01" : null;
-        await fetch(SUPA_URL+"/rest/v1/vetspire_writeback_queue",{method:"POST",headers:{...H,"Prefer":"return=minimal"},body:JSON.stringify({vetspire_product_id:String(line.vetspireProductId||""),vetspire_location_id:String(state.vetspireLocationId||"28253"),lot_number:line.lotNum,expiration_date:expDate,quantity_change:parseFloat(line.qtyOrdered)||0,unit_cost:line.unitCost?parseFloat(line.unitCost):null,po_reference:state.selectedOrder?state.selectedOrder.ref:null,status:"pending"})});
+        await fetch(SUPA_URL+"/rest/v1/vetspire_writeback_queue",{method:"POST",headers:{...H,"Prefer":"return=minimal"},body:JSON.stringify({vetspire_product_id:String(line.vetspireProductId||""),vetspire_location_id:String(state.vetspireLocationId||WHEATON_VID),lot_number:line.lotNum,expiration_date:expDate,quantity_change:parseFloat(line.qtyOrdered)||0,unit_cost:line.unitCost?parseFloat(line.unitCost):null,po_reference:state.selectedOrder?state.selectedOrder.ref:null,status:"pending"})});
       } catch(e) { console.warn("Writeback queue error:",e); }
     }
 

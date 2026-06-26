@@ -321,7 +321,7 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 </div>
 
 <div id="toast"></div>
-
+<script src="medsync_locations.js"></script>
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
@@ -389,7 +389,6 @@ async function loadCogsBudget() {
   state.estMonthLabel = '';
   if (!state.locationId) return;
   await _loadExternalSpend();
-  const VID_MAP = { 'Lincoln Park': '23083', 'Old Orchard': '27390', 'West Loop': '24356', 'Wheaton': '28253' };
   const vid = VID_MAP[state.locationName];
   if (!vid) return;
   try {
