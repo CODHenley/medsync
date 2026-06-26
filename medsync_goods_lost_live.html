@@ -9,19 +9,19 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --navy:#1C2B4A;--gold:#C8922A;--gold-light:#E8B84B;
-  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
   --bg:#fff;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;
   --amber:#a0700a;--amber-bg:#fdefc7;
   --red:#a33030;--red-bg:#fde0d0;
-  --purple:#534AB7;--purple-bg:#EEEDFE;
+  --purple:#534AB7;--purple-bg:#E4DAF2;
 }
 body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;height:100%;overflow:hidden;margin:0;padding:0;margin:0!important;padding:0!important;}
-.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;}
+.topbar{background:var(--navy);border-bottom:none;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;}
 .tb-home{display:flex;align-items:center;gap:7px;cursor:pointer;opacity:.8;flex-shrink:0;margin-right:4px;}
 .tb-home:hover{opacity:1;}
 .tb-home-label{font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em;}
-.tb-title{font-size:15px;font-weight:500;}
+.tb-title{font-size:15px;font-weight:500;color:#fff;}
 .tb-sub{font-size:12px;color:var(--mist);margin-top:2px;}
 .content{max-width:680px;margin:0 auto;padding:24px 20px;display:flex;flex-direction:column;gap:16px;}
 
@@ -30,7 +30,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .step{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mist);font-weight:500;}
 .step.active{color:var(--navy);}
 .step.done{color:var(--green);}
-.step-num{width:20px;height:20px;border-radius:50%;background:#E4E0F0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--mist);}
+.step-num{width:20px;height:20px;border-radius:50%;background:#D8D0EC;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--mist);}
 .step.active .step-num{background:var(--navy);color:#fff;}
 .step.done .step-num{background:var(--green);color:#fff;}
 .step-line{flex:1;height:1px;background:var(--border);margin:0 8px;}
@@ -50,12 +50,12 @@ textarea{resize:vertical;min-height:72px;}
 .pill-grid{display:flex;flex-wrap:wrap;gap:6px;}
 .pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--slate);transition:all .1s;}
 .pill.active{background:var(--navy);color:#fff;border-color:var(--navy);}
-.pill:hover:not(.active){background:#F0EEF8;}
+.pill:hover:not(.active){background:#E8E2F6;}
 
 /* Sub-category cards */
 .sub-grid{display:flex;flex-direction:column;gap:6px;}
 .sub-card{padding:12px 14px;border:0.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all .1s;}
-.sub-card.active{border-color:var(--navy);background:#F8F7FC;}
+.sub-card.active{border-color:var(--navy);background:#F0EBF8;}
 .sub-card:hover:not(.active){background:#FAFAF8;}
 .sub-card-title{font-size:12px;font-weight:500;}
 .sub-card-desc{font-size:11px;color:var(--mist);margin-top:2px;}
@@ -63,12 +63,12 @@ textarea{resize:vertical;min-height:72px;}
 /* Qty control */
 .qty-row{display:flex;align-items:center;gap:12px;}
 .qty-btn{width:32px;height:32px;border-radius:50%;border:0.5px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:500;}
-.qty-btn:hover{background:#F0EEF8;}
+.qty-btn:hover{background:#E8E2F6;}
 .qty-val{font-size:18px;font-weight:500;min-width:28px;text-align:center;}
 .qty-unit{font-size:12px;color:var(--mist);}
 
 /* Value display */
-.value-row{background:#F0EEF8;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;}
+.value-row{background:#E8E2F6;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;}
 .value-label{font-size:11px;color:var(--slate);}
 .value-amt{font-size:16px;font-weight:600;color:var(--red);}
 
@@ -82,7 +82,7 @@ textarea{resize:vertical;min-height:72px;}
 .btn-primary:hover{background:#243459;}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
 .btn-secondary{padding:10px 24px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.btn-secondary:hover{background:#F0EEF8;}
+.btn-secondary:hover{background:#E8E2F6;}
 .btn-row{display:flex;gap:8px;}
 
 /* GL% alert banner */
@@ -97,7 +97,7 @@ textarea{resize:vertical;min-height:72px;}
 .history-head{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 .history-title{font-size:12px;font-weight:600;}
 .history-total{font-size:12px;font-weight:500;color:var(--red);}
-.history-row{padding:10px 16px;border-bottom:0.5px solid #F5F3FA;display:flex;align-items:center;justify-content:space-between;}
+.history-row{padding:10px 16px;border-bottom:0.5px solid #EDE8F8;display:flex;align-items:center;justify-content:space-between;}
 .history-row:last-child{border-bottom:none;}
 .hr-left{}
 .hr-prod{font-size:12px;font-weight:500;}
@@ -270,8 +270,8 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
     <select id="loc-select" onchange="onLocChange()" style="width:160px;">
       <option value="">Select location…</option>
     </select>
-    <button onclick="exportGLCSV()" style="padding:5px 11px;border:0.5px solid #DDD9EC;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;color:#1C2B4A;font-family:'DM Sans',sans-serif;">↓ CSV</button>
-    <button onclick="exportGLPDF()" style="padding:5px 11px;border:0.5px solid #DDD9EC;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;color:#1C2B4A;font-family:'DM Sans',sans-serif;">↓ PDF</button>
+    <button onclick="exportGLCSV()" style="padding:5px 11px;border:0.5px solid #B8B0D0;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;color:#1C2B4A;font-family:'DM Sans',sans-serif;">↓ CSV</button>
+    <button onclick="exportGLPDF()" style="padding:5px 11px;border:0.5px solid #B8B0D0;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;color:#1C2B4A;font-family:'DM Sans',sans-serif;">↓ PDF</button>
   </div>
 </div>
 
@@ -761,8 +761,8 @@ function printGLReturn(r) {
     .sub{font-size:11px;color:#888;margin-bottom:20px;}
     h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#4A5568;margin:20px 0 6px;}
     table{width:100%;border-collapse:collapse;margin:4px 0 12px;}
-    td{padding:6px 8px;border:0.5px solid #DDD9EC;font-size:11px;}
-    td:first-child{font-weight:600;width:38%;background:#F8F7FC;}
+    td{padding:6px 8px;border:0.5px solid #B8B0D0;font-size:11px;}
+    td:first-child{font-weight:600;width:38%;background:#F0EBF8;}
     .contact-box{background:#E1F5EE;border:0.5px solid #A0D4C0;border-radius:6px;padding:10px 14px;margin:6px 0 12px;font-size:12px;}
     ul{margin:4px 0 12px;padding-left:18px;}li{font-size:11px;margin-bottom:4px;}
     .sig{margin-top:40px;display:flex;gap:40px;}

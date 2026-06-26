@@ -6,7 +6,7 @@
 <title>MedSync · Manage Regions</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#DDD9EC;--bg:#F5F3FA;}
+:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#B8B0D0;--bg:#EDE8F8;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -33,15 +33,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .region-count{font-size:11px;color:var(--mist);}
 .region-actions{display:flex;gap:6px;flex-shrink:0;}
 .loc-list{padding:10px 0;}
-.loc-item{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:0.5px solid #F8F7FC;gap:8px;}
+.loc-item{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:0.5px solid #F0EBF8;gap:8px;}
 .loc-item:last-child{border-bottom:none;}
 .loc-name{font-size:12px;font-weight:500;}
 .loc-sub{font-size:10px;color:var(--mist);margin-top:1px;}
-.move-btn{font-size:10px;padding:3px 8px;border:0.5px solid var(--border);background:#F8F7FC;border-radius:5px;cursor:pointer;color:var(--mist);font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;}
-.move-btn:hover{background:#E4E0F0;color:var(--navy);}
+.move-btn{font-size:10px;padding:3px 8px;border:0.5px solid var(--border);background:#F0EBF8;border-radius:5px;cursor:pointer;color:var(--mist);font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;}
+.move-btn:hover{background:#D8D0EC;color:var(--navy);}
 .no-region{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
 .no-region-title{font-size:13px;font-weight:600;margin-bottom:8px;color:var(--gold);}
-.unassigned-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #F5F3FA;gap:8px;}
+.unassigned-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #EDE8F8;gap:8px;}
 .unassigned-item:last-child{border-bottom:none;}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;}
 .modal{background:#fff;border-radius:14px;padding:24px;width:440px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.2);}

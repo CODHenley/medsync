@@ -10,12 +10,12 @@
 :root{
   --navy:#1C2B4A;--navy-mid:#243459;
   --gold:#C8922A;--gold-light:#E8B84B;--gold-pale:#FDF8EE;
-  --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
+  --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
   --bg:#fff;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;--green-border:#A0D4C0;
   --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
   --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
-  --purple:#534AB7;--purple-bg:#EEEDFE;
+  --purple:#534AB7;--purple-bg:#E4DAF2;
   --blue:#185FA5;--blue-bg:#E6F1FB;
 }
 body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-size:13px;line-height:1.5;height:100%;overflow:hidden;}
@@ -24,13 +24,13 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .outer{display:flex;flex-direction:column;height:100vh;margin:0;}
 
 /* TOPBAR */
-.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.topbar{background:var(--navy);border-bottom:none;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
 .tb-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.tb-title{font-size:15px;font-weight:500;}
+.tb-title{font-size:15px;font-weight:500;color:#fff;}
 select{padding:5px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);cursor:pointer;outline:none;height:30px;}
 select:focus{border-color:var(--navy);}
 .btn{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .12s;height:30px;}
-.btn:hover{background:#F0EEF8;}
+.btn:hover{background:#E8E2F6;}
 .btn-primary{background:var(--navy);color:#fff;border-color:var(--navy);}
 .btn-primary:hover{background:var(--navy-mid);}
 
@@ -57,24 +57,24 @@ select:focus{border-color:var(--navy);}
 .filter-tabs{display:flex;gap:4px;}
 .ftab{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--slate);transition:all .12s;}
 .ftab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
-.ftab:hover:not(.active){background:#F0EEF8;}
+.ftab:hover:not(.active){background:#E8E2F6;}
 
 /* TABLES */
 .table-wrap{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
-thead{background:#F8F7FC;}
+thead{background:#F0EBF8;}
 th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;text-align:left;border-bottom:0.5px solid var(--border);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none;}
 th:hover{color:var(--navy);}
-td{padding:9px 12px;border-bottom:0.5px solid #F5F3FA;vertical-align:middle;}
+td{padding:9px 12px;border-bottom:0.5px solid #EDE8F8;vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 .trow{cursor:default;transition:background .08s;}
-.trow:hover td{background:#F8F7FC;}
+.trow:hover td{background:#F0EBF8;}
 .mono{font-family:'DM Mono',monospace;font-size:11px;}
 .prod-name{font-weight:500;color:var(--navy);}
 .prod-sub{font-size:10px;color:var(--mist);margin-top:1px;}
 
 /* PROGRESS BAR */
-.pbar-wrap{width:80px;height:6px;background:#EEEAF5;border-radius:3px;overflow:hidden;}
+.pbar-wrap{width:80px;height:6px;background:#E6DEF4;border-radius:3px;overflow:hidden;}
 .pbar-fill{height:100%;border-radius:3px;transition:width .3s;}
 
 /* BADGES */
@@ -82,7 +82,7 @@ tr:last-child td{border-bottom:none;}
 .b-active{background:var(--green-bg);color:var(--green);}
 .b-partial{background:var(--amber-bg);color:var(--amber);}
 .b-full{background:var(--blue-bg);color:var(--blue);}
-.b-returned{background:#F5F3FA;color:var(--mist);}
+.b-returned{background:#EDE8F8;color:var(--mist);}
 
 /* REGIONAL SECTION */
 .region-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;}
@@ -90,11 +90,11 @@ tr:last-child td{border-bottom:none;}
 .rc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .rc-name{font-size:13px;font-weight:600;}
 .rc-badge{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--gold-pale);color:var(--gold);font-weight:600;border:0.5px solid #EDD9A3;}
-.rc-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #F5F3FA;font-size:11px;}
+.rc-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #EDE8F8;font-size:11px;}
 .rc-row:last-child{border-bottom:none;}
 .rc-k{color:var(--mist);}
 .rc-v{font-weight:500;}
-.rc-cogs-bar{height:4px;background:#EEEAF5;border-radius:2px;margin-top:10px;overflow:hidden;}
+.rc-cogs-bar{height:4px;background:#E6DEF4;border-radius:2px;margin-top:10px;overflow:hidden;}
 .rc-cogs-fill{height:100%;background:var(--gold);border-radius:2px;}
 
 /* EMPTY STATE */
@@ -619,7 +619,7 @@ function renderProductTable() {
       <div class="empty-icon">📦</div>
       <div class="empty-title">No dispensed items yet</div>
       <div class="empty-sub">Run the nightly pull to populate this table.<br>
-      <code style="font-family:'DM Mono',monospace;font-size:10px;background:#F5F3FA;padding:2px 6px;border-radius:4px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code></div>
+      <code style="font-family:'DM Mono',monospace;font-size:10px;background:#EDE8F8;padding:2px 6px;border-radius:4px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code></div>
     </td></tr>`;
     return;
   }
@@ -933,8 +933,8 @@ function showEmptyState() {
       <div style="font-size:28px;margin-bottom:8px;">🔧</div>
       <div style="font-weight:500;color:var(--slate);margin-bottom:6px;">Dispensed items table not set up yet</div>
       <div style="font-size:11px;color:var(--mist);line-height:1.8;">
-        1. Run <code style="font-family:'DM Mono',monospace;background:#F5F3FA;padding:1px 5px;border-radius:3px;">dispensed_items_migration.sql</code> in Supabase SQL editor<br>
-        2. Run <code style="font-family:'DM Mono',monospace;background:#F5F3FA;padding:1px 5px;border-radius:3px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code> to populate
+        1. Run <code style="font-family:'DM Mono',monospace;background:#EDE8F8;padding:1px 5px;border-radius:3px;">dispensed_items_migration.sql</code> in Supabase SQL editor<br>
+        2. Run <code style="font-family:'DM Mono',monospace;background:#EDE8F8;padding:1px 5px;border-radius:3px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code> to populate
       </div>
     </td></tr>`;
   });
