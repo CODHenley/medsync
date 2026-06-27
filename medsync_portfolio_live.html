@@ -29,6 +29,7 @@ function showScreen(name) {
   if (sb) sb.classList.add('active');
   window.scrollTo(0,0);
   if (name === 'portfolio') {
+    setTimeout(loadPortfolioHeroTiles, 100);
     setTimeout(loadRecognition, 250);
     setTimeout(loadTeamSection, 400);
   }
@@ -670,6 +671,61 @@ async function refreshAllInsights() {
   }
 }
 
+// ── Portfolio hero tile loader ────────────────────────────────
+async function loadPortfolioHeroTiles() {
+  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
+  const now   = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const today = now.toISOString().split('T')[0];
+  const days60fwd = new Date(+now + 60*864e5).toISOString().split('T')[0];
+
+  async function sg(path) {
+    try {
+      const r = await fetch(_SUPA + path, { headers: _H });
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
+    } catch(e) { return []; }
+  }
+
+  try {
+    const [glRows, diRows, lots] = await Promise.all([
+      sg('/rest/v1/goods_lost?select=value_lost&created_at=gte.' + monthStart),
+      sg('/rest/v1/dispensed_items?select=unit_cost,quantity&dispensed_at=gte.' + monthStart + '&sku=not.is.null&limit=5000'),
+      sg('/rest/v1/lots?select=expiration_date&expiration_date=gte.' + today + '&expiration_date=lte.' + days60fwd + '&qty_remaining=gt.0&limit=200'),
+    ]);
+
+    // Goods lost MTD
+    const totalGL = glRows.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
+    const heroGlVal = document.getElementById('hero-gl-val');
+    const heroGlSub = document.getElementById('hero-gl-sub');
+    if (heroGlVal) { heroGlVal.textContent = '$' + totalGL.toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); heroGlVal.style.color = totalGL > 0 ? '#E8C76A' : '#6FE0A0'; }
+    if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? glRows.length + ' incident' + (glRows.length !== 1 ? 's' : '') + ' MTD' : 'No losses this month';
+
+    // COGs% (drug spend / revenue not available here — show drug spend instead)
+    const totalSpend = diRows.reduce(function(s, r) { return s + (Number(r.unit_cost)||0) * (Number(r.quantity)||0); }, 0);
+    const heroCogVal = document.getElementById('hero-cogs-val');
+    const heroCogSub = document.getElementById('hero-cogs-sub');
+    if (heroCogVal) {
+      const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);
+      heroCogVal.textContent = spendFmt;
+      heroCogVal.style.color = '#6FE0A0';
+    }
+    if (heroCogSub) heroCogSub.textContent = 'Drug spend MTD';
+
+    // Expiring lots
+    const exp30 = lots.filter(function(l) { return new Date(l.expiration_date) <= new Date(+now + 30*864e5); }).length;
+    const heroExpVal = document.getElementById('hero-exp-val');
+    const heroExpSub = document.getElementById('hero-exp-sub');
+    if (heroExpVal) { heroExpVal.textContent = lots.length; heroExpVal.style.color = exp30 > 3 ? '#FF8A80' : lots.length > 0 ? '#E8C76A' : '#6FE0A0'; }
+    if (heroExpSub) heroExpSub.textContent = exp30 > 0 ? exp30 + ' within 30 days' : lots.length > 0 ? 'within 60 days' : 'All lots current';
+
+  } catch(e) {
+    console.error('loadPortfolioHeroTiles error:', e);
+  }
+}
+
 // Close hamburger when clicking anywhere outside the sidebar
 // window.blur fires when focus moves into an iframe — reliable cross-iframe close
 window.addEventListener('blur', function() {
@@ -691,6 +747,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dateEl) dateEl.textContent = dayName + ', ' + monthDay;
     if (greetEl) greetEl.textContent = salutation + ' — portfolio is looking healthy.';
   })();
+  setTimeout(loadPortfolioHeroTiles, 300);
   document.getElementById('app-body').addEventListener('click', function() {
     var sb = document.getElementById('app-sidebar');
     if (sb && sb.style.display === 'block') { closeMobileMenu(); }
