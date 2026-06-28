@@ -2413,7 +2413,7 @@ function updateHeroCOGs(portCogs, totalRev, totalSpend) {
   if (!valEl) return;
   if (portCogs === null) { valEl.textContent = '—'; if (subEl) subEl.textContent = 'No data'; return; }
   valEl.textContent = portCogs.toFixed(1) + '%';
-  const color = portCogs <= 7 ? 'var(--green)' : portCogs <= 9 ? 'var(--amber)' : 'var(--red)';
+  const color = portCogs <= 7 ? '#6FE0A0' : portCogs <= 9 ? '#E8C76A' : '#FF8A80';
   valEl.style.color = color;
   if (subEl) {
     const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);
