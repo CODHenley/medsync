@@ -690,9 +690,8 @@ async function loadPortfolioHeroTiles() {
   }
 
   try {
-    const [glRows, diRows, lots] = await Promise.all([
+    const [glRows, lots] = await Promise.all([
       sg('/rest/v1/goods_lost?select=value_lost&created_at=gte.' + monthStart),
-      sg('/rest/v1/dispensed_items?select=unit_cost,quantity&dispensed_at=gte.' + monthStart + '&sku=not.is.null&limit=5000'),
       sg('/rest/v1/lots?select=expiration_date&expiration_date=gte.' + today + '&expiration_date=lte.' + days60fwd + '&qty_remaining=gt.0&limit=200'),
     ]);
 
@@ -703,16 +702,11 @@ async function loadPortfolioHeroTiles() {
     if (heroGlVal) { heroGlVal.textContent = '$' + totalGL.toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); heroGlVal.style.color = totalGL > 0 ? '#E8C76A' : '#6FE0A0'; }
     if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? glRows.length + ' incident' + (glRows.length !== 1 ? 's' : '') + ' MTD' : 'No losses this month';
 
-    // COGs% (drug spend / revenue not available here — show drug spend instead)
-    const totalSpend = diRows.reduce(function(s, r) { return s + (Number(r.unit_cost)||0) * (Number(r.quantity)||0); }, 0);
+    // COGs% populated by updateHeroCOGs once loadLiveCOGs completes
     const heroCogVal = document.getElementById('hero-cogs-val');
     const heroCogSub = document.getElementById('hero-cogs-sub');
-    if (heroCogVal) {
-      const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);
-      heroCogVal.textContent = spendFmt;
-      heroCogVal.style.color = '#6FE0A0';
-    }
-    if (heroCogSub) heroCogSub.textContent = 'Drug spend MTD';
+    if (heroCogVal) { heroCogVal.textContent = '…'; heroCogVal.style.color = 'var(--mist)'; }
+    if (heroCogSub) heroCogSub.textContent = 'Loading…';
 
     // Expiring lots
     const exp30 = lots.filter(function(l) { return new Date(l.expiration_date) <= new Date(+now + 30*864e5); }).length;
@@ -2242,7 +2236,7 @@ async function loadData() {
   try {
     // ── 1. Goods lost totals ─────────────────────────────────
     const glRows = await query('goods_lost',
-      `select=category,value_lost,location_id&created_at=gte.${from}&created_at=lte.${to}${locFilter}`
+      `select=category,value_lost,location_id,product_name,notes&created_at=gte.${from}&created_at=lte.${to}${locFilter}`
     );
 
     // Total goods lost
@@ -2290,7 +2284,7 @@ async function loadData() {
       const [location_id] = k.split('|');
       return { location_id, submitted_at: true, status: 'On time' };
     });
-    const compRate = 100;
+    const compRate = syntheticOrders.length > 0 ? 100 : 0;
     renderCompliance(syntheticOrders, loc);
 
     // ── 3. Lots — expiry data for WG proxy ──────────────────
@@ -2347,7 +2341,7 @@ async function loadLiveCOGs(loc, from, to) {
   const targetVids  = loc === 'all' ? LOCS.map(l => l.vid)  : [LOCS.find(l => l.key === loc)?.vid].filter(Boolean);
   const vidFilter  = targetVids.map(v  => `location_id.eq.${v}`).join(',');
   const uuidFilter = targetUUIDs.map(u => `location_id.eq.${u}`).join(',');
-  const COGS_TARGET = 9.0;
+  const COGS_TARGET = 7.0;
   const H2 = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
 
   try {
@@ -2389,9 +2383,14 @@ async function loadLiveCOGs(loc, from, to) {
 
     if (container) container.innerHTML = bars.join('');
 
-    // Update hero KPI tile — use YTD revenue denominator to match YTD spend
     const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
     updateHeroCOGs(portCogs, totalRev, totalSpend);
+
+    // Populate period summary revenue + drug spend
+    const ovRevEl = document.getElementById('ov-revenue');
+    const ovDsEl  = document.getElementById('ov-drug-spend');
+    if (ovRevEl) ovRevEl.textContent = totalRev >= 1000000 ? '$' + (totalRev/1000000).toFixed(2) + 'M' : '$' + (totalRev/1000).toFixed(0) + 'K';
+    if (ovDsEl)  ovDsEl.textContent  = totalSpend > 0 ? '$' + (totalSpend/1000).toFixed(0) + 'K' : '—';
 
     // Update k-cogs summary element
     const kCogs = document.getElementById('k-cogs');
@@ -2409,7 +2408,7 @@ function updateHeroCOGs(portCogs, totalRev, totalSpend) {
   if (!valEl) return;
   if (portCogs === null) { valEl.textContent = '—'; if (subEl) subEl.textContent = 'No data'; return; }
   valEl.textContent = portCogs.toFixed(1) + '%';
-  const color = portCogs <= 9 ? 'var(--green)' : portCogs <= 12 ? 'var(--amber)' : 'var(--red)';
+  const color = portCogs <= 7 ? 'var(--green)' : portCogs <= 9 ? 'var(--amber)' : 'var(--red)';
   valEl.style.color = color;
   if (subEl) {
     const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);
