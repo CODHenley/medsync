@@ -330,7 +330,7 @@ async function loadRecognition() {
     if (leadEl) leadEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">⭐</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
   }
   loadLocationCards();
-  loadWheatonInsights();
+  refreshAllInsights();
 }
 
 async function loadLocationCards() {
@@ -642,34 +642,12 @@ async function refreshAllInsights() {
     cards.sort((a,b) => b.dollar - a.dollar);
     const top3 = cards.slice(0,3);
 
-    if (managed && top3.length) {
-      managed.innerHTML = `
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
-        <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <i class="ti ti-pill" style="color:#a0700a;font-size:14px;" aria-hidden="true"></i>
-        </div>
-        <div style="flex:1;">
-          <p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">Top cost driver — Catalyst Chem 17</p>
-          <p style="font-size:11px;color:#4A5568;line-height:1.5;">$1,312 in dispensed cost over 30 days. Highest volume at Wheaton. Verify par levels and review substitution options.</p>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <span class="badge badge-warn" style="font-size:11px;">$1,312</span>
-          <p style="font-size:10px;color:#4A5568;margin-top:4px;">Cost driver</p>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff5f5;border:0.5px solid #f5c6c6;border-radius:8px;">
-        <div style="width:30px;height:30px;border-radius:7px;background:#fde8e8;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <i class="ti ti-alert-circle" style="color:#a33030;font-size:14px;" aria-hidden="true"></i>
-        </div>
-        <div style="flex:1;">
-          <p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">Goods lost — Lincoln Park · top location this period</p>
-          <p style="font-size:11px;color:#4A5568;line-height:1.5;">19 submissions totaling $950 in the last 30 days. Highest single item: PureVax Recombinant FeLV Vaccine.</p>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <span class="badge badge-bad" style="font-size:11px;">$950</span>
-          <p style="font-size:10px;color:#4A5568;margin-top:4px;">Goods lost</p>
-        </div>
-      </div>`;
+    if (managed) {
+      if (top3.length) {
+        managed.innerHTML = '<div style="padding:4px 20px 12px;display:flex;flex-direction:column;gap:6px;">' + top3.map(function(c) { return c.html; }).join('') + '</div>';
+      } else {
+        managed.innerHTML = '<div style="padding:14px 20px;font-size:12px;color:#8A93A8;">No active flags across the portfolio.</div>';
+      }
     }
 
     // Also refresh Wheaton-specific insights
@@ -1868,43 +1846,7 @@ function deepDiveLoc(locCode) {
 
       <div style="padding:12px 20px;display:flex;flex-direction:column;gap:2px;" id="wheaton-insights"></div>
 
-      <div id="managed-insights"><!-- MANAGED-INSIGHTS-START -->
-      <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;border-top:1px solid #EDE8F8;">
-        <div style="width:36px;height:36px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🔧</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;color:#1C2B4A;margin-bottom:3px;">Catalyst analyzer — 14 diagnostic duplicates · Lincoln Park</div>
-          <div style="font-size:12px;color:#6B7A99;line-height:1.5;">"Test failed to run" on 11 of 14 entries in 30 days. IDEXX service call recommended before costs compound.</div>
-        </div>
-        <div style="flex-shrink:0;text-align:right;">
-          <div style="font-size:15px;font-weight:700;color:#a33030;">$1,024</div>
-          <div style="font-size:10px;color:#8A93A8;margin-top:2px;">equipment</div>
-        </div>
-      </div>
-
-      <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;border-top:1px solid #EDE8F8;">
-        <div style="width:36px;height:36px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">📦</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;color:#1C2B4A;margin-bottom:3px;">Maropitant over-ordered — recurring expiration events · Old Orchard</div>
-          <div style="font-size:12px;color:#6B7A99;line-height:1.5;">Current Max exceeds demand velocity. Reduce Max and cross-check 30-day forecast to prevent next expiration cycle.</div>
-        </div>
-        <div style="flex-shrink:0;text-align:right;">
-          <div style="font-size:15px;font-weight:700;color:#E8922A;">$567</div>
-          <div style="font-size:10px;color:#8A93A8;margin-top:2px;">review max</div>
-        </div>
-      </div>
-
-      <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;border-top:1px solid #EDE8F8;">
-        <div style="width:36px;height:36px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">📈</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;color:#1C2B4A;margin-bottom:3px;">White goods overuse — gauze (OO +38%) and syringes (WL +21%) vs. appointment volume</div>
-          <div style="font-size:12px;color:#6B7A99;line-height:1.5;">Ordering 21–38% above expected rate over the last 30 days. Reviewing consumption rate assumptions could recover ~$133/mo.</div>
-        </div>
-        <div style="flex-shrink:0;text-align:right;">
-          <div style="font-size:15px;font-weight:700;color:#E8922A;">$133/mo</div>
-          <div style="font-size:10px;color:#8A93A8;margin-top:2px;">white goods</div>
-        </div>
-      </div>
-      <!-- MANAGED-INSIGHTS-END --></div>
+      <div id="managed-insights"><div style="padding:14px 20px;font-size:12px;color:#8A93A8;">Loading insights…</div></div>
 
       <div style="padding:12px 20px;border-top:1px solid #EDE8F8;display:flex;justify-content:flex-end;">
         <button onclick="dbNav('ov');" style="background:none;border:none;color:#1C2B4A;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;">View all in analytics <i class="ti ti-arrow-right" style="font-size:13px;"></i></button>
