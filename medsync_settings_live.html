@@ -316,9 +316,132 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   <!-- ── Financial Software ────────────────────────────────────── -->
   <div>
     <div class="section-title">Financial software</div>
-    <div class="int-grid">
 
-      <!-- QuickBooks -->
+    <!-- Power BI — full setup card -->
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="int-logo" style="background:#F2C811;color:#1C2B4A;width:36px;height:36px;border-radius:9px;font-size:12px;">PBI</div>
+          <div>
+            <div class="card-title">Power BI</div>
+            <div class="card-sub">Connect Power BI Desktop directly to MedSync via PostgreSQL</div>
+          </div>
+        </div>
+        <span class="status-pill pill-ok">● Ready to connect</span>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:20px;">
+
+        <!-- Connection details -->
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1C2B4A;margin-bottom:10px;">Connection details</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+              <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Server</div>
+              <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <span id="pbi-host">db.aemkdummdrmxtwrkggjw.supabase.co</span>
+                <button onclick="copyPBI('pbi-host')" style="background:none;border:none;cursor:pointer;color:var(--mist);font-size:11px;padding:0;flex-shrink:0;" title="Copy">⎘</button>
+              </div>
+            </div>
+            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+              <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Port</div>
+              <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <span id="pbi-port">5432</span>
+                <button onclick="copyPBI('pbi-port')" style="background:none;border:none;cursor:pointer;color:var(--mist);font-size:11px;padding:0;flex-shrink:0;" title="Copy">⎘</button>
+              </div>
+            </div>
+            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+              <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Database</div>
+              <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <span id="pbi-db">postgres</span>
+                <button onclick="copyPBI('pbi-db')" style="background:none;border:none;cursor:pointer;color:var(--mist);font-size:11px;padding:0;flex-shrink:0;" title="Copy">⎘</button>
+              </div>
+            </div>
+            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+              <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Username</div>
+              <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <span id="pbi-user">postgres</span>
+                <button onclick="copyPBI('pbi-user')" style="background:none;border:none;cursor:pointer;color:var(--mist);font-size:11px;padding:0;flex-shrink:0;" title="Copy">⎘</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Database password -->
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1C2B4A;margin-bottom:4px;">Database password</div>
+          <div style="font-size:11px;color:var(--mist);margin-bottom:8px;">Find this in your Supabase dashboard → Project Settings → Database → Connection string. Saved locally in your browser only.</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="int-api" style="flex:1;">
+              <input type="password" id="pbi-password" placeholder="Enter database password" style="width:100%;padding:8px 36px 8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+              <button onclick="togglePBIPass()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--mist);font-size:13px;">👁</button>
+            </div>
+            <button onclick="savePBIPassword()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Save password</button>
+          </div>
+        </div>
+
+        <!-- Recommended tables -->
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1C2B4A;margin-bottom:8px;">Recommended tables</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+              <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">daily_revenue</span>
+              <span style="font-size:11px;color:var(--mist);">Revenue by location and date</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+              <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">purchase_history</span>
+              <span style="font-size:11px;color:var(--mist);">Drug spend and Vetcove order history</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+              <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">goods_lost</span>
+              <span style="font-size:11px;color:var(--mist);">Write-offs, expirations, and waste</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+              <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">dispensed_items</span>
+              <span style="font-size:11px;color:var(--mist);">Product-level dispensing and drug cost</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+              <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">lots</span>
+              <span style="font-size:11px;color:var(--mist);">Lot tracking, quantities, and expiration dates</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+              <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">po_items</span>
+              <span style="font-size:11px;color:var(--mist);">Purchase order line items and procurement history</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Setup steps -->
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1C2B4A;margin-bottom:10px;">Setup steps — Power BI Desktop</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
+              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Open <strong>Power BI Desktop</strong> → <strong>Home</strong> → <strong>Get Data</strong> → search for <strong>PostgreSQL database</strong></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</div>
+              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Enter <strong>Server:</strong> <code style="background:#F0EEF8;padding:1px 5px;border-radius:4px;">db.aemkdummdrmxtwrkggjw.supabase.co:5432</code> and <strong>Database:</strong> <code style="background:#F0EEF8;padding:1px 5px;border-radius:4px;">postgres</code></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">3</div>
+              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Select <strong>Database</strong> authentication → Username: <code style="background:#F0EEF8;padding:1px 5px;border-radius:4px;">postgres</code> → paste your database password</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">4</div>
+              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">In the Navigator, select the tables above from the <strong>public</strong> schema → click <strong>Load</strong> or <strong>Transform Data</strong></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">5</div>
+              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Enable <strong>scheduled refresh</strong> in Power BI Service to keep dashboards current — connect via On-premises data gateway if publishing to the web</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- QuickBooks + Coupa still coming soon -->
+    <div class="int-grid">
       <div class="int-tile" style="opacity:.6;">
         <div class="int-head">
           <div class="int-logo" style="background:#2CA01C;">QB</div>
@@ -329,20 +452,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         </div>
         <div class="int-desc">Export drug spend, procurement savings, and goods lost to QuickBooks for financial reconciliation.</div>
       </div>
-
-      <!-- Power BI -->
-      <div class="int-tile" style="opacity:.6;">
-        <div class="int-head">
-          <div class="int-logo" style="background:#F2C811;color:#1C2B4A;">PBI</div>
-          <div>
-            <div class="int-name">Power BI</div>
-            <span class="status-pill pill-soon">Coming soon</span>
-          </div>
-        </div>
-        <div class="int-desc">Push MedSync analytics directly into Power BI dashboards for executive reporting across all regions.</div>
-      </div>
-
-      <!-- Coupa -->
       <div class="int-tile" style="opacity:.6;">
         <div class="int-head">
           <div class="int-logo" style="background:#E2211C;">CO</div>
@@ -353,7 +462,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         </div>
         <div class="int-desc">Connect MedSync purchase orders and spend data to Coupa for enterprise procurement management.</div>
       </div>
-
     </div>
   </div>
 
@@ -884,6 +992,27 @@ function nav(screen) {
   }
 }
 
+function copyPBI(elId) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent.trim()).then(function() {
+    showToast('Copied to clipboard');
+  });
+}
+
+function togglePBIPass() {
+  var f = document.getElementById('pbi-password');
+  if (!f) return;
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+function savePBIPassword() {
+  var val = document.getElementById('pbi-password').value.trim();
+  if (!val) { showToast('Please enter your database password first'); return; }
+  localStorage.setItem('medsync_pbi_password', val);
+  showToast('✓ Password saved locally');
+}
+
 function saveKey(type) {
   var key = document.getElementById(type+'-key').value.trim();
   if (!key) { showToast('Please paste your API key first'); return; }
@@ -996,6 +1125,11 @@ function showToast(msg) {
   }
   if (localStorage.getItem('medsync_vs_key')) {
     document.getElementById('vs-key').placeholder = '••••••• (saved)';
+  }
+  var pbiPass = localStorage.getItem('medsync_pbi_password');
+  if (pbiPass) {
+    var pf = document.getElementById('pbi-password');
+    if (pf) { pf.value = pbiPass; pf.placeholder = '••••••• (saved)'; }
   }
   loadBillingBranding();
   loadEmailInsightsPref();
