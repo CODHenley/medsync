@@ -1,14 +1,8 @@
 name: Intraday Vetspire Sync
 
-# Runs 4x daily at 7am, noon, 7pm, midnight CST
-# CST = UTC-6 (standard) / CDT = UTC-5 (daylight)
-# Using UTC-6 offsets (standard time); data arrives ~1h early during summer DST — acceptable
 on:
   schedule:
-    - cron: '0 13 * * *'   # 7am  CST (1pm  UTC)
-    - cron: '0 18 * * *'   # noon CST (6pm  UTC)
-    - cron: '0 1  * * *'   # 7pm  CST (1am  UTC)
-    - cron: '0 6  * * *'   # midnight CST (6am UTC)
+    - cron: '0 * * * *'   # every hour
   workflow_dispatch:        # manual trigger from GitHub Actions UI
 
 jobs:
