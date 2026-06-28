@@ -1161,16 +1161,29 @@ async function renderCOGSBars(glRows, loc, _unused) {
   const to   = toDate   || new Date().toISOString().split('T')[0];
 
   try {
-    const [revRes, spendRes] = await Promise.all([
+    // purchase_history uses UUID for location_id; daily_revenue and dispensed_items use VID
+    const phLocOr = targetIds.map(id => `location_id.eq.${id}`).join(',');
+    // For YTD Vetcove data always fetch full year-to-date regardless of date filter
+    const ytdFrom = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+    const [revRes, spendRes, phRes] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${revLocOr})`, { headers: HEADERS }),
-      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${revLocOr})`, { headers: HEADERS })
+      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${revLocOr})`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=eq.vetcove&purchased_at=gte.${ytdFrom}&or=(${phLocOr})`, { headers: HEADERS })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
+    const phRows    = phRes.ok    ? await phRes.json()    : [];
 
-    const revByLoc = {}, spendByLoc = {};
-    (Array.isArray(revRows)   ? revRows   : []).forEach(r => { revByLoc[r.location_id]   = (revByLoc[r.location_id]   || 0) + (Number(r.revenue)   || 0); });
-    (Array.isArray(spendRows) ? spendRows : []).forEach(r => { spendByLoc[r.location_id] = (spendByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+    const revByLoc = {}, diSpendByLoc = {}, phSpendByLoc = {};
+    (Array.isArray(revRows)   ? revRows   : []).forEach(r => { revByLoc[r.location_id]      = (revByLoc[r.location_id]      || 0) + (Number(r.revenue)   || 0); });
+    (Array.isArray(spendRows) ? spendRows : []).forEach(r => { diSpendByLoc[r.location_id]  = (diSpendByLoc[r.location_id]  || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+    (Array.isArray(phRows)    ? phRows    : []).forEach(r => { phSpendByLoc[r.location_id]  = (phSpendByLoc[r.location_id]  || 0) + (Number(r.amount)    || 0); });
+
+    // Use Vetcove purchase_history as spend source where available, otherwise dispensed_items
+    const spendByLoc = {};
+    LOCS.forEach(l => {
+      spendByLoc[l.vid]  = phSpendByLoc[l.uuid] || diSpendByLoc[l.vid] || 0;
+    });
 
     // Update individual revenue tiles (daily_revenue uses VID as location_id)
     const revTiles = {
@@ -1188,7 +1201,7 @@ async function renderCOGSBars(glRows, loc, _unused) {
     });
     targetVids.forEach(vid => { totalSpend += spendByLoc[vid] || 0; });
 
-    // Build COGs bars (both revenue and spend keyed by VID)
+    // Build COGs bars
     const barsData = (loc === 'all' ? LOCS : LOCS.filter(l => l.key === loc)).map(l => {
       const rev   = revByLoc[l.vid]   || 0;
       const spend = spendByLoc[l.vid] || 0;
