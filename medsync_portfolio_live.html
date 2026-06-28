@@ -2352,31 +2352,36 @@ async function loadLiveCOGs(loc, from, to) {
   const H2 = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
 
   try {
-    const [revRes, spendRes, phRes] = await Promise.all([
+    const [revRes, ytdRevRes, spendRes, phRes] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${vidFilter})`, { headers: H2 }),
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${ytdFrom}&date=lte.${to}&or=(${vidFilter})`, { headers: H2 }),
       fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${vidFilter})`, { headers: H2 }),
       fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=eq.vetcove&purchased_at=gte.${ytdFrom}&or=(${uuidFilter})`, { headers: H2 })
     ]);
-    const revRows   = revRes.ok   ? await revRes.json()   : [];
-    const spendRows = spendRes.ok ? await spendRes.json() : [];
-    const phRows    = phRes.ok    ? await phRes.json()    : [];
+    const revRows    = revRes.ok    ? await revRes.json()    : [];
+    const ytdRevRows = ytdRevRes.ok ? await ytdRevRes.json() : [];
+    const spendRows  = spendRes.ok  ? await spendRes.json()  : [];
+    const phRows     = phRes.ok     ? await phRes.json()     : [];
 
     // Aggregate — revenue and dispensed_items keyed by VID, purchase_history by UUID
-    const revByLoc = {}, diByLoc = {}, phByLoc = {};
-    revRows.forEach(r   => { revByLoc[r.location_id] = (revByLoc[r.location_id] || 0) + (Number(r.revenue)   || 0); });
-    spendRows.forEach(r => { diByLoc[r.location_id]  = (diByLoc[r.location_id]  || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
-    phRows.forEach(r    => { phByLoc[r.location_id]  = (phByLoc[r.location_id]  || 0) + (Number(r.amount)    || 0); });
+    const revByLoc = {}, ytdRevByLoc = {}, diByLoc = {}, phByLoc = {};
+    revRows.forEach(r    => { revByLoc[r.location_id]    = (revByLoc[r.location_id]    || 0) + (Number(r.revenue)   || 0); });
+    ytdRevRows.forEach(r => { ytdRevByLoc[r.location_id] = (ytdRevByLoc[r.location_id] || 0) + (Number(r.revenue)   || 0); });
+    spendRows.forEach(r  => { diByLoc[r.location_id]     = (diByLoc[r.location_id]     || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+    phRows.forEach(r     => { phByLoc[r.location_id]     = (phByLoc[r.location_id]     || 0) + (Number(r.amount)    || 0); });
 
     const filtered = loc === 'all' ? LOCS : LOCS.filter(l => l.key === loc);
 
     let totalRev = 0, totalSpend = 0;
     const bars = filtered.map(l => {
-      const rev   = revByLoc[l.vid] || 0;
-      // Use Vetcove purchase_history where available, otherwise dispensed_items
-      const spend = phByLoc[l.uuid] || diByLoc[l.vid] || 0;
+      const rev        = revByLoc[l.vid] || 0;
+      const hasVetcove = !!phByLoc[l.uuid];
+      // Use Vetcove spend where available; use YTD revenue for accurate COGs % match
+      const spend   = hasVetcove ? phByLoc[l.uuid] : (diByLoc[l.vid] || 0);
+      const cogsRev = hasVetcove ? (ytdRevByLoc[l.vid] || rev) : rev;
       totalRev   += rev;
       totalSpend += spend;
-      const pct   = rev > 0 ? (spend / rev) * 100 : 0;
+      const pct   = cogsRev > 0 ? (spend / cogsRev) * 100 : 0;
       const color = pct === 0 ? '#aaa' : pct <= COGS_TARGET ? 'var(--green)' : pct <= 12 ? 'var(--amber)' : 'var(--red)';
       const w     = pct > 0 ? Math.min(Math.round((pct / 15) * 100), 100) : 0;
       const label = pct > 0 ? pct.toFixed(1) + '%' : 'No data';

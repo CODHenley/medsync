@@ -1165,24 +1165,30 @@ async function renderCOGSBars(glRows, loc, _unused) {
     const phLocOr = targetIds.map(id => `location_id.eq.${id}`).join(',');
     // For YTD Vetcove data always fetch full year-to-date regardless of date filter
     const ytdFrom = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-    const [revRes, spendRes, phRes] = await Promise.all([
+    const [revRes, ytdRevRes, spendRes, phRes] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${revLocOr})`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${ytdFrom}&date=lte.${to}&or=(${revLocOr})`, { headers: HEADERS }),
       fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${revLocOr})`, { headers: HEADERS }),
       fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=eq.vetcove&purchased_at=gte.${ytdFrom}&or=(${phLocOr})`, { headers: HEADERS })
     ]);
-    const revRows   = revRes.ok   ? await revRes.json()   : [];
-    const spendRows = spendRes.ok ? await spendRes.json() : [];
-    const phRows    = phRes.ok    ? await phRes.json()    : [];
+    const revRows    = revRes.ok    ? await revRes.json()    : [];
+    const ytdRevRows = ytdRevRes.ok ? await ytdRevRes.json() : [];
+    const spendRows  = spendRes.ok  ? await spendRes.json()  : [];
+    const phRows     = phRes.ok     ? await phRes.json()     : [];
 
-    const revByLoc = {}, diSpendByLoc = {}, phSpendByLoc = {};
-    (Array.isArray(revRows)   ? revRows   : []).forEach(r => { revByLoc[r.location_id]      = (revByLoc[r.location_id]      || 0) + (Number(r.revenue)   || 0); });
-    (Array.isArray(spendRows) ? spendRows : []).forEach(r => { diSpendByLoc[r.location_id]  = (diSpendByLoc[r.location_id]  || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
-    (Array.isArray(phRows)    ? phRows    : []).forEach(r => { phSpendByLoc[r.location_id]  = (phSpendByLoc[r.location_id]  || 0) + (Number(r.amount)    || 0); });
+    const revByLoc = {}, ytdRevByLoc = {}, diSpendByLoc = {}, phSpendByLoc = {};
+    (Array.isArray(revRows)    ? revRows    : []).forEach(r => { revByLoc[r.location_id]    = (revByLoc[r.location_id]    || 0) + (Number(r.revenue)   || 0); });
+    (Array.isArray(ytdRevRows) ? ytdRevRows : []).forEach(r => { ytdRevByLoc[r.location_id] = (ytdRevByLoc[r.location_id] || 0) + (Number(r.revenue)   || 0); });
+    (Array.isArray(spendRows)  ? spendRows  : []).forEach(r => { diSpendByLoc[r.location_id] = (diSpendByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+    (Array.isArray(phRows)     ? phRows     : []).forEach(r => { phSpendByLoc[r.location_id] = (phSpendByLoc[r.location_id] || 0) + (Number(r.amount)    || 0); });
 
-    // Use Vetcove purchase_history as spend source where available, otherwise dispensed_items
-    const spendByLoc = {};
+    // Use Vetcove purchase_history as spend where available (YTD), otherwise dispensed_items
+    // When using YTD spend, compare against YTD revenue for an accurate COGs %
+    const spendByLoc = {}, cogsRevByLoc = {};
     LOCS.forEach(l => {
-      spendByLoc[l.vid]  = phSpendByLoc[l.uuid] || diSpendByLoc[l.vid] || 0;
+      const hasVetcove = !!phSpendByLoc[l.uuid];
+      spendByLoc[l.vid]    = hasVetcove ? phSpendByLoc[l.uuid] : (diSpendByLoc[l.vid] || 0);
+      cogsRevByLoc[l.vid]  = hasVetcove ? (ytdRevByLoc[l.vid] || revByLoc[l.vid] || 0) : (revByLoc[l.vid] || 0);
     });
 
     // Update individual revenue tiles (daily_revenue uses VID as location_id)
@@ -1201,11 +1207,12 @@ async function renderCOGSBars(glRows, loc, _unused) {
     });
     targetVids.forEach(vid => { totalSpend += spendByLoc[vid] || 0; });
 
-    // Build COGs bars
+    // Build COGs bars — revenue tile shows filtered period, COGs % uses matching spend period
     const barsData = (loc === 'all' ? LOCS : LOCS.filter(l => l.key === loc)).map(l => {
-      const rev   = revByLoc[l.vid]   || 0;
-      const spend = spendByLoc[l.vid] || 0;
-      const pct   = rev > 0 ? (spend / rev) * 100 : null;
+      const rev      = revByLoc[l.vid]     || 0;
+      const cogsRev  = cogsRevByLoc[l.vid] || 0;
+      const spend    = spendByLoc[l.vid]   || 0;
+      const pct      = cogsRev > 0 ? (spend / cogsRev) * 100 : null;
       return { id: l.uuid, name: l.name, rev, spend, pct };
     });
 

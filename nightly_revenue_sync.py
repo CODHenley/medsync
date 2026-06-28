@@ -97,38 +97,37 @@ def main():
     if not token:
         raise SystemExit("ERROR: VETSPIRE_API_TOKEN not set")
 
-    # Pull yesterday's revenue (today's invoices finalize after business closes)
-    target_date = (date.today() - timedelta(days=1)).isoformat()
-    print(f"\n=== Nightly Revenue Sync — pulling {target_date} ===")
+    # Pull yesterday AND today so every run is current up to the moment it runs
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    today     = date.today().isoformat()
+    dates_to_pull = [yesterday, today]
+    print(f"\n=== Revenue Sync — pulling {yesterday} + {today} ===")
 
     records = []
     _fields_logged = False
-    for loc_name, loc_id in LOCATIONS.items():
-        print(f"  {loc_name} ({loc_id})...", end=" ", flush=True)
-        result = gql(token, SALES_QUERY, {"lids": [loc_id], "s": target_date, "e": target_date})
-        if "errors" in result:
-            print(f"ERROR: {result['errors']}")
-            continue
-        raw = result.get("data", {}).get("salesReport", "[]")
-        rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
-        rec = rows[0] if rows else {}
-        if not _fields_logged and rec:
-            print(f"\n  [DEBUG] salesReport keys: {list(rec.keys())}")
-            print(f"  [DEBUG] first record: {rec}")
-            _fields_logged = True
-        # Paid-only: try paid-specific fields first using None-safe checks.
-        # Do NOT use Python `or` (treats 0.0 as falsy and falls through to total).
-        # Priority: paid → paidTotal → paidRevenue → collected (finalized, incl. due)
-        # Never fall back to `total` — that includes open/in-progress invoices.
-        revenue = _pick_paid(rec)
-        print(f"${revenue:,.2f}  (field: {_paid_field(rec)})")
-        records.append({
-            "date":          target_date,
-            "location_id":   loc_id,
-            "location_name": loc_name,
-            "revenue":       revenue,
-            "pulled_at":     datetime.now(timezone.utc).isoformat(),
-        })
+    for target_date in dates_to_pull:
+        for loc_name, loc_id in LOCATIONS.items():
+            print(f"  {loc_name} ({loc_id}) {target_date}...", end=" ", flush=True)
+            result = gql(token, SALES_QUERY, {"lids": [loc_id], "s": target_date, "e": target_date})
+            if "errors" in result:
+                print(f"ERROR: {result['errors']}")
+                continue
+            raw = result.get("data", {}).get("salesReport", "[]")
+            rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
+            rec = rows[0] if rows else {}
+            if not _fields_logged and rec:
+                print(f"\n  [DEBUG] salesReport keys: {list(rec.keys())}")
+                print(f"  [DEBUG] first record: {rec}")
+                _fields_logged = True
+            revenue = _pick_paid(rec)
+            print(f"${revenue:,.2f}  (field: {_paid_field(rec)})")
+            records.append({
+                "date":          target_date,
+                "location_id":   loc_id,
+                "location_name": loc_name,
+                "revenue":       revenue,
+                "pulled_at":     datetime.now(timezone.utc).isoformat(),
+            })
 
     if records:
         status = supa_upsert(records)
