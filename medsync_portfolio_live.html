@@ -329,44 +329,61 @@ async function loadRecognition() {
     if (locEl) locEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">🏅</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
     if (leadEl) leadEl.innerHTML = '<div style="font-size:22px;flex-shrink:0;">⭐</div><div style="font-size:12px;color:#8A93A8;">Recognition data unavailable.</div>';
   }
-  loadWheatonCOGs();
+  loadLocationCards();
   loadWheatonInsights();
 }
 
-async function loadWheatonCOGs() {
-  const el = document.getElementById('wheaton-cogs-val');
-  const dot = document.getElementById('wheaton-cogs-dot');
-  if (!el) return;
-  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
-  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
+async function loadLocationCards() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const today = now.toISOString().split('T')[0];
+  const _H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+  const CARD_IDS = { lp: 'lp', oo: 'oo', wl: 'wl', wh: 'wheaton' };
+
+  const vidFilter  = LOCS.map(l => 'location_id.eq.' + l.vid).join(',');
+  const uuidFilter = LOCS.map(l => 'location_id.eq.' + l.uuid).join(',');
+
   try {
-    const [cogsRes, revRes] = await Promise.all([
-      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
-      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
+    const [revRes, phRes, glRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&or=(' + vidFilter + ')', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&or=(' + uuidFilter + ')', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,value_lost&created_at=gte.' + monthStart + 'T00:00:00&or=(' + uuidFilter + ')', { headers: _H }),
     ]);
-    const cogsRows = await cogsRes.json();
-    const revRows  = await revRes.json();
-    if (!Array.isArray(cogsRows) || !Array.isArray(revRows)) { el.textContent = '—'; return; }
-    const totalCOGS = cogsRows.reduce(function(s, r) { return s + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 0); }, 0);
-    const totalRev  = revRows.reduce(function(s, r) { return s + (Number(r.revenue) || 0); }, 0);
-    if (totalRev < 1) { el.textContent = '—'; return; }
-    const pct = totalCOGS / totalRev * 100;
-    const label = pct.toFixed(1) + '%';
-    const isWarn = pct > 10;
-    el.textContent = label;
-    el.className = isWarn ? 'warn-t' : 'good';
-    if (dot) {
-      // Position dot proportionally on 0–14% scale
-      const left = Math.min(Math.max(pct / 14 * 100, 2), 98);
-      dot.style.left = left.toFixed(1) + '%';
-      dot.style.background = isWarn ? '#c8902a' : '#2E8B57';
-    }
+    const revRows = revRes.ok ? await revRes.json() : [];
+    const phRows  = phRes.ok  ? await phRes.json()  : [];
+    const glRows  = glRes.ok  ? await glRes.json()  : [];
+
+    const revByVid = {}, phByUuid = {}, glByUuid = {};
+    (Array.isArray(revRows) ? revRows : []).forEach(function(r) { revByVid[r.location_id]  = (revByVid[r.location_id]  || 0) + (Number(r.revenue)    || 0); });
+    (Array.isArray(phRows)  ? phRows  : []).forEach(function(r) { phByUuid[r.location_id]  = (phByUuid[r.location_id]  || 0) + (Number(r.amount)     || 0); });
+    (Array.isArray(glRows)  ? glRows  : []).forEach(function(r) { glByUuid[r.location_id]  = (glByUuid[r.location_id]  || 0) + (Number(r.value_lost) || 0); });
+
+    LOCS.forEach(function(l) {
+      const rev   = revByVid[l.vid]   || 0;
+      const spend = phByUuid[l.uuid]  || 0;
+      const lost  = glByUuid[l.uuid]  || 0;
+      const idBase = CARD_IDS[l.key] || l.key;
+
+      const cogsEl = document.getElementById(idBase + '-cogs-val');
+      if (cogsEl) {
+        if (rev < 1) {
+          cogsEl.textContent = '—';
+          cogsEl.style.color = '#8A93A8';
+        } else {
+          const pct = spend / rev * 100;
+          cogsEl.textContent = pct.toFixed(1) + '%';
+          cogsEl.style.color = pct <= 7 ? '#22C55E' : pct <= 9 ? '#E8922A' : '#a33030';
+        }
+      }
+
+      const lostEl = document.getElementById(idBase + '-lost-val') || document.getElementById(idBase + '-gl-val');
+      if (lostEl) {
+        lostEl.textContent = lost > 0 ? '$' + lost.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '$0';
+        lostEl.style.color = lost > 1000 ? '#a33030' : lost > 300 ? '#a0700a' : '#1C2B4A';
+      }
+    });
   } catch(err) {
-    el.textContent = '—';
+    console.error('loadLocationCards error:', err);
   }
 }
 
@@ -1698,7 +1715,7 @@ function deepDiveLoc(locCode) {
           </div>
           <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
             <div onclick="dbNav('cogs')" style="cursor:pointer;text-align:center;" title="View COGs">
-              <div style="font-size:17px;font-weight:700;color:#22C55E;">8.1%</div>
+              <div id="lp-cogs-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div>
             </div>
             <div onclick="showScreen('lifecycle')" style="cursor:pointer;text-align:center;" title="View alerts">
@@ -1706,7 +1723,7 @@ function deepDiveLoc(locCode) {
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div>
             </div>
             <div onclick="showScreen('goods')" style="cursor:pointer;text-align:center;" title="View goods lost">
-              <div style="font-size:17px;font-weight:700;color:#a33030;">$580</div>
+              <div id="lp-lost-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div>
             </div>
           </div>
@@ -1729,7 +1746,7 @@ function deepDiveLoc(locCode) {
           </div>
           <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
             <div onclick="dbNav('cogs')" style="cursor:pointer;text-align:center;" title="View COGs">
-              <div style="font-size:17px;font-weight:700;color:#E8922A;">9.8%</div>
+              <div id="oo-cogs-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div>
             </div>
             <div onclick="showScreen('lifecycle')" style="cursor:pointer;text-align:center;" title="View alerts">
@@ -1737,7 +1754,7 @@ function deepDiveLoc(locCode) {
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div>
             </div>
             <div onclick="showScreen('goods')" style="cursor:pointer;text-align:center;" title="View goods lost">
-              <div style="font-size:17px;font-weight:700;color:#a33030;">$1,340</div>
+              <div id="oo-lost-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div>
             </div>
           </div>
@@ -1759,7 +1776,7 @@ function deepDiveLoc(locCode) {
           </div>
           <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
             <div onclick="dbNav('cogs')" style="cursor:pointer;text-align:center;" title="View COGs">
-              <div style="font-size:17px;font-weight:700;color:#22C55E;">7.9%</div>
+              <div id="wl-cogs-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div>
             </div>
             <div onclick="showScreen('lifecycle')" style="cursor:pointer;text-align:center;" title="View alerts">
@@ -1767,7 +1784,7 @@ function deepDiveLoc(locCode) {
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div>
             </div>
             <div onclick="showScreen('goods')" style="cursor:pointer;text-align:center;" title="View goods lost">
-              <div style="font-size:17px;font-weight:700;color:#a33030;">$490</div>
+              <div id="wl-lost-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
               <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div>
             </div>
           </div>
@@ -1808,66 +1825,20 @@ function deepDiveLoc(locCode) {
           </div>
         </div>
 
-        <!-- DEMO: Naperville -->
-        <div class="loc-card" data-region="Chicagoland South" style="background:#F8F7FC;border:1px solid #DCD4EC;border-radius:16px;overflow:hidden;opacity:0.85;">
+        <!-- Westchester — Coming Soon -->
+        <div class="loc-card" data-region="Chicagoland West" style="background:#F8F7FC;border:2px dashed #C4B8E8;border-radius:16px;overflow:hidden;">
           <div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#CBD5E1;flex-shrink:0;"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Naperville</span>
-              <span style="margin-left:auto;font-size:9px;font-weight:700;background:#D8D0EC;color:#8A93A8;padding:2px 7px;border-radius:20px;letter-spacing:1px;">DEMO</span>
+              <span style="width:10px;height:10px;border-radius:50%;background:#A78BFA;flex-shrink:0;box-shadow:0 0 0 3px rgba(167,139,250,0.15);"></span>
+              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Westchester</span>
+              <span style="margin-left:auto;font-size:9px;font-weight:700;background:#EDE9FE;color:#6D28D9;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;">Coming Soon</span>
             </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Demo Location</div>
+            <div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Lease signed</div>
           </div>
-          <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#22C55E;">8.2%</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div></div>
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#E8922A;">2</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div></div>
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#1C2B4A;">$612</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div></div>
-          </div>
-          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-            <span style="background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⏳ Count pending</span>
-            <span style="background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⏳ Order pending</span>
-          </div>
-        </div>
-
-        <!-- DEMO: Aurora -->
-        <div class="loc-card" data-region="Chicagoland West" style="background:#F8F7FC;border:1px solid #DCD4EC;border-radius:16px;overflow:hidden;opacity:0.85;">
-          <div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#F59E0B;flex-shrink:0;"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Aurora</span>
-              <span style="margin-left:auto;font-size:9px;font-weight:700;background:#D8D0EC;color:#8A93A8;padding:2px 7px;border-radius:20px;letter-spacing:1px;">DEMO</span>
-            </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Demo Location</div>
-          </div>
-          <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#E8922A;">9.1%</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div></div>
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#E8922A;">4</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div></div>
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#a33030;">$891</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div></div>
-          </div>
-          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-            <span style="background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Order submitted</span>
-            <span style="background:#FEE2E2;color:#991B1B;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⚠ 3 expiring</span>
-          </div>
-        </div>
-
-        <!-- DEMO: Schaumburg -->
-        <div class="loc-card" data-region="Chicagoland South" style="background:#F8F7FC;border:1px solid #DCD4EC;border-radius:16px;overflow:hidden;opacity:0.85;">
-          <div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#22C55E;flex-shrink:0;"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Schaumburg</span>
-              <span style="margin-left:auto;font-size:9px;font-weight:700;background:#D8D0EC;color:#8A93A8;padding:2px 7px;border-radius:20px;letter-spacing:1px;">DEMO</span>
-            </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Demo Location</div>
-          </div>
-          <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#22C55E;">7.8%</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div></div>
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#1C2B4A;">1</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div></div>
-            <div style="text-align:center;"><div style="font-size:17px;font-weight:700;color:#1C2B4A;">$215</div><div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div></div>
-          </div>
-          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-            <span style="background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Order submitted</span>
-            <span style="background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⏳ Count pending</span>
+          <div style="padding:20px 18px 16px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:8px;">🏗️</div>
+            <div style="font-size:13px;font-weight:600;color:#6D28D9;margin-bottom:4px;">Opening soon</div>
+            <div style="font-size:11px;color:#8A93A8;line-height:1.5;">MedSync will activate automatically<br>once the location goes live.</div>
           </div>
         </div>
 

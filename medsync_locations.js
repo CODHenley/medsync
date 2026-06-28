@@ -16,3 +16,8 @@ const ALL_LOC_UUIDS = LOCS.map(l => l.uuid);
 
 const WHEATON_UUID = LOCS[3].uuid;
 const WHEATON_VID  = LOCS[3].vid;
+
+// Coming soon — lease signed, not yet live
+const COMING_SOON_LOCS = [
+  { key: 'wc', uuid: '11111111-0000-0000-0000-000000000005', name: 'Westchester', region: 'Chicagoland West', liveDate: null },
+];
