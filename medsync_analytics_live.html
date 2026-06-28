@@ -1163,32 +1163,26 @@ async function renderCOGSBars(glRows, loc, _unused) {
   try {
     // purchase_history uses UUID for location_id; daily_revenue and dispensed_items use VID
     const phLocOr = targetIds.map(id => `location_id.eq.${id}`).join(',');
-    // For YTD Vetcove data always fetch full year-to-date regardless of date filter
-    const ytdFrom = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-    const [revRes, ytdRevRes, spendRes, phRes] = await Promise.all([
+    const [revRes, spendRes, phRes] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${revLocOr})`, { headers: HEADERS }),
-      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${ytdFrom}&date=lte.${to}&or=(${revLocOr})`, { headers: HEADERS }),
       fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${revLocOr})`, { headers: HEADERS }),
-      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=eq.vetcove&purchased_at=gte.${ytdFrom}&or=(${phLocOr})`, { headers: HEADERS })
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.${from}&purchased_at=lte.${to}&or=(${phLocOr})`, { headers: HEADERS })
     ]);
-    const revRows    = revRes.ok    ? await revRes.json()    : [];
-    const ytdRevRows = ytdRevRes.ok ? await ytdRevRes.json() : [];
-    const spendRows  = spendRes.ok  ? await spendRes.json()  : [];
-    const phRows     = phRes.ok     ? await phRes.json()     : [];
+    const revRows   = revRes.ok   ? await revRes.json()   : [];
+    const spendRows = spendRes.ok ? await spendRes.json() : [];
+    const phRows    = phRes.ok    ? await phRes.json()    : [];
 
-    const revByLoc = {}, ytdRevByLoc = {}, diSpendByLoc = {}, phSpendByLoc = {};
-    (Array.isArray(revRows)    ? revRows    : []).forEach(r => { revByLoc[r.location_id]    = (revByLoc[r.location_id]    || 0) + (Number(r.revenue)   || 0); });
-    (Array.isArray(ytdRevRows) ? ytdRevRows : []).forEach(r => { ytdRevByLoc[r.location_id] = (ytdRevByLoc[r.location_id] || 0) + (Number(r.revenue)   || 0); });
-    (Array.isArray(spendRows)  ? spendRows  : []).forEach(r => { diSpendByLoc[r.location_id] = (diSpendByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
-    (Array.isArray(phRows)     ? phRows     : []).forEach(r => { phSpendByLoc[r.location_id] = (phSpendByLoc[r.location_id] || 0) + (Number(r.amount)    || 0); });
+    const revByLoc = {}, diSpendByLoc = {}, phSpendByLoc = {};
+    (Array.isArray(revRows)   ? revRows   : []).forEach(r => { revByLoc[r.location_id]     = (revByLoc[r.location_id]     || 0) + (Number(r.revenue)   || 0); });
+    (Array.isArray(spendRows) ? spendRows : []).forEach(r => { diSpendByLoc[r.location_id] = (diSpendByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+    (Array.isArray(phRows)    ? phRows    : []).forEach(r => { phSpendByLoc[r.location_id] = (phSpendByLoc[r.location_id] || 0) + (Number(r.amount)    || 0); });
 
-    // Use Vetcove purchase_history as spend where available (YTD), otherwise dispensed_items
-    // When using YTD spend, compare against YTD revenue for an accurate COGs %
-    const spendByLoc = {}, cogsRevByLoc = {};
+    // Use Vetcove purchase_history spend where available, otherwise dispensed_items
+    // Weekly rows in purchase_history naturally sum to the selected date range
+    const spendByLoc = {};
     LOCS.forEach(l => {
       const hasVetcove = !!phSpendByLoc[l.uuid];
-      spendByLoc[l.vid]    = hasVetcove ? phSpendByLoc[l.uuid] : (diSpendByLoc[l.vid] || 0);
-      cogsRevByLoc[l.vid]  = hasVetcove ? (ytdRevByLoc[l.vid] || revByLoc[l.vid] || 0) : (revByLoc[l.vid] || 0);
+      spendByLoc[l.vid] = hasVetcove ? phSpendByLoc[l.uuid] : (diSpendByLoc[l.vid] || 0);
     });
 
     // Update individual revenue tiles (daily_revenue uses VID as location_id)
@@ -1207,15 +1201,12 @@ async function renderCOGSBars(glRows, loc, _unused) {
     });
     targetVids.forEach(vid => { totalSpend += spendByLoc[vid] || 0; });
 
-    // Build COGs bars — Vetcove locations always use YTD spend ÷ YTD revenue
-    let totalCogsRev = 0;
+    // Build COGs bars — spend and revenue both filtered to the selected date range
     const barsData = (loc === 'all' ? LOCS : LOCS.filter(l => l.key === loc)).map(l => {
       const hasVetcove = !!phSpendByLoc[l.uuid];
-      const rev        = revByLoc[l.vid]     || 0;
-      const cogsRev    = cogsRevByLoc[l.vid] || 0;
-      const spend      = spendByLoc[l.vid]   || 0;
-      const pct        = cogsRev > 0 ? (spend / cogsRev) * 100 : null;
-      totalCogsRev    += cogsRev;
+      const rev        = revByLoc[l.vid]   || 0;
+      const spend      = spendByLoc[l.vid] || 0;
+      const pct        = rev > 0 ? (spend / rev) * 100 : null;
       return { id: l.uuid, name: l.name, rev, spend, pct, ytd: hasVetcove };
     });
 
@@ -1230,8 +1221,7 @@ async function renderCOGSBars(glRows, loc, _unused) {
       }
       const color = l.pct > 9 ? 'var(--red)' : l.pct > 7 ? 'var(--amber)' : 'var(--green)';
       const w = Math.min(Math.round((l.pct / max) * 100), 100);
-      const periodNote = l.ytd ? 'YTD' : 'live';
-      const revLabel = l.rev > 0 ? ` <span style="font-size:9px;color:var(--mist);font-weight:400;">$${(l.rev/1000).toFixed(0)}K rev · ${periodNote}</span>` : '';
+      const revLabel = l.rev > 0 ? ` <span style="font-size:9px;color:var(--mist);font-weight:400;">$${(l.rev/1000).toFixed(0)}K rev</span>` : '';
       return `<div class="br">
         <div class="br-loc">${l.name}${revLabel}</div>
         <div class="br-track"><div class="br-fill" style="width:${w}%;background:${color};">${l.pct.toFixed(1)}%</div></div>
@@ -1239,8 +1229,8 @@ async function renderCOGSBars(glRows, loc, _unused) {
       </div>`;
     }).join('');
 
-    // Update k-cogs + ov-cogs KPI tiles — use YTD revenue denominator to match YTD spend
-    const portCogs = totalCogsRev > 0 ? (totalSpend / totalCogsRev) * 100 : null;
+    // Update k-cogs + ov-cogs KPI tiles
+    const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
     const kcogsEl  = document.getElementById('k-cogs');
     const ovCogsEl = document.getElementById('ov-cogs');
     const cogsColor = portCogs === null ? 'cm' : portCogs > 9 ? 'cr' : portCogs > 7 ? 'ca' : 'cg';
