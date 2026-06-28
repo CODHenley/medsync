@@ -114,13 +114,14 @@ def main():
                 continue
             raw = result.get("data", {}).get("salesReport", "[]")
             rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
-            rec = rows[0] if rows else {}
-            if not _fields_logged and rec:
-                print(f"\n  [DEBUG] salesReport keys: {list(rec.keys())}")
-                print(f"  [DEBUG] first record: {rec}")
+            if not _fields_logged and rows:
+                print(f"\n  [DEBUG] salesReport keys: {list(rows[0].keys())}")
+                print(f"\n  [DEBUG] row count: {len(rows)}, first record: {rows[0]}")
                 _fields_logged = True
-            revenue = _pick_paid(rec)
-            print(f"${revenue:,.2f}  (field: {_paid_field(rec)})")
+            # Sum across ALL rows — salesReport returns one row per provider/category
+            revenue = sum(_pick_paid(r) for r in rows)
+            field_used = _paid_field(rows[0]) if rows else "none"
+            print(f"${revenue:,.2f}  ({len(rows)} rows, field: {field_used})")
             records.append({
                 "date":          target_date,
                 "location_id":   loc_id,
