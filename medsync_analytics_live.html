@@ -376,7 +376,7 @@ async function loadPI() {
       lostV[raw]=(lostV[raw]||0)+parseFloat(x.value_lost||0);
     });
     var prods=Array.from(new Set([].concat(Object.keys(bought),Object.keys(lostQ))));
-    if(!prods.length){prods=['Buprenorphine 0.3mg/ml','Ketamine HCl 10mg/ml','Gabapentin 100mg caps','Carprofen 50mg tabs','Dexmedetomidine 0.5mg/ml','Maropitant Citrate 10mg/ml'];[20,15,214,180,10,8].forEach(function(v,i){bought[prods[i]]=v;});[2,1,14,5,1,0].forEach(function(v,i){lostQ[prods[i]]=v;lostV[prods[i]]=[376,142,10,12,110,0][i];});}
+    if(!prods.length){prods=['Procyte Dx Reagent Kit','Cytopoint 40 mg (1 ml vial)','Convenia (Cefovecin Sodium) Inj 80 mg/ml','Solensia','Cytopoint 30 mg (1 ml vial)','Entyce 30 mg/ml (15 ml)','Buprenorphine  Inj 0.3 mg/ml','Methadone Inj 10 mg/ml'];[48,18,24,14,16,22,30,12].forEach(function(v,i){bought[prods[i]]=v;});[1,1,1,1,1,1,1,1].forEach(function(v,i){lostQ[prods[i]]=v;lostV[prods[i]]=[605.95,49.30,45.74,43.68,45.50,37.88,18.38,34.95][i];});}
     prods.sort(function(a,b){return(bought[b]||0)-(bought[a]||0);});prods=prods.slice(0,8);
     var mx=Math.max.apply(null,prods.map(function(p){return Math.max(bought[p]||0,lostQ[p]||0);}));if(!mx)mx=1;
     document.getElementById('pi-pvl').innerHTML=prods.map(function(p){var b=bought[p]||0,l=lostQ[p]||0,r=b>0?Math.round(l/b*100):0,sh=p.length>22?p.slice(0,20)+'…':p;
