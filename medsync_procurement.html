@@ -38,7 +38,7 @@ select:focus{border-color:var(--navy);}
 .content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px;min-height:0;}
 
 /* KPI ROW */
-.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
 .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
 .kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .kpi-v{font-size:22px;font-weight:500;line-height:1;}
@@ -198,6 +198,11 @@ tr:last-child td{border-bottom:none;}
       <div class="kpi"><div class="kpi-l">Remaining Inventory</div><div class="kpi-v cg" id="kv-remaining">—</div><div class="kpi-s cm">snapshot minus period COGS</div></div>
       <div class="kpi"><div class="kpi-l">COGS % Revenue</div><div class="kpi-v" id="kv-cogspc" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogspc">true cost vs. revenue</div></div>
       <div class="kpi"><div class="kpi-l">Items Dispensed</div><div class="kpi-v cp" id="kv-items">—</div><div class="kpi-s cm" id="ks-items">dispense events</div></div>
+      <div class="kpi" id="kpi-health-risk" style="cursor:pointer;border-color:#e8a0a0;background:#fff8f8;" onclick="navToLotHealth()" title="Open Inventory Health in Lot Lifecycle">
+        <div class="kpi-l">Depreciation Risk</div>
+        <div class="kpi-v" id="kv-health-risk" style="color:#a33030;">—</div>
+        <div class="kpi-s" id="ks-health-risk" style="color:#a33030;">loading…</div>
+      </div>
     </div>
 
     <!-- PRODUCT VIEW -->
@@ -512,6 +517,7 @@ async function reload() {
     renderProductTable();
     renderDailyTable();
     renderRegionalCards();
+    loadHealthRiskBadge();
 
   } catch (err) {
     console.error(err);
@@ -1050,6 +1056,91 @@ function printReport() {
 
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); }
+}
+
+// ── Inventory Health risk badge ──────────────────────────────────────
+async function loadHealthRiskBadge() {
+  try {
+    const locVid  = document.getElementById('sel-location').value;
+    const locUuid = locVid ? LOC_UUID[locVid] : null;
+    const today   = new Date(); today.setHours(0,0,0,0);
+    const from60  = new Date(today.getTime() - 60*864e5).toISOString().slice(0,10);
+
+    // Lots for this location
+    const lotsRes = await fetch(
+      SUPA_URL + '/rest/v1/lots?select=notes,qty_remaining,received_date,expiration_date,products(name,unit_cost)' +
+      '&status=not.eq.Disposed' +
+      (locUuid ? '&location_id=eq.' + locUuid : '') +
+      '&limit=500',
+      { headers: H }
+    );
+    const lots = await lotsRes.json();
+    if (!Array.isArray(lots) || !lots.length) {
+      document.getElementById('kv-health-risk').textContent = '0';
+      document.getElementById('ks-health-risk').textContent = 'no active lots';
+      document.getElementById('kpi-health-risk').style.borderColor = 'var(--border)';
+      document.getElementById('kpi-health-risk').style.background = '';
+      return;
+    }
+
+    // Velocity: dispensed_items last 60d for this location
+    const diRes = await fetch(
+      SUPA_URL + '/rest/v1/dispensed_items?select=product_name,quantity,unit_cost' +
+      '&dispensed_at=gte.' + from60 + 'T00:00:00Z' +
+      '&returned=eq.false&refunded=eq.false&sku=not.is.null' +
+      (locVid ? '&location_id=eq.' + locVid : '') +
+      '&limit=5000',
+      { headers: H }
+    );
+    const diRows = await diRes.json();
+    const velocity = {};
+    for (const r of (Array.isArray(diRows) ? diRows : [])) {
+      const n = r.product_name;
+      if (!n) continue;
+      if (!velocity[n]) velocity[n] = { qty: 0, cost: 0 };
+      velocity[n].qty  += parseFloat(r.quantity) || 0;
+      velocity[n].cost  = parseFloat(r.unit_cost) || velocity[n].cost;
+    }
+
+    let atRisk = 0, exposure = 0;
+    for (const lot of lots) {
+      const name     = lot.products?.name || (lot.notes||'').replace(/^Vetspire inventory:\s*/,'').trim();
+      const qtyRem   = parseFloat(lot.qty_remaining) || 0;
+      const daysToExp = lot.expiration_date
+        ? Math.round((new Date(lot.expiration_date) - today) / 864e5)
+        : null;
+      const vel = velocity[name];
+      const dailyRate = vel ? vel.qty / 60 : 0;
+      const daysToDeplete = dailyRate > 0 ? Math.round(qtyRem / dailyRate) : null;
+      const unitCost = vel?.cost || parseFloat(lot.products?.unit_cost) || 0;
+
+      if (daysToExp !== null && daysToDeplete !== null && daysToExp < daysToDeplete && qtyRem > 0) {
+        atRisk++;
+        exposure += qtyRem * unitCost;
+      }
+    }
+
+    document.getElementById('kv-health-risk').textContent = atRisk;
+    document.getElementById('ks-health-risk').textContent = atRisk > 0
+      ? '$' + Number(exposure).toLocaleString('en-US',{maximumFractionDigits:0}) + ' exposure'
+      : 'no at-risk lots';
+    const tile = document.getElementById('kpi-health-risk');
+    if (atRisk === 0) {
+      tile.style.borderColor = '#B8E8C8';
+      tile.style.background  = '#F6FFF9';
+      document.getElementById('kv-health-risk').style.color = 'var(--green)';
+      document.getElementById('ks-health-risk').style.color = 'var(--green)';
+    }
+  } catch(e) { console.warn('Health risk badge error', e); }
+}
+
+function navToLotHealth() {
+  const url = 'medsync_lot_lifecycle_live.html';
+  if (window.self !== window.top) {
+    window.parent.postMessage({ type: 'navigate', screen: 'lot-lifecycle', action: 'health' }, '*');
+  } else {
+    window.location.href = url;
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────

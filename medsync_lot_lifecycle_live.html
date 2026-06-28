@@ -416,6 +416,7 @@ if (window.self !== window.top) {
         </div>
       </div>
       <div class="tb-right">
+        <button class="btn" id="btn-health" onclick="toggleHealthView()" style="display:flex;align-items:center;gap:5px;">📊 Inventory Health</button>
         <button class="btn" onclick="refreshLots()"><i class="ti ti-refresh" id="lc-refresh-icon" style="font-size:12px;margin-right:4px;"></i>Refresh</button>
         <button class="btn btn-primary" onclick="openAddLotModal()">+ Add lot</button>
         <button class="btn" onclick="exportLotsCSV()">↓ CSV</button>
@@ -454,8 +455,33 @@ if (window.self !== window.top) {
         </div>
       </div>
 
+      <!-- INVENTORY HEALTH PANEL (hidden by default) -->
+      <div id="health-panel" style="display:none;flex-direction:column;gap:14px;">
+        <div class="sec-head">
+          <div>
+            <div class="sec-title">Inventory Health</div>
+            <div class="sec-sub" id="health-sub">Analyzing lot velocity vs. expiration…</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="health-loc-filter" onchange="renderHealthView()" style="height:28px;font-size:11px;">
+              <option value="all">All locations</option>
+              <option value="Lincoln Park">Lincoln Park</option>
+              <option value="Old Orchard">Old Orchard</option>
+              <option value="West Loop">West Loop</option>
+              <option value="Wheaton">Wheaton</option>
+            </select>
+          </div>
+        </div>
+        <!-- Health KPI strip -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;" id="health-kpis"></div>
+        <!-- Tier sections -->
+        <div id="health-atrisk"></div>
+        <div id="health-slow"></div>
+        <div id="health-healthy"></div>
+      </div>
+
       <!-- EXPIRY ALERT STRIP -->
-      <div>
+      <div id="lot-main-view">
         <div class="sec-head" style="margin-bottom:8px;">
           <div class="sec-title">Priority alerts</div>
           <div class="sec-sub">Lots requiring immediate attention</div>
@@ -497,6 +523,8 @@ if (window.self !== window.top) {
           </table>
         </div>
       </div>
+
+      </div><!-- /lot-main-view -->
 
     </div><!-- /content -->
   </div><!-- /main-area -->
@@ -1601,6 +1629,227 @@ async function logLotEvent(action, lotNumber, productName, locationId) {
       })
     });
   } catch(e) {}
+}
+
+// ── Inventory Health ─────────────────────────────────────────
+let HEALTH_VIEW_OPEN = false;
+let DISPENSED_VELOCITY = {}; // product_name → avg daily units dispensed
+
+async function toggleHealthView() {
+  HEALTH_VIEW_OPEN = !HEALTH_VIEW_OPEN;
+  const panel = document.getElementById('health-panel');
+  const main  = document.getElementById('lot-main-view');
+  const btn   = document.getElementById('btn-health');
+  if (HEALTH_VIEW_OPEN) {
+    panel.style.display = 'flex';
+    main.style.display  = 'none';
+    btn.style.background = 'var(--navy)';
+    btn.style.color      = '#fff';
+    btn.style.borderColor = 'var(--navy)';
+    await loadVelocityData();
+    renderHealthView();
+  } else {
+    panel.style.display = 'none';
+    main.style.display  = 'block';
+    btn.style.background = '';
+    btn.style.color      = '';
+    btn.style.borderColor = '';
+  }
+}
+
+async function loadVelocityData() {
+  // Pull 60 days of dispensed_items to compute per-product daily burn rate
+  const today   = new Date().toISOString().slice(0,10);
+  const from60  = new Date(Date.now() - 60*864e5).toISOString().slice(0,10);
+  try {
+    const res = await fetch(
+      SUPA_URL + '/rest/v1/dispensed_items?select=product_name,quantity,unit_cost,dispensed_at' +
+      '&dispensed_at=gte.' + from60 + 'T00:00:00Z' +
+      '&returned=eq.false&refunded=eq.false&sku=not.is.null&limit=10000',
+      { headers: H }
+    );
+    const rows = await res.json();
+    // Group by product_name → total qty over 60d → daily rate
+    const byProduct = {};
+    for (const r of rows) {
+      const n = r.product_name;
+      if (!n) continue;
+      if (!byProduct[n]) byProduct[n] = { qty: 0, cost: 0, count: 0 };
+      byProduct[n].qty   += parseFloat(r.quantity) || 0;
+      byProduct[n].cost   = parseFloat(r.unit_cost) || byProduct[n].cost; // last seen cost
+      byProduct[n].count += 1;
+    }
+    DISPENSED_VELOCITY = {};
+    for (const [name, d] of Object.entries(byProduct)) {
+      DISPENSED_VELOCITY[name] = { dailyRate: d.qty / 60, unitCost: d.cost };
+    }
+  } catch(e) { console.warn('Could not load velocity data', e); }
+}
+
+function renderHealthView() {
+  const locFilter = (document.getElementById('health-loc-filter')||{}).value || 'all';
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  // Only active lots with a received date
+  const lots = ALL_LOTS.filter(l =>
+    l.status !== 'Disposed' &&
+    l.received &&
+    (locFilter === 'all' || l.loc === locFilter)
+  );
+
+  const atRisk = [], slowMoving = [], healthy = [];
+  let totalExposure = 0, totalSlowValue = 0;
+
+  for (const lot of lots) {
+    const daysOnShelf = lot.received
+      ? Math.round((today - new Date(lot.received)) / 864e5)
+      : null;
+    const daysToExp = lot.exp ? Math.round((new Date(lot.exp) - today) / 864e5) : null;
+    const vel = DISPENSED_VELOCITY[lot.name];
+    const dailyRate = vel?.dailyRate || 0;
+    const unitCost  = vel?.unitCost  || 0;
+
+    // Projected days to deplete remaining qty at current burn rate
+    const daysToDeplete = dailyRate > 0 ? Math.round(lot.qtyRem / dailyRate) : null;
+    const projDepletionDate = daysToDeplete !== null
+      ? new Date(today.getTime() + daysToDeplete * 864e5)
+      : null;
+
+    // At risk: will expire before we use it all (with ≥1 unit remaining)
+    const expiresBeforeDepletion = projDepletionDate && daysToExp !== null && daysToExp < daysToDeplete && lot.qtyRem > 0;
+    // Slow moving: on shelf > 45 days AND velocity < half of what we'd expect to clear it by expiry
+    const slowMovingFlag = daysOnShelf !== null && daysOnShelf > 45 && dailyRate === 0 && lot.qtyRem > 0;
+
+    const exposure = lot.qtyRem * unitCost;
+
+    const item = { lot, daysOnShelf, daysToExp, daysToDeplete, projDepletionDate, dailyRate, unitCost, exposure };
+
+    if (expiresBeforeDepletion) {
+      atRisk.push(item);
+      totalExposure += exposure;
+    } else if (slowMovingFlag) {
+      slowMoving.push(item);
+      totalSlowValue += exposure;
+    } else {
+      healthy.push(item);
+    }
+  }
+
+  // Sort at-risk by soonest expiry first
+  atRisk.sort((a,b) => (a.daysToExp||999) - (b.daysToExp||999));
+  slowMoving.sort((a,b) => (b.daysOnShelf||0) - (a.daysOnShelf||0));
+
+  // Update health sub-label
+  const sub = document.getElementById('health-sub');
+  if (sub) sub.textContent = `${lots.length} active lots across ${locFilter === 'all' ? 'all locations' : locFilter} · 60-day velocity window`;
+
+  // KPI strip
+  document.getElementById('health-kpis').innerHTML = `
+    <div class="kpi kpi-alert">
+      <div class="kpi-l">At depreciation risk</div>
+      <div class="kpi-v cr">${atRisk.length}</div>
+      <div class="kpi-s cr">expire before depletion</div>
+    </div>
+    <div class="kpi kpi-warn">
+      <div class="kpi-l">Slow / no movement</div>
+      <div class="kpi-v ca">${slowMoving.length}</div>
+      <div class="kpi-s ca">no velocity in 60d</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-l">Healthy lots</div>
+      <div class="kpi-v cg">${healthy.length}</div>
+      <div class="kpi-s cm">on pace</div>
+    </div>
+    <div class="kpi ${totalExposure > 0 ? 'kpi-alert' : ''}">
+      <div class="kpi-l">Depreciation exposure</div>
+      <div class="kpi-v ${totalExposure > 0 ? 'cr' : 'cm'}">$${(totalExposure + totalSlowValue).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+      <div class="kpi-s cm">at-risk + slow-moving value</div>
+    </div>`;
+
+  // Render each tier
+  document.getElementById('health-atrisk').innerHTML   = renderHealthTier('🔴 At Depreciation Risk', 'Lots projected to expire before inventory is fully dispensed — order less next cycle or consider redistributing to other locations.', atRisk, 'red', true);
+  document.getElementById('health-slow').innerHTML     = renderHealthTier('🟡 Slow / No Movement', 'Products with remaining inventory but no dispensing activity in the last 60 days — review demand before reordering.', slowMoving, 'amber', false);
+  document.getElementById('health-healthy').innerHTML  = renderHealthTier('🟢 Healthy', 'Burn rate is on pace with inventory levels — no action needed.', healthy, 'green', false);
+}
+
+function renderHealthTier(title, desc, items, color, showExposure) {
+  const borderColor = color === 'red' ? 'var(--red-border)' : color === 'amber' ? 'var(--amber-border)' : '#B8E8C8';
+  const bgColor     = color === 'red' ? '#FFF8F8' : color === 'amber' ? '#FFFBF0' : '#F6FFF9';
+  const textColor   = color === 'red' ? 'var(--red)' : color === 'amber' ? 'var(--amber)' : 'var(--green)';
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+  const fmtCost = v => v > 0 ? '$' + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+
+  const rows = items.map(({lot, daysOnShelf, daysToExp, daysToDeplete, projDepletionDate, dailyRate, unitCost, exposure}) => {
+    const rateStr    = dailyRate > 0 ? (dailyRate < 1 ? '&lt;1/day' : dailyRate.toFixed(1)+'/day') : 'No data';
+    const depletStr  = daysToDeplete !== null ? `${daysToDeplete}d (${fmtDate(projDepletionDate)})` : '—';
+    const recommendation = color === 'red'
+      ? (daysToExp !== null && daysToExp < 14 ? 'Urgent — redistribute or return' : 'Reduce next order qty')
+      : color === 'amber'
+      ? 'Do not reorder until movement resumes'
+      : 'On track';
+    return `<tr style="border-bottom:0.5px solid ${borderColor};">
+      <td style="padding:8px 10px;font-weight:500;">${lot.name}</td>
+      <td style="padding:8px 10px;color:var(--mist);font-size:11px;">${lot.loc}</td>
+      <td style="padding:8px 10px;font-family:'DM Mono',monospace;font-size:11px;">${lot.qtyRem}</td>
+      <td style="padding:8px 10px;font-size:11px;">${daysOnShelf !== null ? daysOnShelf+'d' : '—'}</td>
+      <td style="padding:8px 10px;font-size:11px;">${rateStr}</td>
+      <td style="padding:8px 10px;font-size:11px;">${depletStr}</td>
+      <td style="padding:8px 10px;font-size:11px;">${daysToExp !== null ? daysToExp+'d ('+fmtDate(lot.exp)+')' : '—'}</td>
+      ${showExposure ? `<td style="padding:8px 10px;font-size:11px;color:${textColor};font-weight:500;">${fmtCost(exposure)}</td>` : ''}
+      <td style="padding:8px 10px;font-size:11px;color:${textColor};">${recommendation}</td>
+    </tr>`;
+  }).join('');
+
+  const collapsed = color === 'green' && items.length > 5;
+  const displayRows = collapsed ? items.slice(0, 5) : items;
+  const shortRows = displayRows.map(({lot, daysOnShelf, daysToExp, daysToDeplete, projDepletionDate, dailyRate, unitCost, exposure}) => {
+    const rateStr    = dailyRate > 0 ? (dailyRate < 1 ? '&lt;1/day' : dailyRate.toFixed(1)+'/day') : 'No data';
+    const depletStr  = daysToDeplete !== null ? `${daysToDeplete}d (${fmtDate(projDepletionDate)})` : '—';
+    const recommendation = color === 'red'
+      ? (daysToExp !== null && daysToExp < 14 ? 'Urgent — redistribute or return' : 'Reduce next order qty')
+      : color === 'amber'
+      ? 'Do not reorder until movement resumes'
+      : 'On track';
+    return `<tr style="border-bottom:0.5px solid ${borderColor};">
+      <td style="padding:8px 10px;font-weight:500;">${lot.name}</td>
+      <td style="padding:8px 10px;color:var(--mist);font-size:11px;">${lot.loc}</td>
+      <td style="padding:8px 10px;font-family:'DM Mono',monospace;font-size:11px;">${lot.qtyRem}</td>
+      <td style="padding:8px 10px;font-size:11px;">${daysOnShelf !== null ? daysOnShelf+'d' : '—'}</td>
+      <td style="padding:8px 10px;font-size:11px;">${rateStr}</td>
+      <td style="padding:8px 10px;font-size:11px;">${depletStr}</td>
+      <td style="padding:8px 10px;font-size:11px;">${daysToExp !== null ? daysToExp+'d ('+fmtDate(lot.exp)+')' : '—'}</td>
+      ${showExposure ? `<td style="padding:8px 10px;font-size:11px;color:${textColor};font-weight:500;">${fmtCost(exposure)}</td>` : ''}
+      <td style="padding:8px 10px;font-size:11px;color:${textColor};">${recommendation}</td>
+    </tr>`;
+  }).join('');
+
+  if (!items.length) return '';
+
+  const colHeaders = `<th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Product</th>
+    <th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Location</th>
+    <th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Qty Rem.</th>
+    <th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Days on Shelf</th>
+    <th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Burn Rate</th>
+    <th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Projected Depletion</th>
+    <th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Expires</th>
+    ${showExposure ? '<th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">$ Exposure</th>' : ''}
+    <th style="padding:8px 10px;font-size:10px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Recommendation</th>`;
+
+  return `<div style="border:0.5px solid ${borderColor};border-radius:10px;background:${bgColor};overflow:hidden;">
+    <div style="padding:12px 14px;border-bottom:0.5px solid ${borderColor};display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--navy);">${title} <span style="font-weight:400;color:${textColor};">(${items.length})</span></div>
+        <div style="font-size:11px;color:var(--mist);margin-top:2px;">${desc}</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:rgba(0,0,0,.02);">${colHeaders}</tr></thead>
+        <tbody>${shortRows}${collapsed ? `<tr><td colspan="9" style="padding:8px 14px;font-size:11px;color:var(--mist);">+ ${items.length - 5} more healthy lots</td></tr>` : ''}</tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
 // ── Boot ──────────────────────────────────────────────────────
