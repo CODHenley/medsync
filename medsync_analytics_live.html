@@ -518,9 +518,9 @@ if (window.self !== window.top) {
             <div class="kpi-s ca">↑ $340 vs prior month</div>
           </div>
           <div class="kpi">
-            <div class="kpi-l">WG overspend est.</div>
-            <div class="kpi-v ca" id="k-wg">$133/mo</div>
-            <div class="kpi-s cm">OO + WL · 2 locations</div>
+            <div class="kpi-l">Expiring lots</div>
+            <div class="kpi-v ca" id="k-wg">…</div>
+            <div class="kpi-s cm" id="k-wg-s">within 60 days</div>
           </div>
         </div>
 
@@ -641,7 +641,7 @@ if (window.self !== window.top) {
       <div class="side-col">
         <div class="panel-tabs">
           <div class="ptab active" onclick="sp('ov',this)">📋 Overview</div>
-          <div class="ptab" onclick="sp('cogs',this)">📈 COGs</div>
+          <div class="ptab" onclick="sp('cogs',this);loadCOGSTrend()">📈 COGs</div>
           <div class="ptab" onclick="sp('gl',this)">⚠️ Goods Lost</div>
           <div class="ptab" onclick="sp('proc',this)">💰 Procurement</div>
           <div class="ptab" onclick="sp('comp',this)">✅ Order Compliance</div>
@@ -655,17 +655,15 @@ if (window.self !== window.top) {
             <div><div class="pc-title">Period summary</div><div class="pc-sub" id="period-label">Month to date · All locations</div></div>
             <button id="ov-refresh-btn" onclick="ovRefresh()" title="Refresh" style="background:none;border:0.5px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:11px;color:var(--navy);display:flex;align-items:center;gap:4px;"><i class="ti ti-refresh" id="ov-refresh-icon" style="font-size:12px;"></i> Refresh</button>
           </div>
-          <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg" id="ov-cogs">8.4%</span></div>
+          <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg" id="ov-cogs">…</span></div>
           <div class="mrow"><span class="mk">Target range</span><span class="mv">6.5–7.1%</span></div>
-          <div class="mrow"><span class="mk">Total revenue</span><span class="mv" id="ov-revenue">$1.168M</span></div>
-          <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">$98,112</span></div>
+          <div class="mrow"><span class="mk">Total revenue</span><span class="mv" id="ov-revenue">…</span></div>
+          <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">…</span></div>
           <div class="mrow"><span class="mk">Procurement savings</span><span class="mv cg" id="ov-sav">…</span></div>
           <div class="mrow"><span class="mk">Goods lost</span><span class="mv ca" id="ov-gl">…</span></div>
-          <div class="mrow"><span class="mk">WG overspend est.</span><span class="mv ca">$133/mo</span></div>
-          <div class="mrow"><span class="mk">Cycle count compliance</span><span class="mv">3 of 4 ✓</span></div>
+          <div class="mrow"><span class="mk">Cycle count compliance</span><span class="mv" id="ov-cc">…</span></div>
           <div class="mrow"><span class="mk">Order compliance</span><span class="mv" id="ov-comp">…</span></div>
           <div class="mrow"><span class="mk">Lots flagged</span><span class="mv ca" id="ov-lots">…</span></div>
-          <div class="mrow"><span class="mk">Active insight flags</span><span class="mv cr">3</span></div>
           <div class="exp-grid">
             <button class="exp-btn" onclick="exp('PDF')">↓ PDF</button>
             <button class="exp-btn" onclick="exp('CSV')">↓ CSV</button>
@@ -676,32 +674,14 @@ if (window.self !== window.top) {
 
         <!-- COGs -->
         <div class="pcontent" id="p-cogs" style="display:none;">
-          <div><div class="pc-title">COGs trend</div><div class="pc-sub">Month-over-month · portfolio</div></div>
+          <div><div class="pc-title">COGs trend</div><div class="pc-sub">Month-over-month · Wheaton (live)</div></div>
           <div class="card" style="padding:10px 12px;">
-            <div style="font-size:10px;color:var(--mist);margin-bottom:6px;">Portfolio COGs % — last 6 months</div>
-            <div class="trend">
-              <div class="tb" style="height:80%;background:var(--green);opacity:.5;" title="Dec 8.9%"></div>
-              <div class="tb" style="height:85%;background:var(--green);opacity:.6;" title="Jan 8.5%"></div>
-              <div class="tb" style="height:90%;background:var(--amber);opacity:.7;" title="Feb 9.0%"></div>
-              <div class="tb" style="height:75%;background:var(--green);opacity:.7;" title="Mar 7.5%"></div>
-              <div class="tb" style="height:87%;background:var(--green);opacity:.85;" title="Apr 8.7%"></div>
-              <div class="tb" style="height:84%;background:var(--green);" title="May 8.4%"></div>
-            </div>
-            <div class="tlabels">
-              <div class="tl">Dec</div><div class="tl">Jan</div><div class="tl">Feb</div>
-              <div class="tl">Mar</div><div class="tl">Apr</div><div class="tl">May</div>
-            </div>
+            <div style="font-size:10px;color:var(--mist);margin-bottom:6px;">COGs % — last 6 months</div>
+            <div class="trend" id="cogs-trend-bars"><div style="color:var(--mist);font-size:11px;">Loading…</div></div>
+            <div class="tlabels" id="cogs-trend-labels"></div>
           </div>
-          <div class="mrow"><span class="mk">Lincoln Park</span><span class="mv cg">7.6%</span></div>
-          <div class="mrow"><span class="mk">Old Orchard</span><span class="mv ca">9.8% ↑</span></div>
-          <div class="mrow"><span class="mk">West Loop</span><span class="mv cg">7.9%</span></div>
-          <div class="mrow"><span class="mk">Wheaton</span><span class="mv cg">8.1%</span></div>
-          <div class="mrow"><span class="mk">Portfolio avg</span><span class="mv cg">8.4%</span></div>
+          <div id="cogs-loc-rows"><div style="color:var(--mist);font-size:11px;padding:4px 0;">Loading…</div></div>
           <div class="mrow"><span class="mk">Denominator</span><span class="mv">Gross production</span></div>
-          <div class="ins">
-            <div class="ins-l">⚡ COGs insight</div>
-            <div class="ins-t"><strong>Old Orchard</strong> trending above target. Gabapentin + Maropitant over-ordered. Reduce Max at OO to bring COGs back in range by next month.</div>
-          </div>
         </div>
 
         <!-- Goods Lost -->
@@ -711,15 +691,7 @@ if (window.self !== window.top) {
           <div id="gl-cat-rows"></div>
           <div style="border-top:0.5px solid var(--border);padding-top:8px;margin-top:2px;">
             <div style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Top 5 by frequency</div>
-            <div class="mrow"><span class="mk">Catalyst Chem 10</span><span class="mv">11 entries</span></div>
-            <div class="mrow"><span class="mk">Gabapentin Solu</span><span class="mv">5 entries</span></div>
-            <div class="mrow"><span class="mk">TrizULTRA</span><span class="mv">4 entries</span></div>
-            <div class="mrow"><span class="mk">Vanguard DAPP</span><span class="mv">3 entries</span></div>
-            <div class="mrow"><span class="mk">Maropitant Inj</span><span class="mv">3 entries</span></div>
-          </div>
-          <div class="ins">
-            <div class="ins-l">⚡ Goods lost insight</div>
-            <div class="ins-t"><strong>In-house use</strong> on TrizULTRA, Epi-Otic, Optixcare across 4 locations — saleable items. Charging workflow audit recommended.</div>
+            <div id="gl-top-rows"><div style="color:var(--mist);font-size:11px;">—</div></div>
           </div>
         </div>
 
@@ -743,10 +715,8 @@ if (window.self !== window.top) {
 
         <!-- Order Compliance -->
         <div class="pcontent" id="p-comp" style="display:none;">
-          <div><div class="pc-title">Order compliance</div><div class="pc-sub">May 2026 · 1pm Vetcove cutoff</div></div>
-          <div class="mrow"><span class="mk">Portfolio rate</span><span class="mv cg">94%</span></div>
-          <div class="mrow"><span class="mk">On-time submissions</span><span class="mv">15 of 16</span></div>
-          <div class="mrow"><span class="mk">Late</span><span class="mv ca">1 — Old Orchard</span></div>
+          <div><div class="pc-title">Order compliance</div><div class="pc-sub">1pm Vetcove cutoff · this period</div></div>
+          <div class="mrow"><span class="mk">Portfolio rate</span><span class="mv" id="comp-rate-val">…</span></div>
           <div style="margin-top:4px;" id="comp-sidebar">
             <div class="oc-r"><span class="oc-loc">Lincoln Park</span><span class="cg" style="font-weight:500;font-size:11px;">100%</span><div class="oc-bar"><div class="oc-fill" style="width:100%;background:var(--green);"></div></div></div>
             <div class="oc-r"><span class="oc-loc">Old Orchard</span><span class="ca" style="font-weight:500;font-size:11px;">75%</span><div class="oc-bar"><div class="oc-fill" style="width:75%;background:var(--amber);"></div></div></div>
@@ -977,7 +947,7 @@ async function loadData() {
   try {
     // ── 1. Goods lost totals ─────────────────────────────────
     const glRows = await query('goods_lost',
-      `select=category,value_lost,location_id&created_at=gte.${from}&created_at=lte.${to}${locFilter}`
+      `select=category,value_lost,location_id,product_name,notes&created_at=gte.${from}&created_at=lte.${to}${locFilter}`
     );
 
     // Total goods lost
@@ -1024,9 +994,12 @@ async function loadData() {
       `select=location_id,status,qty_remaining${locFilter}&status=neq.Disposed`
     );
     const expiring = lots.filter(l => l.status === 'Expiring soon' || l.status === 'Expired');
-    const kwg = document.getElementById('k-wg');
-    kwg.textContent = expiring.length + ' lot' + (expiring.length !== 1 ? 's' : '') + ' flagged';
+    const kwg  = document.getElementById('k-wg');
+    const kwgs = document.getElementById('k-wg-s');
+    const expired30 = lots.filter(l => l.status === 'Expired' || (l.status === 'Expiring soon' && l.expiration_date)).length;
+    kwg.textContent = expiring.length + ' lot' + (expiring.length !== 1 ? 's' : '');
     kwg.className = expiring.length > 0 ? 'kpi-v ca' : 'kpi-v cg';
+    if (kwgs) kwgs.textContent = expiring.length > 0 ? 'expiring or expired' : 'All lots current';
 
     // ── 4. Live COGs for Wheaton from daily_revenue + dispensed_items ──────
     const [diRes, revRes] = await Promise.all([
@@ -1088,6 +1061,38 @@ async function loadData() {
     document.getElementById('ov-sav').textContent = totalSav > 0 ? '+' + fmt$(totalSav) : '—';
     document.getElementById('ov-comp').textContent = compRate + '%';
     document.getElementById('ov-lots').textContent = expiring.length + ' flagged';
+
+    // Compliance sidebar rate
+    const compRateEl = document.getElementById('comp-rate-val');
+    if (compRateEl) { compRateEl.textContent = compRate + '%'; compRateEl.className = compRate >= 90 ? 'mv cg' : compRate >= 70 ? 'mv ca' : 'mv cr'; }
+
+    // GL top-5 by frequency (product_name)
+    const glTopEl = document.getElementById('gl-top-rows');
+    if (glTopEl) {
+      const byProd = {};
+      glRows.forEach(r => { const n = r.product_name || r.notes || 'Unknown'; byProd[n] = (byProd[n]||0) + 1; });
+      const top5 = Object.entries(byProd).sort((a,b) => b[1]-a[1]).slice(0,5);
+      glTopEl.innerHTML = top5.length
+        ? top5.map(([n,c]) => `<div class="mrow"><span class="mk">${n.length > 22 ? n.slice(0,20)+'…' : n}</span><span class="mv">${c} entr${c===1?'y':'ies'}</span></div>`).join('')
+        : '<div style="color:var(--mist);font-size:11px;">No goods lost entries.</div>';
+    }
+
+    // Cycle count compliance — counts this period vs. locations
+    try {
+      const ccRes = await fetch(SUPA_URL + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + from + '&created_at=lte.' + to + (locFilter || ''), { headers: HEADERS });
+      const ccRows = await ccRes.json();
+      const ccEl = document.getElementById('ov-cc');
+      if (ccEl) {
+        if (Array.isArray(ccRows) && ccRows.length > 0) {
+          const done = new Set(ccRows.filter(r => r.status === 'completed' || r.status === 'submitted').map(r => r.location_id)).size;
+          const total = new Set(ccRows.map(r => r.location_id)).size || 4;
+          ccEl.textContent = done + ' of ' + total + ' ✓';
+          ccEl.className = done >= total ? 'mv cg' : done > 0 ? 'mv ca' : 'mv cr';
+        } else {
+          ccEl.textContent = '—'; ccEl.className = 'mv cm';
+        }
+      }
+    } catch(_) { const e = document.getElementById('ov-cc'); if(e) e.textContent = '—'; }
 
     // Cache for export (cogsRows populated by renderCOGSBars after it runs)
     _analyticsCache = {
@@ -1212,15 +1217,14 @@ async function renderCOGSBars(glRows, loc, _unused) {
       </div>`;
     }).join('');
 
-    // Update k-cogs KPI tile with portfolio figure
+    // Update k-cogs + ov-cogs KPI tiles with portfolio figure
     const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
-    const kcogsEl = document.getElementById('k-cogs');
-    if (kcogsEl && portCogs !== null) {
-      kcogsEl.textContent = portCogs.toFixed(1) + '%';
-      kcogsEl.className   = portCogs > 9 ? 'kpi-v cr' : portCogs > 7 ? 'kpi-v ca' : 'kpi-v cg';
-    } else if (kcogsEl) {
-      kcogsEl.textContent = '—'; kcogsEl.className = 'kpi-v cm';
-    }
+    const kcogsEl  = document.getElementById('k-cogs');
+    const ovCogsEl = document.getElementById('ov-cogs');
+    const cogsColor = portCogs === null ? 'cm' : portCogs > 9 ? 'cr' : portCogs > 7 ? 'ca' : 'cg';
+    const cogsText  = portCogs !== null ? portCogs.toFixed(1) + '%' : '—';
+    if (kcogsEl)  { kcogsEl.textContent  = cogsText; kcogsEl.className  = 'kpi-v ' + cogsColor; }
+    if (ovCogsEl) { ovCogsEl.textContent = cogsText; ovCogsEl.className = 'mv ' + cogsColor; }
 
     // Update overview revenue + drug spend
     const ovRevEl = document.getElementById('ov-revenue');
@@ -1346,6 +1350,85 @@ function renderSavingsTable(savByCategory, totalSav, from, to) {
   if (window._analyticsCache) window._analyticsCache.totalSav = totalSav;
 }
 
+// ── COGs trend (last 6 months, Wheaton live data) ────────────
+async function loadCOGSTrend() {
+  const bars   = document.getElementById('cogs-trend-bars');
+  const labels = document.getElementById('cogs-trend-labels');
+  const locRows = document.getElementById('cogs-loc-rows');
+  if (!bars) return;
+
+  try {
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        label: d.toLocaleString('default', { month: 'short' }),
+        from:  d.toISOString().split('T')[0],
+        to:    new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
+      });
+    }
+
+    // Fetch all months in parallel for Wheaton
+    const results = await Promise.all(months.map(async m => {
+      const [diRes, revRes] = await Promise.all([
+        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + m.from + '&dispensed_at=lte.' + m.to + '&sku=not.is.null', { headers: HEADERS }),
+        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + m.from + '&date=lte.' + m.to, { headers: HEADERS })
+      ]);
+      const di  = await diRes.json();
+      const rev = await revRes.json();
+      const spend = Array.isArray(di)  ? di.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
+      const revenue = Array.isArray(rev) ? rev.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
+      const pct = revenue > 0 ? spend / revenue * 100 : null;
+      return { label: m.label, pct, spend, revenue };
+    }));
+
+    const validPcts = results.filter(r => r.pct !== null).map(r => r.pct);
+    const maxPct = validPcts.length ? Math.max(...validPcts, 12) : 12;
+
+    bars.innerHTML = results.map(r => {
+      if (r.pct === null) return `<div class="tb" style="height:10%;background:var(--border);opacity:.4;" title="${r.label}: no data"></div>`;
+      const h = Math.round((r.pct / maxPct) * 100);
+      const color = r.pct > 9 ? 'var(--red)' : r.pct > 7 ? 'var(--amber)' : 'var(--green)';
+      return `<div class="tb" style="height:${h}%;background:${color};" title="${r.label}: ${r.pct.toFixed(1)}%"></div>`;
+    }).join('');
+    labels.innerHTML = results.map(r => `<div class="tl">${r.label}</div>`).join('');
+
+    // Per-location current period rows from renderCOGSBars cache
+    const latestValid = results.filter(r => r.pct !== null).pop();
+    const portAvg = latestValid ? latestValid.pct : null;
+    if (locRows) {
+      const allLocDefs = [
+        { key: 'lp', name: 'Lincoln Park',  uuid: '11111111-0000-0000-0000-000000000001', vid: '23083' },
+        { key: 'oo', name: 'Old Orchard',   uuid: '11111111-0000-0000-0000-000000000002', vid: '27390' },
+        { key: 'wl', name: 'West Loop',     uuid: '11111111-0000-0000-0000-000000000003', vid: '24356' },
+        { key: 'wh', name: 'Wheaton',       uuid: '11111111-0000-0000-0000-000000000004', vid: '28253' },
+      ];
+      const curMon = months[months.length - 1];
+      const locResults = await Promise.all(allLocDefs.map(async l => {
+        const [diRes, revRes] = await Promise.all([
+          fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + l.vid + '&dispensed_at=gte.' + curMon.from + '&dispensed_at=lte.' + curMon.to + '&sku=not.is.null', { headers: HEADERS }),
+          fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + l.vid + '&date=gte.' + curMon.from + '&date=lte.' + curMon.to, { headers: HEADERS })
+        ]);
+        const di  = await diRes.json();
+        const rev = await revRes.json();
+        const spend   = Array.isArray(di)  ? di.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
+        const revenue = Array.isArray(rev) ? rev.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
+        const pct = revenue > 0 ? spend / revenue * 100 : null;
+        return { name: l.name, pct };
+      }));
+      const totalSpend = locResults.reduce((s,l) => s + (l.pct !== null ? l.pct : 0), 0);
+      locRows.innerHTML = locResults.map(l => {
+        const cls = l.pct === null ? 'mv cm' : l.pct > 9 ? 'mv cr' : l.pct > 7 ? 'mv ca' : 'mv cg';
+        return `<div class="mrow"><span class="mk">${l.name}</span><span class="${cls}">${l.pct !== null ? l.pct.toFixed(1) + '%' : '—'}</span></div>`;
+      }).join('') + (portAvg !== null ? `<div class="mrow"><span class="mk">Portfolio avg</span><span class="mv cg">${portAvg.toFixed(1)}%</span></div>` : '');
+    }
+  } catch(e) {
+    console.error('loadCOGSTrend error:', e);
+    if (bars) bars.innerHTML = '<div style="color:var(--mist);font-size:11px;">Could not load trend data.</div>';
+  }
+}
+
 // ── Sidebar panel switcher ───────────────────────────────────
 const panels=['ov','cogs','gl','proc','comp','wg','purch'];
 function sp(name,el){
@@ -1376,7 +1459,7 @@ async function loadPurchaseHistory() {
     const extRows = await extRes.json();
 
     // MedSync POs from po_items (group by week_start + location)
-    const poRes = await fetch(SUPA_URL + '/rest/v1/po_items?select=week_start,location_id,gpo_price,order_qty,status&week_start=gte=' + from.split('T')[0] + '&week_start=lte.' + to.split('T')[0] + '&status=in.(submitted,received)' + locFilter + '&order=week_start.desc&limit=1000', { headers: HEADERS });
+    const poRes = await fetch(SUPA_URL + '/rest/v1/po_items?select=week_start,location_id,gpo_price,qty_ordered,status&week_start=gte.' + from.split('T')[0] + '&week_start=lte.' + to.split('T')[0] + '&status=in.(submitted,received)' + locFilter + '&order=week_start.desc&limit=1000', { headers: HEADERS });
     const poRows = await poRes.json();
 
     // Group PO rows by week_start + location_id
@@ -1385,7 +1468,7 @@ async function loadPurchaseHistory() {
       poRows.forEach(r => {
         const key = (r.week_start||'').slice(0,10) + '|' + r.location_id;
         if (!poGroups[key]) poGroups[key] = { week_start: (r.week_start||'').slice(0,10), location_id: r.location_id, amount: 0, items: 0 };
-        poGroups[key].amount += (parseFloat(r.gpo_price)||0) * (parseInt(r.order_qty)||0);
+        poGroups[key].amount += (parseFloat(r.gpo_price)||0) * (parseInt(r.qty_ordered)||0);
         poGroups[key].items++;
       });
     }
