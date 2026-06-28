@@ -531,25 +531,23 @@ async function updateKPIs() {
   const totalRevenue  = ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
   const totalItems    = ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
 
-  // Estimate remaining from lots table
+  // Purchase value from po_items (received orders in the period)
   let purchaseValue = 0;
   try {
     const { start, end } = getDateRange();
-    const locF = getLocationFilter().replace('&location_id', '&location_id');
-    const _locVid = document.getElementById('sel-location').value;
+    const _locVid  = document.getElementById('sel-location').value;
     const _locUuid = _locVid ? LOC_UUID[_locVid] : null;
-    const lots = await query('lots',
-      `select=qty_received,unit_cost,received_date` +
-      `&received_date=gte.${start}&received_date=lte.${end}` +
+    const poItems = await query('po_items',
+      `select=qty_ordered,unit_price` +
+      `&status=eq.received` +
+      `&week_start=gte.${start}&week_start=lte.${end}` +
       (_locUuid ? `&location_id=eq.${_locUuid}` : '') +
-      `&limit=500`
+      `&limit=1000`
     );
-    purchaseValue = lots.reduce((s, l) => {
-      const qty = parseFloat(l.qty_received) || 0;
-      const cost = parseFloat(l.unit_cost) || 0;
-      return s + (qty * cost);
+    purchaseValue = poItems.reduce((s, r) => {
+      return s + ((parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0));
     }, 0);
-  } catch(e) { showToast('⚠ Purchase value unavailable: ' + e.message); }
+  } catch(e) { /* purchase value unavailable — show dash */ }
 
   let inventoryValue = null;
   try {
