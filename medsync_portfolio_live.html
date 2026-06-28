@@ -2404,6 +2404,9 @@ async function loadLiveCOGs(loc, from, to) {
   } catch(e) {
     console.error('loadLiveCOGs error:', e);
     if (container) container.innerHTML = '<div style="color:#e57373;font-size:12px;padding:8px;">Failed to load COGs</div>';
+    updateHeroCOGs(null, 0, 0);
+    const kCogs = document.getElementById('k-cogs');
+    if (kCogs) { kCogs.textContent = '—'; kCogs.className = 'kpi-v cm'; }
   }
 }
 
