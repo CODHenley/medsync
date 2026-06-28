@@ -364,13 +364,13 @@ async function loadPI() {
     var ms=new Date(); ms.setDate(1); ms.setHours(0,0,0,0);
     var r1=await fetch(SUPA_URL+'/rest/v1/po_items?select=qty_ordered,product_name&status=in.(submitted,received)'+_currentLocFilter,{headers:HEADERS});
     var ol=await r1.json();
-    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,notes&created_at=gte.'+ms.toISOString()+_currentLocFilter,{headers:HEADERS});
+    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,product_name,notes&created_at=gte.'+ms.toISOString()+_currentLocFilter,{headers:HEADERS});
     var gl=await r2.json();
     var bought={},lostQ={},lostV={};
     if(Array.isArray(ol))ol.forEach(function(x){var n=x.product_name;if(!n)return;bought[n]=(bought[n]||0)+(x.qty_ordered||0);});
     var _CATS=['Diagnostic duplicate','Expired product','Damaged / Spilled','Medication waste','In-house use','Other','Inhalants / Anesthesia Drugs','Controlled Substances (DEA)'];
     if(Array.isArray(gl))gl.forEach(function(x){
-      var raw=(x.notes||'').split(' · ')[0].trim();
+      var raw=(x.product_name||(x.notes||'').split(' · ')[0]).trim();
       if(!raw||_CATS.indexOf(raw)>=0) return;
       lostQ[raw]=(lostQ[raw]||0)+(x.qty_lost||1);
       lostV[raw]=(lostV[raw]||0)+parseFloat(x.value_lost||0);
