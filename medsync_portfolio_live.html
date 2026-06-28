@@ -2180,7 +2180,7 @@ const RANGE_LABELS = {
 };
 
 function getDateRange(dr) {
-  const now = new Date('2026-05-29T00:00:00');
+  const now = new Date();
   let from, to = new Date(now);
   to.setHours(23, 59, 59);
   switch(dr) {
@@ -2219,7 +2219,9 @@ async function loadData() {
   const _dr = document.getElementById('dr'); if (!_dr) return;
   const dr  = _dr.value;
   const loc = document.getElementById('loc').value;
-  const { from, to } = getDateRange(dr);
+  const { from: _fromRaw, to: _toRaw } = getDateRange(dr);
+  const from = _fromRaw.split('T')[0];
+  const to   = _toRaw.split('T')[0];
   const label = RANGE_LABELS[dr] || 'Month to date';
   const locLabel = loc === 'all' ? 'All locations'
     : LOC_NAMES[LOC_IDS[loc]] || 'All locations';
@@ -2343,12 +2345,15 @@ async function loadLiveCOGs(loc, from, to) {
   const uuidFilter = targetUUIDs.map(u => `location_id.eq.${u}`).join(',');
   const COGS_TARGET = 7.0;
   const H2 = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+  // Ensure plain date strings (YYYY-MM-DD) for DATE column comparisons
+  const fromD = from.split('T')[0];
+  const toD   = to.split('T')[0];
 
   try {
     const [revRes, spendRes, phRes] = await Promise.all([
-      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${vidFilter})`, { headers: H2 }),
-      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${vidFilter})`, { headers: H2 }),
-      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.${from}&purchased_at=lte.${to}&or=(${uuidFilter})`, { headers: H2 })
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${fromD}&date=lte.${toD}&or=(${vidFilter})`, { headers: H2 }),
+      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${fromD}T00:00:00&dispensed_at=lte.${toD}T23:59:59&or=(${vidFilter})`, { headers: H2 }),
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.${fromD}&purchased_at=lte.${toD}&or=(${uuidFilter})`, { headers: H2 })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
