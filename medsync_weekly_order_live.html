@@ -851,7 +851,8 @@ async function loadQueue() {
     // Auto-flag below-min items not already queued
     const queued = new Set(existing.map(i => i.product_id).filter(Boolean));
     const autoAdd = [];
-    if (Array.isArray(products)) {
+    const _minStockEnabled = (function(){ try { const s = JSON.parse(localStorage.getItem('medsync_settings') || '{}'); return s.min_stock_enabled !== false; } catch(e) { return true; } })();
+    if (_minStockEnabled && Array.isArray(products)) {
       for (const p of products) {
         // Only auto-recommend Vetspire-tracked products (qty_min set)
         if (p.qty_min == null) continue;
