@@ -1025,9 +1025,9 @@ async function loadData() {
     const ksavs = document.getElementById('k-sav-s');
     if (loc === 'wh' || loc === 'all') {
       const [pDiRes, pRevRes] = await Promise.all([
-        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_UUID
+        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_VID
               + '&dispensed_at=gte.' + pFromStr + '&dispensed_at=lte.' + pToStr + '&sku=not.is.null', { headers: HEADERS }),
-        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_UUID
+        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID
               + '&date=gte.' + pFromDate + '&date=lte.' + pToDate, { headers: HEADERS }),
       ]);
       const pDiRows  = await pDiRes.json();
@@ -1147,8 +1147,12 @@ async function renderCOGSBars(glRows, loc, _unused) {
     '11111111-0000-0000-0000-000000000003',
     '11111111-0000-0000-0000-000000000004'
   ];
+  // daily_revenue stores location_id as VID (e.g. '28253'), dispensed_items uses UUID
+  const allLocVids = LOCS.map(l => l.vid);
   const targetIds = loc === 'all' ? allLocIds : [LOC_IDS[loc]].filter(Boolean);
-  const locOr = targetIds.map(id => `location_id.eq.${id}`).join(',');
+  const targetVids = loc === 'all' ? allLocVids : [LOCS.find(l => l.key === loc)?.vid].filter(Boolean);
+  const locOr    = targetIds.map(id  => `location_id.eq.${id}`).join(',');
+  const revLocOr = targetVids.map(vid => `location_id.eq.${vid}`).join(',');
 
   // Resolve date range from current filter state
   const fromDate = document.getElementById('from-date') ? document.getElementById('from-date').value : '';
@@ -1158,8 +1162,8 @@ async function renderCOGSBars(glRows, loc, _unused) {
 
   try {
     const [revRes, spendRes] = await Promise.all([
-      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${locOr})`, { headers: HEADERS }),
-      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${locOr})`, { headers: HEADERS })
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${revLocOr})`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${revLocOr})`, { headers: HEADERS })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
@@ -1168,34 +1172,28 @@ async function renderCOGSBars(glRows, loc, _unused) {
     (Array.isArray(revRows)   ? revRows   : []).forEach(r => { revByLoc[r.location_id]   = (revByLoc[r.location_id]   || 0) + (Number(r.revenue)   || 0); });
     (Array.isArray(spendRows) ? spendRows : []).forEach(r => { spendByLoc[r.location_id] = (spendByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
 
-    // Update individual revenue tiles
+    // Update individual revenue tiles (daily_revenue uses VID as location_id)
     const revTiles = {
-      '11111111-0000-0000-0000-000000000001': 'lp-rev-val',
-      '11111111-0000-0000-0000-000000000002': 'oo-rev-val',
-      '11111111-0000-0000-0000-000000000003': 'wl-rev-val',
-      '11111111-0000-0000-0000-000000000004': 'wh-rev-val'
+      '23083': 'lp-rev-val',
+      '27390': 'oo-rev-val',
+      '24356': 'wl-rev-val',
+      '28253': 'wh-rev-val'
     };
     let totalRev = 0, totalSpend = 0;
-    Object.entries(revTiles).forEach(([id, elId]) => {
-      const rev = revByLoc[id] || 0;
+    Object.entries(revTiles).forEach(([vid, elId]) => {
+      const rev = revByLoc[vid] || 0;
       totalRev += rev;
       const el = document.getElementById(elId);
       if (el) el.textContent = rev > 0 ? '$' + (rev/1000).toFixed(0) + 'K' : '—';
     });
-    targetIds.forEach(id => { totalSpend += spendByLoc[id] || 0; });
+    targetVids.forEach(vid => { totalSpend += spendByLoc[vid] || 0; });
 
-    // Build COGs bars
-    const allLocs = [
-      { id:'11111111-0000-0000-0000-000000000001', name:'Lincoln Park' },
-      { id:'11111111-0000-0000-0000-000000000002', name:'Old Orchard'  },
-      { id:'11111111-0000-0000-0000-000000000003', name:'West Loop'    },
-      { id:'11111111-0000-0000-0000-000000000004', name:'Wheaton'      }
-    ];
-    const barsData = (loc === 'all' ? allLocs : allLocs.filter(l => l.id === LOC_IDS[loc])).map(l => {
-      const rev   = revByLoc[l.id]   || 0;
-      const spend = spendByLoc[l.id] || 0;
+    // Build COGs bars (both revenue and spend keyed by VID)
+    const barsData = (loc === 'all' ? LOCS : LOCS.filter(l => l.key === loc)).map(l => {
+      const rev   = revByLoc[l.vid]   || 0;
+      const spend = spendByLoc[l.vid] || 0;
       const pct   = rev > 0 ? (spend / rev) * 100 : null;
-      return { ...l, rev, spend, pct };
+      return { id: l.uuid, name: l.name, rev, spend, pct };
     });
 
     const max = 15;
