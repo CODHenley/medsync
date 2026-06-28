@@ -702,11 +702,8 @@ async function loadPortfolioHeroTiles() {
     if (heroGlVal) { heroGlVal.textContent = '$' + totalGL.toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); heroGlVal.style.color = totalGL > 0 ? '#E8C76A' : '#6FE0A0'; }
     if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? glRows.length + ' incident' + (glRows.length !== 1 ? 's' : '') + ' MTD' : 'No losses this month';
 
-    // COGs% populated by updateHeroCOGs once loadLiveCOGs completes
-    const heroCogVal = document.getElementById('hero-cogs-val');
-    const heroCogSub = document.getElementById('hero-cogs-sub');
-    if (heroCogVal) { heroCogVal.textContent = '…'; heroCogVal.style.color = 'var(--mist)'; }
-    if (heroCogSub) heroCogSub.textContent = 'Loading…';
+    // Kick off live COGs load — monthStart/today are plain date strings
+    loadLiveCOGs('all', monthStart, today);
 
     // Expiring lots
     const exp30 = lots.filter(function(l) { return new Date(l.expiration_date) <= new Date(+now + 30*864e5); }).length;
