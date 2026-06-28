@@ -239,7 +239,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
             <span class="status-pill pill-pending">🔄 Integration in progress</span>
           </div>
         </div>
-        <div class="int-desc">Real-time pricing, GPO routing, and order submission. Integration workflow built — activation in progress with Vetcove team.</div>
+        <div class="int-desc">Real-time pricing and order submission. Integration workflow built — activation in progress with Vetcove team.</div>
         <div class="int-api">
           <input id="vc-key" type="password" placeholder="Paste Vetcove API key…">
           <button onclick="saveKey('vc')">Save</button>
@@ -540,24 +540,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           </div>
         </div>
         <div class="thresh-row">
-          <div><div class="thresh-label">Preferred distributor</div><div class="thresh-sub">Primary vendor for non-GPO items</div></div>
+          <div><div class="thresh-label">Preferred distributor</div><div class="thresh-sub">Primary vendor for supply orders</div></div>
           <div class="thresh-ctrl">
             <select style="padding:6px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;">
               <option>MWI Animal Health</option>
               <option>Covetrus</option>
               <option>Patterson Veterinary</option>
               <option>Midwest Veterinary Supply</option>
-            </select>
-          </div>
-        </div>
-        <div class="thresh-row">
-          <div><div class="thresh-label">GPO membership</div><div class="thresh-sub">Applied automatically to eligible items at checkout</div></div>
-          <div class="thresh-ctrl">
-            <select style="padding:6px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;">
-              <option>VetCor GPO</option>
-              <option>Vet-Advantage</option>
-              <option>VPP GPO</option>
-              <option>None</option>
             </select>
           </div>
         </div>
