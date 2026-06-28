@@ -195,7 +195,7 @@ tr:last-child td{border-bottom:none;}
     <div class="kpi-row" id="kpi-row">
       <div class="kpi"><div class="kpi-l">Purchase Value</div><div class="kpi-v cm" id="kv-purchase">—</div><div class="kpi-s cm">from receiving log</div></div>
       <div class="kpi"><div class="kpi-l">True COGS</div><div class="kpi-v" id="kv-cogs" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogs">cost of goods sold</div></div>
-      <div class="kpi"><div class="kpi-l">Remaining Inventory</div><div class="kpi-v cg" id="kv-remaining">—</div><div class="kpi-s cm">estimated on-hand value</div></div>
+      <div class="kpi"><div class="kpi-l">Remaining Inventory</div><div class="kpi-v cg" id="kv-remaining">—</div><div class="kpi-s cm">snapshot minus period COGS</div></div>
       <div class="kpi"><div class="kpi-l">COGS % Revenue</div><div class="kpi-v" id="kv-cogspc" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogspc">true cost vs. revenue</div></div>
       <div class="kpi"><div class="kpi-l">Items Dispensed</div><div class="kpi-v cp" id="kv-items">—</div><div class="kpi-s cm" id="ks-items">dispense events</div></div>
     </div>
@@ -559,7 +559,8 @@ async function updateKPIs() {
     const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand)||0) * (parseFloat(r.unit_cost)||0)), 0);
     if (iv > 0) inventoryValue = iv;
   } catch(e) {}
-  const remaining = inventoryValue;
+  // Subtract period COGS from snapshot so value decreases as items are dispensed
+  const remaining = inventoryValue !== null ? Math.max(0, inventoryValue - totalCOGS) : null;
   const cogsPC    = totalRevenue > 0 ? ((totalCOGS / totalRevenue) * 100).toFixed(1) : null;
 
   document.getElementById('kv-purchase').textContent  = purchaseValue > 0 ? '$' + fmt(purchaseValue) : '—';
