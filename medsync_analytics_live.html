@@ -1207,13 +1207,16 @@ async function renderCOGSBars(glRows, loc, _unused) {
     });
     targetVids.forEach(vid => { totalSpend += spendByLoc[vid] || 0; });
 
-    // Build COGs bars — revenue tile shows filtered period, COGs % uses matching spend period
+    // Build COGs bars — Vetcove locations always use YTD spend ÷ YTD revenue
+    let totalCogsRev = 0;
     const barsData = (loc === 'all' ? LOCS : LOCS.filter(l => l.key === loc)).map(l => {
-      const rev      = revByLoc[l.vid]     || 0;
-      const cogsRev  = cogsRevByLoc[l.vid] || 0;
-      const spend    = spendByLoc[l.vid]   || 0;
-      const pct      = cogsRev > 0 ? (spend / cogsRev) * 100 : null;
-      return { id: l.uuid, name: l.name, rev, spend, pct };
+      const hasVetcove = !!phSpendByLoc[l.uuid];
+      const rev        = revByLoc[l.vid]     || 0;
+      const cogsRev    = cogsRevByLoc[l.vid] || 0;
+      const spend      = spendByLoc[l.vid]   || 0;
+      const pct        = cogsRev > 0 ? (spend / cogsRev) * 100 : null;
+      totalCogsRev    += cogsRev;
+      return { id: l.uuid, name: l.name, rev, spend, pct, ytd: hasVetcove };
     });
 
     const max = 15;
@@ -1227,7 +1230,8 @@ async function renderCOGSBars(glRows, loc, _unused) {
       }
       const color = l.pct > 9 ? 'var(--red)' : l.pct > 7 ? 'var(--amber)' : 'var(--green)';
       const w = Math.min(Math.round((l.pct / max) * 100), 100);
-      const revLabel = l.rev > 0 ? ` <span style="font-size:9px;color:var(--mist);font-weight:400;">$${(l.rev/1000).toFixed(0)}K rev · live</span>` : '';
+      const periodNote = l.ytd ? 'YTD' : 'live';
+      const revLabel = l.rev > 0 ? ` <span style="font-size:9px;color:var(--mist);font-weight:400;">$${(l.rev/1000).toFixed(0)}K rev · ${periodNote}</span>` : '';
       return `<div class="br">
         <div class="br-loc">${l.name}${revLabel}</div>
         <div class="br-track"><div class="br-fill" style="width:${w}%;background:${color};">${l.pct.toFixed(1)}%</div></div>
@@ -1235,8 +1239,8 @@ async function renderCOGSBars(glRows, loc, _unused) {
       </div>`;
     }).join('');
 
-    // Update k-cogs + ov-cogs KPI tiles with portfolio figure
-    const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
+    // Update k-cogs + ov-cogs KPI tiles — use YTD revenue denominator to match YTD spend
+    const portCogs = totalCogsRev > 0 ? (totalSpend / totalCogsRev) * 100 : null;
     const kcogsEl  = document.getElementById('k-cogs');
     const ovCogsEl = document.getElementById('ov-cogs');
     const cogsColor = portCogs === null ? 'cm' : portCogs > 9 ? 'cr' : portCogs > 7 ? 'ca' : 'cg';
