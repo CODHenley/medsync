@@ -344,24 +344,27 @@ async function loadLocationCards() {
   const uuidFilter = LOCS.map(l => 'location_id.eq.' + l.uuid).join(',');
 
   try {
-    const [revRes, phRes, glRes] = await Promise.all([
+    const [revRes, phRes, diRes, glRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&or=(' + vidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&or=(' + uuidFilter + ')', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&or=(' + vidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,value_lost&created_at=gte.' + monthStart + 'T00:00:00&or=(' + uuidFilter + ')', { headers: _H }),
     ]);
     const revRows = revRes.ok ? await revRes.json() : [];
     const phRows  = phRes.ok  ? await phRes.json()  : [];
+    const diRows  = diRes.ok  ? await diRes.json()  : [];
     const glRows  = glRes.ok  ? await glRes.json()  : [];
 
-    const revByVid = {}, phByUuid = {}, glByUuid = {};
+    const revByVid = {}, phByUuid = {}, diByVid = {}, glByUuid = {};
     (Array.isArray(revRows) ? revRows : []).forEach(function(r) { revByVid[r.location_id]  = (revByVid[r.location_id]  || 0) + (Number(r.revenue)    || 0); });
     (Array.isArray(phRows)  ? phRows  : []).forEach(function(r) { phByUuid[r.location_id]  = (phByUuid[r.location_id]  || 0) + (Number(r.amount)     || 0); });
+    (Array.isArray(diRows)  ? diRows  : []).forEach(function(r) { diByVid[r.location_id]   = (diByVid[r.location_id]   || 0) + (Number(r.unit_cost)  || 0) * (Number(r.quantity) || 1); });
     (Array.isArray(glRows)  ? glRows  : []).forEach(function(r) { glByUuid[r.location_id]  = (glByUuid[r.location_id]  || 0) + (Number(r.value_lost) || 0); });
 
     LOCS.forEach(function(l) {
-      const rev   = revByVid[l.vid]   || 0;
-      const spend = phByUuid[l.uuid]  || 0;
-      const lost  = glByUuid[l.uuid]  || 0;
+      const rev   = revByVid[l.vid]  || 0;
+      const spend = phByUuid[l.uuid] ? phByUuid[l.uuid] : (diByVid[l.vid] || 0);
+      const lost  = glByUuid[l.uuid] || 0;
       const idBase = CARD_IDS[l.key] || l.key;
 
       const cogsEl = document.getElementById(idBase + '-cogs-val');
