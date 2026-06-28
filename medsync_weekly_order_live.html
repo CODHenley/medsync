@@ -1016,6 +1016,10 @@ function renderQueueView() {
     ? (available >= 0 ? `$${Math.round(available).toLocaleString()}` : `-$${Math.round(Math.abs(available)).toLocaleString()}`)
     : '—';
   const availColor    = revenue === 0 ? 'var(--mist)' : available > totalBudget * 0.25 ? '#16a34a' : available > 0 ? '#d97706' : '#dc2626';
+  const spentPct      = totalBudget > 0 ? totalSpent / totalBudget : 0;
+  const spentColor    = totalBudget === 0 ? 'var(--mist)' : spentPct < 0.5 ? '#16a34a' : spentPct < 0.8 ? '#d97706' : '#dc2626';
+  const spentVal      = `$${Math.round(totalSpent).toLocaleString()}`;
+  const periodLabel   = isWeek ? 'WTD' : 'MTD';
   const spentParts    = [];
   if (state.externalSpend > 0) spentParts.push(`$${Math.round(state.externalSpend).toLocaleString()} external`);
   if (state.poSpend > 0)       spentParts.push(`$${Math.round(state.poSpend).toLocaleString()} via MedSync`);
@@ -1042,6 +1046,11 @@ function renderQueueView() {
             <option value="month" ${!isWeek?'selected':''}>Monthly</option>
           </select>
         </div>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-item" title="Total inventory spend ${periodLabel}: ${spentParts.length ? spentParts.join(' + ') : '$0'} of $${Math.round(totalBudget).toLocaleString()} budget" style="cursor:default;">
+        <div class="sb-val" style="color:${spentColor};font-weight:700;">${totalSpent > 0 ? spentVal : '—'}</div>
+        <div class="sb-label">Spent ${periodLabel}</div>
       </div>
       <div class="sb-divider"></div>
       <div class="sb-item" title="${tooltipText}" style="cursor:default;">
