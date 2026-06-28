@@ -646,6 +646,7 @@ if (window.self !== window.top) {
           <div class="ptab" onclick="sp('proc',this)">💰 Procurement</div>
           <div class="ptab" onclick="sp('comp',this)">✅ Order Compliance</div>
           <div class="ptab" onclick="sp('wg',this)">📦 White Goods</div>
+          <div class="ptab" onclick="sp('purch',this);loadPurchaseHistory()">🧾 Purchases</div>
         </div>
 
         <!-- OVERVIEW -->
@@ -788,6 +789,50 @@ if (window.self !== window.top) {
           <div class="ins">
             <div class="ins-l">⚡ White goods insight</div>
             <div class="ins-t">OO gauze rate adjusted from 1.8 → 2.1 per 100 appts last week. Monitor 30 days before closing flag.</div>
+          </div>
+        </div>
+
+        <!-- PURCHASE HISTORY -->
+        <div class="pcontent" id="p-purch" style="display:none;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div>
+              <div class="pc-title">Purchase History</div>
+              <div class="pc-sub">MedSync POs + external purchases</div>
+            </div>
+            <button onclick="exportPurchaseHistory()" style="background:none;border:0.5px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:11px;color:var(--navy);display:flex;align-items:center;gap:4px;">
+              <i class="ti ti-download" style="font-size:12px;"></i> CSV
+            </button>
+          </div>
+          <!-- Summary tiles -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+            <div style="background:#F8F7FC;border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;">
+              <div style="font-size:18px;font-weight:700;color:var(--navy);" id="ph-total">—</div>
+              <div style="font-size:10px;color:var(--mist);">Total spend</div>
+            </div>
+            <div style="background:#F8F7FC;border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;">
+              <div style="font-size:18px;font-weight:700;color:var(--slate);" id="ph-count">—</div>
+              <div style="font-size:10px;color:var(--mist);">Transactions</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+            <div style="background:#F0FAF4;border:0.5px solid #BBE0CC;border-radius:8px;padding:8px 10px;">
+              <div style="font-size:14px;font-weight:700;color:#16a34a;" id="ph-medsync">—</div>
+              <div style="font-size:10px;color:var(--mist);">via MedSync PO</div>
+            </div>
+            <div style="background:#FFF8EC;border:0.5px solid #F0D896;border-radius:8px;padding:8px 10px;">
+              <div style="font-size:14px;font-weight:700;color:#d97706;" id="ph-external">—</div>
+              <div style="font-size:10px;color:var(--mist);">External purchases</div>
+            </div>
+          </div>
+          <!-- Source filter -->
+          <div style="display:flex;gap:6px;margin-bottom:10px;">
+            <button onclick="filterPurchases('all',this)" class="ph-filter-btn ph-filter-active" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--navy);color:#fff;cursor:pointer;">All</button>
+            <button onclick="filterPurchases('medsync_po',this)" class="ph-filter-btn" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--slate);cursor:pointer;">MedSync POs</button>
+            <button onclick="filterPurchases('external',this)" class="ph-filter-btn" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--slate);cursor:pointer;">External</button>
+          </div>
+          <!-- Table -->
+          <div id="ph-table-wrap" style="overflow-x:auto;">
+            <div id="ph-loading" style="color:var(--mist);font-size:12px;padding:16px 0;text-align:center;">Select date range and click the Purchases tab to load.</div>
           </div>
         </div>
 
@@ -1302,13 +1347,148 @@ function renderSavingsTable(savByCategory, totalSav, from, to) {
 }
 
 // ── Sidebar panel switcher ───────────────────────────────────
-const panels=['ov','cogs','gl','proc','comp','wg'];
+const panels=['ov','cogs','gl','proc','comp','wg','purch'];
 function sp(name,el){
   document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   panels.forEach(p=>{
     document.getElementById('p-'+p).style.display=p===name?'flex':'none';
   });
+}
+
+// ── Purchase History ─────────────────────────────────────────
+let _purchaseRows = [];
+let _purchaseFilter = 'all';
+
+async function loadPurchaseHistory() {
+  const dr  = document.getElementById('dr').value;
+  const loc = document.getElementById('loc').value;
+  const { from, to } = getDateRange(dr);
+  const locFilter = loc !== 'all' ? '&location_id=eq.' + LOC_IDS[loc] : '';
+  const wrap = document.getElementById('ph-table-wrap');
+  const loading = document.getElementById('ph-loading');
+  if (loading) loading.style.display = 'block';
+  if (wrap) wrap.innerHTML = '<div id="ph-loading" style="color:var(--mist);font-size:12px;padding:16px 0;text-align:center;">Loading…</div>';
+
+  try {
+    // External purchases from purchase_history
+    const extRes = await fetch(SUPA_URL + '/rest/v1/purchase_history?select=id,purchased_at,vendor,note,amount,location_id,source&purchased_at=gte.' + from.split('T')[0] + '&purchased_at=lte.' + to.split('T')[0] + locFilter + '&order=purchased_at.desc&limit=500', { headers: HEADERS });
+    const extRows = await extRes.json();
+
+    // MedSync POs from po_items (group by week_start + location)
+    const poRes = await fetch(SUPA_URL + '/rest/v1/po_items?select=week_start,location_id,gpo_price,order_qty,status&week_start=gte=' + from.split('T')[0] + '&week_start=lte.' + to.split('T')[0] + '&status=in.(submitted,received)' + locFilter + '&order=week_start.desc&limit=1000', { headers: HEADERS });
+    const poRows = await poRes.json();
+
+    // Group PO rows by week_start + location_id
+    const poGroups = {};
+    if (Array.isArray(poRows)) {
+      poRows.forEach(r => {
+        const key = (r.week_start||'').slice(0,10) + '|' + r.location_id;
+        if (!poGroups[key]) poGroups[key] = { week_start: (r.week_start||'').slice(0,10), location_id: r.location_id, amount: 0, items: 0 };
+        poGroups[key].amount += (parseFloat(r.gpo_price)||0) * (parseInt(r.order_qty)||0);
+        poGroups[key].items++;
+      });
+    }
+
+    // Combine into unified rows
+    const combined = [];
+    if (Array.isArray(extRows)) {
+      extRows.forEach(r => combined.push({
+        date: (r.purchased_at||'').slice(0,10),
+        location: LOC_NAMES[r.location_id] || '—',
+        source: 'external',
+        vendor: r.vendor || 'External',
+        note: r.note || '',
+        amount: parseFloat(r.amount)||0
+      }));
+    }
+    Object.values(poGroups).forEach(g => {
+      combined.push({
+        date: g.week_start,
+        location: LOC_NAMES[g.location_id] || '—',
+        source: 'medsync_po',
+        vendor: 'MedSync PO',
+        note: g.items + ' item' + (g.items !== 1 ? 's' : ''),
+        amount: g.amount
+      });
+    });
+    combined.sort((a,b) => b.date.localeCompare(a.date));
+
+    _purchaseRows = combined;
+    renderPurchaseTable();
+
+    // Summary tiles
+    const totalSpend = combined.reduce((s,r) => s + r.amount, 0);
+    const msSpend    = combined.filter(r => r.source === 'medsync_po').reduce((s,r) => s + r.amount, 0);
+    const extSpend   = combined.filter(r => r.source === 'external').reduce((s,r) => s + r.amount, 0);
+    const phTotal = document.getElementById('ph-total'); if (phTotal) phTotal.textContent = fmt$(totalSpend);
+    const phCount = document.getElementById('ph-count'); if (phCount) phCount.textContent = combined.length;
+    const phMs    = document.getElementById('ph-medsync'); if (phMs) phMs.textContent = fmt$(msSpend);
+    const phExt   = document.getElementById('ph-external'); if (phExt) phExt.textContent = fmt$(extSpend);
+
+    // Cache for export
+    _analyticsCache = _analyticsCache || {};
+    _analyticsCache.purchaseRows = combined;
+    _analyticsCache.period = document.getElementById('period-label').textContent;
+
+  } catch(e) {
+    console.error('loadPurchaseHistory error:', e);
+    const w = document.getElementById('ph-table-wrap');
+    if (w) w.innerHTML = '<div style="color:#dc2626;font-size:12px;padding:8px;">Failed to load purchase history.</div>';
+  }
+}
+
+function renderPurchaseTable() {
+  const wrap = document.getElementById('ph-table-wrap');
+  if (!wrap) return;
+  const rows = _purchaseRows.filter(r => _purchaseFilter === 'all' || r.source === _purchaseFilter);
+  if (!rows.length) {
+    wrap.innerHTML = '<div style="color:var(--mist);font-size:12px;padding:16px 0;text-align:center;">No purchases found for this period.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left;padding:5px 4px;color:var(--mist);font-weight:600;">Date</th>
+        <th style="text-align:left;padding:5px 4px;color:var(--mist);font-weight:600;">Location</th>
+        <th style="text-align:left;padding:5px 4px;color:var(--mist);font-weight:600;">Source</th>
+        <th style="text-align:left;padding:5px 4px;color:var(--mist);font-weight:600;">Vendor / Note</th>
+        <th style="text-align:right;padding:5px 4px;color:var(--mist);font-weight:600;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map(r => {
+        const srcBadge = r.source === 'medsync_po'
+          ? '<span style="background:#EDE8F8;color:var(--navy);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;">MedSync</span>'
+          : '<span style="background:#FEF3C7;color:#d97706;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;">External</span>';
+        return `<tr style="border-bottom:0.5px solid #EDE8F8;">
+          <td style="padding:6px 4px;color:var(--slate);white-space:nowrap;">${r.date}</td>
+          <td style="padding:6px 4px;color:var(--navy);">${r.location}</td>
+          <td style="padding:6px 4px;">${srcBadge}</td>
+          <td style="padding:6px 4px;color:var(--slate);">${r.vendor}${r.note ? ' · <span style="color:var(--mist);">' + r.note + '</span>' : ''}</td>
+          <td style="padding:6px 4px;text-align:right;font-weight:600;color:var(--navy);">${fmt$(r.amount)}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function filterPurchases(source, btn) {
+  _purchaseFilter = source;
+  document.querySelectorAll('.ph-filter-btn').forEach(b => {
+    b.style.background = '#fff'; b.style.color = 'var(--slate)';
+  });
+  btn.style.background = 'var(--navy)'; btn.style.color = '#fff';
+  renderPurchaseTable();
+}
+
+function exportPurchaseHistory() {
+  const rows = _purchaseRows.filter(r => _purchaseFilter === 'all' || r.source === _purchaseFilter);
+  if (!rows.length) { showToast('⚠ No data to export'); return; }
+  const period = (_analyticsCache && _analyticsCache.period) || new Date().toISOString().slice(0,10);
+  const headers = ['Date', 'Location', 'Source', 'Vendor', 'Note', 'Amount'];
+  const data = rows.map(r => [r.date, r.location, r.source === 'medsync_po' ? 'MedSync PO' : 'External', r.vendor, r.note, r.amount.toFixed(2)]);
+  MedSyncExport.csv('medsync_purchases_' + new Date().toISOString().slice(0,10) + '.csv', headers, data);
 }
 
 // ── Export ───────────────────────────────────────────────────
