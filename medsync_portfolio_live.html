@@ -2342,43 +2342,38 @@ async function loadLiveCOGs(loc, from, to) {
   const container = document.getElementById('cogs-bars');
   if (container) container.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px;">Loading COGs…</div>';
 
-  const locList = loc === 'all'
-    ? ['11111111-0000-0000-0000-000000000001','11111111-0000-0000-0000-000000000002',
-       '11111111-0000-0000-0000-000000000003','11111111-0000-0000-0000-000000000004']
-    : [LOC_IDS[loc]];
-
-  const locFilter = locList.map(id => `location_id.eq.${id}`).join(',');
-  const COGS_TARGET = 9.0; // % threshold for green/amber/red
+  // daily_revenue and dispensed_items use VID as location_id; purchase_history uses UUID
+  const targetUUIDs = loc === 'all' ? LOCS.map(l => l.uuid) : [LOC_IDS[loc]].filter(Boolean);
+  const targetVids  = loc === 'all' ? LOCS.map(l => l.vid)  : [LOCS.find(l => l.key === loc)?.vid].filter(Boolean);
+  const vidFilter  = targetVids.map(v  => `location_id.eq.${v}`).join(',');
+  const uuidFilter = targetUUIDs.map(u => `location_id.eq.${u}`).join(',');
+  const COGS_TARGET = 9.0;
+  const ytdFrom = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+  const H2 = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
 
   try {
-    const [revRes, spendRes] = await Promise.all([
-      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${locFilter})`, {
-        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-      }),
-      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${locFilter})`, {
-        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-      })
+    const [revRes, spendRes, phRes] = await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${vidFilter})`, { headers: H2 }),
+      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${vidFilter})`, { headers: H2 }),
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=eq.vetcove&purchased_at=gte.${ytdFrom}&or=(${uuidFilter})`, { headers: H2 })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
+    const phRows    = phRes.ok    ? await phRes.json()    : [];
 
-    // Aggregate by location
-    const revByLoc = {}, spendByLoc = {};
-    revRows.forEach(r   => { revByLoc[r.location_id]   = (revByLoc[r.location_id]   || 0) + (Number(r.revenue)   || 0); });
-    spendRows.forEach(r => { spendByLoc[r.location_id] = (spendByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+    // Aggregate — revenue and dispensed_items keyed by VID, purchase_history by UUID
+    const revByLoc = {}, diByLoc = {}, phByLoc = {};
+    revRows.forEach(r   => { revByLoc[r.location_id] = (revByLoc[r.location_id] || 0) + (Number(r.revenue)   || 0); });
+    spendRows.forEach(r => { diByLoc[r.location_id]  = (diByLoc[r.location_id]  || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+    phRows.forEach(r    => { phByLoc[r.location_id]  = (phByLoc[r.location_id]  || 0) + (Number(r.amount)    || 0); });
 
-    const allLocs = [
-      { id:'11111111-0000-0000-0000-000000000001', name:'Lincoln Park' },
-      { id:'11111111-0000-0000-0000-000000000002', name:'Old Orchard'  },
-      { id:'11111111-0000-0000-0000-000000000003', name:'West Loop'    },
-      { id:'11111111-0000-0000-0000-000000000004', name:'Wheaton'      }
-    ];
-    const filtered = loc === 'all' ? allLocs : allLocs.filter(l => l.id === LOC_IDS[loc]);
+    const filtered = loc === 'all' ? LOCS : LOCS.filter(l => l.key === loc);
 
     let totalRev = 0, totalSpend = 0;
     const bars = filtered.map(l => {
-      const rev   = revByLoc[l.id]   || 0;
-      const spend = spendByLoc[l.id] || 0;
+      const rev   = revByLoc[l.vid] || 0;
+      // Use Vetcove purchase_history where available, otherwise dispensed_items
+      const spend = phByLoc[l.uuid] || diByLoc[l.vid] || 0;
       totalRev   += rev;
       totalSpend += spend;
       const pct   = rev > 0 ? (spend / rev) * 100 : 0;
