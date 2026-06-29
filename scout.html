@@ -8,25 +8,25 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --forest:   #1B3A2D;
-  --forest-md:#2A5240;
-  --forest-lt:#3A6E54;
-  --parchment:#F7F2E8;
-  --parch-dk: #EDE6D6;
-  --brass:    #B8924A;
-  --brass-lt: #D4AC6A;
-  --text:     #1E2B1A;
-  --text-md:  #3D4F3C;
-  --text-muted:#6B7A68;
-  --white:    #FDFCF9;
-  --border:   #D8D0BE;
+  --green:    #1A3A2B;
+  --green-md: #2A5240;
+  --green-lt: #E8F0EB;
+  --orange:   #F47B3B;
+  --orange-lt:#FEF0E6;
+  --blue-lt:  #D6DFE8;
+  --blue-llt: #EEF2F6;
+  --cream:    #FAFAF7;
+  --white:    #FFFFFF;
+  --text:     #1A3A2B;
+  --text-md:  #3D5A4A;
+  --muted:    #6B8A78;
+  --border:   #D4E0D8;
 }
 
 html { scroll-behavior: smooth; }
-
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  background: var(--parchment);
+  background: var(--white);
   color: var(--text);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -36,386 +36,390 @@ body {
 nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 40px; height: 60px;
-  background: rgba(27, 58, 45, 0.97);
-  backdrop-filter: blur(10px);
+  padding: 0 40px; height: 62px;
+  background: var(--green);
 }
-.nav-brand {
-  display: flex; align-items: center; gap: 12px;
+.nav-left { display: flex; align-items: center; gap: 16px; }
+.nav-wordmark {
+  font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.3px;
   text-decoration: none;
 }
-.nav-lockup {
-  display: flex; flex-direction: column; gap: 0;
+.nav-tag {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--orange); background: rgba(244,123,59,0.15);
+  padding: 3px 8px; border-radius: 20px;
 }
-.nav-product {
-  font-size: 15px; font-weight: 600; color: #fff; letter-spacing: -0.2px; line-height: 1;
-}
-.nav-org {
-  font-size: 10px; font-weight: 500; color: var(--brass-lt); letter-spacing: 0.08em;
-  text-transform: uppercase; line-height: 1; margin-top: 2px;
-}
-.nav-divider {
-  width: 1px; height: 28px; background: rgba(255,255,255,0.15);
-}
-.nav-links {
-  display: flex; align-items: center; gap: 4px; list-style: none;
-}
+.nav-links { display: flex; gap: 2px; list-style: none; }
 .nav-links a {
-  color: rgba(255,255,255,0.65); text-decoration: none;
-  font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 5px;
+  color: rgba(255,255,255,0.6); text-decoration: none;
+  font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 6px;
   transition: color 0.12s, background 0.12s;
 }
-.nav-links a:hover { color: #fff; background: rgba(255,255,255,0.08); }
-.nav-cta {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 18px; border-radius: 6px;
-  background: var(--brass); color: #fff;
-  font-size: 13px; font-weight: 600; text-decoration: none;
-  transition: background 0.12s;
+.nav-links a:hover { color: #fff; background: rgba(255,255,255,0.1); }
+.nav-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 20px; border-radius: 24px;
+  background: var(--orange); color: #fff;
+  font-size: 13px; font-weight: 700; text-decoration: none;
+  transition: background 0.12s, transform 0.1s;
 }
-.nav-cta:hover { background: var(--brass-lt); }
-.nav-cta svg { flex-shrink: 0; }
+.nav-btn:hover { background: #E06728; transform: translateY(-1px); }
 
 /* ── HERO ── */
 .hero {
   min-height: 100vh;
-  background: var(--forest);
-  display: flex; flex-direction: column; justify-content: center;
-  padding: 100px 40px 80px;
-  position: relative; overflow: hidden;
+  background: var(--green);
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  align-items: center;
+  padding: 80px 48px 60px 56px;
+  gap: 48px;
+  position: relative;
+  overflow: hidden;
 }
-
-/* Topographic contour lines — organic texture */
-.hero::before {
-  content: '';
-  position: absolute; inset: 0; z-index: 0;
-  opacity: 0.07;
-  background-image:
-    radial-gradient(ellipse 140% 80% at 80% 50%, transparent 30%, rgba(184,146,74,.6) 31%, transparent 32%),
-    radial-gradient(ellipse 130% 70% at 80% 50%, transparent 42%, rgba(184,146,74,.5) 43%, transparent 44%),
-    radial-gradient(ellipse 120% 60% at 80% 50%, transparent 55%, rgba(184,146,74,.4) 56%, transparent 57%),
-    radial-gradient(ellipse 110% 50% at 80% 50%, transparent 68%, rgba(184,146,74,.35) 69%, transparent 70%),
-    radial-gradient(ellipse 95% 38% at 80% 50%, transparent 80%, rgba(184,146,74,.3) 81%, transparent 82%);
+/* Scattered doodle marks in background */
+.hero-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
 }
-.hero::after {
-  content: '';
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: 120px;
-  background: linear-gradient(to bottom, transparent, var(--forest));
-  z-index: 1;
-  pointer-events: none;
-}
-
-.hero-inner {
-  position: relative; z-index: 2;
-  max-width: 860px;
-}
+.hero-content { position: relative; z-index: 1; }
 .hero-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--brass-lt); margin-bottom: 28px;
-}
-.hero-eyebrow-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--brass); flex-shrink: 0;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--orange); margin-bottom: 24px;
 }
 .hero-headline {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(40px, 6vw, 76px);
-  font-weight: normal;
-  font-style: italic;
-  line-height: 1.08;
+  font-size: clamp(38px, 5.5vw, 68px);
+  font-weight: 800;
+  line-height: 1.05;
   color: #fff;
+  letter-spacing: -1px;
   text-wrap: balance;
-  margin-bottom: 28px;
-  letter-spacing: -0.5px;
+  margin-bottom: 22px;
 }
-.hero-headline em {
-  font-style: normal;
-  color: var(--brass-lt);
-}
+.hero-headline .accent { color: var(--orange); }
 .hero-sub {
   font-size: 17px; line-height: 1.65;
-  color: rgba(255,255,255,0.65);
-  max-width: 560px;
-  margin-bottom: 44px;
+  color: rgba(255,255,255,0.6);
+  max-width: 480px;
+  margin-bottom: 36px;
 }
-.hero-actions {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-}
-.btn-hero-primary {
+.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.btn-hero {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 14px 28px; border-radius: 8px;
-  background: var(--brass); color: #fff;
-  font-size: 15px; font-weight: 600; text-decoration: none;
-  transition: background 0.15s, transform 0.1s;
+  padding: 14px 28px; border-radius: 28px;
+  font-size: 15px; font-weight: 700; text-decoration: none;
+  transition: all 0.15s;
 }
-.btn-hero-primary:hover { background: var(--brass-lt); transform: translateY(-1px); }
+.btn-hero-primary { background: var(--orange); color: #fff; }
+.btn-hero-primary:hover { background: #E06728; transform: translateY(-1px); }
 .btn-hero-ghost {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 14px 24px; border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.8);
-  font-size: 15px; font-weight: 500; text-decoration: none;
-  transition: border-color 0.15s, color 0.15s;
+  border: 1.5px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8);
 }
-.btn-hero-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+.btn-hero-ghost:hover { border-color: rgba(255,255,255,0.6); color: #fff; }
 
+/* ── Hero illustration card ── */
+.hero-card {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 32px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.hero-card-illo {
+  display: flex; justify-content: center;
+  height: 160px; align-items: center;
+}
+.hero-card-title {
+  font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9);
+  text-align: center; letter-spacing: -0.2px;
+}
+.hero-stat-list { display: flex; flex-direction: column; gap: 12px; }
 .hero-stat-row {
-  display: flex; gap: 48px; margin-top: 64px; flex-wrap: wrap;
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.07);
 }
-.hero-stat { }
-.hero-stat-val {
-  font-size: 36px; font-weight: 700; color: #fff;
-  font-variant-numeric: tabular-nums; line-height: 1;
-}
-.hero-stat-val span { font-size: 20px; color: var(--brass-lt); }
-.hero-stat-label { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 5px; }
+.hero-stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+.hsr-label { font-size: 12px; color: rgba(255,255,255,0.45); }
+.hsr-val { font-size: 16px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.hsr-val.good { color: #6BCFA0; }
+.hsr-val.warn { color: var(--orange); }
 
-/* ── SECTION SCAFFOLDING ── */
-.section { padding: 80px 40px; }
+/* ── SECTION ── */
+.section { padding: 80px 56px; }
 .section-inner { max-width: 1040px; margin: 0 auto; }
-.section-eyebrow {
-  font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--brass); margin-bottom: 12px;
+.eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--orange); margin-bottom: 10px;
 }
 .section-heading {
-  font-size: clamp(26px, 3.5vw, 38px); font-weight: 700; line-height: 1.15;
-  color: var(--text); text-wrap: balance;
+  font-size: clamp(26px, 3.5vw, 40px); font-weight: 800; line-height: 1.1;
+  color: var(--text); letter-spacing: -0.5px; text-wrap: balance;
 }
 .section-sub {
-  font-size: 16px; line-height: 1.65; color: var(--text-muted);
-  max-width: 520px; margin-top: 12px;
+  font-size: 16px; line-height: 1.65; color: var(--muted);
+  max-width: 500px; margin-top: 10px;
 }
 
 /* ── ROLES ── */
-.roles-section { background: var(--white); }
-.roles-intro { margin-bottom: 48px; }
+.roles-section { background: var(--cream); }
 .roles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px; margin-top: 44px;
 }
 .role-card {
-  background: var(--parchment);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 24px 22px;
-  display: flex; flex-direction: column; gap: 12px;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px 20px;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.role-icon {
-  width: 40px; height: 40px; border-radius: 8px;
-  background: var(--forest); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; flex-shrink: 0;
+.role-card:hover {
+  border-color: var(--green);
+  box-shadow: 0 4px 16px rgba(26,58,43,0.1);
 }
-.role-title {
-  font-size: 15px; font-weight: 700; color: var(--text);
-}
-.role-desc {
-  font-size: 13px; line-height: 1.6; color: var(--text-md);
-}
-.role-tasks {
-  list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 4px;
-}
+.role-illo { height: 80px; display: flex; align-items: center; justify-content: center; }
+.role-title { font-size: 15px; font-weight: 800; color: var(--text); }
+.role-desc { font-size: 12px; line-height: 1.55; color: var(--muted); }
+.role-tasks { list-style: none; display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
 .role-tasks li {
-  font-size: 12px; color: var(--text-muted);
-  display: flex; align-items: flex-start; gap: 7px; line-height: 1.4;
+  font-size: 11px; color: var(--text-md); line-height: 1.4;
+  display: flex; align-items: flex-start; gap: 6px;
 }
 .role-tasks li::before {
   content: '';
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--brass); flex-shrink: 0; margin-top: 5px;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--orange); flex-shrink: 0; margin-top: 5px;
 }
 
-/* ── WHY IT MATTERS ── */
-.why-section { background: var(--parchment); }
+/* ── WHY ── */
+.why-section { background: var(--white); }
 .why-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
-  align-items: start; margin-top: 48px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+  margin-top: 52px; align-items: start;
 }
-.why-left { display: flex; flex-direction: column; gap: 28px; }
-.why-item { display: flex; gap: 16px; }
-.why-num {
-  font-size: 13px; font-weight: 700; color: var(--brass);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0; padding-top: 2px; width: 24px;
+.why-items { display: flex; flex-direction: column; gap: 32px; }
+.why-item { display: flex; gap: 18px; }
+.why-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--green-lt); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
 }
-.why-body {}
-.why-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
-.why-text { font-size: 13px; line-height: 1.65; color: var(--text-md); }
-.why-right {
-  background: var(--forest);
-  border-radius: 12px;
-  padding: 32px;
-  color: rgba(255,255,255,0.8);
+.why-dot svg { display: block; }
+.why-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.why-text { font-size: 13px; line-height: 1.65; color: var(--muted); }
+.why-visual {
+  background: var(--green);
+  border-radius: 16px;
+  padding: 36px 32px;
   position: sticky; top: 80px;
 }
-.why-right-label {
-  font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--brass-lt); margin-bottom: 20px;
+.why-v-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.35); margin-bottom: 20px;
 }
 .metric-row {
   display: flex; justify-content: space-between; align-items: baseline;
-  padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 .metric-row:last-child { border-bottom: none; }
-.metric-name { font-size: 13px; color: rgba(255,255,255,0.55); }
-.metric-val {
-  font-size: 22px; font-weight: 700; color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-.metric-val.good { color: #6BCFA0; }
-.metric-val.warn { color: var(--brass-lt); }
+.m-label { font-size: 12px; color: rgba(255,255,255,0.5); }
+.m-val { font-size: 20px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.m-val.good { color: #6BCFA0; }
+.m-val.warn { color: var(--orange); }
+.why-v-illo { display: flex; justify-content: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.07); }
 
 /* ── LOCATIONS ── */
-.locations-section { background: var(--white); }
+.locations-section { background: var(--green-lt); }
 .locations-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 12px; margin-top: 40px;
 }
 .loc-card {
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
   padding: 18px 20px;
-  display: flex; flex-direction: column; gap: 4px;
 }
-.loc-status-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #3CC98A; flex-shrink: 0;
+.loc-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  margin-bottom: 8px;
 }
-.loc-status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.loc-status-label { font-size: 10px; font-weight: 600; color: #3CC98A; letter-spacing: 0.06em; text-transform: uppercase; }
-.loc-name { font-size: 16px; font-weight: 700; color: var(--text); }
-.loc-state { font-size: 12px; color: var(--text-muted); }
-.loc-coming { }
-.loc-coming .loc-status-dot { background: var(--text-muted); }
-.loc-coming .loc-status-label { color: var(--text-muted); }
-.loc-coming .loc-name { color: var(--text-muted); }
+.loc-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.live .dot { background: #3CC98A; }
+.live .loc-pill { color: #1A9E6A; }
+.soon .dot { background: var(--blue-lt); }
+.soon .loc-pill { color: #8A9BB0; }
+.loc-name { font-size: 16px; font-weight: 800; color: var(--text); }
+.loc-city { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-/* ── GET STARTED ── */
-.start-section {
-  background: var(--forest);
-  padding: 80px 40px;
+/* ── CTA ── */
+.cta-section {
+  background: var(--green);
+  padding: 80px 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 40px; flex-wrap: wrap;
 }
-.start-inner {
-  max-width: 1040px; margin: 0 auto;
-  display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center;
-}
-.start-heading {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(24px, 3vw, 38px);
-  font-weight: normal; font-style: italic;
-  color: #fff; line-height: 1.2;
+.cta-left {}
+.cta-heading {
+  font-size: clamp(24px, 3vw, 42px); font-weight: 800;
+  color: #fff; letter-spacing: -0.5px; line-height: 1.1;
   text-wrap: balance;
 }
-.start-sub {
-  font-size: 15px; color: rgba(255,255,255,0.55);
-  margin-top: 10px; line-height: 1.6;
-}
-.start-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
-.btn-start {
+.cta-sub { font-size: 15px; color: rgba(255,255,255,0.5); margin-top: 10px; line-height: 1.6; }
+.cta-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.btn-cta {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 14px 28px; border-radius: 8px; white-space: nowrap;
-  font-size: 14px; font-weight: 600; text-decoration: none;
-  transition: all 0.15s;
+  padding: 14px 28px; border-radius: 28px;
+  font-size: 14px; font-weight: 700; text-decoration: none;
+  white-space: nowrap; transition: all 0.15s;
 }
-.btn-start-primary { background: var(--brass); color: #fff; }
-.btn-start-primary:hover { background: var(--brass-lt); }
-.btn-start-ghost {
-  border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.75);
-}
-.btn-start-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+.btn-cta-primary { background: var(--orange); color: #fff; }
+.btn-cta-primary:hover { background: #E06728; transform: translateY(-1px); }
+.btn-cta-ghost { border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.75); }
+.btn-cta-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
 
 /* ── FOOTER ── */
 footer {
-  background: #111D16;
-  padding: 32px 40px;
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  background: #0F2118;
+  padding: 28px 56px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
 }
-.footer-brand { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); }
-.footer-brand strong { color: rgba(255,255,255,0.7); }
-.footer-note { font-size: 12px; color: rgba(255,255,255,0.25); }
+.footer-brand { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.35); }
+.footer-brand strong { color: rgba(255,255,255,0.6); }
+.footer-note { font-size: 12px; color: rgba(255,255,255,0.2); }
 
-/* ── RESPONSIVE ── */
-@media (max-width: 700px) {
+/* ── Responsive ── */
+@media (max-width: 800px) {
+  .hero { grid-template-columns: 1fr; padding: 100px 24px 48px; }
+  .hero-card { display: none; }
+  .section { padding: 60px 24px; }
+  .why-grid { grid-template-columns: 1fr; }
+  .why-visual { position: static; }
+  .cta-section { padding: 60px 24px; flex-direction: column; }
+  footer { padding: 24px; }
   nav { padding: 0 20px; }
   .nav-links { display: none; }
-  .hero, .section { padding-left: 20px; padding-right: 20px; }
-  .why-grid { grid-template-columns: 1fr; }
-  .why-right { position: static; }
-  .start-inner { grid-template-columns: 1fr; }
-  .start-actions { align-items: flex-start; }
-  .hero-stat-row { gap: 28px; }
-  footer { padding: 24px 20px; }
 }
-
-/* ── FOCUS ── */
-a:focus-visible {
-  outline: 2px solid var(--brass);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
-}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
 </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav>
-  <a class="nav-brand" href="#">
-    <div class="nav-lockup">
-      <span class="nav-product">MedSync</span>
-      <span class="nav-org">Scout Care Internal</span>
-    </div>
-  </a>
-  <div class="nav-divider"></div>
+  <div class="nav-left">
+    <a class="nav-wordmark" href="#">MedSync</a>
+    <span class="nav-tag">Scout Care</span>
+  </div>
   <ul class="nav-links">
     <li><a href="#roles">For your role</a></li>
     <li><a href="#why">Why it matters</a></li>
     <li><a href="#locations">Locations</a></li>
   </ul>
-  <a class="nav-cta" href="medsync_login.html">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M7 1.5C7 1.5 11.5 4 11.5 7C11.5 10 7 12.5 7 12.5M7 1.5C7 1.5 2.5 4 2.5 7C2.5 10 7 12.5 7 12.5M7 1.5V12.5M2.5 7H11.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
-    </svg>
-    Sign in
-  </a>
+  <a class="nav-btn" href="medsync_login.html">Open MedSync →</a>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-inner">
-    <div class="hero-eyebrow">
-      <span class="hero-eyebrow-dot"></span>
-      Scout Care · Chicagoland Region
-    </div>
+  <!-- Background doodle marks -->
+  <svg class="hero-bg" viewBox="0 0 1400 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+    <!-- Scattered paw prints and marks -->
+    <g opacity="0.07" stroke="#F47B3B" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <!-- top right squiggle -->
+      <path d="M1100,80 C1120,60 1140,100 1160,80 C1180,60 1200,90 1220,70"/>
+      <circle cx="1090" cy="140" r="8"/>
+      <circle cx="1108" cy="128" r="5"/>
+      <circle cx="1072" cy="126" r="5"/>
+      <circle cx="1090" cy="108" r="5"/>
+      <!-- bottom left -->
+      <path d="M80,640 C100,620 120,660 140,640"/>
+      <circle cx="200" cy="700" r="10"/>
+      <circle cx="222" cy="685" r="6"/>
+      <circle cx="178" cy="685" r="6"/>
+      <circle cx="200" cy="665" r="6"/>
+      <!-- middle right -->
+      <path d="M1280,380 C1300,360 1320,400 1340,380 C1360,360 1380,400 1400,380"/>
+      <!-- stars -->
+      <path d="M300,120 L304,132 L316,132 L306,140 L310,152 L300,144 L290,152 L294,140 L284,132 L296,132 Z" stroke-width="1.5"/>
+      <path d="M1050,600 L1053,609 L1062,609 L1055,614 L1058,623 L1050,618 L1042,623 L1045,614 L1038,609 L1047,609 Z" stroke-width="1.5"/>
+    </g>
+    <g opacity="0.05" stroke="white" stroke-width="2" fill="none" stroke-linecap="round">
+      <path d="M600,50 C620,30 660,70 700,40 C740,10 780,60 820,30"/>
+      <path d="M200,200 C230,170 270,220 300,180"/>
+      <path d="M1100,650 C1130,620 1170,670 1200,640 C1230,610 1260,650 1290,620"/>
+    </g>
+  </svg>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">Scout Care · Internal platform</div>
     <h1 class="hero-headline">
-      Inventory that works<br>as hard as <em>your team does.</em>
+      Every Scout location,<br><span class="accent">one inventory.</span>
     </h1>
     <p class="hero-sub">
-      MedSync is Scout's inventory and procurement platform — built to reduce waste, keep shelves accurate, and give every location the same visibility we'd want across all of them.
+      MedSync is Scout's platform for tracking what's on the shelf, logging what's lost, and keeping procurement honest across every Chicagoland location.
     </p>
     <div class="hero-actions">
-      <a class="btn-hero-primary" href="medsync_login.html">Open MedSync →</a>
-      <a class="btn-hero-ghost" href="medsync_userguide_live.html">Read the guide</a>
+      <a class="btn-hero btn-hero-primary" href="medsync_login.html">Open MedSync →</a>
+      <a class="btn-hero btn-hero-ghost" href="medsync_userguide_live.html">Read the guide</a>
     </div>
-    <div class="hero-stat-row">
-      <div class="hero-stat">
-        <div class="hero-stat-val">4<span> locations</span></div>
-        <div class="hero-stat-label">Live across Chicagoland</div>
+  </div>
+
+  <!-- Card with illustrated dog + live stats -->
+  <div class="hero-card">
+    <div class="hero-card-illo">
+      <!-- Scout-style dog illustration: dark green line art, orange bowtie -->
+      <svg width="130" height="148" viewBox="0 0 130 148" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- ears -->
+        <path d="M28,42 C20,28 14,16 22,10 C30,4 40,18 44,32" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <path d="M102,42 C110,28 116,16 108,10 C100,4 90,18 86,32" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <!-- head -->
+        <path d="M44,32 C38,50 36,68 42,82 C48,96 58,104 65,106 C72,104 82,96 88,82 C94,68 92,50 86,32" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+        <!-- face details -->
+        <!-- eyes closed (happy) -->
+        <path d="M52,62 C54,58 58,58 60,62" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M70,62 C72,58 76,58 78,62" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- nose -->
+        <ellipse cx="65" cy="74" rx="5" ry="3.5" fill="white" opacity="0.9"/>
+        <!-- mouth -->
+        <path d="M60,80 C62,84 68,84 70,80" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- body/neck -->
+        <path d="M52,106 C45,112 40,122 38,136" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M78,106 C85,112 90,122 92,136" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+        <!-- bowtie (orange, Scout brand) -->
+        <path d="M47,112 C52,108 58,115 65,112 C72,109 78,116 83,112 C78,108 72,115 65,118 C58,115 52,108 47,112 Z" fill="#F47B3B"/>
+        <ellipse cx="65" cy="113" rx="4" ry="3.5" fill="#F47B3B"/>
+        <!-- center bowtie knot marks -->
+        <path d="M60,111 C62,113 68,113 70,111" stroke="#C85A1A" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M60,115 C62,113 68,113 70,115" stroke="#C85A1A" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- chest marks -->
+        <path d="M60,124 L60,130" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+        <path d="M65,126 L65,134" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+        <path d="M70,124 L70,130" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+    </div>
+    <div class="hero-card-title">Scout Inventory — Live</div>
+    <div class="hero-stat-list">
+      <div class="hero-stat-row">
+        <span class="hsr-label">Active locations</span>
+        <span class="hsr-val good">4</span>
       </div>
-      <div class="hero-stat">
-        <div class="hero-stat-val">Live</div>
-        <div class="hero-stat-label">Real-time inventory sync</div>
+      <div class="hero-stat-row">
+        <span class="hsr-label">Cycle count compliance</span>
+        <span class="hsr-val good">100%</span>
       </div>
-      <div class="hero-stat">
-        <div class="hero-stat-val">1<span> platform</span></div>
-        <div class="hero-stat-label">Orders, counts, losses, reports</div>
+      <div class="hero-stat-row">
+        <span class="hsr-label">Portfolio COGs</span>
+        <span class="hsr-val warn">9.4%</span>
+      </div>
+      <div class="hero-stat-row">
+        <span class="hsr-label">Inventory tracked</span>
+        <span class="hsr-val">Live</span>
       </div>
     </div>
   </div>
@@ -424,56 +428,90 @@ a:focus-visible {
 <!-- ROLES -->
 <section class="section roles-section" id="roles">
   <div class="section-inner">
-    <div class="roles-intro">
-      <div class="section-eyebrow">For your role</div>
-      <h2 class="section-heading">Built for how Scout actually operates.</h2>
-      <p class="section-sub">Different people at Scout have different jobs in MedSync. Here's what the platform does for yours.</p>
-    </div>
+    <div class="eyebrow">For your role</div>
+    <h2 class="section-heading">Built for how Scout actually works.</h2>
+    <p class="section-sub">Your job in MedSync depends on your role. Here's what it looks like for yours.</p>
+
     <div class="roles-grid">
 
       <div class="role-card">
-        <div class="role-icon">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M10 3L3 7V13L10 17L17 13V7L10 3Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
-            <path d="M10 3V17M3 7L17 13M17 7L3 13" stroke="white" stroke-width="1" stroke-opacity="0.4"/>
+        <div class="role-illo">
+          <!-- Poodle/curly dog - Inventory Lead -->
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="30" r="12" stroke="#1A3A2B" stroke-width="2.5" fill="none"/>
+            <circle cx="22" cy="22" r="6" stroke="#1A3A2B" stroke-width="2" fill="none"/>
+            <circle cx="50" cy="22" r="6" stroke="#1A3A2B" stroke-width="2" fill="none"/>
+            <circle cx="36" cy="15" r="5" stroke="#1A3A2B" stroke-width="2" fill="none"/>
+            <path d="M28,42 C26,52 28,60 32,64" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M44,42 C46,52 44,60 40,64" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round"/>
+            <ellipse cx="22" cy="42" rx="4" ry="2.5" fill="#F47B3B" opacity="0.9"/>
+            <ellipse cx="50" cy="42" rx="4" ry="2.5" fill="#F47B3B" opacity="0.9"/>
+            <path d="M32,30 C34,28 38,28 40,30" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="30" cy="26" r="1.5" fill="#1A3A2B"/>
+            <circle cx="42" cy="26" r="1.5" fill="#1A3A2B"/>
           </svg>
         </div>
         <div class="role-title">Inventory Lead</div>
         <div class="role-desc">You own the shelves. MedSync is your system of record.</div>
         <ul class="role-tasks">
-          <li>Run weekly cycle counts by A/B/C/D category</li>
+          <li>Weekly cycle counts by A/B/C/D category</li>
           <li>Log goods lost with full category tracking</li>
           <li>Monitor expiring lots 60 days out</li>
-          <li>See what's actually on hand, right now</li>
+          <li>Live on-hand counts by product</li>
         </ul>
       </div>
 
       <div class="role-card">
-        <div class="role-icon">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <rect x="4" y="3" width="12" height="14" rx="2" stroke="white" stroke-width="1.4"/>
-            <path d="M7 7H13M7 10H13M7 13H10" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+        <div class="role-illo">
+          <!-- Greyhound/manager dog -->
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <path d="M20,48 C18,40 20,30 26,24 C30,20 36,18 42,20 C50,22 56,30 54,40 C52,48 46,54 36,56 C30,56 22,54 20,48 Z" stroke="#1A3A2B" stroke-width="2.5" fill="none"/>
+            <path d="M26,24 C20,18 14,14 16,8 C18,4 24,6 28,12" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M36,56 C34,62 36,68 36,68" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M28,56 C26,62 28,68 28,68" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="30" cy="34" r="2" fill="#1A3A2B"/>
+            <circle cx="42" cy="34" r="2" fill="#1A3A2B"/>
+            <path d="M28,42 C30,46 34,46 36,42" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M50,28 C56,24 62,26 60,32" stroke="#1A3A2B" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M52,36 C54,40 50,44 46,42" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            <circle cx="56" cy="24" r="3" fill="#D6DFE8"/>
           </svg>
         </div>
         <div class="role-title">Practice Manager</div>
-        <div class="role-desc">Your dashboard view across the whole location.</div>
+        <div class="role-desc">Your dashboard across the whole location.</div>
         <ul class="role-tasks">
           <li>Track COGs % against monthly targets</li>
           <li>Review goods lost totals and trends</li>
-          <li>Check order compliance and cycle count status</li>
-          <li>Pull quarterly and annual spend reports</li>
+          <li>Order compliance and cycle count status</li>
+          <li>Quarterly and annual spend reports</li>
         </ul>
       </div>
 
       <div class="role-card">
-        <div class="role-icon">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M10 4C10 4 5 6.5 5 10.5C5 13.5 7.5 16 10 16C12.5 16 15 13.5 15 10.5C15 6.5 10 4 10 4Z" stroke="white" stroke-width="1.4"/>
-            <path d="M10 9V13M8 11H12" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+        <div class="role-illo">
+          <!-- Cat - Vet/Tech -->
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <path d="M22,40 C20,30 24,20 30,16 C32,14 34,14 36,14 C38,14 40,14 42,16 C48,20 52,30 50,40 C48,50 42,58 36,58 C30,58 24,50 22,40 Z" stroke="#1A3A2B" stroke-width="2.5" fill="none"/>
+            <!-- ears -->
+            <path d="M26,20 L20,8 L30,16" stroke="#1A3A2B" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+            <path d="M46,20 L52,8 L42,16" stroke="#1A3A2B" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+            <!-- eyes closed peaceful -->
+            <path d="M28,34 C30,30 34,30 36,34" stroke="#1A3A2B" stroke-width="2" stroke-linecap="round"/>
+            <path d="M36,34 C38,30 42,30 44,34" stroke="#1A3A2B" stroke-width="2" stroke-linecap="round"/>
+            <!-- nose + mouth -->
+            <path d="M34,42 L36,44 L38,42" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="36" cy="42" r="1.5" fill="#1A3A2B"/>
+            <!-- whiskers -->
+            <path d="M20,40 L30,42" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <path d="M20,44 L30,44" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <path d="M52,40 L42,42" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <path d="M52,44 L42,44" stroke="#1A3A2B" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <!-- tail -->
+            <path d="M50,56 C56,52 62,56 60,62 C58,68 54,66 56,60" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round" fill="none"/>
           </svg>
         </div>
         <div class="role-title">Veterinarian / Tech</div>
-        <div class="role-desc">You use it most when something goes wrong with a medication.</div>
+        <div class="role-desc">You use it when something goes wrong with a medication.</div>
         <ul class="role-tasks">
           <li>Log a diagnostic duplicate quickly</li>
           <li>Check lot expiry before dispensing</li>
@@ -482,31 +520,55 @@ a:focus-visible {
       </div>
 
       <div class="role-card">
-        <div class="role-icon">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M4 15L4 8L10 4L16 8V15H4Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
-            <path d="M8 15V11H12V15" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
+        <div class="role-illo">
+          <!-- Dog with bandana - Receiver -->
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <path d="M24,44 C22,34 26,22 34,18 C36,17 38,17 40,18 C48,22 50,36 48,44 C46,52 42,58 36,58 C30,58 26,52 24,44 Z" stroke="#1A3A2B" stroke-width="2.5" fill="none"/>
+            <!-- floppy ears -->
+            <path d="M26,26 C18,22 12,28 14,36 C16,42 22,44 26,40" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M46,26 C54,22 60,28 58,36 C56,42 50,44 46,40" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <!-- eyes -->
+            <circle cx="30" cy="34" r="2.5" fill="#1A3A2B"/>
+            <circle cx="42" cy="34" r="2.5" fill="#1A3A2B"/>
+            <circle cx="31" cy="33" r="1" fill="white"/>
+            <circle cx="43" cy="33" r="1" fill="white"/>
+            <!-- nose -->
+            <ellipse cx="36" cy="44" rx="4" ry="3" fill="#1A3A2B" opacity="0.8"/>
+            <!-- bandana (light blue Scout) -->
+            <path d="M26,54 L36,62 L46,54 L36,50 Z" fill="#D6DFE8" opacity="0.8"/>
+            <path d="M26,54 L36,62 L46,54 L36,50 Z" stroke="#1A3A2B" stroke-width="1.5" stroke-linejoin="round"/>
+            <!-- legs -->
+            <path d="M30,58 L28,68" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M42,58 L44,68" stroke="#1A3A2B" stroke-width="2.5" stroke-linecap="round"/>
           </svg>
         </div>
         <div class="role-title">Hospital Receiver</div>
-        <div class="role-desc">You close the loop between what was ordered and what arrived.</div>
+        <div class="role-desc">You close the loop between ordered and arrived.</div>
         <ul class="role-tasks">
-          <li>Receive shipments against open purchase orders</li>
+          <li>Receive shipments against open POs</li>
           <li>Log lot numbers and expiration dates</li>
           <li>Flag short shipments or substitutions</li>
-          <li>Reconcile invoices against what was received</li>
+          <li>Reconcile invoices against received items</li>
         </ul>
       </div>
 
       <div class="role-card">
-        <div class="role-icon">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <circle cx="10" cy="10" r="6" stroke="white" stroke-width="1.4"/>
-            <path d="M10 7V10L12.5 12.5" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+        <div class="role-illo">
+          <!-- Abstract multi-location -->
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="18" stroke="#1A3A2B" stroke-width="2.5" fill="none"/>
+            <circle cx="36" cy="36" r="10" stroke="#1A3A2B" stroke-width="1.5" fill="none" opacity="0.4"/>
+            <path d="M36,18 L36,54M18,36 L54,36" stroke="#1A3A2B" stroke-width="1.5" opacity="0.3"/>
+            <path d="M22,22 L50,50M50,22 L22,50" stroke="#1A3A2B" stroke-width="1.5" opacity="0.2"/>
+            <circle cx="36" cy="18" r="4" fill="#F47B3B"/>
+            <circle cx="54" cy="36" r="4" fill="#F47B3B"/>
+            <circle cx="36" cy="54" r="4" fill="#F47B3B"/>
+            <circle cx="18" cy="36" r="4" fill="#F47B3B"/>
+            <circle cx="36" cy="36" r="5" fill="#1A3A2B"/>
           </svg>
         </div>
         <div class="role-title">Regional / Admin</div>
-        <div class="role-desc">Cross-location visibility is what MedSync is built for.</div>
+        <div class="role-desc">Cross-location visibility is what MedSync was built for.</div>
         <ul class="role-tasks">
           <li>Compare COGs % across all Scout locations</li>
           <li>Review the integrity assessment in Reports</li>
@@ -519,71 +581,114 @@ a:focus-visible {
   </div>
 </section>
 
-<!-- WHY IT MATTERS -->
+<!-- WHY -->
 <section class="section why-section" id="why">
   <div class="section-inner">
-    <div class="section-eyebrow">Why it matters</div>
-    <h2 class="section-heading">This is operational infrastructure,<br>not just a tool.</h2>
+    <div class="eyebrow">Why it matters</div>
+    <h2 class="section-heading">The shelf is a financial statement.</h2>
     <div class="why-grid">
-      <div class="why-left">
+      <div class="why-items">
 
         <div class="why-item">
-          <div class="why-num">—</div>
-          <div class="why-body">
-            <div class="why-title">Expired product costs real money</div>
-            <div class="why-text">Every lot that expires on a shelf without being logged is an invisible write-off. MedSync tracks every lot from receiving to depletion so nothing disappears quietly.</div>
+          <div class="why-dot">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="#1A3A2B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="why-title">Expired product is a silent write-off</div>
+            <div class="why-text">Every lot that expires without being logged disappears from the books. MedSync tracks every lot from receiving to depletion — nothing goes quietly.</div>
           </div>
         </div>
 
         <div class="why-item">
-          <div class="why-num">—</div>
-          <div class="why-body">
-            <div class="why-title">Procurement without data is guesswork</div>
-            <div class="why-text">Weekly orders built on muscle memory lead to overstock and stockouts. MedSync ties order history to on-hand counts so ordering decisions are grounded in what's actually there.</div>
+          <div class="why-dot">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="#1A3A2B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="why-title">Ordering without data is guesswork</div>
+            <div class="why-text">Weekly orders built on habit lead to overstock and stockouts in the same week. MedSync ties order history to real on-hand counts so decisions are grounded.</div>
           </div>
         </div>
 
         <div class="why-item">
-          <div class="why-num">—</div>
-          <div class="why-body">
+          <div class="why-dot">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="#1A3A2B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
             <div class="why-title">COGs is the number that matters</div>
-            <div class="why-text">Drug spend as a percentage of revenue tells you whether the practice is running lean or leaking. The platform tracks this in real time so you're not surprised at month-end.</div>
+            <div class="why-text">Drug spend as a percentage of revenue tells you whether the practice is running lean or leaking. The platform tracks this in real time, not at month-end.</div>
           </div>
         </div>
 
         <div class="why-item">
-          <div class="why-num">—</div>
-          <div class="why-body">
-            <div class="why-title">Reporting creates accountability</div>
-            <div class="why-text">When goods lost is logged consistently across Scout, patterns emerge — by location, by category, over time. That data protects the practice and the team.</div>
+          <div class="why-dot">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="#1A3A2B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="why-title">Consistent logging builds accountability</div>
+            <div class="why-text">When every location logs goods lost the same way, patterns surface — by location, by product, over time. That data protects the practice and the team.</div>
           </div>
         </div>
 
       </div>
-      <div class="why-right">
-        <div class="why-right-label">Scout · Live metrics</div>
+
+      <div class="why-visual">
+        <div class="why-v-label">Scout · Live metrics</div>
         <div class="metric-row">
-          <span class="metric-name">Locations active</span>
-          <span class="metric-val good">4</span>
+          <span class="m-label">Locations active</span>
+          <span class="m-val good">4</span>
         </div>
         <div class="metric-row">
-          <span class="metric-name">Cycle count compliance</span>
-          <span class="metric-val good">100%</span>
+          <span class="m-label">Cycle count compliance</span>
+          <span class="m-val good">100%</span>
         </div>
         <div class="metric-row">
-          <span class="metric-name">Avg portfolio COGs</span>
-          <span class="metric-val warn">9.4%</span>
+          <span class="m-label">Portfolio COGs</span>
+          <span class="m-val warn">9.4%</span>
         </div>
         <div class="metric-row">
-          <span class="metric-name">Lots tracked</span>
-          <span class="metric-val">Active</span>
+          <span class="m-label">Lots tracked</span>
+          <span class="m-val">Active</span>
         </div>
         <div class="metric-row">
-          <span class="metric-name">Goods lost — MTD</span>
-          <span class="metric-val">Tracked</span>
+          <span class="m-label">Goods lost — MTD</span>
+          <span class="m-val">Tracked</span>
         </div>
-        <div style="margin-top:20px;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
-          Live figures reflect current Supabase data. Log in for full detail by location.
+        <div class="why-v-illo">
+          <!-- Rainy day cat + dog — Scout brand doodle style -->
+          <svg width="160" height="100" viewBox="0 0 160 100" fill="none">
+            <!-- cloud -->
+            <ellipse cx="55" cy="30" rx="22" ry="14" fill="#D6DFE8" opacity="0.7"/>
+            <circle cx="40" cy="34" r="12" fill="#D6DFE8" opacity="0.7"/>
+            <circle cx="66" cy="36" r="10" fill="#D6DFE8" opacity="0.7"/>
+            <!-- rain drops -->
+            <path d="M36,46 L34,54" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+            <path d="M46,48 L44,56" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+            <path d="M56,46 L54,54" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+            <!-- cat -->
+            <path d="M20,90 C18,78 22,66 28,60 C30,58 32,57 34,58 C36,57 38,58 40,60 C46,66 48,80 46,90" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M24,64 L18,54" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M40,64 L46,54" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M30,72 C32,70 36,70 38,72" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- dog -->
+            <path d="M90,90 C88,76 92,64 100,60 C104,58 110,60 114,66 C118,74 116,88 112,90" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M90,68 C84,62 80,62 82,68" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M112,66 C118,60 124,62 122,68" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <!-- dog bandana -->
+            <path d="M94,82 L102,88 L110,82 L102,78 Z" fill="#F47B3B" opacity="0.9"/>
+            <!-- sniff curl -->
+            <path d="M122,58 C126,50 130,54 128,60" stroke="white" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+          </svg>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.5;margin-top:12px;">
+          Log in for live numbers by location.
         </div>
       </div>
     </div>
@@ -593,65 +698,48 @@ a:focus-visible {
 <!-- LOCATIONS -->
 <section class="section locations-section" id="locations">
   <div class="section-inner">
-    <div class="section-eyebrow">Chicagoland Region</div>
+    <div class="eyebrow">Chicagoland Region</div>
     <h2 class="section-heading">Live across Scout.</h2>
-    <p class="section-sub">MedSync is active at four locations today, with Westchester coming online soon.</p>
+    <p class="section-sub">MedSync is active at four Scout locations today, with Westchester coming online soon.</p>
     <div class="locations-grid">
-      <div class="loc-card">
-        <div class="loc-status-row">
-          <div class="loc-status-dot"></div>
-          <span class="loc-status-label">Live</span>
-        </div>
+      <div class="loc-card live">
+        <div class="loc-pill"><span class="dot"></span> Live</div>
         <div class="loc-name">Lincoln Park</div>
-        <div class="loc-state">Chicago, IL</div>
+        <div class="loc-city">Chicago, IL</div>
       </div>
-      <div class="loc-card">
-        <div class="loc-status-row">
-          <div class="loc-status-dot"></div>
-          <span class="loc-status-label">Live</span>
-        </div>
+      <div class="loc-card live">
+        <div class="loc-pill"><span class="dot"></span> Live</div>
         <div class="loc-name">Old Orchard</div>
-        <div class="loc-state">Skokie, IL</div>
+        <div class="loc-city">Skokie, IL</div>
       </div>
-      <div class="loc-card">
-        <div class="loc-status-row">
-          <div class="loc-status-dot"></div>
-          <span class="loc-status-label">Live</span>
-        </div>
+      <div class="loc-card live">
+        <div class="loc-pill"><span class="dot"></span> Live</div>
         <div class="loc-name">West Loop</div>
-        <div class="loc-state">Chicago, IL</div>
+        <div class="loc-city">Chicago, IL</div>
       </div>
-      <div class="loc-card">
-        <div class="loc-status-row">
-          <div class="loc-status-dot"></div>
-          <span class="loc-status-label">Live</span>
-        </div>
+      <div class="loc-card live">
+        <div class="loc-pill"><span class="dot"></span> Live</div>
         <div class="loc-name">Wheaton</div>
-        <div class="loc-state">Wheaton, IL</div>
+        <div class="loc-city">Wheaton, IL</div>
       </div>
-      <div class="loc-card loc-coming">
-        <div class="loc-status-row">
-          <div class="loc-status-dot" style="background:var(--border)"></div>
-          <span class="loc-status-label" style="color:var(--text-muted)">Coming soon</span>
-        </div>
-        <div class="loc-name" style="color:var(--text-muted)">Westchester</div>
-        <div class="loc-state">Westchester, IL</div>
+      <div class="loc-card soon">
+        <div class="loc-pill"><span class="dot"></span> Coming soon</div>
+        <div class="loc-name" style="color:var(--muted)">Westchester</div>
+        <div class="loc-city">Westchester, IL</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- GET STARTED -->
-<section class="start-section">
-  <div class="start-inner">
-    <div>
-      <h2 class="start-heading">Your Scout credentials get you in.</h2>
-      <p class="start-sub">Sign in with your Scout email. Your role and location are already configured — you'll land exactly where you need to be.</p>
-    </div>
-    <div class="start-actions">
-      <a class="btn-start btn-start-primary" href="medsync_login.html">Sign in to MedSync →</a>
-      <a class="btn-start btn-start-ghost" href="medsync_userguide_live.html">Read the user guide</a>
-    </div>
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-left">
+    <h2 class="cta-heading">Your Scout credentials<br>get you in.</h2>
+    <p class="cta-sub">Sign in with your Scout email. Your role and location are already configured — you'll land exactly where you need to be.</p>
+  </div>
+  <div class="cta-actions">
+    <a class="btn-cta btn-cta-primary" href="medsync_login.html">Sign in to MedSync →</a>
+    <a class="btn-cta btn-cta-ghost" href="medsync_userguide_live.html">Read the user guide</a>
   </div>
 </section>
 
