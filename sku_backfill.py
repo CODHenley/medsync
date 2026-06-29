@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 import urllib.error
 
@@ -252,36 +253,53 @@ def main():
     print("Applying patches …")
     ok = err = 0
 
-    # 1. Create missing product records and link to lots
+    # 1. Link lots that have no product_id — look up existing product by name, then link + patch NDC
     for lot_id, info in needs_product.items():
-        # Insert product
-        body = json.dumps({"name": info["name"], "ndc": info["ndc"]}).encode()
-        req = urllib.request.Request(
-            SUPA_URL + "/rest/v1/products",
-            data=body,
-            headers={
-                "apikey": service_key, "Authorization": f"Bearer {service_key}",
-                "Content-Type": "application/json", "Prefer": "return=representation",
-            }
-        )
-        req.get_method = lambda: "POST"
-        try:
-            with urllib.request.urlopen(req, timeout=30) as r:
-                created = json.loads(r.read())
-                new_id = created[0]["id"] if isinstance(created, list) else created.get("id")
-        except Exception as e:
-            print(f"  ✗ create product '{info['name']}': {e}")
-            err += 1
-            continue
-
-        # Link lot to new product
-        status = supa_patch(service_key, f"/rest/v1/lots?id=eq.{lot_id}", {"product_id": new_id})
-        if status in (200, 204):
-            print(f"  ✓ created product + linked LOT {info['lot_number']} → {info['name']} [{info['ndc']}]")
-            ok += 1
+        # Look up existing product by exact name
+        encoded_name = urllib.parse.quote(info["name"])
+        existing = supa_get(service_key,
+            f"/rest/v1/products?select=id,ndc&name=eq.{encoded_name}&limit=1")
+        if existing and isinstance(existing, list) and len(existing) > 0:
+            prod_id  = existing[0]["id"]
+            has_ndc  = (existing[0].get("ndc") or "").strip()
+            # Patch NDC if missing
+            if not has_ndc:
+                supa_patch(service_key, f"/rest/v1/products?id=eq.{prod_id}", {"ndc": info["ndc"]})
+            # Link lot
+            status = supa_patch(service_key, f"/rest/v1/lots?id=eq.{lot_id}", {"product_id": prod_id})
+            if status in (200, 204):
+                print(f"  ✓ linked LOT {info['lot_number']} → existing product [{info['ndc']}] {info['name']}")
+                ok += 1
+            else:
+                print(f"  ✗ link LOT {info['lot_number']} → HTTP {status}")
+                err += 1
         else:
-            print(f"  ✗ linked LOT {info['lot_number']} → HTTP {status}")
-            err += 1
+            # Truly doesn't exist — create it
+            body = json.dumps({"name": info["name"], "ndc": info["ndc"]}).encode()
+            req = urllib.request.Request(
+                SUPA_URL + "/rest/v1/products",
+                data=body,
+                headers={
+                    "apikey": service_key, "Authorization": f"Bearer {service_key}",
+                    "Content-Type": "application/json", "Prefer": "return=representation",
+                }
+            )
+            req.get_method = lambda: "POST"
+            try:
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    created = json.loads(r.read())
+                    new_id = created[0]["id"] if isinstance(created, list) else created.get("id")
+            except Exception as e:
+                print(f"  ✗ create product '{info['name']}': {e}")
+                err += 1
+                continue
+            status = supa_patch(service_key, f"/rest/v1/lots?id=eq.{lot_id}", {"product_id": new_id})
+            if status in (200, 204):
+                print(f"  ✓ created + linked LOT {info['lot_number']} → {info['name']} [{info['ndc']}]")
+                ok += 1
+            else:
+                print(f"  ✗ link after create LOT {info['lot_number']} → HTTP {status}")
+                err += 1
 
     # 2. Patch existing products missing NDC
     for pid, info in product_patches.items():
