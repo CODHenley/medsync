@@ -38,7 +38,7 @@ select:focus{border-color:var(--navy);}
 .content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px;min-height:0;}
 
 /* KPI ROW */
-.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;}
 .kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
 .kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .kpi-v{font-size:22px;font-weight:500;line-height:1;}
@@ -196,7 +196,9 @@ tr:last-child td{border-bottom:none;}
       <div class="kpi"><div class="kpi-l">Purchase Value</div><div class="kpi-v cm" id="kv-purchase">—</div><div class="kpi-s cm">from receiving log</div></div>
       <div class="kpi"><div class="kpi-l">True COGS</div><div class="kpi-v" id="kv-cogs" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogs">cost of goods sold</div></div>
       <div class="kpi"><div class="kpi-l">Remaining Inventory</div><div class="kpi-v cg" id="kv-remaining">—</div><div class="kpi-s cm">snapshot minus period COGS</div></div>
-      <div class="kpi"><div class="kpi-l">COGS % Revenue</div><div class="kpi-v" id="kv-cogspc" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogspc">true cost vs. revenue</div></div>
+      <div class="kpi"><div class="kpi-l">Total Revenue</div><div class="kpi-v" id="kv-totalrev" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-totalrev">from practice P&amp;L</div></div>
+      <div class="kpi"><div class="kpi-l">COGS % Revenue</div><div class="kpi-v" id="kv-cogspc" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-cogspc">pharmacy cost vs. total revenue</div></div>
+      <div class="kpi"><div class="kpi-l">Pharmacy Margin</div><div class="kpi-v cg" id="kv-pharmamargin">—</div><div class="kpi-s cm" id="ks-pharmamargin">inventory profit margin</div></div>
       <div class="kpi"><div class="kpi-l">Items Dispensed</div><div class="kpi-v cp" id="kv-items">—</div><div class="kpi-s cm" id="ks-items">dispense events</div></div>
       <div class="kpi" id="kpi-health-risk" style="cursor:pointer;border-color:#e8a0a0;background:#fff8f8;" onclick="navToLotHealth()" title="Open Inventory Health in Lot Lifecycle">
         <div class="kpi-l">Depreciation Risk</div>
@@ -533,16 +535,16 @@ async function reload() {
 
 // ── KPI Cards ─────────────────────────────────────────────────────
 async function updateKPIs() {
-  const totalCOGS     = ALL_PRODUCTS.reduce((s, p) => s + p.true_cogs, 0);
-  const totalRevenue  = ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
-  const totalItems    = ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
+  const totalCOGS      = ALL_PRODUCTS.reduce((s, p) => s + p.true_cogs, 0);
+  const pharmacyRevenue = ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
+  const totalItems     = ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
+  const { start, end } = getDateRange();
+  const _locVid        = document.getElementById('sel-location').value;
+  const _locUuid       = _locVid ? LOC_UUID[_locVid] : null;
 
   // Purchase value from po_items (received orders in the period)
   let purchaseValue = 0;
   try {
-    const { start, end } = getDateRange();
-    const _locVid  = document.getElementById('sel-location').value;
-    const _locUuid = _locVid ? LOC_UUID[_locVid] : null;
     const poItems = await query('po_items',
       `select=qty_ordered,unit_price` +
       `&status=eq.received` +
@@ -555,32 +557,72 @@ async function updateKPIs() {
     }, 0);
   } catch(e) { /* purchase value unavailable — show dash */ }
 
+  // Total daily revenue from daily_revenue table (all practice revenue, for P&L)
+  let totalPracticeRevenue = null;
+  try {
+    let revParams = `select=revenue,date&date=gte.${start}&date=lte.${end}&limit=1000`;
+    if (_locVid) revParams += `&location_id=eq.${_locVid}`;
+    const revRows = await query('daily_revenue', revParams);
+    if (revRows.length > 0) {
+      totalPracticeRevenue = revRows.reduce((s, r) => s + (parseFloat(r.revenue) || 0), 0);
+    }
+  } catch(e) { /* daily_revenue unavailable */ }
+
   let inventoryValue = null;
   try {
-    const locId = document.getElementById("sel-location").value || "28253";
+    const locId = _locVid || "28253";
     const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+locId+"&limit=500", {headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
     const snapRows = await snapRes.json();
     const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand)||0) * (parseFloat(r.unit_cost)||0)), 0);
     if (iv > 0) inventoryValue = iv;
   } catch(e) {}
+
   // Subtract period COGS from snapshot so value decreases as items are dispensed
   const remaining = inventoryValue !== null ? Math.max(0, inventoryValue - totalCOGS) : null;
-  const cogsPC    = totalRevenue > 0 ? ((totalCOGS / totalRevenue) * 100).toFixed(1) : null;
+
+  // COGS % uses total practice revenue for P&L accuracy
+  const cogsPC = totalPracticeRevenue > 0 ? ((totalCOGS / totalPracticeRevenue) * 100).toFixed(1) : null;
+
+  // Pharmacy margin = (pharmacy revenue − COGS) / pharmacy revenue
+  const pharmaMarginPct = pharmacyRevenue > 0
+    ? (((pharmacyRevenue - totalCOGS) / pharmacyRevenue) * 100).toFixed(1)
+    : null;
 
   document.getElementById('kv-purchase').textContent  = purchaseValue > 0 ? '$' + fmt(purchaseValue) : '—';
   document.getElementById('kv-cogs').textContent       = '$' + fmt(totalCOGS);
   document.getElementById('ks-cogs').textContent       = totalItems + ' dispense events';
   document.getElementById('kv-remaining').textContent  = remaining !== null ? '$' + fmt(remaining) : '—';
-  document.getElementById('kv-cogspc').textContent     = cogsPC !== null ? cogsPC + '%' : '—';
-  document.getElementById('ks-cogspc').textContent     = totalRevenue > 0 ? 'vs $' + fmt(totalRevenue) + ' revenue' : 'no revenue data';
-  document.getElementById('kv-items').textContent      = totalItems.toLocaleString();
-  document.getElementById('ks-items').textContent      = ALL_PRODUCTS.length + ' unique products';
 
-  // Color the COGS % by health
-  const pEl = document.getElementById('kv-cogspc');
+  // Total Revenue tile
+  document.getElementById('kv-totalrev').textContent  = totalPracticeRevenue !== null ? '$' + fmt(totalPracticeRevenue) : '—';
+  document.getElementById('ks-totalrev').textContent  = totalPracticeRevenue !== null ? 'all hospitals' : 'syncing hourly';
+
+  document.getElementById('kv-cogspc').textContent    = cogsPC !== null ? cogsPC + '%' : '—';
+  document.getElementById('ks-cogspc').textContent    = totalPracticeRevenue !== null
+    ? 'vs $' + fmt(totalPracticeRevenue) + ' total rev'
+    : 'awaiting daily_revenue';
+
+  // Pharmacy Margin tile
+  document.getElementById('kv-pharmamargin').textContent = pharmaMarginPct !== null ? pharmaMarginPct + '%' : '—';
+  document.getElementById('ks-pharmamargin').textContent = pharmacyRevenue > 0
+    ? '$' + fmt(pharmacyRevenue) + ' pharmacy rev'
+    : 'no pharmacy revenue';
+
+  document.getElementById('kv-items').textContent     = totalItems.toLocaleString();
+  document.getElementById('ks-items').textContent     = ALL_PRODUCTS.length + ' unique products';
+
+  // Color COGS % by health (pharmacy cost should be 15–30% of total practice revenue)
+  const cogsEl = document.getElementById('kv-cogspc');
   if (cogsPC !== null) {
     const pc = parseFloat(cogsPC);
-    pEl.style.color = pc > 80 ? 'var(--red)' : pc > 60 ? 'var(--amber)' : 'var(--green)';
+    cogsEl.style.color = pc > 35 ? 'var(--red)' : pc > 25 ? 'var(--amber)' : 'var(--green)';
+  }
+
+  // Color Pharmacy Margin
+  const pmEl = document.getElementById('kv-pharmamargin');
+  if (pharmaMarginPct !== null) {
+    const pm = parseFloat(pharmaMarginPct);
+    pmEl.style.color = pm < 20 ? 'var(--red)' : pm < 35 ? 'var(--amber)' : 'var(--green)';
   }
 }
 
@@ -988,15 +1030,20 @@ function printReport() {
   const perName = perEl.options[perEl.selectedIndex].text;
   const now     = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  const totalCOGS    = ALL_PRODUCTS.reduce((s, p) => s + p.true_cogs, 0);
-  const totalRevenue = ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
-  const totalItems   = ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
-  const totalQty     = ALL_PRODUCTS.reduce((s, p) => s + p.total_qty_dispensed, 0);
-  const cogsPC       = totalRevenue > 0 ? ((totalCOGS / totalRevenue) * 100).toFixed(1) : '—';
-  const kpvEl        = document.getElementById('kv-purchase');
-  const purchaseVal  = kpvEl ? kpvEl.textContent : '—';
-  const invEl        = document.getElementById('kv-remaining');
-  const invVal       = invEl ? invEl.textContent : '—';
+  const totalCOGS      = ALL_PRODUCTS.reduce((s, p) => s + p.true_cogs, 0);
+  const pharmacyRev    = ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
+  const totalItems     = ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
+  const totalQty       = ALL_PRODUCTS.reduce((s, p) => s + p.total_qty_dispensed, 0);
+  const kpvEl          = document.getElementById('kv-purchase');
+  const purchaseVal    = kpvEl ? kpvEl.textContent : '—';
+  const invEl          = document.getElementById('kv-remaining');
+  const invVal         = invEl ? invEl.textContent : '—';
+  const totalRevEl     = document.getElementById('kv-totalrev');
+  const totalRevVal    = totalRevEl ? totalRevEl.textContent : '—';
+  const cogspcEl       = document.getElementById('kv-cogspc');
+  const cogsPC         = cogspcEl ? cogspcEl.textContent : '—';
+  const pharmaMarginEl = document.getElementById('kv-pharmamargin');
+  const pharmaMargin   = pharmaMarginEl ? pharmaMarginEl.textContent : '—';
 
   const rows = ALL_PRODUCTS.map(p => `
     <tr>
@@ -1017,7 +1064,7 @@ function printReport() {
     body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #1C2B4A; margin: 0; }
     h1 { font-size: 18px; font-weight: 700; margin: 0 0 2px; }
     .sub { font-size: 12px; color: #6B7A99; margin: 0 0 20px; }
-    .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+    .kpis { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 24px; }
     .kpi { border: 1px solid #DCD4EC; border-radius: 8px; padding: 10px 12px; }
     .kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #8A93A8; margin-bottom: 4px; }
     .kpi-val { font-size: 16px; font-weight: 700; color: #1C2B4A; }
@@ -1035,7 +1082,9 @@ function printReport() {
     <div class="kpi"><div class="kpi-label">Purchase Value</div><div class="kpi-val">${purchaseVal}</div><div class="kpi-sub">from receiving log</div></div>
     <div class="kpi"><div class="kpi-label">True COGS</div><div class="kpi-val">$${fmt(totalCOGS)}</div><div class="kpi-sub">${totalItems} dispense events</div></div>
     <div class="kpi"><div class="kpi-label">Remaining Inventory</div><div class="kpi-val">${invVal}</div><div class="kpi-sub">estimated on-hand value</div></div>
-    <div class="kpi"><div class="kpi-label">COGS % Revenue</div><div class="kpi-val">${cogsPC}%</div><div class="kpi-sub">$${fmt(totalRevenue)} revenue</div></div>
+    <div class="kpi"><div class="kpi-label">Total Revenue</div><div class="kpi-val">${totalRevVal}</div><div class="kpi-sub">practice P&amp;L</div></div>
+    <div class="kpi"><div class="kpi-label">COGS % Revenue</div><div class="kpi-val">${cogsPC}</div><div class="kpi-sub">pharmacy cost vs total rev</div></div>
+    <div class="kpi"><div class="kpi-label">Pharmacy Margin</div><div class="kpi-val">${pharmaMargin}</div><div class="kpi-sub">$${fmt(pharmacyRev)} pharmacy rev</div></div>
     <div class="kpi"><div class="kpi-label">Items Dispensed</div><div class="kpi-val">${fmtQty(totalQty)}</div><div class="kpi-sub">${ALL_PRODUCTS.length} unique products</div></div>
   </div>
   <table>
