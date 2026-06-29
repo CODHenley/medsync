@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '0 * * * *'   # every hour
   workflow_dispatch:        # manual trigger from GitHub Actions UI
+  push:
+    branches: [main]        # backstop: sync on every deploy
 
 jobs:
   sync:
