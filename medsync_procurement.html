@@ -711,8 +711,7 @@ function renderProductTable() {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;">
       <div class="empty-icon">📦</div>
       <div class="empty-title">No dispensed items yet</div>
-      <div class="empty-sub">Run the nightly pull to populate this table.<br>
-      <code style="font-family:'DM Mono',monospace;font-size:10px;background:#EDE8F8;padding:2px 6px;border-radius:4px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code></div>
+      <div class="empty-sub">Data syncs from Vetspire hourly. Check back after appointments are invoiced, or use ↻ Refresh to pull the latest.</div>
     </td></tr>`;
     return;
   }
@@ -1026,8 +1025,7 @@ function showEmptyState() {
       <div style="font-size:28px;margin-bottom:8px;">🔧</div>
       <div style="font-weight:500;color:var(--slate);margin-bottom:6px;">Dispensed items table not set up yet</div>
       <div style="font-size:11px;color:var(--mist);line-height:1.8;">
-        1. Run <code style="font-family:'DM Mono',monospace;background:#EDE8F8;padding:1px 5px;border-radius:3px;">dispensed_items_migration.sql</code> in Supabase SQL editor<br>
-        2. Run <code style="font-family:'DM Mono',monospace;background:#EDE8F8;padding:1px 5px;border-radius:3px;">python3 ~/Desktop/medsync_deploy/wheaton_usage_pull.py</code> to populate
+        Contact your MedSync administrator to complete the initial database setup.
       </div>
     </td></tr>`;
   });
