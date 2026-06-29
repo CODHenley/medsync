@@ -169,15 +169,18 @@ for (let y = CUR_YEAR; y >= CUR_YEAR - 3; y--) {
   yearSel.appendChild(o);
 }
 
-function locFilter() {
-  const v = document.getElementById('loc-sel').value;
-  if (v === 'all') return LOCS.map(l => 'location_id.eq.' + l.id).join(',');
-  return 'location_id.eq.' + v;
-}
+function selectedLocId() { return document.getElementById('loc-sel').value; }
+// Returns &location_id=in.(uuid,...) — works for all tables
 function locFilterStr() {
-  const v = document.getElementById('loc-sel').value;
-  if (v === 'all') return '&or=(' + LOCS.map(l => 'location_id.eq.' + l.id).join(',') + ')';
-  return '&location_id=eq.' + v;
+  const v = selectedLocId();
+  const ids = v === 'all' ? LOCS.map(l => l.id) : [v];
+  return '&location_id=in.(' + ids.join(',') + ')';
+}
+// Client-side filter for rows returned (safety net against RLS pass-through)
+function filterByLoc(rows) {
+  const v = selectedLocId();
+  if (v === 'all') return rows;
+  return rows.filter(r => r.location_id === v);
 }
 function locName() {
   const v = document.getElementById('loc-sel').value;
@@ -241,12 +244,18 @@ async function loadAll() {
   const ms = monthsInYear(year);
 
   // Parallel fetch all data for the year
-  const [poRows, glRows, lotRows, phRows] = await Promise.all([
+  let [poRows, glRows, lotRows, phRows] = await Promise.all([
     supa('po_items?select=week_start,product_name,vendor,qty_ordered,unit_price,gpo_price,status,location_id&status=in.(submitted,received)&week_start=gte.'+year+'-01-01&week_start=lte.'+year+'-12-31'+lf+'&limit=5000'),
     supa('goods_lost?select=created_at,category,product_name,qty_lost,value_lost,location_id,notes&created_at=gte.'+year+'-01-01T00:00:00&created_at=lte.'+year+'-12-31T23:59:59'+lf+'&order=created_at.desc&limit=5000'),
-    supa('lots?select=id,expiration_date,qty_remaining,location_id,product_name,products(name)&status=neq.depleted'+lf+'&order=expiration_date&limit=5000'),
+    supa('lots?select=id,expiration_date,qty_remaining,location_id,product_name,products(name)'+lf+'&order=expiration_date&limit=5000'),
     supa('purchase_history?select=purchased_at,amount,vendor,note,location_id,source&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.'+year+'-01-01&purchased_at=lte.'+year+'-12-31'+lf+'&order=purchased_at.desc&limit=5000'),
   ]);
+
+  // Client-side filter as safety net (RLS on anon key may pass all rows)
+  poRows  = filterByLoc(poRows);
+  glRows  = filterByLoc(glRows);
+  lotRows = filterByLoc(lotRows);
+  phRows  = filterByLoc(phRows);
 
   const html = [
     renderInventory(lotRows),
