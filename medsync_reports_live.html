@@ -244,7 +244,7 @@ async function loadAll() {
   const [poRows, glRows, lotRows, phRows] = await Promise.all([
     supa('po_items?select=week_start,product_name,vendor,qty_ordered,unit_price,gpo_price,status,location_id&status=in.(submitted,received)&week_start=gte.'+year+'-01-01&week_start=lte.'+year+'-12-31'+lf+'&limit=5000'),
     supa('goods_lost?select=created_at,category,product_name,qty_lost,value_lost,location_id,notes&created_at=gte.'+year+'-01-01T00:00:00&created_at=lte.'+year+'-12-31T23:59:59'+lf+'&order=created_at.desc&limit=5000'),
-    supa('lots?select=id,expiration_date,qty_remaining,location_id,products(name)&status=neq.depleted'+lf+'&order=expiration_date&limit=5000'),
+    supa('lots?select=id,expiration_date,qty_remaining,location_id,product_name,products(name)&status=neq.depleted'+lf+'&order=expiration_date&limit=5000'),
     supa('purchase_history?select=purchased_at,amount,vendor,note,location_id,source&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.'+year+'-01-01&purchased_at=lte.'+year+'-12-31'+lf+'&order=purchased_at.desc&limit=5000'),
   ]);
 
@@ -275,7 +275,7 @@ function renderInventory(lots) {
     const days = exp ? Math.ceil((exp-today)/(1000*60*60*24)) : null;
     const badgeClass = days === null ? '' : days < 0 ? 'b-red' : days <= 30 ? 'b-red' : days <= 60 ? 'b-amber' : 'b-green';
     const badgeText = days === null ? '—' : days < 0 ? 'Expired' : days + 'd';
-    const name = (l.products && l.products.name) || '—';
+    const name = (l.products && l.products.name) || l.product_name || '—';
     return `<tr>
       <td>${name}</td>
       <td class="num">${fmtN(l.qty_remaining)}</td>
