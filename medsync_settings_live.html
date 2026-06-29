@@ -525,6 +525,70 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     </div>
   </div>
 
+  <!-- ── Margin Targets (Super Admin) ────────────────────────── -->
+  <div id="margin-targets-section" style="display:none;">
+    <div class="section-title" style="display:flex;align-items:center;gap:8px;">
+      Margin targets
+      <span style="font-size:10px;font-weight:600;background:#1C2B4A;color:#fff;padding:2px 8px;border-radius:20px;letter-spacing:.06em;">SUPER ADMIN</span>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Profit margin targets by category</div>
+          <div class="card-sub">MedSync uses these to flag cost drift and recommend selling price adjustments when Vetcove invoices arrive at a higher unit cost</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="thresh-row">
+          <div><div class="thresh-label">Global target margin</div><div class="thresh-sub">Default for all products — alert when actual margin falls below minimum</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="margin-global-min" value="35" min="0" max="100">
+            <span class="thresh-unit">% min</span>
+            <input class="thresh-input" type="number" id="margin-global-max" value="55" min="0" max="100">
+            <span class="thresh-unit">% max</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Pharmaceuticals</div><div class="thresh-sub">Prescription drugs, injectables, controlled substances</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="margin-pharma-min" value="40" min="0" max="100">
+            <span class="thresh-unit">% min</span>
+            <input class="thresh-input" type="number" id="margin-pharma-max" value="60" min="0" max="100">
+            <span class="thresh-unit">% max</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Diagnostics</div><div class="thresh-sub">Lab reagents, test kits, analyzer consumables</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="margin-diag-min" value="30" min="0" max="100">
+            <span class="thresh-unit">% min</span>
+            <input class="thresh-input" type="number" id="margin-diag-max" value="50" min="0" max="100">
+            <span class="thresh-unit">% max</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div><div class="thresh-label">Supplies &amp; OTC</div><div class="thresh-sub">Flea/tick, shampoos, supplements, non-prescription items</div></div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="margin-supplies-min" value="30" min="0" max="100">
+            <span class="thresh-unit">% min</span>
+            <input class="thresh-input" type="number" id="margin-supplies-max" value="50" min="0" max="100">
+            <span class="thresh-unit">% max</span>
+          </div>
+        </div>
+        <div class="thresh-row">
+          <div>
+            <div class="thresh-label">Cost drift alert threshold</div>
+            <div class="thresh-sub">Alert when a received invoice shows a unit cost increase of at least this %</div>
+          </div>
+          <div class="thresh-ctrl">
+            <input class="thresh-input" type="number" id="margin-drift-pct" value="5" min="0" max="100" step="0.5">
+            <span class="thresh-unit">% increase</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Order Settings ───────────────────────────────────────── -->
   <div>
     <div class="section-title">Order settings</div>
@@ -1065,9 +1129,34 @@ function saveSettings() {
     wg_pct_min:       document.getElementById('wg-pct-min').value,
     wg_pct_max:       document.getElementById('wg-pct-max').value,
     cutoff:           document.getElementById('cutoff-time').value,
+    margin_global_min:  document.getElementById('margin-global-min') ? document.getElementById('margin-global-min').value : '35',
+    margin_global_max:  document.getElementById('margin-global-max') ? document.getElementById('margin-global-max').value : '55',
+    margin_pharma_min:  document.getElementById('margin-pharma-min') ? document.getElementById('margin-pharma-min').value : '40',
+    margin_pharma_max:  document.getElementById('margin-pharma-max') ? document.getElementById('margin-pharma-max').value : '60',
+    margin_diag_min:    document.getElementById('margin-diag-min') ? document.getElementById('margin-diag-min').value : '30',
+    margin_diag_max:    document.getElementById('margin-diag-max') ? document.getElementById('margin-diag-max').value : '50',
+    margin_supplies_min: document.getElementById('margin-supplies-min') ? document.getElementById('margin-supplies-min').value : '30',
+    margin_supplies_max: document.getElementById('margin-supplies-max') ? document.getElementById('margin-supplies-max').value : '50',
+    margin_drift_pct:   document.getElementById('margin-drift-pct') ? document.getElementById('margin-drift-pct').value : '5',
   };
   localStorage.setItem('medsync_settings', JSON.stringify(settings));
   showToast('✓ Settings saved');
+}
+
+// Expose margin targets for other pages to read
+function getMarginTargets() {
+  try {
+    var s = JSON.parse(localStorage.getItem('medsync_settings') || '{}');
+    return {
+      global:   { min: parseFloat(s.margin_global_min  || 35), max: parseFloat(s.margin_global_max  || 55) },
+      pharma:   { min: parseFloat(s.margin_pharma_min  || 40), max: parseFloat(s.margin_pharma_max  || 60) },
+      diag:     { min: parseFloat(s.margin_diag_min    || 30), max: parseFloat(s.margin_diag_max    || 50) },
+      supplies: { min: parseFloat(s.margin_supplies_min|| 30), max: parseFloat(s.margin_supplies_max|| 50) },
+      driftPct: parseFloat(s.margin_drift_pct || 5),
+    };
+  } catch(e) {
+    return { global:{min:35,max:55}, pharma:{min:40,max:60}, diag:{min:30,max:50}, supplies:{min:30,max:50}, driftPct:5 };
+  }
 }
 
 function showToast(msg) {
@@ -1107,7 +1196,32 @@ function showToast(msg) {
     if (s.wg_pct_min) document.getElementById('wg-pct-min').value = s.wg_pct_min;
     if (s.wg_pct_max) document.getElementById('wg-pct-max').value = s.wg_pct_max;
     if (s.cutoff)    document.getElementById('cutoff-time').value = s.cutoff;
+    // Margin targets (super admin)
+    if (s.margin_global_min)   document.getElementById('margin-global-min')   && (document.getElementById('margin-global-min').value   = s.margin_global_min);
+    if (s.margin_global_max)   document.getElementById('margin-global-max')   && (document.getElementById('margin-global-max').value   = s.margin_global_max);
+    if (s.margin_pharma_min)   document.getElementById('margin-pharma-min')   && (document.getElementById('margin-pharma-min').value   = s.margin_pharma_min);
+    if (s.margin_pharma_max)   document.getElementById('margin-pharma-max')   && (document.getElementById('margin-pharma-max').value   = s.margin_pharma_max);
+    if (s.margin_diag_min)     document.getElementById('margin-diag-min')     && (document.getElementById('margin-diag-min').value     = s.margin_diag_min);
+    if (s.margin_diag_max)     document.getElementById('margin-diag-max')     && (document.getElementById('margin-diag-max').value     = s.margin_diag_max);
+    if (s.margin_supplies_min) document.getElementById('margin-supplies-min') && (document.getElementById('margin-supplies-min').value = s.margin_supplies_min);
+    if (s.margin_supplies_max) document.getElementById('margin-supplies-max') && (document.getElementById('margin-supplies-max').value = s.margin_supplies_max);
+    if (s.margin_drift_pct)    document.getElementById('margin-drift-pct')    && (document.getElementById('margin-drift-pct').value    = s.margin_drift_pct);
   } catch(e) {}
+
+  // Show Margin Targets section for super admins only
+  try {
+    var mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}');
+    var sess = JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}');
+    var adminEmail = (sess.user?.email || sess.email || mu.email || '').trim().toLowerCase();
+    if (!adminEmail && sess.access_token) {
+      try { adminEmail = JSON.parse(atob(sess.access_token.split('.')[1])).email || ''; } catch(e) {}
+    }
+    if (adminEmail.endsWith('@scoutcare.com') || adminEmail.endsWith('@medsync.vet')) {
+      var ms = document.getElementById('margin-targets-section');
+      if (ms) ms.style.display = '';
+    }
+  } catch(e) {}
+
   // Check for saved keys
   if (localStorage.getItem('medsync_vc_key')) {
     document.getElementById('vc-key').placeholder = '••••••• (saved)';
