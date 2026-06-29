@@ -262,6 +262,17 @@ MANUAL_OVERRIDES = {
     "vanguard rabies vaccine - 1 year":       "10016542",
     "purevax feline rabies vaccine - 1 year": "159730",
     "purevax feline rabies vaccine - 3 year": "159732",
+    # Confirmed correct SKUs (fuzzy matcher would pick wrong match)
+    "midazolam inj 5 mg ml":                  "17478052410",
+}
+
+# Products no longer carried — skip SKU assignment entirely.
+SKIP_PRODUCTS = {
+    "acepromazine inj 10 mg ml",
+    # Bad fuzzy matches (dose/units overlap with unrelated drugs):
+    "azithromycin 250 mg tablets",        # would match Albon's SKU
+    "flumazenil 1 mg 10 ml vl 10 ml",     # would match Cytopoint SKU
+    "tums 750 mg tablets",                # would match Levetiracetam SKU
 }
 
 
@@ -270,6 +281,10 @@ MANUAL_OVERRIDES = {
 def find_sku(prod_name, sheet_map):
     """Return (sku, matched_name, source) or None."""
     key = _norm(prod_name)
+
+    # 0. Skip products no longer carried or with known bad fuzzy matches
+    if key in SKIP_PRODUCTS:
+        return None
 
     # 1. Manual override
     if key in MANUAL_OVERRIDES:
