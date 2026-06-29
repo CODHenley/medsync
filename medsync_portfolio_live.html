@@ -2905,20 +2905,23 @@ function renderTable() {
     return sortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av);
   });
 
-  const locLabel = document.getElementById('loc-filter').value === 'all'
-    ? 'all locations' : document.getElementById('loc-filter').value;
-  document.getElementById('tbl-count').textContent = sorted.length + ' event' + (sorted.length!==1?'s':'');
-  document.getElementById('tbl-sub').textContent   = 'May 2026 · ' + locLabel;
+  const locVal   = document.getElementById('loc-filter')?.value || 'all';
+  const locLabel = locVal === 'all' ? 'all locations' : locVal;
+  const tblCount = document.getElementById('tbl-count');
+  const tblSub   = document.getElementById('tbl-sub');
+  if (tblCount) tblCount.textContent = sorted.length + ' event' + (sorted.length!==1?'s':'');
+  if (tblSub)   tblSub.textContent   = 'May 2026 · ' + locLabel;
 
   const tbody = document.getElementById('ev-tbody');
   const empty = document.getElementById('ev-empty');
+  if (!tbody) return;
 
   if (!sorted.length) {
     tbody.innerHTML = '';
-    empty.style.display = 'block';
+    if (empty) empty.style.display = 'block';
     return;
   }
-  empty.style.display = 'none';
+  if (empty) empty.style.display = 'none';
 
   tbody.innerHTML = sorted.map(e => {
     const flagBadge = e.flag==='alert' ? '<span class="badge b-alert">Alert</span>'
