@@ -10,220 +10,659 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --purple:#6B57C2;
-  --purple-light:#EEF0FF;
+  --purple-lt:#EEF0FF;
   --bg:#F5F3FA;
   --card:#FFFFFF;
   --border:#E2DEEF;
   --text:#1A1730;
   --muted:#7B6F9A;
   --gold:#E8B84B;
+  --red:#C94040;
+  --red-lt:#FEF0F0;
+  --green:#1A9E6A;
+  --green-lt:#E6FAF2;
+  --amber:#C97B00;
+  --amber-lt:#FFF7E6;
 }
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
-/* ── Header ── */
+/* ── Layout ── */
+.page{display:flex;flex-direction:column;height:100vh;}
 .page-header{
-  background:#fff;
-  border-bottom:1px solid var(--border);
-  padding:20px 28px 16px;
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:16px;
-}
-.page-title{font-size:20px;font-weight:600;color:var(--text);}
-.page-subtitle{font-size:13px;color:var(--muted);margin-top:2px;}
-
-/* ── Body ── */
-.reports-body{padding:24px 28px;max-width:1100px;}
-
-/* ── Section header ── */
-.section-label{
-  font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:12px;margin-top:28px;
-}
-.section-label:first-child{margin-top:0;}
-
-/* ── Grid ── */
-.report-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
-  gap:14px;
-}
-
-/* ── Card ── */
-.report-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:18px 20px;
-  cursor:pointer;
-  transition:box-shadow .15s,border-color .15s,transform .1s;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  text-decoration:none;
-  color:inherit;
-}
-.report-card:hover{
-  border-color:var(--purple);
-  box-shadow:0 4px 16px rgba(107,87,194,.12);
-  transform:translateY(-1px);
-}
-.card-icon{
-  width:36px;height:36px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;
+  background:#fff;border-bottom:1px solid var(--border);
+  padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;
   flex-shrink:0;
 }
-.card-icon.inv{background:#EEF0FF;color:var(--purple);}
-.card-icon.fin{background:#FFF7E6;color:#D08C00;}
-.card-icon.ops{background:#E6FAF2;color:#1A9E6A;}
-.card-icon.log{background:#FEF0F0;color:#C94040;}
+.page-title{font-size:17px;font-weight:600;}
+.page-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+.page-body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:0;}
 
-.card-name{font-size:14px;font-weight:600;line-height:1.3;}
-.card-desc{font-size:12px;color:var(--muted);line-height:1.45;}
-.card-badge{
-  margin-top:2px;
-  display:inline-block;
-  font-size:10px;font-weight:600;letter-spacing:.04em;
-  padding:2px 7px;border-radius:20px;
-  width:fit-content;
-}
-.badge-live{background:#E6FAF2;color:#1A9E6A;}
-.badge-new{background:#EEF0FF;color:var(--purple);}
+/* ── Controls ── */
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+select,button{font-family:'DM Sans',sans-serif;font-size:12px;}
+select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);cursor:pointer;}
+.btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text);cursor:pointer;font-weight:500;transition:all .12s;}
+.btn:hover{border-color:var(--purple);color:var(--purple);}
+.btn-primary{background:var(--purple);color:#fff;border-color:var(--purple);}
+.btn-primary:hover{background:#5A48B0;border-color:#5A48B0;color:#fff;}
 
-/* ── Counts on Hand card — full-width accent ── */
-.coh-card{
-  background:linear-gradient(135deg,#6B57C2 0%,#8B73D6 100%);
-  color:#fff;
-  border:none;
-  grid-column:1/-1;
-  flex-direction:row;
-  align-items:center;
-  gap:20px;
+/* ── Section ── */
+.section{margin-bottom:28px;}
+.section-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;gap:8px;
 }
-.coh-card:hover{
-  border:none;
-  box-shadow:0 6px 24px rgba(107,87,194,.35);
+.section-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
+.section-title i{font-size:15px;color:var(--purple);}
+
+/* ── KPI row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px;}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+.kpi-label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.kpi-val{font-size:22px;font-weight:600;color:var(--text);line-height:1;}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* ── Table ── */
+.tbl-wrap{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.tbl-scroll{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:#F9F8FC;font-weight:600;font-size:11px;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--muted);}
+tbody td{padding:8px 12px;border-bottom:1px solid #F2EFF8;color:var(--text);vertical-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#FAFAFE;}
+.num{text-align:right;}
+.empty{text-align:center;padding:28px;color:var(--muted);font-size:13px;}
+
+/* ── Badges ── */
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;letter-spacing:.03em;}
+.b-red{background:var(--red-lt);color:var(--red);}
+.b-amber{background:var(--amber-lt);color:var(--amber);}
+.b-green{background:var(--green-lt);color:var(--green);}
+.b-purple{background:var(--purple-lt);color:var(--purple);}
+
+/* ── Period tabs ── */
+.period-tabs{display:flex;gap:2px;background:#F0EEF8;border-radius:7px;padding:2px;}
+.ptab{padding:5px 12px;border-radius:5px;border:none;background:none;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .12s;}
+.ptab.active{background:#fff;color:var(--purple);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+
+/* ── Integrity flags ── */
+.flag-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;}
+.flag-card.high{border-left:3px solid var(--red);}
+.flag-card.medium{border-left:3px solid var(--amber);}
+.flag-card.low{border-left:3px solid var(--green);}
+.flag-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.flag-body{flex:1;}
+.flag-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.flag-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+.flag-meta{font-size:11px;color:var(--muted);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;}
+.flag-meta span{display:flex;align-items:center;gap:3px;}
+.integrity-score{
+  display:flex;align-items:center;gap:16px;
+  background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:14px;
 }
-.coh-card .card-icon{background:rgba(255,255,255,.15);color:#fff;width:48px;height:48px;font-size:22px;border-radius:10px;}
-.coh-card .card-name{font-size:16px;font-weight:600;color:#fff;}
-.coh-card .card-desc{color:rgba(255,255,255,.75);}
-.coh-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
-.coh-pill{
-  font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;
-  background:rgba(255,255,255,.2);color:#fff;
+.score-circle{
+  width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;flex-shrink:0;
 }
-.coh-card .card-body{flex:1;}
+.score-circle.green{background:var(--green-lt);color:var(--green);}
+.score-circle.amber{background:var(--amber-lt);color:var(--amber);}
+.score-circle.red{background:var(--red-lt);color:var(--red);}
+.score-label{font-size:14px;font-weight:600;}
+.score-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5;}
+
+/* ── Loading ── */
+.loading{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+.loading i{font-size:20px;animation:spin 1s linear infinite;display:block;margin:0 auto 8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
 /* ── Divider ── */
-hr{border:none;border-top:1px solid var(--border);margin:28px 0 0;}
+.section-divider{height:1px;background:var(--border);margin:4px 0 28px;}
 </style>
 </head>
 <body>
+<div class="page">
 
+<!-- Header -->
 <div class="page-header">
   <div>
     <div class="page-title">Reports</div>
-    <div class="page-subtitle">All MedSync reports in one place</div>
+    <div class="page-sub" id="report-subtitle">Loading…</div>
+  </div>
+  <div class="controls">
+    <select id="loc-sel">
+      <option value="all">All locations</option>
+      <option value="11111111-0000-0000-0000-000000000001">Lincoln Park</option>
+      <option value="11111111-0000-0000-0000-000000000002">Old Orchard</option>
+      <option value="11111111-0000-0000-0000-000000000003">West Loop</option>
+      <option value="11111111-0000-0000-0000-000000000004">Wheaton</option>
+    </select>
+    <select id="year-sel"></select>
+    <button class="btn btn-primary" onclick="loadAll()"><i class="ti ti-refresh" style="font-size:13px;"></i> Refresh</button>
   </div>
 </div>
 
-<div class="reports-body">
+<div class="page-body" id="page-body">
+  <div class="loading"><i class="ti ti-loader-2"></i>Loading reports…</div>
+</div>
 
-  <!-- Counts on Hand -->
-  <div class="section-label">Inventory counts</div>
-  <div class="report-grid">
-    <a class="report-card coh-card" href="medsync_lot_lifecycle_live.html" target="_parent">
-      <div class="card-icon"><i class="ti ti-packages"></i></div>
-      <div class="card-body">
-        <div class="card-name">Counts on Hand</div>
-        <div class="card-desc">Current inventory levels across all locations — active lots, quantities remaining, and expiration status.</div>
-        <div class="coh-meta">
-          <span class="coh-pill">Daily</span>
-          <span class="coh-pill">Weekly</span>
-          <span class="coh-pill">Monthly</span>
-          <span class="coh-pill">Quarterly</span>
-          <span class="coh-pill">Yearly</span>
+</div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+
+const LOCS = [
+  { id:'11111111-0000-0000-0000-000000000001', name:'Lincoln Park' },
+  { id:'11111111-0000-0000-0000-000000000002', name:'Old Orchard'  },
+  { id:'11111111-0000-0000-0000-000000000003', name:'West Loop'    },
+  { id:'11111111-0000-0000-0000-000000000004', name:'Wheaton'      },
+];
+
+// ── Populate year selector ──
+const now = new Date();
+const CUR_YEAR = now.getFullYear();
+const yearSel = document.getElementById('year-sel');
+for (let y = CUR_YEAR; y >= CUR_YEAR - 3; y--) {
+  const o = document.createElement('option');
+  o.value = y; o.textContent = y;
+  yearSel.appendChild(o);
+}
+
+function locFilter() {
+  const v = document.getElementById('loc-sel').value;
+  if (v === 'all') return LOCS.map(l => 'location_id.eq.' + l.id).join(',');
+  return 'location_id.eq.' + v;
+}
+function locFilterStr() {
+  const v = document.getElementById('loc-sel').value;
+  if (v === 'all') return '&or=(' + LOCS.map(l => 'location_id.eq.' + l.id).join(',') + ')';
+  return '&location_id=eq.' + v;
+}
+function locName() {
+  const v = document.getElementById('loc-sel').value;
+  if (v === 'all') return 'All locations';
+  return (LOCS.find(l => l.id === v) || {}).name || v;
+}
+function selectedYear() { return parseInt(document.getElementById('year-sel').value); }
+
+async function supa(path) {
+  const r = await fetch(SUPA_URL + '/rest/v1/' + path, { headers: H });
+  if (!r.ok) return [];
+  const d = await r.json();
+  return Array.isArray(d) ? d : [];
+}
+
+function fmt$(n) { return '$' + (n||0).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtN(n) { return (n||0).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+// ── Date helpers ──
+function periodBounds(year) {
+  const today = new Date();
+  const periods = {
+    daily:   { from: fmt_date(today), to: fmt_date(today), label: 'Today' },
+    weekly:  { from: fmt_date(startOfWeek(today)), to: fmt_date(today), label: 'This week' },
+    monthly: { from: year + '-' + pad(today.getMonth()+1) + '-01', to: fmt_date(today), label: 'This month' },
+    quarterly: qBounds(year, Math.ceil((today.getMonth()+1)/3)),
+    yearly:  { from: year + '-01-01', to: year + '-12-31', label: String(year) },
+  };
+  periods.quarterly.label = 'Q' + Math.ceil((today.getMonth()+1)/3) + ' ' + year;
+  return periods;
+}
+function fmt_date(d) { return d.toISOString().split('T')[0]; }
+function pad(n) { return n < 10 ? '0'+n : String(n); }
+function startOfWeek(d) { const x=new Date(d); x.setDate(x.getDate()-x.getDay()); return x; }
+function qBounds(year, q) {
+  const starts = ['01-01','04-01','07-01','10-01'];
+  const ends   = ['03-31','06-30','09-30','12-31'];
+  return { from: year+'-'+starts[q-1], to: year+'-'+ends[q-1] };
+}
+function allQuarters(year) {
+  return [1,2,3,4].map(q => ({ q, label:'Q'+q, ...qBounds(year,q) }));
+}
+function monthsInYear(year) {
+  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return names.map((name,i) => ({
+    name,
+    from: year+'-'+pad(i+1)+'-01',
+    to:   year+'-'+pad(i+1)+'-'+new Date(year,i+1,0).getDate(),
+  }));
+}
+
+// ── Main load ──
+let _period = 'monthly';
+async function loadAll() {
+  const year = selectedYear();
+  document.getElementById('page-body').innerHTML = '<div class="loading"><i class="ti ti-loader-2"></i>Loading…</div>';
+  document.getElementById('report-subtitle').textContent = locName() + ' · ' + year;
+
+  const lf = locFilterStr();
+  const qs = allQuarters(year);
+  const ms = monthsInYear(year);
+
+  // Parallel fetch all data for the year
+  const [poRows, glRows, lotRows, phRows] = await Promise.all([
+    supa('po_items?select=week_start,product_name,vendor,qty_ordered,unit_price,gpo_price,status,location_id&status=in.(submitted,received)&week_start=gte.'+year+'-01-01&week_start=lte.'+year+'-12-31'+lf+'&limit=5000'),
+    supa('goods_lost?select=created_at,category,product_name,qty_lost,value_lost,location_id,notes&created_at=gte.'+year+'-01-01T00:00:00&created_at=lte.'+year+'-12-31T23:59:59'+lf+'&order=created_at.desc&limit=5000'),
+    supa('lots?select=id,expiration_date,qty_remaining,location_id,products(name)&status=neq.depleted'+lf+'&order=expiration_date&limit=5000'),
+    supa('purchase_history?select=purchased_at,amount,vendor,note,location_id,source&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.'+year+'-01-01&purchased_at=lte.'+year+'-12-31'+lf+'&order=purchased_at.desc&limit=5000'),
+  ]);
+
+  const html = [
+    renderInventory(lotRows),
+    renderSpending(poRows, phRows, qs, ms, year),
+    renderGoodsLost(glRows, qs, ms, year),
+    renderOrderHistory(poRows),
+    renderIntegrity(glRows, poRows, lotRows, year),
+  ].join('');
+
+  document.getElementById('page-body').innerHTML = html;
+}
+
+// ── 1. Inventory Counts ──
+function renderInventory(lots) {
+  const activeLots = lots.filter(l => l.qty_remaining > 0);
+  const totalUnits = activeLots.reduce((s,l) => s + (l.qty_remaining||0), 0);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in30 = new Date(today); in30.setDate(in30.getDate()+30);
+  const in60 = new Date(today); in60.setDate(in60.getDate()+60);
+  const exp30 = activeLots.filter(l => l.expiration_date && new Date(l.expiration_date) <= in30).length;
+  const exp60 = activeLots.filter(l => l.expiration_date && new Date(l.expiration_date) <= in60).length;
+  const expired = activeLots.filter(l => l.expiration_date && new Date(l.expiration_date) < today).length;
+
+  const rows = activeLots.slice(0,100).map(l => {
+    const exp = l.expiration_date ? new Date(l.expiration_date) : null;
+    const days = exp ? Math.ceil((exp-today)/(1000*60*60*24)) : null;
+    const badgeClass = days === null ? '' : days < 0 ? 'b-red' : days <= 30 ? 'b-red' : days <= 60 ? 'b-amber' : 'b-green';
+    const badgeText = days === null ? '—' : days < 0 ? 'Expired' : days + 'd';
+    const name = (l.products && l.products.name) || '—';
+    return `<tr>
+      <td>${name}</td>
+      <td class="num">${fmtN(l.qty_remaining)}</td>
+      <td>${exp ? exp.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td>
+      <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><i class="ti ti-packages"></i>Counts on Hand</div>
+      <span style="font-size:11px;color:var(--muted);">Live · ${activeLots.length} lots</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Active lots</div><div class="kpi-val">${fmtN(activeLots.length)}</div></div>
+      <div class="kpi"><div class="kpi-label">Total units on hand</div><div class="kpi-val">${fmtN(totalUnits)}</div></div>
+      <div class="kpi"><div class="kpi-label">Expiring ≤30 days</div><div class="kpi-val" style="color:${exp30>0?'var(--red)':'var(--text)'}">${exp30}</div></div>
+      <div class="kpi"><div class="kpi-label">Expiring ≤60 days</div><div class="kpi-val" style="color:${exp60>0?'var(--amber)':'var(--text)'}">${exp60}</div></div>
+      <div class="kpi"><div class="kpi-label">Expired (still on hand)</div><div class="kpi-val" style="color:${expired>0?'var(--red)':'var(--text)'}">${expired}</div></div>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Product</th><th class="num">Units on hand</th><th>Expires</th><th>Status</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4" class="empty">No active lots found</td></tr>'}</tbody>
+        </table>
+      </div>
+      ${activeLots.length > 100 ? `<div style="padding:8px 12px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);">Showing top 100 of ${activeLots.length} lots</div>` : ''}
+    </div>
+  </div>
+  <div class="section-divider"></div>`;
+}
+
+// ── 2. Spending ──
+function renderSpending(pos, ph, quarters, months, year) {
+  const totalPO = pos.reduce((s,r) => s + ((r.unit_price||r.gpo_price||0)*(r.qty_ordered||0)), 0);
+  const totalPH = ph.reduce((s,r) => s + (r.amount||0), 0);
+  const totalSpend = totalPH || totalPO;
+
+  // By quarter
+  const qData = quarters.map(q => {
+    const qPO = pos.filter(r => r.week_start >= q.from && r.week_start <= q.to);
+    const qPH = ph.filter(r => r.purchased_at >= q.from && r.purchased_at <= q.to);
+    const spend = qPH.length ? qPH.reduce((s,r)=>s+(r.amount||0),0) : qPO.reduce((s,r)=>s+((r.unit_price||r.gpo_price||0)*(r.qty_ordered||0)),0);
+    return { label: q.label, spend, orders: qPO.length };
+  });
+
+  // By month
+  const mData = months.map(m => {
+    const mPO = pos.filter(r => r.week_start >= m.from && r.week_start <= m.to);
+    const mPH = ph.filter(r => r.purchased_at >= m.from && r.purchased_at <= m.to);
+    const spend = mPH.length ? mPH.reduce((s,r)=>s+(r.amount||0),0) : mPO.reduce((s,r)=>s+((r.unit_price||r.gpo_price||0)*(r.qty_ordered||0)),0);
+    return { label: m.name, spend, orders: mPO.length };
+  });
+
+  // Top vendors
+  const vendorMap = {};
+  pos.forEach(r => {
+    const v = r.vendor || 'Unknown';
+    vendorMap[v] = (vendorMap[v]||0) + ((r.unit_price||r.gpo_price||0)*(r.qty_ordered||0));
+  });
+  const topVendors = Object.entries(vendorMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  const maxSpend = Math.max(...mData.map(m=>m.spend),1);
+
+  const qRows = qData.map(q => `<tr>
+    <td>${q.label}</td>
+    <td class="num">${fmt$(q.spend)}</td>
+    <td class="num">${fmtN(q.orders)}</td>
+    <td class="num">${q.orders ? fmt$(q.spend/q.orders) : '—'}</td>
+  </tr>`).join('');
+
+  const mBars = mData.map(m => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--muted);width:28px;flex-shrink:0;">${m.label}</span>
+      <div style="flex:1;background:#F0EEF8;border-radius:3px;height:16px;position:relative;">
+        <div style="width:${m.spend/maxSpend*100}%;background:var(--purple);border-radius:3px;height:100%;"></div>
+      </div>
+      <span style="font-size:11px;color:var(--text);width:64px;text-align:right;flex-shrink:0;">${fmt$(m.spend)}</span>
+    </div>`).join('');
+
+  const vRows = topVendors.map(([v,amt]) => `<tr>
+    <td>${v}</td>
+    <td class="num">${fmt$(amt)}</td>
+    <td class="num">${totalSpend ? Math.round(amt/totalSpend*100)+'%' : '—'}</td>
+  </tr>`).join('');
+
+  return `
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><i class="ti ti-receipt"></i>Spending</div>
+      <span style="font-size:11px;color:var(--muted);">${year}</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total spend (${year})</div><div class="kpi-val">${fmt$(totalSpend)}</div></div>
+      <div class="kpi"><div class="kpi-label">Total orders</div><div class="kpi-val">${fmtN(pos.length)}</div></div>
+      <div class="kpi"><div class="kpi-label">Avg per order</div><div class="kpi-val">${pos.length ? fmt$(totalSpend/pos.length) : '—'}</div></div>
+      <div class="kpi"><div class="kpi-label">Vendors used</div><div class="kpi-val">${fmtN(Object.keys(vendorMap).length)}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="tbl-wrap" style="padding:14px 16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;">MONTHLY SPEND</div>
+        ${mBars}
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Quarter</th><th class="num">Spend</th><th class="num">Orders</th><th class="num">Avg/order</th></tr></thead>
+            <tbody>${qRows || '<tr><td colspan="4" class="empty">No data</td></tr>'}</tbody>
+          </table>
         </div>
       </div>
-    </a>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Vendor</th><th class="num">Spend</th><th class="num">% of total</th></tr></thead>
+          <tbody>${vRows || '<tr><td colspan="3" class="empty">No data</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
   </div>
+  <div class="section-divider"></div>`;
+}
 
-  <!-- Inventory reports -->
-  <div class="section-label" style="margin-top:24px;">Inventory</div>
-  <div class="report-grid">
+// ── 3. Goods Lost ──
+function renderGoodsLost(gl, quarters, months, year) {
+  const totalValue = gl.reduce((s,r) => s+(r.value_lost||0), 0);
+  const totalQty = gl.reduce((s,r) => s+(r.qty_lost||0), 0);
 
-    <a class="report-card" href="medsync_lot_lifecycle_live.html" target="_parent">
-      <div class="card-icon inv"><i class="ti ti-microscope"></i></div>
-      <div class="card-name">Lot Lifecycle</div>
-      <div class="card-desc">Active, expiring, and expired lots with days-to-expiry and controlled substance flags.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
+  // By category
+  const catMap = {};
+  gl.forEach(r => { const c=r.category||'Unknown'; catMap[c]=(catMap[c]||{count:0,value:0}); catMap[c].count++; catMap[c].value+=(r.value_lost||0); });
+  const cats = Object.entries(catMap).sort((a,b)=>b[1].value-a[1].value);
 
-    <a class="report-card" href="medsync_cycle_count_live.html" target="_parent">
-      <div class="card-icon inv"><i class="ti ti-refresh"></i></div>
-      <div class="card-name">Cycle Count</div>
-      <div class="card-desc">A/B/C/D count schedules, variance tracking, and Vetspire sync results.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
+  // By quarter
+  const qData = quarters.map(q => {
+    const rows = gl.filter(r => r.created_at >= q.from && r.created_at <= q.to+'T23:59:59');
+    return { label:q.label, value: rows.reduce((s,r)=>s+(r.value_lost||0),0), count: rows.length };
+  });
 
-    <a class="report-card" href="medsync_goods_lost_live.html" target="_parent">
-      <div class="card-icon log"><i class="ti ti-clipboard-x"></i></div>
-      <div class="card-name">Goods Lost Log</div>
-      <div class="card-desc">MTD goods lost totals by category, submission history, and per-product breakdowns.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
+  // By month
+  const mData = months.map(m => {
+    const rows = gl.filter(r => r.created_at >= m.from && r.created_at <= m.to+'T23:59:59');
+    return { label:m.name, value: rows.reduce((s,r)=>s+(r.value_lost||0),0), count: rows.length };
+  });
 
+  const maxVal = Math.max(...mData.map(m=>m.value),1);
+
+  const catRows = cats.map(([c,d]) => `<tr>
+    <td>${c}</td>
+    <td class="num">${fmtN(d.count)}</td>
+    <td class="num">${fmt$(d.value)}</td>
+    <td class="num">${totalValue ? Math.round(d.value/totalValue*100)+'%' : '—'}</td>
+  </tr>`).join('');
+
+  const qRows = qData.map(q => `<tr>
+    <td>${q.label}</td>
+    <td class="num">${fmtN(q.count)}</td>
+    <td class="num">${fmt$(q.value)}</td>
+  </tr>`).join('');
+
+  const mBars = mData.map(m => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--muted);width:28px;flex-shrink:0;">${m.label}</span>
+      <div style="flex:1;background:#FEF0F0;border-radius:3px;height:16px;">
+        <div style="width:${m.value/maxVal*100}%;background:var(--red);border-radius:3px;height:100%;"></div>
+      </div>
+      <span style="font-size:11px;color:var(--text);width:64px;text-align:right;flex-shrink:0;">${fmt$(m.value)}</span>
+    </div>`).join('');
+
+  return `
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><i class="ti ti-clipboard-x"></i>Goods Lost</div>
+      <span style="font-size:11px;color:var(--muted);">${year}</span>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total value lost (${year})</div><div class="kpi-val" style="color:var(--red)">${fmt$(totalValue)}</div></div>
+      <div class="kpi"><div class="kpi-label">Total incidents</div><div class="kpi-val">${fmtN(gl.length)}</div></div>
+      <div class="kpi"><div class="kpi-label">Units lost</div><div class="kpi-val">${fmtN(totalQty)}</div></div>
+      <div class="kpi"><div class="kpi-label">Categories</div><div class="kpi-val">${fmtN(cats.length)}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="tbl-wrap" style="padding:14px 16px;">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;">MONTHLY GOODS LOST</div>
+        ${mBars}
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Quarter</th><th class="num">Incidents</th><th class="num">Value</th></tr></thead>
+            <tbody>${qRows || '<tr><td colspan="3" class="empty">No data</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Category</th><th class="num">Incidents</th><th class="num">Value</th><th class="num">% of total</th></tr></thead>
+          <tbody>${catRows || '<tr><td colspan="4" class="empty">No data</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
   </div>
+  <div class="section-divider"></div>`;
+}
 
-  <!-- Financial reports -->
-  <div class="section-label">Financial</div>
-  <div class="report-grid">
+// ── 4. Order History ──
+function renderOrderHistory(pos) {
+  const recent = pos.slice(0, 200);
+  const rows = recent.map(r => {
+    const price = r.unit_price || r.gpo_price || 0;
+    const total = price * (r.qty_ordered||0);
+    const statusClass = r.status === 'received' ? 'b-green' : r.status === 'submitted' ? 'b-purple' : 'b-amber';
+    const locName = (LOCS.find(l=>l.id===r.location_id)||{}).name || '—';
+    return `<tr>
+      <td>${r.week_start || '—'}</td>
+      <td>${r.product_name || '—'}</td>
+      <td>${r.vendor || '—'}</td>
+      <td>${locName}</td>
+      <td class="num">${fmtN(r.qty_ordered)}</td>
+      <td class="num">${fmt$(total)}</td>
+      <td><span class="badge ${statusClass}">${r.status||'—'}</span></td>
+    </tr>`;
+  }).join('');
 
-    <a class="report-card" href="medsync_quarterly_report_live.html" target="_parent">
-      <div class="card-icon fin"><i class="ti ti-chart-bar"></i></div>
-      <div class="card-name">Quarterly Report</div>
-      <div class="card-desc">Procurement spend, GPO savings, and goods lost by quarter across all locations.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
-
-    <a class="report-card" href="medsync_analytics_live.html" target="_parent">
-      <div class="card-icon fin"><i class="ti ti-trending-up"></i></div>
-      <div class="card-name">Analytics</div>
-      <div class="card-desc">COGs %, savings drivers, order compliance, and purchase-vs-loss comparisons.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
-
-    <a class="report-card" href="medsync_invoice_reconcile_live.html" target="_parent">
-      <div class="card-icon fin"><i class="ti ti-file-invoice"></i></div>
-      <div class="card-name">Invoice Reconciliation</div>
-      <div class="card-desc">Match invoices against POs, flag price and quantity discrepancies, track approval status.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
-
+  return `
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><i class="ti ti-shopping-cart"></i>Order History</div>
+      <span style="font-size:11px;color:var(--muted);">Most recent ${Math.min(pos.length,200)} of ${pos.length} orders</span>
+    </div>
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Week</th><th>Product</th><th>Vendor</th><th>Location</th><th class="num">Qty</th><th class="num">Total</th><th>Status</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7" class="empty">No orders found</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
   </div>
+  <div class="section-divider"></div>`;
+}
 
-  <!-- Operations reports -->
-  <div class="section-label">Operations</div>
-  <div class="report-grid">
+// ── 5. Integrity Assessment ──
+function renderIntegrity(gl, pos, lots, year) {
+  const flags = [];
 
-    <a class="report-card" href="medsync_portfolio_live.html" target="_parent">
-      <div class="card-icon ops"><i class="ti ti-layout-dashboard"></i></div>
-      <div class="card-name">Portfolio Dashboard</div>
-      <div class="card-desc">Monthly goods lost, expiring lots, COGs % hero tiles and location summary cards.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
+  // Signal 1: "Other" / vague categories dominate
+  const vague = gl.filter(r => r.category && /other|unknown|misc/i.test(r.category));
+  const vagueRatio = gl.length ? vague.length / gl.length : 0;
+  if (vagueRatio > 0.25) {
+    flags.push({
+      sev: 'high',
+      icon: '🔍',
+      title: 'High proportion of vague loss categories',
+      desc: `${Math.round(vagueRatio*100)}% of goods lost entries (${vague.length} of ${gl.length}) use an ambiguous category like "Other." Vague categories are harder to verify and are a common cover for unreported theft.`,
+      meta: [`${vague.length} vague entries`, `${Math.round(vagueRatio*100)}% of total`],
+    });
+  }
 
-    <a class="report-card" href="medsync_activity_log_live.html" target="_parent">
-      <div class="card-icon ops"><i class="ti ti-list-details"></i></div>
-      <div class="card-name">Activity Log</div>
-      <div class="card-desc">Full event history — orders, receiving, goods lost, and lot changes across all users and locations.</div>
-      <span class="card-badge badge-live">Live</span>
-    </a>
+  // Signal 2: Controlled substances lost
+  const controlled = gl.filter(r => r.category && /controlled|narcotic|schedule/i.test(r.category));
+  if (controlled.length > 0) {
+    const val = controlled.reduce((s,r)=>s+(r.value_lost||0),0);
+    flags.push({
+      sev: 'high',
+      icon: '⚠️',
+      title: 'Controlled substance losses recorded',
+      desc: `${controlled.length} controlled substance loss event(s) totaling ${fmt$(val)}. These require a corresponding DEA log entry. Each instance should be verified against physical inventory and signed off by a veterinarian.`,
+      meta: [`${controlled.length} events`, fmt$(val)],
+    });
+  }
 
-  </div>
+  // Signal 3: Goods lost spike vs. spend
+  const totalSpend = pos.reduce((s,r)=>s+((r.unit_price||r.gpo_price||0)*(r.qty_ordered||0)),0);
+  const totalGL = gl.reduce((s,r)=>s+(r.value_lost||0),0);
+  const glRatio = totalSpend ? totalGL/totalSpend : 0;
+  if (glRatio > 0.08) {
+    flags.push({
+      sev: 'high',
+      icon: '📈',
+      title: 'Goods lost exceeds 8% of procurement spend',
+      desc: `${fmt$(totalGL)} lost against ${fmt$(totalSpend)} in spend — a ${Math.round(glRatio*100)}% loss rate. Industry benchmark is 2–4%. Rates above 8% warrant physical inventory reconciliation.`,
+      meta: [fmt$(totalGL) + ' lost', Math.round(glRatio*100) + '% of spend'],
+    });
+  } else if (glRatio > 0.04) {
+    flags.push({
+      sev: 'medium',
+      icon: '📊',
+      title: 'Goods lost above industry benchmark',
+      desc: `Loss rate is ${Math.round(glRatio*100)}% of procurement spend. The typical benchmark is 2–4%. Worth monitoring, especially if the rate is increasing month over month.`,
+      meta: [fmt$(totalGL) + ' lost', Math.round(glRatio*100) + '% of spend'],
+    });
+  }
 
-</div>
+  // Signal 4: Under-reporting risk — lots expiring with no goods lost entry
+  const today = new Date();
+  const expiredLots = lots.filter(l => l.expiration_date && new Date(l.expiration_date) < today && l.qty_remaining > 0);
+  if (expiredLots.length > 0) {
+    const totalExpiredUnits = expiredLots.reduce((s,l)=>s+(l.qty_remaining||0),0);
+    flags.push({
+      sev: 'medium',
+      icon: '🕵️',
+      title: 'Expired lots with remaining quantity — possible under-reporting',
+      desc: `${expiredLots.length} lot(s) are past expiration but still show ${fmtN(totalExpiredUnits)} units on hand with no depletion. If these weren't disposed of and logged, losses are being missed. This is the most common path for goods to disappear without a paper trail.`,
+      meta: [`${expiredLots.length} expired lots`, fmtN(totalExpiredUnits) + ' units unaccounted'],
+    });
+  }
+
+  // Signal 5: No goods lost reported at all for a location with active orders
+  const locWithOrders = [...new Set(pos.map(r=>r.location_id))];
+  const locWithGL = [...new Set(gl.map(r=>r.location_id))];
+  const silentLocs = locWithOrders.filter(id => !locWithGL.includes(id));
+  if (silentLocs.length > 0) {
+    const names = silentLocs.map(id => (LOCS.find(l=>l.id===id)||{}).name||id).join(', ');
+    flags.push({
+      sev: 'medium',
+      icon: '🤫',
+      title: 'Location(s) with orders but zero goods lost reported',
+      desc: `${names} submitted orders but logged zero goods lost events this year. No operation running live inventory is truly loss-free. This likely reflects under-reporting, not perfect compliance.`,
+      meta: [`${silentLocs.length} location(s)`, names],
+    });
+  }
+
+  // Signal 6: Goods lost notes flagging returns/credits
+  const vendorReturn = gl.filter(r => r.category && /vendor return|credit/i.test(r.category));
+  if (vendorReturn.length > 0) {
+    flags.push({
+      sev: 'low',
+      icon: '✅',
+      title: 'Vendor returns/credits tracked',
+      desc: `${vendorReturn.length} vendor return or credit entries on record. Confirm these correspond to actual credits received. Credits that don't appear on reconciled invoices could indicate falsified entries.`,
+      meta: [`${vendorReturn.length} entries`],
+    });
+  }
+
+  // Compute score
+  const highCount = flags.filter(f=>f.sev==='high').length;
+  const medCount  = flags.filter(f=>f.sev==='medium').length;
+  let score, scoreClass, scoreLabel;
+  if (highCount >= 2) { score = 'High Risk'; scoreClass = 'red'; scoreLabel = 'Multiple high-risk signals detected. Physical inventory audit recommended.'; }
+  else if (highCount === 1 || medCount >= 2) { score = 'Needs Review'; scoreClass = 'amber'; scoreLabel = 'One or more risk signals present. Investigate flagged items.'; }
+  else { score = 'Low Risk'; scoreClass = 'green'; scoreLabel = 'No major integrity signals. Continue monitoring monthly.'; }
+
+  const flagHTML = flags.length === 0
+    ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">No risk signals detected for the selected period.</div>'
+    : flags.map(f => `
+      <div class="flag-card ${f.sev}">
+        <div class="flag-icon">${f.icon}</div>
+        <div class="flag-body">
+          <div class="flag-title">${f.title}</div>
+          <div class="flag-desc">${f.desc}</div>
+          <div class="flag-meta">${f.meta.map(m=>`<span>${m}</span>`).join('')}</div>
+        </div>
+        <span class="badge ${f.sev==='high'?'b-red':f.sev==='medium'?'b-amber':'b-green'}">${f.sev}</span>
+      </div>`).join('');
+
+  return `
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><i class="ti ti-shield-search"></i>Integrity Assessment</div>
+      <span style="font-size:11px;color:var(--muted);">Based on ${year} data · Not a legal determination</span>
+    </div>
+    <div class="integrity-score">
+      <div class="score-circle ${scoreClass}">${highCount+medCount}</div>
+      <div>
+        <div class="score-label">${score}</div>
+        <div class="score-sub">${scoreLabel}<br>
+        <span style="color:var(--muted);font-size:11px;">Note: not everything gets reported. The signals below are indicators, not proof. Under-reporting is often the first gap to close — the more staff log, the cleaner the picture.</span></div>
+      </div>
+    </div>
+    ${flagHTML}
+  </div>`;
+}
+
+// ── Init ──
+document.getElementById('loc-sel').addEventListener('change', loadAll);
+document.getElementById('year-sel').addEventListener('change', loadAll);
+loadAll();
+</script>
 </body>
 </html>
