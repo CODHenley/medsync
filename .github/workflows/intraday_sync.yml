@@ -2,7 +2,7 @@ name: Intraday Vetspire Sync
 
 on:
   schedule:
-    - cron: '0 * * * *'   # every hour
+    - cron: '*/15 * * * *'  # every 15 minutes
   workflow_dispatch:        # manual trigger from GitHub Actions UI
   push:
     branches: [main]        # backstop: sync on every deploy
