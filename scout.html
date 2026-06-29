@@ -257,6 +257,25 @@ nav {
 .m-val.warn { color: var(--orange); }
 .why-v-illo { display: flex; justify-content: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.07); }
 
+/* ── PHOTO STRIP ── */
+.photo-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 280px;
+  overflow: hidden;
+}
+.photo-strip img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+.photo-strip img:hover { transform: scale(1.03); }
+@media (max-width: 800px) {
+  .photo-strip { grid-template-columns: 1fr; height: auto; }
+  .photo-strip img { height: 220px; }
+}
+
 /* ── LOCATIONS ── */
 .locations-section { background: var(--blue-lt); }
 .locations-grid {
@@ -615,6 +634,13 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
     </div>
   </div>
 </section>
+
+<!-- PHOTO STRIP -->
+<div class="photo-strip">
+  <img src="IMG_7250.jpeg" alt="Scout medication cabinet">
+  <img src="scout-dog.jpeg" alt="Scout patient" style="object-position: right center;">
+  <img src="Screenshot 2026-06-29 at 2.46.50 PM.jpg" alt="Scout illustration">
+</div>
 
 <!-- LOCATIONS -->
 <section class="section locations-section" id="locations">
