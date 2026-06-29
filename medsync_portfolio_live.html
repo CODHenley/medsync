@@ -9,7 +9,7 @@
 <script src="medsync_locations.js"></script>
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings','training'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings','training','reports'];
 function showScreen(name) {
   if (name === 'cycle') {
     var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
@@ -1523,6 +1523,7 @@ function deepDiveLoc(locCode) {
       <button class="mnb" id="mnb-lifecycle" onclick="showScreen('lifecycle')">Lot Lifecycle</button>
       <button class="mnb" id="mnb-procurement" onclick="showScreen('procurement')">Procurement</button>
       <button class="mnb" id="mnb-actlog" onclick="showScreen('actlog')">Activity Log</button>
+      <button class="mnb" id="mnb-reports" onclick="showScreen('reports')">Reports</button>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
@@ -1548,6 +1549,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
   <div class="asb-item" id="asb-procurement" onclick="closeMobileMenu();showScreen('procurement')">🛍️ Procurement</div>
   <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">🕐 Activity Log</div>
+  <div class="asb-item" id="asb-reports" onclick="closeMobileMenu();showScreen('reports')">📊 Reports</div>
   <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
   <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
   <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
@@ -2041,6 +2043,12 @@ function deepDiveLoc(locCode) {
 
     </div>
   </div>
+</div>
+<div id="ms-reports" class="ms-screen" style="display:none;">
+  <iframe src="medsync_reports_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Reports">
+  </iframe>
 </div>
 <div id="ms-toast"></div>
 
