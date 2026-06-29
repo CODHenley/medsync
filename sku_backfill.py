@@ -146,9 +146,23 @@ def main():
 
     print(f"  {len(rows)} lots returned")
 
+    def find_in_sheet(name):
+        key = _norm(name)
+        match = sheet_map.get(key)
+        if not match:
+            words = key.split()
+            for skey, val in sheet_map.items():
+                swords = skey.split()
+                common = sum(1 for w in words[:4] if w in swords)
+                if common >= 3:
+                    match = val
+                    break
+        return match
+
     # Group by product so we patch each product once
-    product_patches = {}   # product_id → {ndc, product_name, lot_numbers[]}
-    no_match = []
+    product_patches = {}        # product_id → {ndc, product_name, matched_name, sheet, lots[]}
+    needs_product   = {}        # lot_id → {lot_number, name, ndc, matched_name, sheet}
+    no_match        = []
 
     for lot in rows:
         prod = lot.get("products") or {}
@@ -157,26 +171,25 @@ def main():
         existing_ndc = prod.get("ndc") or ""
 
         if not prod_id:
-            no_match.append((lot["lot_number"], prod_name, "no product record"))
+            # Lot has no product record — try to find SKU and create one
+            match = find_in_sheet(prod_name)
+            if match:
+                sku, matched_name, sheet = match
+                needs_product[lot["id"]] = {
+                    "lot_number": lot["lot_number"],
+                    "name": prod_name,
+                    "ndc": sku,
+                    "matched_name": matched_name,
+                    "sheet": sheet,
+                }
+            else:
+                no_match.append((lot["lot_number"], prod_name, "no product record + not in workbook"))
             continue
 
         if existing_ndc.strip():
             continue  # already has SKU
 
-        # Try exact normalised match
-        key = _norm(prod_name)
-        match = sheet_map.get(key)
-
-        # Fallback: strip dosage/size suffixes and try a word-overlap match
-        if not match:
-            words = key.split()
-            for skey, (ssku, sname, ssheet) in sheet_map.items():
-                swords = skey.split()
-                common = sum(1 for w in words[:4] if w in swords)
-                if common >= 3:
-                    match = (ssku, sname, ssheet)
-                    break
-
+        match = find_in_sheet(prod_name)
         if match:
             sku, matched_name, sheet = match
             if prod_id not in product_patches:
@@ -189,18 +202,27 @@ def main():
 
     # ── Report ───────────────────────────────────────────────────────────────
     print(f"\n{'='*70}")
-    print(f"Products to update: {len(product_patches)}")
-    print(f"No match found:     {len(no_match)}")
+    print(f"Products to update (add SKU):      {len(product_patches)}")
+    print(f"Lots needing new product record:   {len(needs_product)}")
+    print(f"No match found (manual review):    {len(no_match)}")
     print(f"{'='*70}\n")
 
     if product_patches:
-        print("WILL UPDATE:")
+        print("WILL ADD SKU TO EXISTING PRODUCT:")
         for pid, info in product_patches.items():
             print(f"  product {pid}")
             print(f"    MedSync name : {info['product_name']}")
             print(f"    Matched to   : {info['matched_name']}  [{info['sheet']}]")
             print(f"    SKU to set   : {info['ndc']}")
             print(f"    Lots         : {', '.join(info['lots'])}")
+            print()
+
+    if needs_product:
+        print("WILL CREATE PRODUCT RECORD + LINK TO LOT:")
+        for lot_id, info in needs_product.items():
+            print(f"  LOT {info['lot_number']:12s}  {info['name']!r:50s}")
+            print(f"    Matched to : {info['matched_name']}  [{info['sheet']}]")
+            print(f"    SKU        : {info['ndc']}")
             print()
 
     if no_match:
@@ -216,6 +238,39 @@ def main():
     # ── Apply ─────────────────────────────────────────────────────────────────
     print("Applying patches …")
     ok = err = 0
+
+    # 1. Create missing product records and link to lots
+    for lot_id, info in needs_product.items():
+        # Insert product
+        body = json.dumps({"name": info["name"], "ndc": info["ndc"]}).encode()
+        req = urllib.request.Request(
+            SUPA_URL + "/rest/v1/products",
+            data=body,
+            headers={
+                "apikey": service_key, "Authorization": f"Bearer {service_key}",
+                "Content-Type": "application/json", "Prefer": "return=representation",
+            }
+        )
+        req.get_method = lambda: "POST"
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                created = json.loads(r.read())
+                new_id = created[0]["id"] if isinstance(created, list) else created.get("id")
+        except Exception as e:
+            print(f"  ✗ create product '{info['name']}': {e}")
+            err += 1
+            continue
+
+        # Link lot to new product
+        status = supa_patch(service_key, f"/rest/v1/lots?id=eq.{lot_id}", {"product_id": new_id})
+        if status in (200, 204):
+            print(f"  ✓ created product + linked LOT {info['lot_number']} → {info['name']} [{info['ndc']}]")
+            ok += 1
+        else:
+            print(f"  ✗ linked LOT {info['lot_number']} → HTTP {status}")
+            err += 1
+
+    # 2. Patch existing products missing NDC
     for pid, info in product_patches.items():
         status = supa_patch(service_key, f"/rest/v1/products?id=eq.{pid}", {"ndc": info["ndc"]})
         if status in (200, 204):
