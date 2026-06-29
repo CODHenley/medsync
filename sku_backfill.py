@@ -2,18 +2,21 @@
 """
 MedSync SKU Backfill
 --------------------
-Cross-references MedSync products against an inventory workbook and patches
-any products missing an NDC/SKU.
+Fetches MedSync products that are missing a SKU (NDC field), then looks up
+the correct SKU from a Vetspire Products Report export.
 
-Supports two workbook formats (auto-detected by sheet names):
-  • Q2 WH Inventory Count workbook (multiple pharmacy/vaccine sheets)
-  • MedSync De Novo Loading Order (single sheet, col B=name, col C=SKU)
+Only updates products that already exist in MedSync — never adds new products.
 
-Usage (dry run — shows what would change, no writes):
-  python3 sku_backfill.py --xlsx MedSync_DeNovo_Loading_Order_v1.xlsx
+Supported source workbooks (auto-detected):
+  • Vetspire Products Report   — single sheet, columns vary (see VETSPIRE_COLS)
+  • Q2 WH Inventory Count      — multiple pharmacy/vaccine sheets
+  • MedSync De Novo Loading Order — single sheet, col B=name, col C=SKU
+
+Usage (dry run):
+  python3 sku_backfill.py --xlsx "Vetspire Products Report.xlsx"
 
 Apply changes:
-  SUPA_SERVICE_KEY="sb_secret_..." python3 sku_backfill.py --xlsx MedSync_DeNovo_Loading_Order_v1.xlsx --apply
+  SUPA_SERVICE_KEY="sb_secret_..." python3 sku_backfill.py --xlsx "Vetspire Products Report.xlsx" --apply
 """
 
 import argparse
@@ -21,7 +24,6 @@ import json
 import os
 import re
 import sys
-import urllib.parse
 import urllib.request
 import urllib.error
 
@@ -31,26 +33,33 @@ except ImportError:
     sys.exit("pip install openpyxl  then re-run")
 
 # ── Config ─────────────────────────────────────────────────────────────────
-SUPA_URL  = "https://aemkdummdrmxtwrkggjw.supabase.co"
-ANON_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
+SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
+ANON_KEY = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+    ".eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0"
+    ".JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
+)
 
-# Sheets and which columns hold (item_name, product_code). All 0-indexed.
+# Q2 inventory sheets: (name_col, sku_col), 0-indexed
 SHEET_COLS = {
-    "Pharmacy - General ":      (0, 2),
-    "Pharmacy - Ocular ":       (0, 1),
-    "Pharmacy - Preventatives ":(0, 1),
-    "Pharmacy - Skin":          (0, 1),
-    "Vaccines ":                (0, 1),
-    "IDEXX Labs ":              (0, 1),
-    "IDEXX Consumables ":       (0, 1),
-    "Diets":                    (0, 1),
-    "Hospital Inventory":       (0, 4),
-    "Stable Hospital Inventory":(0, 3),
+    "Pharmacy - General ":       (0, 2),
+    "Pharmacy - Ocular ":        (0, 1),
+    "Pharmacy - Preventatives ": (0, 1),
+    "Pharmacy - Skin":           (0, 1),
+    "Vaccines ":                 (0, 1),
+    "IDEXX Labs ":               (0, 1),
+    "IDEXX Consumables ":        (0, 1),
+    "Diets":                     (0, 1),
+    "Hospital Inventory":        (0, 4),
+    "Stable Hospital Inventory": (0, 3),
 }
 
+DENOVO_SHEET   = "De Novo Loading Order"
+VETSPIRE_SHEET = "Products"   # typical sheet name in Vetspire export
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
+
 def _norm(s):
-    """Lowercase, collapse whitespace, strip punctuation for fuzzy matching."""
     s = str(s or "").lower().strip()
     s = re.sub(r"[^\w\s]", " ", s)
     return re.sub(r"\s+", " ", s).strip()
@@ -64,30 +73,96 @@ def _sku_str(val):
     return str(val).strip()
 
 
-DENOVO_SHEET = "De Novo Loading Order"
-
 def _is_real_sku(s):
-    """Return True if s looks like an actual SKU/catalog code, not a brand/model name."""
+    """Reject empty, very short, or space-containing strings (those are names, not codes)."""
     if not s or len(s) < 4:
         return False
-    # Model names have spaces; actual codes do not
     if " " in s:
         return False
     return True
 
 
+# ── Spreadsheet loaders ─────────────────────────────────────────────────────
+
+def _find_header_row(ws, keywords):
+    """Return (row_index, col_map) for the first row that contains all keywords.
+    col_map: {keyword_lower: col_index}. Returns (None, {}) if not found.
+    """
+    for i, row in enumerate(ws.iter_rows(min_row=1, max_row=20, values_only=True)):
+        cells = [str(c or "").lower().strip() for c in row]
+        found = {}
+        for kw in keywords:
+            for j, cell in enumerate(cells):
+                if kw in cell:
+                    found[kw] = j
+                    break
+        if len(found) == len(keywords):
+            return i + 1, found  # 1-based row number
+    return None, {}
+
+
+def load_vetspire_report(ws):
+    """Parse a Vetspire Products Report sheet.
+
+    Vetspire exports vary slightly — we auto-detect column positions by header.
+    Expected headers (case-insensitive, partial match OK): 'name', 'sku'
+    """
+    header_row, col_map = _find_header_row(ws, ["name", "sku"])
+    if header_row is None:
+        # Fallback: assume col 0 = name, col 1 = SKU
+        print("  [warn] Vetspire sheet: could not find header row, assuming col 0=name col 1=SKU")
+        name_col, sku_col = 0, 1
+        data_start = 2
+    else:
+        name_col  = col_map["name"]
+        sku_col   = col_map["sku"]
+        data_start = header_row + 1
+
+    mapping = {}
+    for row in ws.iter_rows(min_row=data_start, values_only=True):
+        name    = row[name_col]  if len(row) > name_col  else None
+        sku_raw = row[sku_col]   if len(row) > sku_col   else None
+        if not name:
+            continue
+        sku_s = _sku_str(sku_raw)
+        if not sku_s or not _is_real_sku(sku_s):
+            continue
+        key = _norm(name)
+        if key and key not in ("medication", "item", "vaccine", "supplies"):
+            mapping[key] = (sku_s, str(name).strip(), VETSPIRE_SHEET)
+    return mapping
+
+
 def load_spreadsheet(path):
     """Return dict: normalised_name → (sku, original_name, sheet).
 
-    Auto-detects workbook format:
-      - If workbook contains SHEET_COLS keys → Q2 inventory format (multiple sheets)
-      - If workbook contains De Novo Loading Order sheet → de novo format (single sheet)
+    Priority order for auto-detection:
+      1. Vetspire Products Report (sheet named 'Products' or single sheet with name+sku headers)
+      2. De Novo Loading Order
+      3. Q2 WH Inventory Count (multiple named sheets)
     """
     wb = openpyxl.load_workbook(path)
     mapping = {}
 
+    # 1. Vetspire Products Report
+    vetspire_ws = None
+    if VETSPIRE_SHEET in wb.sheetnames:
+        vetspire_ws = wb[VETSPIRE_SHEET]
+    else:
+        # Single-sheet workbook with 'name' and 'sku' columns → treat as Vetspire report
+        if len(wb.sheetnames) == 1:
+            ws = wb[wb.sheetnames[0]]
+            hr, _ = _find_header_row(ws, ["name", "sku"])
+            if hr is not None:
+                vetspire_ws = ws
+
+    if vetspire_ws is not None:
+        print(f"  Detected: Vetspire Products Report (sheet: {vetspire_ws.title!r})")
+        return load_vetspire_report(vetspire_ws)
+
+    # 2. De Novo Loading Order
     if DENOVO_SHEET in wb.sheetnames:
-        # De Novo Loading Order format: col B (index 1) = name, col C (index 2) = SKU
+        print(f"  Detected: De Novo Loading Order")
         ws = wb[DENOVO_SHEET]
         for row in ws.iter_rows(min_row=5, values_only=True):
             row_num = row[0]
@@ -101,8 +176,12 @@ def load_spreadsheet(path):
             key = _norm(name)
             if key and key not in ("medication", "item", "vaccine", "supplies"):
                 mapping[key] = (sku_s, str(name).strip(), DENOVO_SHEET)
-    else:
-        # Q2 WH Inventory Count format: multiple named sheets
+        return mapping
+
+    # 3. Q2 WH Inventory Count
+    matched_sheets = [s for s in SHEET_COLS if s in wb.sheetnames]
+    if matched_sheets:
+        print(f"  Detected: Q2 WH Inventory Count ({len(matched_sheets)} sheets found)")
         for sheet, (icol, scol) in SHEET_COLS.items():
             if sheet not in wb.sheetnames:
                 continue
@@ -118,9 +197,19 @@ def load_spreadsheet(path):
                 key = _norm(name)
                 if key and key not in ("medication", "item", "vaccine", "supplies"):
                     mapping[key] = (sku_s, str(name).strip(), sheet.strip())
+        return mapping
 
-    return mapping
+    sys.exit(
+        "ERROR: Could not identify workbook format.\n"
+        "Expected one of:\n"
+        "  • Vetspire Products Report (sheet named 'Products', or single sheet with Name/SKU columns)\n"
+        "  • De Novo Loading Order\n"
+        "  • Q2 WH Inventory Count\n"
+        f"Sheets found: {wb.sheetnames}"
+    )
 
+
+# ── Supabase helpers ─────────────────────────────────────────────────────────
 
 def supa_get(key, path):
     req = urllib.request.Request(
@@ -129,16 +218,6 @@ def supa_get(key, path):
     )
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read())
-
-
-# Manual overrides: exact MedSync product name → correct SKU
-# Use this to fix fuzzy-match errors or products not in the spreadsheet.
-MANUAL_OVERRIDES = {
-    "vanguard bordetella vaccine oral sf":      "10014057",  # Zoetis — not in workbook
-    "vanguard rabies vaccine - 1 year":         "10016542",  # 1-year, not 3-year
-    "purevax feline rabies vaccine - 1 year":   "159730",    # Boehringer Ingelheim 1-year rabies
-    "purevax feline rabies vaccine - 3 year":   "159732",    # Boehringer Ingelheim 3-year rabies
-}
 
 
 def supa_patch(key, path, data):
@@ -161,11 +240,50 @@ def supa_patch(key, path, data):
         return e.code
 
 
+# ── Manual overrides ─────────────────────────────────────────────────────────
+# Keyed by normalised MedSync product name → correct SKU.
+# Takes priority over any spreadsheet match.
+
+MANUAL_OVERRIDES = {
+    "vanguard bordetella vaccine oral sf":    "10014057",
+    "vanguard rabies vaccine - 1 year":       "10016542",
+    "purevax feline rabies vaccine - 1 year": "159730",
+    "purevax feline rabies vaccine - 3 year": "159732",
+}
+
+
+# ── Matching ─────────────────────────────────────────────────────────────────
+
+def find_sku(prod_name, sheet_map):
+    """Return (sku, matched_name, source) or None."""
+    key = _norm(prod_name)
+
+    # 1. Manual override
+    if key in MANUAL_OVERRIDES:
+        return (MANUAL_OVERRIDES[key], prod_name + " [manual override]", "overrides")
+
+    # 2. Exact normalised-key match
+    match = sheet_map.get(key)
+    if match:
+        return match
+
+    # 3. First-four-words fuzzy match (3-of-4 overlap)
+    words = key.split()
+    for skey, val in sheet_map.items():
+        swords = skey.split()
+        common = sum(1 for w in words[:4] if w in swords)
+        if common >= 3:
+            return val
+
+    return None
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
+
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--xlsx", required=True, help="Path to inventory workbook")
-    ap.add_argument("--apply", action="store_true", help="Write changes to Supabase (default: dry run)")
+    ap = argparse.ArgumentParser(description="Backfill missing SKUs in MedSync products table")
+    ap.add_argument("--xlsx", required=True, help="Path to source workbook (Vetspire Products Report recommended)")
+    ap.add_argument("--apply", action="store_true", help="Write to Supabase (default: dry run)")
     args = ap.parse_args()
 
     service_key = os.environ.get("SUPA_SERVICE_KEY", "").strip()
@@ -176,9 +294,9 @@ def main():
 
     print("Loading spreadsheet …")
     sheet_map = load_spreadsheet(args.xlsx)
-    print(f"  {len(sheet_map)} products with SKUs in workbook")
+    print(f"  {len(sheet_map)} products with SKUs in workbook\n")
 
-    print("\nFetching all products missing SKU from Supabase …")
+    print("Fetching MedSync products missing SKU …")
     all_products = []
     page_size = 1000
     offset = 0
@@ -194,59 +312,42 @@ def main():
             break
         offset += page_size
 
-    total_products = len(all_products)
-    missing_sku = [p for p in all_products if not (p.get("ndc") or "").strip()]
-    print(f"  {total_products} total products, {len(missing_sku)} missing SKU")
+    total      = len(all_products)
+    missing    = [p for p in all_products if not (p.get("ndc") or "").strip()]
+    print(f"  {total} total products, {len(missing)} missing SKU\n")
 
-    def find_in_sheet(name):
-        key = _norm(name)
-        if key in MANUAL_OVERRIDES:
-            return (MANUAL_OVERRIDES[key], name + " [manual override]", "overrides")
-        match = sheet_map.get(key)
-        if not match:
-            words = key.split()
-            for skey, val in sheet_map.items():
-                swords = skey.split()
-                common = sum(1 for w in words[:4] if w in swords)
-                if common >= 3:
-                    match = val
-                    break
-        return match
+    patches  = {}  # product_id → {ndc, product_name, matched_name, sheet}
+    no_match = []
 
-    product_patches = {}   # product_id → {ndc, product_name, matched_name, sheet}
-    no_match        = []
-
-    for prod in missing_sku:
-        prod_id   = prod["id"]
-        prod_name = prod["name"] or ""
-        match = find_in_sheet(prod_name)
+    for prod in missing:
+        match = find_sku(prod["name"] or "", sheet_map)
         if match:
             sku, matched_name, sheet = match
-            product_patches[prod_id] = {
-                "ndc": sku,
-                "product_name": prod_name,
+            patches[prod["id"]] = {
+                "ndc":          sku,
+                "product_name": prod["name"],
                 "matched_name": matched_name,
-                "sheet": sheet,
+                "sheet":        sheet,
             }
         else:
-            no_match.append((prod_id, prod_name, "not found in workbook"))
+            no_match.append(prod["name"] or "(unnamed)")
 
     # ── Report ───────────────────────────────────────────────────────────────
-    print(f"\n{'='*70}")
-    print(f"Products to update (add SKU):      {len(product_patches)}")
-    print(f"No match found (manual review):    {len(no_match)}")
+    print(f"{'='*70}")
+    print(f"Products to update (SKU found):  {len(patches)}")
+    print(f"No match (manual review needed): {len(no_match)}")
     print(f"{'='*70}\n")
 
-    if product_patches:
-        print("WILL ADD SKU TO EXISTING PRODUCT:")
-        for pid, info in product_patches.items():
-            print(f"  {info['product_name']!r:60s} → {info['ndc']:12s}  [{info['sheet']}]")
+    if patches:
+        print("WILL ADD SKU:")
+        for pid, info in patches.items():
+            print(f"  {info['product_name']!r:60s} → {info['ndc']:15s}  [{info['sheet']}]")
         print()
 
     if no_match:
-        print("NO MATCH (manual review needed):")
-        for prod_id, name, reason in no_match:
-            print(f"  {name!r:60s}  [{reason}]")
+        print("NO MATCH FOUND:")
+        for name in no_match:
+            print(f"  {name!r}")
         print()
 
     if not args.apply:
@@ -254,10 +355,9 @@ def main():
         return
 
     # ── Apply ─────────────────────────────────────────────────────────────────
-    print("Applying patches …")
+    print("Applying …")
     ok = err = 0
-
-    for pid, info in product_patches.items():
+    for pid, info in patches.items():
         status = supa_patch(service_key, f"/rest/v1/products?id=eq.{pid}", {"ndc": info["ndc"]})
         if status in (200, 204):
             print(f"  ✓ {info['product_name']} → {info['ndc']}")
