@@ -8,19 +8,19 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --green:    #1A3A2B;
-  --green-md: #2A5240;
-  --green-lt: #E8F0EB;
+  --green:    #0E5B52;
+  --green-md: #0A4840;
+  --green-lt: #E0EFED;
   --orange:   #F47B3B;
   --orange-lt:#FEF0E6;
   --blue-lt:  #D4DCE2;
   --blue-llt: #E8EEF2;
   --cream:    #D4DCE2;
   --white:    #FFFFFF;
-  --text:     #1A3A2B;
-  --text-md:  #3D5A4A;
-  --muted:    #6B8A78;
-  --border:   #BCC8D0;
+  --text:     #0A3330;
+  --text-md:  #2A5550;
+  --muted:    #5A7E7A;
+  --border:   #B8CBCA;
 }
 
 html { scroll-behavior: smooth; }
@@ -290,7 +290,7 @@ nav {
 
 /* ── FOOTER ── */
 footer {
-  background: #0F2118;
+  background: #083830;
   padding: 28px 56px;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
 }
@@ -431,7 +431,12 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
 
       <div class="role-card">
         <div class="role-illo">
-          <img src="Scout Art 4.png" alt="Hospital Director" style="height:72px;width:auto;">
+          <!-- Hospital Director emblem: shield with medical cross -->
+          <svg width="64" height="72" viewBox="0 0 64 72" fill="none">
+            <path d="M32 4L8 14V36C8 50 18 62 32 68C46 62 56 50 56 36V14L32 4Z" fill="#E0EFED" stroke="#0E5B52" stroke-width="2.5" stroke-linejoin="round"/>
+            <rect x="28" y="22" width="8" height="24" rx="2" fill="#0E5B52"/>
+            <rect x="20" y="30" width="24" height="8" rx="2" fill="#0E5B52"/>
+          </svg>
         </div>
         <div class="role-title">Hospital Director</div>
         <div class="role-desc">Your dashboard across the whole hospital.</div>
@@ -472,17 +477,12 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
 
       <div class="role-card">
         <div class="role-illo">
-          <!-- Abstract multi-location -->
+          <!-- Regional/Admin emblem: star badge -->
           <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-            <circle cx="36" cy="36" r="18" stroke="#1A3A2B" stroke-width="2.5" fill="none"/>
-            <circle cx="36" cy="36" r="10" stroke="#1A3A2B" stroke-width="1.5" fill="none" opacity="0.4"/>
-            <path d="M36,18 L36,54M18,36 L54,36" stroke="#1A3A2B" stroke-width="1.5" opacity="0.3"/>
-            <path d="M22,22 L50,50M50,22 L22,50" stroke="#1A3A2B" stroke-width="1.5" opacity="0.2"/>
-            <circle cx="36" cy="18" r="4" fill="#F47B3B"/>
-            <circle cx="54" cy="36" r="4" fill="#F47B3B"/>
-            <circle cx="36" cy="54" r="4" fill="#F47B3B"/>
-            <circle cx="18" cy="36" r="4" fill="#F47B3B"/>
-            <circle cx="36" cy="36" r="5" fill="#1A3A2B"/>
+            <circle cx="36" cy="36" r="28" fill="#E0EFED" stroke="#0E5B52" stroke-width="2"/>
+            <circle cx="36" cy="36" r="20" fill="none" stroke="#0E5B52" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.5"/>
+            <!-- 5-point star -->
+            <path d="M36 14 L39.5 26.5 L52.5 26.5 L42 34.5 L45.5 47 L36 39.5 L26.5 47 L30 34.5 L19.5 26.5 L32.5 26.5 Z" fill="#0E5B52"/>
           </svg>
         </div>
         <div class="role-title">Regional / Admin</div>
