@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports — MedSync</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --purple:#6B57C2;
+  --purple-light:#EEF0FF;
+  --bg:#F5F3FA;
+  --card:#FFFFFF;
+  --border:#E2DEEF;
+  --text:#1A1730;
+  --muted:#7B6F9A;
+  --gold:#E8B84B;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── Header ── */
+.page-header{
+  background:#fff;
+  border-bottom:1px solid var(--border);
+  padding:20px 28px 16px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+.page-title{font-size:20px;font-weight:600;color:var(--text);}
+.page-subtitle{font-size:13px;color:var(--muted);margin-top:2px;}
+
+/* ── Body ── */
+.reports-body{padding:24px 28px;max-width:1100px;}
+
+/* ── Section header ── */
+.section-label{
+  font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:12px;margin-top:28px;
+}
+.section-label:first-child{margin-top:0;}
+
+/* ── Grid ── */
+.report-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:14px;
+}
+
+/* ── Card ── */
+.report-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:18px 20px;
+  cursor:pointer;
+  transition:box-shadow .15s,border-color .15s,transform .1s;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  text-decoration:none;
+  color:inherit;
+}
+.report-card:hover{
+  border-color:var(--purple);
+  box-shadow:0 4px 16px rgba(107,87,194,.12);
+  transform:translateY(-1px);
+}
+.card-icon{
+  width:36px;height:36px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+  flex-shrink:0;
+}
+.card-icon.inv{background:#EEF0FF;color:var(--purple);}
+.card-icon.fin{background:#FFF7E6;color:#D08C00;}
+.card-icon.ops{background:#E6FAF2;color:#1A9E6A;}
+.card-icon.log{background:#FEF0F0;color:#C94040;}
+
+.card-name{font-size:14px;font-weight:600;line-height:1.3;}
+.card-desc{font-size:12px;color:var(--muted);line-height:1.45;}
+.card-badge{
+  margin-top:2px;
+  display:inline-block;
+  font-size:10px;font-weight:600;letter-spacing:.04em;
+  padding:2px 7px;border-radius:20px;
+  width:fit-content;
+}
+.badge-live{background:#E6FAF2;color:#1A9E6A;}
+.badge-new{background:#EEF0FF;color:var(--purple);}
+
+/* ── Counts on Hand card — full-width accent ── */
+.coh-card{
+  background:linear-gradient(135deg,#6B57C2 0%,#8B73D6 100%);
+  color:#fff;
+  border:none;
+  grid-column:1/-1;
+  flex-direction:row;
+  align-items:center;
+  gap:20px;
+}
+.coh-card:hover{
+  border:none;
+  box-shadow:0 6px 24px rgba(107,87,194,.35);
+}
+.coh-card .card-icon{background:rgba(255,255,255,.15);color:#fff;width:48px;height:48px;font-size:22px;border-radius:10px;}
+.coh-card .card-name{font-size:16px;font-weight:600;color:#fff;}
+.coh-card .card-desc{color:rgba(255,255,255,.75);}
+.coh-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.coh-pill{
+  font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;
+  background:rgba(255,255,255,.2);color:#fff;
+}
+.coh-card .card-body{flex:1;}
+
+/* ── Divider ── */
+hr{border:none;border-top:1px solid var(--border);margin:28px 0 0;}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Reports</div>
+    <div class="page-subtitle">All MedSync reports in one place</div>
+  </div>
+</div>
+
+<div class="reports-body">
+
+  <!-- Counts on Hand -->
+  <div class="section-label">Inventory counts</div>
+  <div class="report-grid">
+    <a class="report-card coh-card" href="medsync_lot_lifecycle_live.html" target="_parent">
+      <div class="card-icon"><i class="ti ti-packages"></i></div>
+      <div class="card-body">
+        <div class="card-name">Counts on Hand</div>
+        <div class="card-desc">Current inventory levels across all locations — active lots, quantities remaining, and expiration status.</div>
+        <div class="coh-meta">
+          <span class="coh-pill">Daily</span>
+          <span class="coh-pill">Weekly</span>
+          <span class="coh-pill">Monthly</span>
+          <span class="coh-pill">Quarterly</span>
+          <span class="coh-pill">Yearly</span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Inventory reports -->
+  <div class="section-label" style="margin-top:24px;">Inventory</div>
+  <div class="report-grid">
+
+    <a class="report-card" href="medsync_lot_lifecycle_live.html" target="_parent">
+      <div class="card-icon inv"><i class="ti ti-microscope"></i></div>
+      <div class="card-name">Lot Lifecycle</div>
+      <div class="card-desc">Active, expiring, and expired lots with days-to-expiry and controlled substance flags.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+    <a class="report-card" href="medsync_cycle_count_live.html" target="_parent">
+      <div class="card-icon inv"><i class="ti ti-refresh"></i></div>
+      <div class="card-name">Cycle Count</div>
+      <div class="card-desc">A/B/C/D count schedules, variance tracking, and Vetspire sync results.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+    <a class="report-card" href="medsync_goods_lost_live.html" target="_parent">
+      <div class="card-icon log"><i class="ti ti-clipboard-x"></i></div>
+      <div class="card-name">Goods Lost Log</div>
+      <div class="card-desc">MTD goods lost totals by category, submission history, and per-product breakdowns.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+  </div>
+
+  <!-- Financial reports -->
+  <div class="section-label">Financial</div>
+  <div class="report-grid">
+
+    <a class="report-card" href="medsync_quarterly_report_live.html" target="_parent">
+      <div class="card-icon fin"><i class="ti ti-chart-bar"></i></div>
+      <div class="card-name">Quarterly Report</div>
+      <div class="card-desc">Procurement spend, GPO savings, and goods lost by quarter across all locations.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+    <a class="report-card" href="medsync_analytics_live.html" target="_parent">
+      <div class="card-icon fin"><i class="ti ti-trending-up"></i></div>
+      <div class="card-name">Analytics</div>
+      <div class="card-desc">COGs %, savings drivers, order compliance, and purchase-vs-loss comparisons.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+    <a class="report-card" href="medsync_invoice_reconcile_live.html" target="_parent">
+      <div class="card-icon fin"><i class="ti ti-file-invoice"></i></div>
+      <div class="card-name">Invoice Reconciliation</div>
+      <div class="card-desc">Match invoices against POs, flag price and quantity discrepancies, track approval status.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+  </div>
+
+  <!-- Operations reports -->
+  <div class="section-label">Operations</div>
+  <div class="report-grid">
+
+    <a class="report-card" href="medsync_portfolio_live.html" target="_parent">
+      <div class="card-icon ops"><i class="ti ti-layout-dashboard"></i></div>
+      <div class="card-name">Portfolio Dashboard</div>
+      <div class="card-desc">Monthly goods lost, expiring lots, COGs % hero tiles and location summary cards.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+    <a class="report-card" href="medsync_activity_log_live.html" target="_parent">
+      <div class="card-icon ops"><i class="ti ti-list-details"></i></div>
+      <div class="card-name">Activity Log</div>
+      <div class="card-desc">Full event history — orders, receiving, goods lost, and lot changes across all users and locations.</div>
+      <span class="card-badge badge-live">Live</span>
+    </a>
+
+  </div>
+
+</div>
+</body>
+</html>

@@ -9,7 +9,7 @@
 <script src="medsync_locations.js"></script>
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cyclecount','users','settings','regions','newlocation'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cyclecount','users','settings','regions','newlocation','reports'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -494,6 +494,7 @@ window.addEventListener('message', function(e) {
       <button class="mnb" id="mnb-lifecycle" onclick="showScreen('lifecycle')">Lot Lifecycle</button>
       <button class="mnb" id="mnb-procurement" onclick="showScreen('procurement')">Procurement</button>
       <button class="mnb" id="mnb-actlog" onclick="showScreen('actlog')">Activity Log</button>
+      <button class="mnb" id="mnb-reports" onclick="showScreen('reports')">Reports</button>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
@@ -515,6 +516,7 @@ window.addEventListener('message', function(e) {
   <div class="asb-item" id="asb-lifecycle" onclick="showScreen('lifecycle')">🔬 Lot Lifecycle</div>
   <div class="asb-item" id="asb-procurement" onclick="showScreen('procurement')">🛍️ Procurement</div>
   <div class="asb-item" id="asb-actlog" onclick="showScreen('actlog')">📋 Activity Log</div>
+  <div class="asb-item" id="asb-reports" onclick="showScreen('reports')">📊 Reports</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
   <div class="asb-item" id="asb-order" onclick="showScreen('order')">🛒 Purchase Orders</div>
@@ -806,6 +808,12 @@ window.addEventListener('message', function(e) {
   <iframe src="medsync_newlocation_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="New Location">
+  </iframe>
+</div>
+<div id="ms-reports" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+  <iframe src="medsync_reports_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Reports">
   </iframe>
 </div>
 <div id="ms-toast"></div>
