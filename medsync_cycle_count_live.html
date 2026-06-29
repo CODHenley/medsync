@@ -1254,7 +1254,13 @@ function pcSelectSuggestion(el) {
   }
 
   if (!Array.isArray(snaps)) { console.error('pcLookup error:', snaps); pcShowScanError('Lookup failed — check console for details'); return; }
-  if (!snaps.length) { pcShowScanError('Product not found for: ' + q); return; }
+  if (!snaps.length) {
+    // Offer manual entry rather than a dead end
+    var errEl = document.getElementById('pc-scan-error');
+    errEl.innerHTML = '⚠ Product not found for: <strong>' + q + '</strong> &nbsp;—&nbsp; <a href="#" onclick="pcCountUnknown(\'' + q.replace(/'/g,"\\'")+'\');return false;" style="color:#7ab8f5;text-decoration:underline;">Count it anyway</a>';
+    errEl.style.display = 'block';
+    return;
+  }
 
   document.getElementById('pc-scan-error').style.display = 'none';
   var sn = snaps[0];
@@ -1274,6 +1280,20 @@ function pcShowScanError(msg) {
   if (!el) return;
   el.textContent = '⚠ ' + msg;
   el.style.display = 'block';
+}
+
+function pcCountUnknown(q) {
+  // Allow counting a product not yet in inventory_snapshots — expected = 0
+  document.getElementById('pc-scan-error').style.display = 'none';
+  pcState.currentProduct = { name: q, vetspireProductId: null, expected: 0, unitCost: 0 };
+  document.getElementById('pc-prod-name').textContent = q;
+  document.getElementById('pc-prod-meta').textContent = 'Not in MedSync yet — expected count set to 0';
+  document.getElementById('pc-expected').textContent = '0';
+  document.getElementById('pc-actual-input').value = '';
+  document.getElementById('pc-variance-preview').style.display = 'none';
+  document.getElementById('pc-product-card').style.display = 'block';
+  document.getElementById('pc-actual-input').focus();
+  document.getElementById('pc-scan-input').value = '';
 }
 
 function pcUpdateVariancePreview() {
