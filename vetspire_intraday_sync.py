@@ -117,7 +117,20 @@ def main():
             errors += 1
             continue
 
-        order_items = r.get("data", {}).get("usageReport", {}).get("orderItems", [])
+        usage_raw = r.get("data", {}).get("usageReport")
+        print(f"  [DEBUG] usageReport type={type(usage_raw).__name__} value_preview={str(usage_raw)[:200]}")
+        # usageReport may return a JSON string (like salesReport) — parse if so
+        if isinstance(usage_raw, str):
+            try:
+                usage_raw = json.loads(usage_raw)
+            except Exception:
+                pass
+        if isinstance(usage_raw, list):
+            order_items = usage_raw
+        elif isinstance(usage_raw, dict):
+            order_items = usage_raw.get("orderItems", [])
+        else:
+            order_items = []
         print(f"  {len(order_items)} order items")
 
         records = []
