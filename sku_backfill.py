@@ -136,30 +136,28 @@ def main():
     sheet_map = load_spreadsheet(args.xlsx)
     print(f"  {len(sheet_map)} products with SKUs in workbook")
 
-    # Location UUIDs — must match what the browser sends so RLS passes
-    LOC_UUIDS = [
-        "11111111-0000-0000-0000-000000000001",  # Lincoln Park
-        "11111111-0000-0000-0000-000000000002",  # Old Orchard
-        "11111111-0000-0000-0000-000000000003",  # West Loop
-        "11111111-0000-0000-0000-000000000004",  # Wheaton
-    ]
-    loc_in = "(" + ",".join(LOC_UUIDS) + ")"
+    print("\nFetching all products missing SKU from Supabase …")
+    all_products = []
+    page_size = 1000
+    offset = 0
+    while True:
+        batch = supa_get(
+            read_key,
+            f"/rest/v1/products?select=id,name,ndc&limit={page_size}&offset={offset}"
+        )
+        if isinstance(batch, dict) and "message" in batch:
+            sys.exit(f"Supabase error: {batch}")
+        all_products.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
 
-    print("\nFetching all lots + products from Supabase …")
-    rows = supa_get(
-        read_key,
-        "/rest/v1/lots?select=id,lot_number,notes,status,products(id,name,ndc)"
-        f"&location_id=in.{loc_in}"
-        "&limit=1000"
-    )
-    if isinstance(rows, dict) and "message" in rows:
-        sys.exit(f"Supabase error: {rows}")
-
-    print(f"  {len(rows)} lots returned")
+    total_products = len(all_products)
+    missing_sku = [p for p in all_products if not (p.get("ndc") or "").strip()]
+    print(f"  {total_products} total products, {len(missing_sku)} missing SKU")
 
     def find_in_sheet(name):
         key = _norm(name)
-        # Manual overrides take priority
         if key in MANUAL_OVERRIDES:
             return (MANUAL_OVERRIDES[key], name + " [manual override]", "overrides")
         match = sheet_map.get(key)
@@ -173,76 +171,40 @@ def main():
                     break
         return match
 
-    # Group by product so we patch each product once
-    product_patches = {}        # product_id → {ndc, product_name, matched_name, sheet, lots[]}
-    needs_product   = {}        # lot_id → {lot_number, name, ndc, matched_name, sheet}
+    product_patches = {}   # product_id → {ndc, product_name, matched_name, sheet}
     no_match        = []
 
-    for lot in rows:
-        prod = lot.get("products") or {}
-        prod_id   = prod.get("id")
-        prod_name = prod.get("name") or (lot.get("notes") or "").replace("Vetspire inventory:", "").strip()
-        existing_ndc = prod.get("ndc") or ""
-
-        if not prod_id:
-            # Lot has no product record — try to find SKU and create one
-            match = find_in_sheet(prod_name)
-            if match:
-                sku, matched_name, sheet = match
-                needs_product[lot["id"]] = {
-                    "lot_number": lot["lot_number"],
-                    "name": prod_name,
-                    "ndc": sku,
-                    "matched_name": matched_name,
-                    "sheet": sheet,
-                }
-            else:
-                no_match.append((lot["lot_number"], prod_name, "no product record + not in workbook"))
-            continue
-
-        if existing_ndc.strip():
-            continue  # already has SKU
-
+    for prod in missing_sku:
+        prod_id   = prod["id"]
+        prod_name = prod["name"] or ""
         match = find_in_sheet(prod_name)
         if match:
             sku, matched_name, sheet = match
-            if prod_id not in product_patches:
-                product_patches[prod_id] = {"ndc": sku, "product_name": prod_name,
-                                             "matched_name": matched_name,
-                                             "sheet": sheet, "lots": []}
-            product_patches[prod_id]["lots"].append(lot["lot_number"])
+            product_patches[prod_id] = {
+                "ndc": sku,
+                "product_name": prod_name,
+                "matched_name": matched_name,
+                "sheet": sheet,
+            }
         else:
-            no_match.append((lot["lot_number"], prod_name, "not found in workbook"))
+            no_match.append((prod_id, prod_name, "not found in workbook"))
 
     # ── Report ───────────────────────────────────────────────────────────────
     print(f"\n{'='*70}")
     print(f"Products to update (add SKU):      {len(product_patches)}")
-    print(f"Lots needing new product record:   {len(needs_product)}")
     print(f"No match found (manual review):    {len(no_match)}")
     print(f"{'='*70}\n")
 
     if product_patches:
         print("WILL ADD SKU TO EXISTING PRODUCT:")
         for pid, info in product_patches.items():
-            print(f"  product {pid}")
-            print(f"    MedSync name : {info['product_name']}")
-            print(f"    Matched to   : {info['matched_name']}  [{info['sheet']}]")
-            print(f"    SKU to set   : {info['ndc']}")
-            print(f"    Lots         : {', '.join(info['lots'])}")
-            print()
-
-    if needs_product:
-        print("WILL CREATE PRODUCT RECORD + LINK TO LOT:")
-        for lot_id, info in needs_product.items():
-            print(f"  LOT {info['lot_number']:12s}  {info['name']!r:50s}")
-            print(f"    Matched to : {info['matched_name']}  [{info['sheet']}]")
-            print(f"    SKU        : {info['ndc']}")
-            print()
+            print(f"  {info['product_name']!r:60s} → {info['ndc']:12s}  [{info['sheet']}]")
+        print()
 
     if no_match:
         print("NO MATCH (manual review needed):")
-        for lot_num, name, reason in no_match:
-            print(f"  LOT {lot_num:10s}  {name!r:50s}  [{reason}]")
+        for prod_id, name, reason in no_match:
+            print(f"  {name!r:60s}  [{reason}]")
         print()
 
     if not args.apply:
@@ -253,55 +215,6 @@ def main():
     print("Applying patches …")
     ok = err = 0
 
-    # 1. Link lots that have no product_id — look up existing product by name, then link + patch NDC
-    for lot_id, info in needs_product.items():
-        # Look up existing product by exact name
-        encoded_name = urllib.parse.quote(info["name"])
-        existing = supa_get(service_key,
-            f"/rest/v1/products?select=id,ndc&name=eq.{encoded_name}&limit=1")
-        if existing and isinstance(existing, list) and len(existing) > 0:
-            prod_id  = existing[0]["id"]
-            has_ndc  = (existing[0].get("ndc") or "").strip()
-            # Patch NDC if missing
-            if not has_ndc:
-                supa_patch(service_key, f"/rest/v1/products?id=eq.{prod_id}", {"ndc": info["ndc"]})
-            # Link lot
-            status = supa_patch(service_key, f"/rest/v1/lots?id=eq.{lot_id}", {"product_id": prod_id})
-            if status in (200, 204):
-                print(f"  ✓ linked LOT {info['lot_number']} → existing product [{info['ndc']}] {info['name']}")
-                ok += 1
-            else:
-                print(f"  ✗ link LOT {info['lot_number']} → HTTP {status}")
-                err += 1
-        else:
-            # Truly doesn't exist — create it
-            body = json.dumps({"name": info["name"], "ndc": info["ndc"]}).encode()
-            req = urllib.request.Request(
-                SUPA_URL + "/rest/v1/products",
-                data=body,
-                headers={
-                    "apikey": service_key, "Authorization": f"Bearer {service_key}",
-                    "Content-Type": "application/json", "Prefer": "return=representation",
-                }
-            )
-            req.get_method = lambda: "POST"
-            try:
-                with urllib.request.urlopen(req, timeout=30) as r:
-                    created = json.loads(r.read())
-                    new_id = created[0]["id"] if isinstance(created, list) else created.get("id")
-            except Exception as e:
-                print(f"  ✗ create product '{info['name']}': {e}")
-                err += 1
-                continue
-            status = supa_patch(service_key, f"/rest/v1/lots?id=eq.{lot_id}", {"product_id": new_id})
-            if status in (200, 204):
-                print(f"  ✓ created + linked LOT {info['lot_number']} → {info['name']} [{info['ndc']}]")
-                ok += 1
-            else:
-                print(f"  ✗ link after create LOT {info['lot_number']} → HTTP {status}")
-                err += 1
-
-    # 2. Patch existing products missing NDC
     for pid, info in product_patches.items():
         status = supa_patch(service_key, f"/rest/v1/products?id=eq.{pid}", {"ndc": info["ndc"]})
         if status in (200, 204):
