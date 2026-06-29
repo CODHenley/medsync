@@ -109,12 +109,14 @@ def load_vetspire_report(ws):
     """
     header_row, col_map = _find_header_row(ws, ["name", "sku"])
     if header_row is None:
+        header_row, col_map = _find_header_row(ws, ["product", "sku"])
+    if header_row is None:
         # Fallback: assume col 0 = name, col 1 = SKU
         print("  [warn] Vetspire sheet: could not find header row, assuming col 0=name col 1=SKU")
         name_col, sku_col = 0, 1
         data_start = 2
     else:
-        name_col  = col_map["name"]
+        name_col  = col_map.get("name", col_map.get("product"))
         sku_col   = col_map["sku"]
         data_start = header_row + 1
 
@@ -159,6 +161,17 @@ def load_spreadsheet(path):
     if vetspire_ws is not None:
         print(f"  Detected: Vetspire Products Report (sheet: {vetspire_ws.title!r})")
         return load_vetspire_report(vetspire_ws)
+
+    # 1b. Any single sheet with name+sku headers (catches 'Location XXXXX' exports)
+    if len(wb.sheetnames) == 1:
+        ws = wb[wb.sheetnames[0]]
+        hr, _ = _find_header_row(ws, ["name", "sku"])
+        if hr is None:
+            # also try 'product' as the name column
+            hr, _ = _find_header_row(ws, ["product", "sku"])
+        if hr is not None:
+            print(f"  Detected: Vetspire Products Report (sheet: {ws.title!r})")
+            return load_vetspire_report(ws)
 
     # 2. De Novo Loading Order
     if DENOVO_SHEET in wb.sheetnames:
