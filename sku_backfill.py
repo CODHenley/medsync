@@ -88,6 +88,14 @@ def supa_get(key, path):
         return json.loads(r.read())
 
 
+# Manual overrides: exact MedSync product name → correct SKU
+# Use this to fix fuzzy-match errors or products not in the spreadsheet.
+MANUAL_OVERRIDES = {
+    "vanguard bordetella vaccine oral sf": "10014057",   # Zoetis — not in workbook
+    "vanguard rabies vaccine - 1 year":    "10016542",   # 1-year, not 3-year (10016543)
+}
+
+
 def supa_patch(key, path, data):
     body = json.dumps(data).encode()
     req = urllib.request.Request(
@@ -148,6 +156,9 @@ def main():
 
     def find_in_sheet(name):
         key = _norm(name)
+        # Manual overrides take priority
+        if key in MANUAL_OVERRIDES:
+            return (MANUAL_OVERRIDES[key], name + " [manual override]", "overrides")
         match = sheet_map.get(key)
         if not match:
             words = key.split()
