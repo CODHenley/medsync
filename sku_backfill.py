@@ -125,11 +125,20 @@ def main():
     sheet_map = load_spreadsheet(args.xlsx)
     print(f"  {len(sheet_map)} products with SKUs in workbook")
 
-    print("\nFetching active lots + products from Supabase …")
+    # Location UUIDs — must match what the browser sends so RLS passes
+    LOC_UUIDS = [
+        "11111111-0000-0000-0000-000000000001",  # Lincoln Park
+        "11111111-0000-0000-0000-000000000002",  # Old Orchard
+        "11111111-0000-0000-0000-000000000003",  # West Loop
+        "11111111-0000-0000-0000-000000000004",  # Wheaton
+    ]
+    loc_in = "(" + ",".join(LOC_UUIDS) + ")"
+
+    print("\nFetching all lots + products from Supabase …")
     rows = supa_get(
         read_key,
         "/rest/v1/lots?select=id,lot_number,notes,status,products(id,name,ndc)"
-        "&status=in.(active,expiring_soon,expired)"
+        f"&location_id=in.{loc_in}"
         "&limit=1000"
     )
     if isinstance(rows, dict) and "message" in rows:
