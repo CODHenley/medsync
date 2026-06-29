@@ -69,11 +69,12 @@ function showScreen(name) {
   }
 }
 function showOpsScreen(n) { showScreen(n); }
+function localIso(d) { const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
 
 // ── Monthly Recognition ────────────────────────────────────────────────────
 async function loadRecognition() {
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const monthStart = localIso(new Date(now.getFullYear(), now.getMonth(), 1));
   const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const locEl  = document.getElementById('rec-location');
   const leadEl = document.getElementById('rec-lead');
@@ -335,8 +336,8 @@ async function loadRecognition() {
 
 async function loadLocationCards() {
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const today = now.toISOString().split('T')[0];
+  const monthStart = localIso(new Date(now.getFullYear(), now.getMonth(), 1));
+  const today = localIso(now);
   const _H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
   const CARD_IDS = { lp: 'lp', oo: 'oo', wl: 'wl', wh: 'wheaton' };
 
@@ -397,9 +398,9 @@ async function loadWheatonInsights() {
   const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
   const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const today      = now.toISOString().split('T')[0];
-  const in60       = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 60).toISOString().split('T')[0];
+  const monthStart = localIso(new Date(now.getFullYear(), now.getMonth(), 1));
+  const today      = localIso(now);
+  const in60       = localIso(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 60));
 
   try {
     const [lotsRes, glRes, cogsRes, revRes] = await Promise.all([
@@ -532,9 +533,9 @@ async function refreshAllInsights() {
   const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
   const LOC   = LOC_NAMES;
   const now        = new Date();
-  const today      = now.toISOString().split('T')[0];
-  const days30ago  = new Date(now - 30*864e5).toISOString().split('T')[0];
-  const days60fwd  = new Date(+now + 60*864e5).toISOString().split('T')[0];
+  const today      = localIso(now);
+  const days30ago  = localIso(new Date(now - 30*864e5));
+  const days60fwd  = localIso(new Date(+now + 60*864e5));
 
   function fmt$(n) { return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
 
@@ -675,9 +676,9 @@ async function loadPortfolioHeroTiles() {
   const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
   const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
   const now   = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const today = now.toISOString().split('T')[0];
-  const days60fwd = new Date(+now + 60*864e5).toISOString().split('T')[0];
+  const monthStart = localIso(new Date(now.getFullYear(), now.getMonth(), 1));
+  const today = localIso(now);
+  const days60fwd = localIso(new Date(+now + 60*864e5));
 
   async function sg(path) {
     try {

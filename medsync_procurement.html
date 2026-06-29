@@ -426,7 +426,7 @@ function getDateRange() {
   }
   return { start, end };
 }
-function iso(d) { return d.toISOString().slice(0,10); }
+function iso(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function pad(n) { return String(n).padStart(2,'0'); }
 
 function getLocationFilter() {
@@ -879,8 +879,8 @@ async function renderReorderSuggestions() {
     // 2. Fetch last 30 days of usage
     const now = new Date();
     const from30 = new Date(now); from30.setDate(now.getDate() - 30);
-    const fromStr = from30.toISOString().slice(0, 10);
-    const toStr   = now.toISOString().slice(0, 10);
+    const fromStr = iso(from30);
+    const toStr   = iso(now);
 
     const usageRows = await query('dispensed_items',
       `select=product_name,quantity` +
@@ -963,7 +963,7 @@ async function _pushToWeeklyOrder(items) {
   const now = new Date();
   const day = now.getDay() || 7;
   const mon = new Date(now); mon.setDate(now.getDate() - day + 1);
-  const weekStart = mon.toISOString().slice(0, 10);
+  const weekStart = iso(mon);
 
   let pushed = 0;
   for (const item of items) {
@@ -1157,7 +1157,7 @@ async function loadHealthRiskBadge() {
     const locVid  = document.getElementById('sel-location').value;
     const locUuid = locVid ? LOC_UUID[locVid] : null;
     const today   = new Date(); today.setHours(0,0,0,0);
-    const from60  = new Date(today.getTime() - 60*864e5).toISOString().slice(0,10);
+    const from60  = iso(new Date(today.getTime() - 60*864e5));
 
     // Lots for this location
     const lotsRes = await fetch(
