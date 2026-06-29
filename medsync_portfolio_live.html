@@ -86,12 +86,12 @@ async function loadRecognition() {
     const _H2    = { 'apikey': _KEY2, 'Authorization': 'Bearer ' + _KEY2 };
     const [glRes, usersRes, poRes, whGlRes, whPoRes, managersRes, receiversRes, actLogRes, cycleRes] = await Promise.all([
       fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: _H2 }),
-      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead&is_active=eq.true', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/po_items?select=status,submitted_at&location_id=eq.' + WHEATON_UUID + '&order=submitted_at.desc&limit=1', { headers: _H2 }),
-      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=in.(manager,hospital_manager)&is_active=eq.true', { headers: _H2 }),
-      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.receiver&is_active=eq.true', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=in.(manager,hospital_manager)', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.receiver', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/activity_log?select=user_id,event_type&created_at=gte.' + monthStart, { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + monthStart, { headers: _H2 }),
     ]);
@@ -2874,9 +2874,9 @@ function sortBy(col) {
 
 // ── Filter + render ───────────────────────────────────────────
 function getFiltered() {
-  const search = document.getElementById('ev-search').value.toLowerCase();
-  const loc    = document.getElementById('loc-filter').value;
-  const date   = document.getElementById('date-filter').value;
+  const search = (document.getElementById('ev-search')?.value || '').toLowerCase();
+  const loc    = document.getElementById('loc-filter')?.value || 'all';
+  const date   = document.getElementById('date-filter')?.value || '';
   const today  = '2026-05-29';
 
   return ALL_EVENTS.filter(e => {
@@ -3108,7 +3108,7 @@ async function loadUserProfiles() {
 async function loadTeamSection() {
   try {
     var res = await fetch(
-      SUPA_URL + '/rest/v1/users?select=full_name,role,user_profiles(avatar_b64,bio)&is_active=eq.true',
+      SUPA_URL + '/rest/v1/users?select=full_name,role,user_profiles(avatar_b64,bio)',
       { headers: H }
     );
     var users = await res.json();
