@@ -607,8 +607,10 @@ async function updateKPIs() {
     const revRows = await query('daily_revenue', revParams);
     if (revRows.length > 0) {
       totalPracticeRevenue = revRows.reduce((s, r) => s + (parseFloat(r.revenue) || 0), 0);
+    } else {
+      totalPracticeRevenue = 0;
     }
-  } catch(e) { /* daily_revenue unavailable */ }
+  } catch(e) { console.warn('daily_revenue fetch failed:', e); }
 
   let inventoryValue = null;
   try {
@@ -636,8 +638,10 @@ async function updateKPIs() {
   document.getElementById('kv-remaining').textContent  = remaining !== null ? '$' + fmt(remaining) : '—';
 
   // Total Revenue tile
+  const _selLocEl   = document.getElementById('sel-location');
+  const _selLocText = _selLocEl?.options[_selLocEl.selectedIndex]?.text || 'all locations';
   document.getElementById('kv-totalrev').textContent  = totalPracticeRevenue !== null ? '$' + fmt(totalPracticeRevenue) : '—';
-  document.getElementById('ks-totalrev').textContent  = totalPracticeRevenue !== null ? 'all hospitals' : 'syncing hourly';
+  document.getElementById('ks-totalrev').textContent  = totalPracticeRevenue !== null ? _selLocText : 'syncing hourly';
 
   document.getElementById('kv-cogspc').textContent    = cogsPC !== null ? cogsPC + '%' : '—';
   document.getElementById('ks-cogspc').textContent    = totalPracticeRevenue !== null
