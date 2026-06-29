@@ -2,14 +2,18 @@
 """
 MedSync SKU Backfill
 --------------------
-Cross-references active lots against the Q2 inventory workbook and patches
+Cross-references MedSync products against an inventory workbook and patches
 any products missing an NDC/SKU.
 
+Supports two workbook formats (auto-detected by sheet names):
+  • Q2 WH Inventory Count workbook (multiple pharmacy/vaccine sheets)
+  • MedSync De Novo Loading Order (single sheet, col B=name, col C=SKU)
+
 Usage (dry run — shows what would change, no writes):
-  python3 sku_backfill.py --xlsx Q2__WH_Inventory_Count_2026.xlsx
+  python3 sku_backfill.py --xlsx MedSync_DeNovo_Loading_Order_v1.xlsx
 
 Apply changes:
-  SUPA_SERVICE_KEY="sb_secret_..." python3 sku_backfill.py --xlsx Q2__WH_Inventory_Count_2026.xlsx --apply
+  SUPA_SERVICE_KEY="sb_secret_..." python3 sku_backfill.py --xlsx MedSync_DeNovo_Loading_Order_v1.xlsx --apply
 """
 
 import argparse
@@ -60,23 +64,61 @@ def _sku_str(val):
     return str(val).strip()
 
 
+DENOVO_SHEET = "De Novo Loading Order"
+
+def _is_real_sku(s):
+    """Return True if s looks like an actual SKU/catalog code, not a brand/model name."""
+    if not s or len(s) < 4:
+        return False
+    # Model names have spaces; actual codes do not
+    if " " in s:
+        return False
+    return True
+
+
 def load_spreadsheet(path):
-    """Return dict: normalised_name → (sku, original_name, sheet)."""
+    """Return dict: normalised_name → (sku, original_name, sheet).
+
+    Auto-detects workbook format:
+      - If workbook contains SHEET_COLS keys → Q2 inventory format (multiple sheets)
+      - If workbook contains De Novo Loading Order sheet → de novo format (single sheet)
+    """
     wb = openpyxl.load_workbook(path)
     mapping = {}
-    for sheet, (icol, scol) in SHEET_COLS.items():
-        ws = wb[sheet]
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            name = row[icol]
-            sku  = row[scol]
-            if not name or not sku:
+
+    if DENOVO_SHEET in wb.sheetnames:
+        # De Novo Loading Order format: col B (index 1) = name, col C (index 2) = SKU
+        ws = wb[DENOVO_SHEET]
+        for row in ws.iter_rows(min_row=5, values_only=True):
+            row_num = row[0]
+            name    = row[1]
+            sku_raw = row[2]
+            if not name or not isinstance(row_num, int):
                 continue
-            sku_s = _sku_str(sku)
-            if not sku_s:
+            sku_s = _sku_str(sku_raw)
+            if not sku_s or not _is_real_sku(sku_s):
                 continue
             key = _norm(name)
-            if key and key not in ("medication","item","vaccine","supplies"):
-                mapping[key] = (sku_s, str(name).strip(), sheet.strip())
+            if key and key not in ("medication", "item", "vaccine", "supplies"):
+                mapping[key] = (sku_s, str(name).strip(), DENOVO_SHEET)
+    else:
+        # Q2 WH Inventory Count format: multiple named sheets
+        for sheet, (icol, scol) in SHEET_COLS.items():
+            if sheet not in wb.sheetnames:
+                continue
+            ws = wb[sheet]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                name = row[icol]
+                sku  = row[scol]
+                if not name or not sku:
+                    continue
+                sku_s = _sku_str(sku)
+                if not sku_s:
+                    continue
+                key = _norm(name)
+                if key and key not in ("medication", "item", "vaccine", "supplies"):
+                    mapping[key] = (sku_s, str(name).strip(), sheet.strip())
+
     return mapping
 
 
