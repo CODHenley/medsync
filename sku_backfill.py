@@ -91,8 +91,10 @@ def supa_get(key, path):
 # Manual overrides: exact MedSync product name → correct SKU
 # Use this to fix fuzzy-match errors or products not in the spreadsheet.
 MANUAL_OVERRIDES = {
-    "vanguard bordetella vaccine oral sf": "10014057",   # Zoetis — not in workbook
-    "vanguard rabies vaccine - 1 year":    "10016542",   # 1-year, not 3-year (10016543)
+    "vanguard bordetella vaccine oral sf":      "10014057",  # Zoetis — not in workbook
+    "vanguard rabies vaccine - 1 year":         "10016542",  # 1-year, not 3-year
+    "purevax feline rabies vaccine - 1 year":   "159730",    # Boehringer Ingelheim 1-year rabies
+    "purevax feline rabies vaccine - 3 year":   "159732",    # Boehringer Ingelheim 3-year rabies
 }
 
 
