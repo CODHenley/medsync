@@ -2847,8 +2847,8 @@ function setRole(r) {
   currentRole = r;
   document.getElementById('rt-admin').classList.toggle('active', r==='admin');
   document.getElementById('rt-mgr').classList.toggle('active',   r==='manager');
-  document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Manager';
-  document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Location Manager';
+  document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Hospital Director';
+  document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Hospital Director';
   var _u = {}; try { _u = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) {}
   var _name = _u.full_name || (r==='admin' ? 'Admin' : 'Manager');
   var _loc  = _u.location_name || (r==='admin' ? 'Scout' : 'Old Orchard');
@@ -3995,7 +3995,7 @@ function renderTrainingStaffCards(rows) {
     var rb = document.getElementById('ms-role');
     if (rb) rb.textContent = user.role === 'admin' ? 'Admin' :
     user.role === 'receiver' ? 'Receiver' :
-    user.role === 'inventory_lead' ? 'Inv. Lead' : 'Manager';
+    user.role === 'inventory_lead' ? 'Inv. Lead' : 'Hosp. Director';
   }
   if (user.role === 'receiver') {
     // Receiver: receiving + goods lost only
