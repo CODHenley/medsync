@@ -168,10 +168,24 @@ nav {
 
 /* ── ROLES ── */
 .roles-section { background: var(--blue-lt); }
+.roles-tier-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); margin-top: 40px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.roles-tier-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
 .roles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 14px; margin-top: 44px;
+  gap: 14px;
+}
+.roles-grid--leadership {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (max-width: 600px) {
+  .roles-grid--leadership { grid-template-columns: 1fr; }
 }
 .role-card {
   background: var(--white);
@@ -183,8 +197,14 @@ nav {
 }
 .role-card:hover {
   border-color: var(--green);
-  box-shadow: 0 4px 16px rgba(26,58,43,0.1);
+  box-shadow: 0 4px 16px rgba(14,91,82,0.12);
 }
+.role-card--leadership {
+  border-color: var(--green);
+  border-width: 2px;
+  background: var(--white);
+}
+.role-card--leadership .role-title { color: var(--green); }
 .role-illo { height: 80px; display: flex; align-items: center; justify-content: center; }
 .role-title { font-size: 15px; font-weight: 800; color: var(--text); }
 .role-desc { font-size: 12px; line-height: 1.55; color: var(--muted); }
@@ -413,6 +433,50 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
     <h2 class="section-heading">Built for how Scout actually works.</h2>
     <p class="section-sub">Your job in MedSync depends on your role. Here's what it looks like for yours.</p>
 
+    <!-- Leadership tier -->
+    <div class="roles-tier-label">Leadership</div>
+    <div class="roles-grid roles-grid--leadership">
+
+      <div class="role-card role-card--leadership">
+        <div class="role-illo">
+          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+            <circle cx="36" cy="36" r="28" fill="#0E5B52" stroke="#0E5B52" stroke-width="2"/>
+            <circle cx="36" cy="36" r="20" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <path d="M36 14 L39.5 26.5 L52.5 26.5 L42 34.5 L45.5 47 L36 39.5 L26.5 47 L30 34.5 L19.5 26.5 L32.5 26.5 Z" fill="white"/>
+          </svg>
+        </div>
+        <div class="role-title">Regional / Admin</div>
+        <div class="role-desc">Cross-location visibility is what MedSync was built for.</div>
+        <ul class="role-tasks">
+          <li>Compare COGs % across all Scout locations</li>
+          <li>Review the integrity assessment in Reports</li>
+          <li>See who's ordering on time and who isn't</li>
+          <li>Export data for finance and vendor reviews</li>
+        </ul>
+      </div>
+
+      <div class="role-card role-card--leadership">
+        <div class="role-illo">
+          <svg width="64" height="72" viewBox="0 0 64 72" fill="none">
+            <path d="M32 4L8 14V36C8 50 18 62 32 68C46 62 56 50 56 36V14L32 4Z" fill="#0E5B52" stroke="#0E5B52" stroke-width="2.5" stroke-linejoin="round"/>
+            <rect x="28" y="22" width="8" height="24" rx="2" fill="white"/>
+            <rect x="20" y="30" width="24" height="8" rx="2" fill="white"/>
+          </svg>
+        </div>
+        <div class="role-title">Hospital Director</div>
+        <div class="role-desc">Your dashboard across the whole hospital.</div>
+        <ul class="role-tasks">
+          <li>Track COGs % against monthly targets</li>
+          <li>Review goods lost totals and trends</li>
+          <li>Order compliance and cycle count status</li>
+          <li>Quarterly and annual spend reports</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Staff tier -->
+    <div class="roles-tier-label" style="margin-top:32px;">Staff</div>
     <div class="roles-grid">
 
       <div class="role-card">
@@ -426,25 +490,6 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
           <li>Log goods lost with full category tracking</li>
           <li>Monitor expiring lots 60 days out</li>
           <li>Live on-hand counts by product</li>
-        </ul>
-      </div>
-
-      <div class="role-card">
-        <div class="role-illo">
-          <!-- Hospital Director emblem: shield with medical cross -->
-          <svg width="64" height="72" viewBox="0 0 64 72" fill="none">
-            <path d="M32 4L8 14V36C8 50 18 62 32 68C46 62 56 50 56 36V14L32 4Z" fill="#E0EFED" stroke="#0E5B52" stroke-width="2.5" stroke-linejoin="round"/>
-            <rect x="28" y="22" width="8" height="24" rx="2" fill="#0E5B52"/>
-            <rect x="20" y="30" width="24" height="8" rx="2" fill="#0E5B52"/>
-          </svg>
-        </div>
-        <div class="role-title">Hospital Director</div>
-        <div class="role-desc">Your dashboard across the whole hospital.</div>
-        <ul class="role-tasks">
-          <li>Track COGs % against monthly targets</li>
-          <li>Review goods lost totals and trends</li>
-          <li>Order compliance and cycle count status</li>
-          <li>Quarterly and annual spend reports</li>
         </ul>
       </div>
 
@@ -472,26 +517,6 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
           <li>Log lot numbers and expiration dates</li>
           <li>Flag short shipments or substitutions</li>
           <li>Reconcile invoices against received items</li>
-        </ul>
-      </div>
-
-      <div class="role-card">
-        <div class="role-illo">
-          <!-- Regional/Admin emblem: star badge -->
-          <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-            <circle cx="36" cy="36" r="28" fill="#E0EFED" stroke="#0E5B52" stroke-width="2"/>
-            <circle cx="36" cy="36" r="20" fill="none" stroke="#0E5B52" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.5"/>
-            <!-- 5-point star -->
-            <path d="M36 14 L39.5 26.5 L52.5 26.5 L42 34.5 L45.5 47 L36 39.5 L26.5 47 L30 34.5 L19.5 26.5 L32.5 26.5 Z" fill="#0E5B52"/>
-          </svg>
-        </div>
-        <div class="role-title">Regional / Admin</div>
-        <div class="role-desc">Cross-location visibility is what MedSync was built for.</div>
-        <ul class="role-tasks">
-          <li>Compare COGs % across all Scout locations</li>
-          <li>Review the integrity assessment in Reports</li>
-          <li>See who's ordering on time and who isn't</li>
-          <li>Export data for finance and vendor reviews</li>
         </ul>
       </div>
 
