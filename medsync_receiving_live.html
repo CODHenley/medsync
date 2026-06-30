@@ -216,6 +216,20 @@ select.nav-sel option{background:var(--navy);}
           </div>
           <div class="scan-status" id="scan-status">0 of 0 scanned</div>
         </div>
+        <div style="display:flex;gap:16px;padding:10px 0 2px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:8px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;">Order Date</label>
+            <div id="po-order-date" style="font-size:12px;color:var(--navy);min-width:80px;">—</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label for="invoice-date-input" style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;">Invoice Date</label>
+            <input type="date" id="invoice-date-input" style="font-size:12px;border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--navy);background:#fff;font-family:inherit;" oninput="state.invoiceDate=this.value">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label for="received-date-input" style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;">Date Received</label>
+            <input type="date" id="received-date-input" style="font-size:12px;border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--navy);background:#fff;font-family:inherit;" oninput="state.receivedDate=this.value">
+          </div>
+        </div>
         <div id="scan-last" class="scan-last" style="display:none;"></div>
         <div class="items-head">
           <span>Product</span><span>Ordered</span><span>Received</span><span>Lot / Exp</span><span>Status</span>
@@ -439,7 +453,11 @@ async function selectPOGroup(idx) {
   if (!g) return;
 
   const ref = (g.vendor || 'Vendor') + ' · ' + (g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
-  state.selectedOrder = { id: idx, ref, total: g.total, submittedAt: g.week_start };
+  const todayStr = new Date().toISOString().split('T')[0];
+  state.selectedOrder = { id: idx, ref, total: g.total, submittedAt: g.earliest || g.week_start };
+  state.orderDate  = g.earliest ? g.earliest.split('T')[0] : (g.week_start || null);
+  state.invoiceDate  = '';
+  state.receivedDate = todayStr;
   state.hasDiscrepancy = false;
 
   state.lines = g.items.map(i => ({
@@ -461,6 +479,13 @@ async function selectPOGroup(idx) {
   document.getElementById('receiving-panel').style.display = 'block';
   document.getElementById('scan-last').style.display = 'none';
   document.getElementById('disc-banner').style.display = 'none';
+  // Populate date fields
+  const orderDateEl = document.getElementById('po-order-date');
+  if (orderDateEl) orderDateEl.textContent = state.orderDate ? new Date(state.orderDate + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+  const invEl = document.getElementById('invoice-date-input');
+  if (invEl) invEl.value = '';
+  const recEl = document.getElementById('received-date-input');
+  if (recEl) recEl.value = state.receivedDate || '';
   renderItems();
   updateStatus();
 }
@@ -797,7 +822,8 @@ async function completeSession() {
             lot_number:      line.lotNum,
             qty_received:    newQty,
             qty_remaining:   newQty,
-            received_date:   new Date().toISOString().split('T')[0],
+            received_date:   state.receivedDate || new Date().toISOString().split('T')[0],
+            invoice_date:    state.invoiceDate || null,
             expiration_date: expDate,
             status:          'Active',
             po_reference:    state.selectedOrder.ref,
@@ -836,7 +862,11 @@ async function completeSession() {
       await fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${line.lineId}`, {
         method: 'PATCH',
         headers: { ...H, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ status: 'received' })
+        body: JSON.stringify({
+          status:       'received',
+          invoice_date: state.invoiceDate || null,
+          received_at:  (state.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00',
+        })
       });
     }
 

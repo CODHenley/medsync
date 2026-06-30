@@ -255,16 +255,18 @@ async function onTaskSelect(task) {
   if (task === 'receive') {
     // Load submitted po_items for this location, group by vendor + week_start
     const res = await fetch(
-      SUPA_URL + `/rest/v1/po_items?select=id,product_id,product_name,vendor,qty_ordered,unit_price,week_start,status&location_id=eq.${state.locationId}&status=eq.submitted&order=added_at.desc&limit=20`,
+      SUPA_URL + `/rest/v1/po_items?select=id,product_id,product_name,vendor,qty_ordered,unit_price,week_start,status,submitted_at,added_at&location_id=eq.${state.locationId}&status=eq.submitted&order=added_at.desc&limit=20`,
       { headers: H }
     );
     const items = await res.json();
     _hrPoGroups = {};
     (Array.isArray(items) ? items : []).forEach(i => {
       const key = (i.week_start || 'pending') + '|' + (i.vendor || '');
-      if (!_hrPoGroups[key]) _hrPoGroups[key] = { week_start: i.week_start, vendor: i.vendor, items: [], total: 0 };
+      if (!_hrPoGroups[key]) _hrPoGroups[key] = { week_start: i.week_start, vendor: i.vendor, items: [], total: 0, earliest: null };
       _hrPoGroups[key].items.push(i);
       _hrPoGroups[key].total += Number(i.unit_price || 0) * Number(i.qty_ordered || 1);
+      const refDate = i.submitted_at || i.added_at;
+      if (refDate && (!_hrPoGroups[key].earliest || refDate < _hrPoGroups[key].earliest)) _hrPoGroups[key].earliest = refDate;
     });
     state.orders = Object.entries(_hrPoGroups).map(([key, g]) => ({ key, ...g }));
     state.screen = 'receive';
@@ -312,6 +314,20 @@ function renderReceive() {
         </div>
         <div class="scan-progress">${confirmed} of ${state.lines.length}</div>
       </div>
+      <div style="display:flex;gap:14px;padding:10px 18px;background:#f5f6f8;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;">Order Date</label>
+          <div style="font-size:12px;color:var(--navy);">${state.orderDate ? new Date(state.orderDate + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;">Invoice Date</label>
+          <input type="date" value="${state.invoiceDate||''}" style="font-size:12px;border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--navy);background:#fff;font-family:inherit;" oninput="state.invoiceDate=this.value">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;">Date Received</label>
+          <input type="date" value="${state.receivedDate||''}" style="font-size:12px;border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--navy);background:#fff;font-family:inherit;" oninput="state.receivedDate=this.value">
+        </div>
+      </div>
       <div class="scan-body">
         <div id="scan-last" class="scan-last ${state.lastScanStatus || ''}" style="${state.lastScanMsg ? 'display:block;' : 'display:none;'}">${state.lastScanMsg || ''}</div>
         <div class="scan-input-wrap">
@@ -353,7 +369,11 @@ function onPOGroupSelect(groupKey) {
   const g = _hrPoGroups[groupKey];
   if (!g) return;
   const ref = (g.vendor || 'Vendor') + ' · ' + (g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+  const todayStr = new Date().toISOString().split('T')[0];
   state.selectedOrder = { key: groupKey, ref, total: g.total };
+  state.orderDate    = g.earliest ? g.earliest.split('T')[0] : (g.week_start || null);
+  state.invoiceDate  = '';
+  state.receivedDate = todayStr;
   state.lines = g.items.map(i => ({
     lineId:    i.id,
     productId: i.product_id,
@@ -407,7 +427,11 @@ async function hrComplete() {
       await fetch(SUPA_URL + `/rest/v1/po_items?id=eq.${line.lineId}`, {
         method: 'PATCH',
         headers: { ...H, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ status: 'received' })
+        body: JSON.stringify({
+          status:       'received',
+          invoice_date: state.invoiceDate || null,
+          received_at:  (state.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00',
+        })
       });
     }
 
@@ -423,7 +447,8 @@ async function hrComplete() {
           lot_number:      line.lotNum || ('L' + Date.now()),
           qty_received:    line.qty,
           qty_remaining:   line.qty,
-          received_date:   new Date().toISOString().split('T')[0],
+          received_date:   state.receivedDate || new Date().toISOString().split('T')[0],
+          invoice_date:    state.invoiceDate || null,
           expiration_date: line.expDate || new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split('T')[0],
           status:          'Active',
           po_reference:    state.selectedOrder.ref,
