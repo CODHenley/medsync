@@ -134,6 +134,48 @@ select.nav-sel option{background:var(--navy);}
 .cam-status.error{color:var(--red);}
 .cam-hint{font-size:11px;color:var(--mist);text-align:center;margin-top:6px;line-height:1.5;}
 
+/* ── NDC RESOLVE MODAL ───────────────────────────────────── */
+.ndc-modal-backdrop{position:fixed;inset:0;background:rgba(10,15,30,.65);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);}
+.ndc-modal{background:#fff;border-radius:14px;width:min(460px,96vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;}
+.ndc-modal-head{background:var(--navy);padding:14px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.ndc-modal-title{color:#fff;font-size:14px;font-weight:600;line-height:1.3;}
+.ndc-modal-sub{color:rgba(255,255,255,.55);font-size:11px;margin-top:3px;font-family:'DM Mono',monospace;}
+.ndc-modal-body{padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;}
+.ndc-fda-banner{background:#EAF4FF;border:0.5px solid #B8D8F8;border-radius:8px;padding:10px 12px;font-size:12px;color:#1C2B4A;display:flex;align-items:flex-start;gap:8px;}
+.ndc-fda-icon{font-size:16px;flex-shrink:0;}
+.ndc-line-btn{width:100%;text-align:left;padding:11px 14px;border:0.5px solid var(--border);border-radius:9px;background:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .12s;}
+.ndc-line-btn:hover{background:#EDE8F8;border-color:var(--navy);}
+.ndc-line-name{font-size:13px;font-weight:500;color:var(--navy);}
+.ndc-line-meta{font-size:11px;color:var(--mist);margin-top:2px;}
+.ndc-not-on-po{width:100%;padding:10px;border:0.5px solid var(--red-border);border-radius:9px;background:var(--red-bg);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.ndc-save-row{display:flex;align-items:center;gap:8px;padding-top:4px;border-top:0.5px solid var(--border);}
+.ndc-save-label{font-size:11px;color:var(--mist);flex:1;}
+
+/* ── PILL COUNT MODAL ─────────────────────────────────────── */
+.pill-overlay{position:fixed;inset:0;background:rgba(10,15,30,.7);z-index:700;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);}
+.pill-modal{background:#fff;border-radius:14px;width:min(480px,96vw);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.pill-modal-head{background:var(--navy);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
+.pill-modal-title{color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.pill-modal-body{padding:16px;display:flex;flex-direction:column;gap:12px;}
+.pill-viewfinder{position:relative;border-radius:10px;overflow:hidden;background:#111;aspect-ratio:4/3;}
+.pill-video{width:100%;height:100%;object-fit:cover;display:block;}
+.pill-preview{width:100%;border-radius:10px;display:block;max-height:300px;object-fit:contain;background:#000;}
+.pill-aim-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;}
+.pill-aim-ring{width:80%;aspect-ratio:1;border:2px dashed rgba(255,255,255,.4);border-radius:50%;}
+.pill-result{background:var(--green-bg);border:0.5px solid #A8D8C8;border-radius:10px;padding:14px 18px;text-align:center;}
+.pill-count-num{font-size:48px;font-weight:700;color:var(--green);line-height:1;}
+.pill-count-label{font-size:12px;color:var(--mist);margin-top:4px;}
+.pill-count-conf{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block;margin-top:6px;}
+.pill-btn-row{display:flex;gap:8px;}
+.pill-btn{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:none;}
+.pill-btn-primary{background:var(--navy);color:#fff;}
+.pill-btn-primary:hover{background:#243459;}
+.pill-btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.pill-btn-secondary{background:#EDE8F8;color:var(--navy);border:0.5px solid var(--border);}
+.pill-btn-secondary:hover{background:#E0D8F0;}
+.pill-spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
 /* ── MOBILE ──────────────────────────────────────────────── */
 @media (max-width:600px) {
   /* Topbar */
@@ -312,11 +354,23 @@ select.nav-sel option{background:var(--navy);}
         style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;"
         onkeydown="if(event.key==='Enter')document.getElementById('lem-exp').focus()">
     </div>
-    <div style="margin-bottom:16px;">
+    <div style="margin-bottom:12px;">
       <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Expiration date (MM/YYYY) <span style="color:var(--red);">*</span></div>
       <input id="lem-exp" type="text" placeholder="06/2027" maxlength="7" autocomplete="off"
         style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;"
+        onkeydown="if(event.key==='Enter')document.getElementById('lem-qty').focus()">
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+        <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Qty received <span style="color:var(--red);">*</span></div>
+        <button onclick="openPillCount()" style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:#EDE8F8;border:0.5px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;color:var(--navy);cursor:pointer;font-family:'DM Sans',sans-serif;">
+          <span>💊</span> Count pills
+        </button>
+      </div>
+      <input id="lem-qty" type="number" min="0" step="1" placeholder="0" autocomplete="off"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;"
         onkeydown="if(event.key==='Enter')confirmLotEntry()">
+      <div id="lem-qty-hint" style="display:none;font-size:11px;color:var(--green);margin-top:4px;"></div>
     </div>
     <div id="lem-error" style="display:none;font-size:12px;color:var(--red);margin-bottom:10px;padding:8px 10px;background:#fff5f5;border-radius:6px;"></div>
     <div style="display:flex;gap:8px;">
@@ -325,6 +379,88 @@ select.nav-sel option{background:var(--navy);}
     </div>
   </div>
 </div>
+
+<!-- NDC resolve modal — shown when scan doesn't match any PO item -->
+<div id="ndc-resolve-modal" class="ndc-modal-backdrop" style="display:none;">
+  <div class="ndc-modal">
+    <div class="ndc-modal-head">
+      <div>
+        <div class="ndc-modal-title">Identify scanned item</div>
+        <div class="ndc-modal-sub" id="nrm-ndc">NDC: —</div>
+      </div>
+      <button onclick="closeNDCModal()" class="cam-close">✕</button>
+    </div>
+    <div class="ndc-modal-body">
+      <div id="nrm-fda-banner" class="ndc-fda-banner" style="display:none;">
+        <span class="ndc-fda-icon">🔍</span>
+        <div><strong id="nrm-fda-name"></strong><div style="font-size:11px;color:var(--mist);margin-top:2px;" id="nrm-fda-sub"></div></div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Which item on this PO is this?</div>
+      <div id="nrm-lines"></div>
+      <button class="ndc-not-on-po" onclick="markNotOnPO()">⚠ This product is not on this PO</button>
+      <div class="ndc-save-row">
+        <input type="checkbox" id="nrm-save-cb" checked style="accent-color:var(--navy);cursor:pointer;">
+        <label for="nrm-save-cb" class="ndc-save-label">Remember this NDC → product mapping for future deliveries</label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pill count modal -->
+<div id="pill-overlay" class="pill-overlay" style="display:none;">
+  <div class="pill-modal">
+    <div class="pill-modal-head">
+      <div class="pill-modal-title">💊 Count pills</div>
+      <button onclick="closePillCount()" class="cam-close">✕</button>
+    </div>
+    <div class="pill-modal-body">
+      <div id="pill-stage-camera">
+        <div class="pill-viewfinder">
+          <video id="pill-video" class="pill-video" autoplay playsinline muted></video>
+          <div class="pill-aim-overlay"><div class="pill-aim-ring"></div></div>
+        </div>
+        <div style="font-size:11px;color:var(--mist);text-align:center;margin-top:4px;">Spread pills on a flat surface and fill the frame</div>
+        <div class="pill-btn-row">
+          <button class="pill-btn pill-btn-secondary" onclick="closePillCount()">Cancel</button>
+          <button class="pill-btn pill-btn-primary" id="pill-capture-btn" onclick="capturePillFrame()">📸 Capture</button>
+        </div>
+      </div>
+      <div id="pill-stage-preview" style="display:none;">
+        <img id="pill-preview-img" class="pill-preview" alt="Pill capture">
+        <div class="pill-btn-row">
+          <button class="pill-btn pill-btn-secondary" onclick="retakePillPhoto()">↩ Retake</button>
+          <button class="pill-btn pill-btn-primary" id="pill-count-btn" onclick="runPillCount()">Count →</button>
+        </div>
+      </div>
+      <div id="pill-stage-counting" style="display:none;text-align:center;padding:20px 0;">
+        <div class="pill-spinner" style="width:28px;height:28px;border:3px solid #EDE8F8;border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;"></div>
+        <div style="font-size:13px;color:var(--mist);margin-top:12px;">Counting pills…</div>
+      </div>
+      <div id="pill-stage-result" style="display:none;">
+        <img id="pill-result-img" class="pill-preview" alt="Counted" style="margin-bottom:10px;">
+        <div class="pill-result">
+          <div class="pill-count-num" id="pill-count-num">—</div>
+          <div class="pill-count-label">pills counted</div>
+          <div class="pill-count-conf" id="pill-count-conf"></div>
+          <div style="font-size:11px;color:var(--mist);margin-top:6px;" id="pill-count-notes"></div>
+        </div>
+        <div class="pill-btn-row" style="margin-top:4px;">
+          <button class="pill-btn pill-btn-secondary" onclick="retakePillPhoto()">↩ Retake</button>
+          <button class="pill-btn pill-btn-primary" onclick="applyPillCount()">✓ Use this count</button>
+        </div>
+      </div>
+      <div id="pill-stage-error" style="display:none;text-align:center;padding:16px 0;">
+        <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
+        <div style="font-size:13px;color:var(--red);" id="pill-error-msg"></div>
+        <div class="pill-btn-row" style="margin-top:12px;">
+          <button class="pill-btn pill-btn-secondary" onclick="retakePillPhoto()">↩ Retake</button>
+          <button class="pill-btn pill-btn-secondary" onclick="closePillCount()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<canvas id="pill-canvas" style="display:none;"></canvas>
 <script src="medsync_locations.js"></script>
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
@@ -699,34 +835,162 @@ function autoScanNext() {
   openLotEntryModal(pending);
 }
 
-function processScan() {
+async function processScan() {
   const val = document.getElementById('scan-input').value.trim();
   if (!val) { autoScanNext(); return; }
-  // Try to match by NDC
-  const idx = state.lines.findIndex(l => l.ndc === val || l.name.toLowerCase().includes(val.toLowerCase()));
-  if (idx === -1) {
-    // Discrepancy — unmatched item
-    state.hasDiscrepancy = true;
-    const scanEl = document.getElementById('scan-last');
-    scanEl.style.display = 'block';
-    scanEl.className = 'scan-last warn';
-    scanEl.textContent = '⚠ No match found for "' + val + '" — item not on this PO. Do not shelve.';
-    const disc = document.getElementById('disc-banner');
-    disc.style.display = 'flex';
-    document.getElementById('disc-text').textContent = val + ' scanned — not on PO. Contact vendor to confirm correct product.';
+
+  // 1. Try direct match by NDC or name
+  let idx = state.lines.findIndex(l => l.ndc === val || l.name.toLowerCase().includes(val.toLowerCase()));
+  if (idx !== -1) {
     document.getElementById('scan-input').value = '';
+    openLotEntryModal(idx);
     return;
   }
+
+  // 2. Check ndc_product_map table for a saved mapping
+  const mapped = await lookupNDCMap(val);
+  if (mapped) {
+    idx = state.lines.findIndex(l => l.productId === mapped.product_id || l.name.toLowerCase() === mapped.product_name.toLowerCase());
+    if (idx !== -1) {
+      document.getElementById('scan-input').value = '';
+      showToast('✓ NDC matched via saved mapping → ' + mapped.product_name);
+      openLotEntryModal(idx);
+      return;
+    }
+  }
+
+  // 3. No match — look up FDA NDC, then show identify modal
   document.getElementById('scan-input').value = '';
-  openLotEntryModal(idx);
+  const scanEl = document.getElementById('scan-last');
+  scanEl.style.display = 'block';
+  scanEl.className = 'scan-last warn';
+  scanEl.textContent = '🔍 Looking up "' + val + '"…';
+
+  const fdaResult = await lookupFDANDC(val);
+  showNDCResolveModal(val, fdaResult);
+}
+
+// ── NDC map lookup ────────────────────────────────────────────
+let _ndcMapCache = {};
+async function lookupNDCMap(ndc) {
+  if (_ndcMapCache[ndc] !== undefined) return _ndcMapCache[ndc];
+  try {
+    const r = await fetch(SUPA_URL + `/rest/v1/ndc_product_map?ndc=eq.${encodeURIComponent(ndc)}&limit=1`, { headers: H });
+    const data = r.ok ? await r.json() : [];
+    const match = Array.isArray(data) && data[0] ? data[0] : null;
+    _ndcMapCache[ndc] = match;
+    // Increment use_count in background
+    if (match) fetch(SUPA_URL + `/rest/v1/ndc_product_map?ndc=eq.${encodeURIComponent(ndc)}`, { method:'PATCH', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify({use_count:(match.use_count||0)+1}) }).catch(()=>{});
+    return match;
+  } catch(e) { return null; }
+}
+
+// ── FDA NDC API lookup ────────────────────────────────────────
+async function lookupFDANDC(ndc) {
+  try {
+    // Normalize NDC (strip dashes, try both formats)
+    const clean = ndc.replace(/-/g,'');
+    const r = await fetch(`https://api.fda.gov/drug/ndc.json?search=product_ndc:"${ndc}"&limit=1`);
+    if (r.ok) {
+      const d = await r.json();
+      const hit = d.results && d.results[0];
+      if (hit) return { brandName: hit.brand_name || '', genericName: hit.generic_name || '', dosageForm: hit.dosage_form || '', labeler: hit.labeler_name || '' };
+    }
+    // Fallback: search by cleaned NDC
+    const r2 = await fetch(`https://api.fda.gov/drug/ndc.json?search=product_ndc:"${clean.slice(0,5)+'-'+clean.slice(5,9)+'-'+clean.slice(9)}"&limit=1`);
+    if (r2.ok) {
+      const d2 = await r2.json();
+      const hit2 = d2.results && d2.results[0];
+      if (hit2) return { brandName: hit2.brand_name || '', genericName: hit2.generic_name || '', dosageForm: hit2.dosage_form || '', labeler: hit2.labeler_name || '' };
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ── NDC resolve modal ─────────────────────────────────────────
+let _pendingNDC = null;
+function showNDCResolveModal(ndc, fdaResult) {
+  _pendingNDC = ndc;
+  document.getElementById('nrm-ndc').textContent = 'NDC: ' + ndc;
+  const fdaBanner = document.getElementById('nrm-fda-banner');
+  if (fdaResult && (fdaResult.brandName || fdaResult.genericName)) {
+    fdaBanner.style.display = 'flex';
+    document.getElementById('nrm-fda-name').textContent = fdaResult.brandName || fdaResult.genericName;
+    document.getElementById('nrm-fda-sub').textContent = [fdaResult.genericName !== fdaResult.brandName ? fdaResult.genericName : '', fdaResult.dosageForm, fdaResult.labeler].filter(Boolean).join(' · ');
+  } else {
+    fdaBanner.style.display = 'none';
+  }
+  // Build PO line buttons
+  const pending = state.lines.filter(l => l.status === 'pending');
+  document.getElementById('nrm-lines').innerHTML = pending.map((l, i) => {
+    const realIdx = state.lines.indexOf(l);
+    return `<button class="ndc-line-btn" onclick="resolveNDCToLine(${realIdx})">
+      <div class="ndc-line-name">${l.name}</div>
+      <div class="ndc-line-meta">${l.vendor || ''} · ${l.qtyOrdered} units ordered</div>
+    </button>`;
+  }).join('') || '<div style="font-size:12px;color:var(--mist);padding:8px 0;">All items already scanned</div>';
+  document.getElementById('ndc-resolve-modal').style.display = 'flex';
+}
+
+function closeNDCModal() {
+  document.getElementById('ndc-resolve-modal').style.display = 'none';
+  _pendingNDC = null;
+  const scanEl = document.getElementById('scan-last');
+  scanEl.style.display = 'none';
+}
+
+async function resolveNDCToLine(lineIdx) {
+  const ndc = _pendingNDC;
+  const line = state.lines[lineIdx];
+  document.getElementById('ndc-resolve-modal').style.display = 'none';
+  _pendingNDC = null;
+
+  // Save mapping if checkbox checked
+  if (document.getElementById('nrm-save-cb').checked && ndc && line.productId) {
+    _ndcMapCache[ndc] = { ndc, product_id: line.productId, product_name: line.name };
+    fetch(SUPA_URL + '/rest/v1/ndc_product_map', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        ndc,
+        product_id:   line.productId,
+        product_name: line.name,
+        vendor:       line.vendor || null,
+        created_by:   _sess.email || null,
+        use_count:    1,
+      })
+    }).catch(() => {});
+    showToast('✓ NDC mapping saved for next time');
+  }
+
+  // Update line's NDC for future scans this session
+  line.ndc = ndc;
+  openLotEntryModal(lineIdx);
+}
+
+async function markNotOnPO() {
+  document.getElementById('ndc-resolve-modal').style.display = 'none';
+  state.hasDiscrepancy = true;
+  const scanEl = document.getElementById('scan-last');
+  scanEl.style.display = 'block';
+  scanEl.className = 'scan-last warn';
+  scanEl.textContent = '⚠ Item not on PO: ' + (_pendingNDC || '') + ' — do not shelve, contact vendor.';
+  const disc = document.getElementById('disc-banner');
+  disc.style.display = 'flex';
+  document.getElementById('disc-text').textContent = (_pendingNDC || 'Unknown NDC') + ' scanned — not on PO. Contact vendor to confirm correct product.';
+  _pendingNDC = null;
+  renderItems();
+  updateStatus();
 }
 
 function openLotEntryModal(lineIdx) {
   _pendingLotLineIdx = lineIdx;
   const line = state.lines[lineIdx];
-  document.getElementById('lem-product').textContent = line.name + ' · ' + line.qtyOrdered + ' units';
+  document.getElementById('lem-product').textContent = line.name + ' · ' + line.qtyOrdered + ' ordered';
   document.getElementById('lem-lot').value = '';
   document.getElementById('lem-exp').value = '';
+  document.getElementById('lem-qty').value = line.qtyOrdered || '';
+  document.getElementById('lem-qty-hint').style.display = 'none';
   document.getElementById('lem-error').style.display = 'none';
   const modal = document.getElementById('lot-entry-modal');
   modal.style.display = 'flex';
@@ -741,16 +1005,25 @@ function cancelLotEntry() {
 function confirmLotEntry() {
   const lotNum = document.getElementById('lem-lot').value.trim();
   const expRaw = document.getElementById('lem-exp').value.trim();
+  const qtyVal = parseInt(document.getElementById('lem-qty').value, 10);
   const errEl  = document.getElementById('lem-error');
 
   if (!lotNum) { errEl.textContent = 'Lot number is required.'; errEl.style.display = ''; return; }
   if (!/^\d{2}\/\d{4}$/.test(expRaw)) { errEl.textContent = 'Expiration must be MM/YYYY (e.g. 06/2027).'; errEl.style.display = ''; return; }
+  if (isNaN(qtyVal) || qtyVal < 0) { errEl.textContent = 'Qty received must be a number ≥ 0.'; errEl.style.display = ''; return; }
 
   const line = state.lines[_pendingLotLineIdx];
-  line.qtyReceived = line.qtyOrdered;
+  const ordered = line.qtyOrdered || 0;
+  line.qtyReceived = qtyVal;
   line.lotNum  = lotNum;
   line.expDate = expRaw;
-  line.status  = 'confirmed';
+  // Flag discrepancy if qty received differs from ordered
+  if (qtyVal !== ordered) {
+    line.status = 'discrepancy';
+    state.hasDiscrepancy = true;
+  } else {
+    line.status  = 'confirmed';
+  }
 
   document.getElementById('lot-entry-modal').style.display = 'none';
   _pendingLotLineIdx = null;
@@ -758,7 +1031,8 @@ function confirmLotEntry() {
   const scanEl = document.getElementById('scan-last');
   scanEl.style.display = 'block';
   scanEl.className = 'scan-last ok';
-  scanEl.textContent = '✓ ' + line.name + ' · Lot #' + lotNum + ' · Exp ' + expRaw + ' · ' + line.qtyOrdered + ' units confirmed';
+  const qtyNote = qtyVal !== ordered ? `${qtyVal} received (${ordered} ordered) ⚠` : `${qtyVal} units confirmed`;
+  scanEl.textContent = '✓ ' + line.name + ' · Lot #' + lotNum + ' · Exp ' + expRaw + ' · ' + qtyNote;
   renderItems();
   updateStatus();
 }
@@ -898,6 +1172,103 @@ async function completeSession() {
     btn.disabled = false;
     btn.textContent = 'Complete receiving →';
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PILL COUNT — camera capture → Claude vision → qty fill
+// ══════════════════════════════════════════════════════════════
+let _pillStream = null;
+let _pillImageDataUrl = null;
+let _pillCountResult = null;
+
+function pillStage(name) {
+  ['camera','preview','counting','result','error'].forEach(s => {
+    document.getElementById('pill-stage-' + s).style.display = s === name ? 'block' : 'none';
+  });
+}
+
+async function openPillCount() {
+  _pillImageDataUrl = null;
+  _pillCountResult = null;
+  document.getElementById('pill-overlay').style.display = 'flex';
+  pillStage('camera');
+  try {
+    _pillStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:960} } });
+    document.getElementById('pill-video').srcObject = _pillStream;
+  } catch(e) {
+    pillStage('error');
+    document.getElementById('pill-error-msg').textContent = 'Camera unavailable: ' + e.message;
+  }
+}
+
+function closePillCount() {
+  if (_pillStream) { _pillStream.getTracks().forEach(t => t.stop()); _pillStream = null; }
+  document.getElementById('pill-overlay').style.display = 'none';
+  pillStage('camera');
+}
+
+function capturePillFrame() {
+  const video = document.getElementById('pill-video');
+  const canvas = document.getElementById('pill-canvas');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  _pillImageDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  document.getElementById('pill-preview-img').src = _pillImageDataUrl;
+  if (_pillStream) { _pillStream.getTracks().forEach(t => t.stop()); _pillStream = null; }
+  pillStage('preview');
+}
+
+function retakePillPhoto() {
+  _pillImageDataUrl = null;
+  _pillCountResult = null;
+  pillStage('camera');
+  openPillCount();
+}
+
+async function runPillCount() {
+  if (!_pillImageDataUrl) return;
+  pillStage('counting');
+  try {
+    const base64 = _pillImageDataUrl.split(',')[1];
+    const res = await fetch(SUPA_URL + '/functions/v1/pill-count', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64: base64, media_type: 'image/jpeg' })
+    });
+    if (!res.ok) throw new Error('Count service returned ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    _pillCountResult = data;
+    // Show result
+    document.getElementById('pill-result-img').src = _pillImageDataUrl;
+    document.getElementById('pill-count-num').textContent = data.count ?? '—';
+    const confEl = document.getElementById('pill-count-conf');
+    const conf = data.confidence || 'medium';
+    confEl.textContent = conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence';
+    confEl.style.background = conf === 'high' ? 'var(--green-bg)' : conf === 'low' ? 'var(--amber-bg)' : '#EDE8F8';
+    confEl.style.color = conf === 'high' ? 'var(--green)' : conf === 'low' ? 'var(--amber)' : 'var(--slate)';
+    document.getElementById('pill-count-notes').textContent = data.notes || '';
+    pillStage('result');
+  } catch(e) {
+    pillStage('error');
+    document.getElementById('pill-error-msg').textContent = 'Count failed: ' + e.message;
+  }
+}
+
+function applyPillCount() {
+  if (!_pillCountResult || _pillCountResult.count == null) return;
+  const qtyEl = document.getElementById('lem-qty');
+  const hintEl = document.getElementById('lem-qty-hint');
+  if (qtyEl) {
+    const ordered = parseInt(qtyEl.placeholder, 10) || 0;
+    qtyEl.value = _pillCountResult.count;
+    qtyEl.style.borderColor = 'var(--green)';
+    hintEl.style.display = 'block';
+    hintEl.textContent = '💊 AI counted ' + _pillCountResult.count + ' pills (' + (_pillCountResult.confidence || 'medium') + ' confidence)' + (ordered && _pillCountResult.count !== ordered ? ' — differs from ordered qty of ' + ordered : '');
+    setTimeout(() => { if(qtyEl) qtyEl.style.borderColor = ''; }, 2000);
+  }
+  closePillCount();
 }
 
 async function handleInvoiceUpload(event) {
