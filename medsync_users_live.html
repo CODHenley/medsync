@@ -390,17 +390,19 @@ let myId   = null;
 let _pendingDeleteId = null;
 
 const ROLE_LABELS = {
-  admin: 'Admin', manager: 'Manager', receiver: 'Receiver', inventory_lead: 'Inventory Lead',
-  hospital_manager: 'Manager', clinical: 'Manager'  // legacy aliases
+  admin: 'Admin', manager: 'Hospital Director', receiver: 'Receiver', inventory_lead: 'Inventory Lead',
+  hospital_manager: 'Hospital Director', clinical: 'Vet / Tech'
 };
 const CREATABLE = {
-  admin:   ['admin','manager','receiver','inventory_lead'],
-  manager: ['receiver','inventory_lead']
+  admin:            ['admin','hospital_manager','manager','receiver','inventory_lead'],
+  hospital_manager: ['hospital_manager','manager','receiver','inventory_lead'],
+  manager:          ['receiver','inventory_lead']
 };
 // Roles a given role can manage (activate/deactivate/delete)
 const MANAGEABLE = {
-  admin:   ['admin','manager','receiver','inventory_lead'],
-  manager: ['receiver','inventory_lead']
+  admin:            ['admin','hospital_manager','manager','receiver','inventory_lead'],
+  hospital_manager: ['hospital_manager','manager','receiver','inventory_lead'],
+  manager:          ['receiver','inventory_lead']
 };
 
 async function boot() {
