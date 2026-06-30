@@ -131,10 +131,6 @@ tbody tr:hover td{background:#FAFAFE;}
   <div class="controls">
     <select id="loc-sel">
       <option value="all">All locations</option>
-      <option value="11111111-0000-0000-0000-000000000001">Lincoln Park</option>
-      <option value="11111111-0000-0000-0000-000000000002">Old Orchard</option>
-      <option value="11111111-0000-0000-0000-000000000003">West Loop</option>
-      <option value="11111111-0000-0000-0000-000000000004">Wheaton</option>
     </select>
     <select id="year-sel"></select>
     <button class="btn btn-primary" onclick="loadAll()"><i class="ti ti-refresh" style="font-size:13px;"></i> Refresh</button>
@@ -152,12 +148,8 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
 
-const LOCS = [
-  { id:'11111111-0000-0000-0000-000000000001', name:'Lincoln Park' },
-  { id:'11111111-0000-0000-0000-000000000002', name:'Old Orchard'  },
-  { id:'11111111-0000-0000-0000-000000000003', name:'West Loop'    },
-  { id:'11111111-0000-0000-0000-000000000004', name:'Wheaton'      },
-];
+// LOCS is populated at boot from the live locations table — do not hardcode UUIDs
+let LOCS = [];
 
 // ── Populate year selector ──
 const now = new Date();
@@ -167,6 +159,24 @@ for (let y = CUR_YEAR; y >= CUR_YEAR - 3; y--) {
   const o = document.createElement('option');
   o.value = y; o.textContent = y;
   yearSel.appendChild(o);
+}
+
+async function bootLocs() {
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
+    const data = r.ok ? await r.json() : [];
+    if (Array.isArray(data) && data.length) {
+      LOCS = data.map(l => ({ id: l.id, name: l.name }));
+      const sel = document.getElementById('loc-sel');
+      sel.innerHTML = '<option value="all">All locations</option>';
+      LOCS.forEach(l => {
+        const o = document.createElement('option');
+        o.value = l.id; o.textContent = l.name;
+        sel.appendChild(o);
+      });
+    }
+  } catch(e) { console.warn('Could not load locations:', e); }
+  loadAll();
 }
 
 function selectedLocId() { return document.getElementById('loc-sel').value; }
@@ -671,7 +681,7 @@ function renderIntegrity(gl, pos, lots, year) {
 // ── Init ──
 document.getElementById('loc-sel').addEventListener('change', loadAll);
 document.getElementById('year-sel').addEventListener('change', loadAll);
-loadAll();
+bootLocs();
 </script>
 </body>
 </html>
