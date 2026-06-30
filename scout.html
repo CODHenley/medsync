@@ -325,19 +325,28 @@ nav {
 
 /* ── CTA ── */
 .cta-section {
-  background: var(--green);
-  padding: 80px 56px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 40px; flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 420px;
 }
-.cta-left {}
+.cta-left {
+  background: var(--orange);
+  display: flex; align-items: center; justify-content: center;
+  padding: 60px 48px;
+}
+.cta-right {
+  background: var(--green);
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 60px 56px;
+  gap: 20px;
+}
 .cta-heading {
-  font-size: clamp(24px, 3vw, 42px); font-weight: 800;
-  color: #fff; letter-spacing: -0.5px; line-height: 1.1;
+  font-size: clamp(28px, 3.5vw, 48px); font-weight: 900;
+  color: #fff; letter-spacing: -1px; line-height: 1.05;
   text-wrap: balance;
 }
-.cta-sub { font-size: 15px; color: rgba(255,255,255,0.5); margin-top: 10px; line-height: 1.6; }
-.cta-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.cta-sub { font-size: 15px; color: rgba(255,255,255,0.55); line-height: 1.65; max-width: 400px; }
+.cta-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; margin-top: 4px; }
 .btn-cta {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 14px 28px; border-radius: 28px;
@@ -346,8 +355,13 @@ nav {
 }
 .btn-cta-primary { background: var(--orange); color: #fff; }
 .btn-cta-primary:hover { background: #E06728; transform: translateY(-1px); }
-.btn-cta-ghost { border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.75); }
-.btn-cta-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+.btn-cta-ghost { border: 1.5px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); }
+.btn-cta-ghost:hover { border-color: rgba(255,255,255,0.55); color: #fff; }
+@media (max-width: 800px) {
+  .cta-section { grid-template-columns: 1fr; }
+  .cta-left { padding: 48px 24px; min-height: 260px; }
+  .cta-right { padding: 48px 24px; }
+}
 
 /* ── FOOTER ── */
 footer {
@@ -713,13 +727,15 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
 <!-- CTA -->
 <section class="cta-section">
   <div class="cta-left">
+    <img src="Screenshot 2026-06-29 at 2.46.50 PM.jpg" alt="Scout animals" style="max-height:300px;max-width:100%;width:auto;object-fit:contain;border-radius:12px;">
+  </div>
+  <div class="cta-right">
     <h2 class="cta-heading">Your Scout credentials<br>get you in.</h2>
     <p class="cta-sub">Sign in with your Scout email. Your role and location are already configured — you'll land exactly where you need to be.</p>
-  </div>
-  <img src="Screenshot 2026-06-29 at 2.46.50 PM.jpg" alt="Scout animals" style="height:200px;width:auto;opacity:0.92;border-radius:10px;flex-shrink:0;">
-  <div class="cta-actions">
-    <a class="btn-cta btn-cta-primary" href="medsync_login.html">Sign in to MedSync →</a>
-    <a class="btn-cta btn-cta-ghost" href="medsync_userguide_live.html">Read the user guide</a>
+    <div class="cta-actions">
+      <a class="btn-cta btn-cta-primary" href="medsync_login.html">Sign in to MedSync →</a>
+      <a class="btn-cta btn-cta-ghost" href="medsync_userguide_live.html">Read the user guide</a>
+    </div>
   </div>
 </section>
 
