@@ -245,10 +245,19 @@ nav {
 .why-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
 .why-text { font-size: 13px; line-height: 1.65; color: var(--muted); }
 .why-visual {
-  background: var(--green);
   border-radius: 16px;
-  padding: 36px 32px;
+  overflow: hidden;
   position: sticky; top: 80px;
+  border: 1.5px solid var(--border);
+}
+.why-visual-top {
+  background: var(--green);
+  padding: 32px 32px 28px;
+}
+.why-visual-bottom {
+  background: #fff;
+  padding: 28px 32px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
 .why-v-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
@@ -263,7 +272,7 @@ nav {
 .m-val { font-size: 20px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
 .m-val.good { color: #6BCFA0; }
 .m-val.warn { color: var(--orange); }
-.why-v-illo { display: flex; justify-content: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.07); }
+.why-v-illo { display: flex; justify-content: center; }
 
 /* ── PHOTO STRIP ── */
 .photo-strip {
@@ -621,32 +630,36 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       </div>
 
       <div class="why-visual">
-        <div class="why-v-label">Scout · Live metrics</div>
-        <div class="metric-row">
-          <span class="m-label">Locations active</span>
-          <span class="m-val good">4</span>
+        <div class="why-visual-top">
+          <div class="why-v-label">Scout · Live metrics</div>
+          <div class="metric-row">
+            <span class="m-label">Locations active</span>
+            <span class="m-val good">4</span>
+          </div>
+          <div class="metric-row">
+            <span class="m-label">Cycle count compliance</span>
+            <span class="m-val good">100%</span>
+          </div>
+          <div class="metric-row">
+            <span class="m-label">Portfolio COGs</span>
+            <span class="m-val warn">9.4%</span>
+          </div>
+          <div class="metric-row">
+            <span class="m-label">Lots tracked</span>
+            <span class="m-val">Active</span>
+          </div>
+          <div class="metric-row">
+            <span class="m-label">Goods lost — MTD</span>
+            <span class="m-val">Tracked</span>
+          </div>
         </div>
-        <div class="metric-row">
-          <span class="m-label">Cycle count compliance</span>
-          <span class="m-val good">100%</span>
-        </div>
-        <div class="metric-row">
-          <span class="m-label">Portfolio COGs</span>
-          <span class="m-val warn">9.4%</span>
-        </div>
-        <div class="metric-row">
-          <span class="m-label">Lots tracked</span>
-          <span class="m-val">Active</span>
-        </div>
-        <div class="metric-row">
-          <span class="m-label">Goods lost — MTD</span>
-          <span class="m-val">Tracked</span>
-        </div>
-        <div class="why-v-illo">
-          <img src="Scout Art 2.webp" alt="Scout rainy day" style="width:160px;height:auto;opacity:0.9;mix-blend-mode:lighten;">
-        </div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.5;margin-top:12px;">
-          Log in for live numbers by location.
+        <div class="why-visual-bottom">
+          <div class="why-v-illo">
+            <img src="Scout Art 2.webp" alt="Scout rainy day" style="width:160px;height:auto;">
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5;text-align:center;">
+            Log in for live numbers by location.
+          </div>
         </div>
       </div>
     </div>
