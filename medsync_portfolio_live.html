@@ -1635,7 +1635,8 @@ function deepDiveLoc(locCode) {
       <!-- Org KPI strip — 3 big numbers -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;">
         <div onclick="dbNav('cogs')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px 18px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.13)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">
-          <div style="font-size:11px;color:#fff;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Portfolio COGs</div>
+          <div style="font-size:11px;color:#fff;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Drug COGs</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:8px;letter-spacing:0.3px;">drug spend ÷ total revenue</div>
           <div id="hero-cogs-val" style="font-size:28px;font-weight:700;color:#6FE0A0;line-height:1;">—</div>
           <div id="hero-cogs-sub" style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;">Loading…</div>
         </div>
@@ -2028,7 +2029,7 @@ async function loadData() {
 
   setLoading(['k-cogs','k-sav','k-gl','k-wg']);
   document.getElementById('period-label').textContent = label + ' · ' + locLabel;
-  document.getElementById('cogs-title').textContent = 'COGs by location — ' + label;
+  document.getElementById('cogs-title').textContent = 'Drug COGs by location — ' + label;
   document.getElementById('gl-title').textContent = 'Goods lost by category — ' + label;
 
   // Build location filter
@@ -2179,7 +2180,7 @@ async function loadLiveCOGs(loc, from, to) {
       const color = pct === 0 ? '#aaa' : pct <= COGS_MAX ? 'var(--green)' : pct <= COGS_MAX + 3 ? 'var(--amber)' : 'var(--red)';
       const w     = pct > 0 ? Math.min(Math.round((pct / 15) * 100), 100) : 0;
       const label = pct > 0 ? pct.toFixed(1) + '%' : 'No data';
-      const revLabel = rev > 0 ? ' · $' + (rev/1000).toFixed(0) + 'K rev' : '';
+      const revLabel = rev > 0 ? ' · $' + (rev/1000).toFixed(0) + 'K total rev' : '';
       return `<div class="br">
         <div class="br-loc">${l.name}${revLabel}</div>
         <div class="br-track"><div class="br-fill" style="width:${w}%;background:${color};">${pct > 0 ? pct.toFixed(1)+'%' : ''}</div></div>
@@ -2223,7 +2224,7 @@ function updateHeroCOGs(portCogs, totalRev, totalSpend) {
   valEl.style.color = color;
   if (subEl) {
     const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);
-    subEl.textContent = spendFmt + ' drug spend';
+    subEl.textContent = spendFmt + ' drug spend ÷ total rev';
   }
 }
 
@@ -2273,9 +2274,10 @@ function renderLocationCards(glByLocMtd, leadsByLoc, cycleByLoc, poByLoc) {
       + '<div style="font-size:12px;color:#8A93A8;padding-left:20px;" id="loc-lead-' + loc.key + '">IL · ' + leadName + '</div>'
       + '</div>'
       + '<div style="padding:12px 18px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">'
-      + '<div onclick="dbNav(\'cogs\')" style="cursor:pointer;text-align:center;" title="View COGs">'
+      + '<div onclick="dbNav(\'cogs\')" style="cursor:pointer;text-align:center;" title="Drug spend ÷ total revenue">'
       + '<div id="lc-' + loc.key + '-cogs" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>'
-      + '<div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div></div>'
+      + '<div style="font-size:10px;color:#8A93A8;margin-top:1px;">Drug COGs</div>'
+      + '<div style="font-size:9px;color:#B0BAC8;margin-top:1px;">÷ total rev</div></div>'
       + '<div onclick="showScreen(\'goods\')" style="cursor:pointer;text-align:center;" title="View goods lost">'
       + '<div id="lc-' + loc.key + '-gl" style="font-size:17px;font-weight:700;' + 'color:' + glColor + ';">' + glFmt + '</div>'
       + '<div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div></div>'
@@ -3126,12 +3128,12 @@ const rangeLabels = {
   'Prev year': 'MedSync Analytics · Previous year — Jan 1–Dec 31, 2025',
 };
 const cogsTitle = {
-  'Today':'COGs by location — today','WTD':'COGs by location — week to date',
-  'Prev week':'COGs by location — prev week','T-7':'COGs by location — trailing 7 days',
-  'MTD':'COGs by location — May 2026','T-30':'COGs by location — trailing 30 days',
-  'T-90':'COGs by location — trailing 90 days','This Qtr':'COGs by location — Q2 2026',
-  'Last Qtr':'COGs by location — Q1 2026','YTD':'COGs by location — YTD 2026',
-  'Prev year':'COGs by location — full year 2025',
+  'Today':'Drug COGs by location — today','WTD':'Drug COGs by location — week to date',
+  'Prev week':'Drug COGs by location — prev week','T-7':'Drug COGs by location — trailing 7 days',
+  'MTD':'Drug COGs by location — May 2026','T-30':'Drug COGs by location — trailing 30 days',
+  'T-90':'Drug COGs by location — trailing 90 days','This Qtr':'Drug COGs by location — Q2 2026',
+  'Last Qtr':'Drug COGs by location — Q1 2026','YTD':'Drug COGs by location — YTD 2026',
+  'Prev year':'Drug COGs by location — full year 2025',
 };
 const kpiSavings = {
   'Today':'$142','WTD':'$890','Prev week':'$1,204','T-7':'$1,440',
