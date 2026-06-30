@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Received Invoices — MedSync</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="medsync_locations.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1C2B4A; --gold:#C8922A; --gold-light:#E8B84B;
+  --slate:#4A5568; --mist:#8A93A8; --border:#D8D0EC;
+  --bg:#f5f6fa; --surface:#fff;
+  --green:#166534; --green-bg:#dcfce7;
+  --amber:#854d0e; --amber-bg:#fef9c3;
+  --red:#dc2626; --red-bg:#fef2f2;
+  --sidebar-w:340px;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;display:flex;flex-direction:column;}
+
+/* ── Nav ── */
+.nav{height:48px;min-height:48px;background:var(--navy);display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.nav-icon{font-size:18px;}
+.nav-title{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.01em;}
+.nav-sep{width:1px;height:20px;background:rgba(255,255,255,.15);margin:0 4px;}
+.loc-sel{padding:5px 10px;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(255,255,255,.08);color:#fff;font-size:12px;cursor:pointer;outline:none;}
+.loc-sel option{color:var(--navy);background:#fff;}
+.spacer{flex:1;}
+.nav-search{display:flex;align-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:7px;padding:0 10px;gap:6px;height:32px;}
+.nav-search input{background:none;border:none;outline:none;color:#fff;font-size:12px;width:180px;}
+.nav-search input::placeholder{color:rgba(255,255,255,.45);}
+
+/* ── Filter bar ── */
+.filter-bar{height:42px;min-height:42px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;overflow-x:auto;}
+.filter-bar::-webkit-scrollbar{display:none;}
+.chip{padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all .12s;}
+.chip-default{background:#f1f0f7;color:var(--mist);border-color:#e5e3f0;}
+.chip-default:hover{background:#EDE8F8;color:var(--navy);}
+.chip-active{background:var(--navy);color:#fff;border-color:var(--navy);}
+.chip-sep{width:1px;height:18px;background:var(--border);margin:0 4px;}
+.date-range{display:flex;align-items:center;gap:6px;}
+.date-range input{padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--navy);outline:none;background:var(--surface);}
+.date-range input:focus{border-color:var(--navy);}
+
+/* ── Layout ── */
+.layout{display:flex;flex:1;min-height:0;overflow:hidden;}
+
+/* ── Sidebar ── */
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sb-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.sb-header-title{font-size:11px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
+.sb-count{font-size:11px;color:var(--mist);background:#f1f0f7;padding:2px 8px;border-radius:99px;}
+.invoice-list{flex:1;overflow-y:auto;}
+.invoice-list::-webkit-scrollbar{width:4px;}
+.invoice-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.inv-row{padding:12px 14px;border-bottom:1px solid #f0eef8;cursor:pointer;transition:background .1s;}
+.inv-row:hover{background:#faf9fd;}
+.inv-row.active{background:#eff6ff;border-left:3px solid var(--navy);padding-left:11px;}
+.inv-row-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.inv-row-vendor{font-weight:600;font-size:13px;color:var(--navy);}
+.inv-row-amount{font-size:12px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;}
+.inv-row-meta{font-size:11px;color:var(--mist);margin-top:2px;}
+.inv-row-footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;}
+.b-uploaded{background:var(--green-bg);color:var(--green);}
+.b-pending{background:#f1f0f7;color:var(--mist);}
+.b-flagged{background:var(--red-bg);color:var(--red);}
+.b-ok{background:var(--green-bg);color:var(--green);}
+
+/* ── Empty / loading ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;color:var(--mist);padding:40px 20px;text-align:center;}
+.empty-icon{font-size:36px;opacity:.5;}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Detail panel ── */
+.detail{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.detail::-webkit-scrollbar{width:6px;}
+.detail::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--mist);gap:10px;}
+.detail-empty-icon{font-size:48px;opacity:.25;}
+
+/* ── Detail inner layout (3-col top: items | pdf | meta) ── */
+.detail-body{display:flex;flex-direction:column;padding:20px;gap:16px;}
+.detail-top{display:flex;gap:16px;align-items:flex-start;}
+.detail-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;}
+.detail-right{width:240px;min-width:240px;display:flex;flex-direction:column;gap:12px;}
+
+/* ── Items table ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.card-header{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-header h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mist);}
+.items-table{width:100%;border-collapse:collapse;}
+.items-table th{background:#f9f8fd;padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);white-space:nowrap;}
+.items-table td{padding:9px 12px;border-bottom:1px solid #f0eef8;font-size:12px;vertical-align:middle;}
+.items-table tr:last-child td{border-bottom:none;}
+.items-table tr:hover td{background:#faf9fd;}
+.items-table .num{font-variant-numeric:tabular-nums;text-align:right;}
+.items-table .prod-name{font-weight:500;}
+.items-table .prod-sub{font-size:10px;color:var(--mist);margin-top:1px;}
+
+/* ── PDF viewer ── */
+.pdf-wrap{background:#404040;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+.pdf-toolbar{background:#303030;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.7);}
+.pdf-toolbar span{font-weight:600;color:#fff;}
+.pdf-canvas-wrap{padding:12px;display:flex;justify-content:center;overflow:auto;max-height:520px;}
+.pdf-canvas-wrap canvas{max-width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.pdf-placeholder{padding:40px 20px;text-align:center;color:rgba(255,255,255,.4);font-size:12px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.pdf-placeholder-icon{font-size:32px;opacity:.4;}
+
+/* ── Upload zone ── */
+.upload-zone{border:1.5px dashed var(--border);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;background:#fafafa;transition:all .15s;}
+.upload-zone:hover{border-color:var(--navy);background:#f0f4ff;}
+.upload-zone-icon{font-size:28px;opacity:.5;margin-bottom:8px;}
+.upload-zone p{font-size:12px;color:var(--mist);}
+.upload-zone strong{color:var(--navy);font-size:13px;display:block;margin-bottom:4px;}
+
+/* ── Meta panel ── */
+.meta-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.meta-section + .meta-section{margin-top:0;}
+.meta-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mist);margin-bottom:10px;}
+.meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px;font-size:12px;}
+.meta-row:last-child{margin-bottom:0;}
+.meta-label{color:var(--mist);white-space:nowrap;}
+.meta-value{font-weight:600;text-align:right;}
+.meta-total{font-size:20px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;margin-bottom:6px;}
+.meta-status-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;}
+.meta-received-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--green-bg);color:var(--green);}
+.notes-area{width:100%;border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:12px;font-family:inherit;color:var(--navy);resize:vertical;min-height:64px;outline:none;}
+.notes-area:focus{border-color:var(--navy);}
+.btn-save-notes{margin-top:6px;width:100%;padding:7px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-save-notes:hover{background:#2d4270;}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<div class="nav">
+  <span class="nav-icon">🧾</span>
+  <span class="nav-title">Received Invoices</span>
+  <div class="nav-sep"></div>
+  <select class="loc-sel" id="loc-sel" onchange="applyFilters()">
+    <option value="">All locations</option>
+  </select>
+  <div class="spacer"></div>
+  <div class="nav-search">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search-input" placeholder="Search vendor, invoice #, PO…" oninput="applyFilters()">
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar" id="filter-bar">
+  <button class="chip chip-default" data-range="today" onclick="setChip(this,'today')">Today</button>
+  <button class="chip chip-default" data-range="week" onclick="setChip(this,'week')">This Week</button>
+  <button class="chip chip-active" data-range="mtd" onclick="setChip(this,'mtd')">MTD</button>
+  <button class="chip chip-default" data-range="qtd" onclick="setChip(this,'qtd')">QTD</button>
+  <button class="chip chip-default" data-range="ytd" onclick="setChip(this,'ytd')">YTD</button>
+  <button class="chip chip-default" data-range="year" onclick="setChip(this,'year')">This Year</button>
+  <div class="chip-sep"></div>
+  <div class="date-range">
+    <input type="date" id="from-date" placeholder="From" oninput="setChip(null,'custom')">
+    <span style="font-size:11px;color:var(--mist);">→</span>
+    <input type="date" id="to-date" placeholder="To" oninput="setChip(null,'custom')">
+  </div>
+</div>
+
+<!-- Main layout -->
+<div class="layout">
+  <!-- Sidebar list -->
+  <div class="sidebar">
+    <div class="sb-header">
+      <span class="sb-header-title">Invoices</span>
+      <span class="sb-count" id="sb-count">—</span>
+    </div>
+    <div class="invoice-list" id="invoice-list">
+      <div class="empty"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  <div class="detail" id="detail-panel">
+    <div class="detail-empty" id="detail-empty">
+      <div class="detail-empty-icon">🧾</div>
+      <div style="font-size:13px;font-weight:600;color:var(--navy);">Select an invoice</div>
+      <div style="font-size:12px;">Click any row in the list to view details</div>
+    </div>
+    <div class="detail-body" id="detail-body" style="display:none;"></div>
+  </div>
+</div>
+
+<input type="file" id="global-file-input" accept=".pdf,image/*" style="display:none;" onchange="handleUpload(event)">
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e){ return {}; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+
+let allRecords = [];
+let filtered = [];
+let activeRange = 'mtd';
+let activeId = null;
+let uploadTargetId = null;
+
+// ── Boot ──────────────────────────────────────────────────────
+async function boot() {
+  // Populate location dropdown
+  const locSel = document.getElementById('loc-sel');
+  LOCS.forEach(l => {
+    const o = document.createElement('option');
+    o.value = l.uuid; o.textContent = l.name;
+    locSel.appendChild(o);
+  });
+  // Set default date range to MTD
+  const now = new Date();
+  const mtdStart = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+  document.getElementById('from-date').value = mtdStart;
+  document.getElementById('to-date').value = now.toISOString().split('T')[0];
+  await loadInvoices();
+}
+
+// ── Load from received_invoices (with fallback to receiving_sessions) ──
+async function loadInvoices() {
+  document.getElementById('invoice-list').innerHTML = '<div class="empty"><div class="spinner"></div></div>';
+  try {
+    // Primary: received_invoices table
+    const r = await fetch(
+      SUPA_URL + '/rest/v1/received_invoices?select=*&order=received_date.desc,created_at.desc&limit=500',
+      { headers: H }
+    );
+    if (r.ok) {
+      const data = await r.json();
+      if (Array.isArray(data)) {
+        allRecords = data;
+        applyFilters();
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Fallback: receiving_sessions
+  try {
+    const r2 = await fetch(
+      SUPA_URL + '/rest/v1/receiving_sessions?select=*&status=in.(Completed,Flagged)&order=completed_at.desc&limit=500',
+      { headers: H }
+    );
+    if (r2.ok) {
+      const data2 = await r2.json();
+      allRecords = (Array.isArray(data2) ? data2 : []).map(s => ({
+        id:           s.id,
+        location_id:  s.location_id,
+        vendor:       s.vendor || '—',
+        po_reference: s.po_reference || '—',
+        invoice_date: s.invoice_date || null,
+        received_date: s.received_date || (s.completed_at ? s.completed_at.split('T')[0] : null),
+        received_by:  s.received_by || '—',
+        total_amount: s.total_amount || null,
+        skus_count:   s.skus_scanned || s.skus_expected || null,
+        has_discrepancy: s.has_discrepancy || false,
+        invoice_url:  s.invoice_url || null,
+        notes:        s.notes || null,
+        session_id:   s.id,
+        invoice_number: s.invoice_number || null,
+        created_at:   s.completed_at,
+      }));
+      applyFilters();
+    } else {
+      document.getElementById('invoice-list').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div>Could not load invoices</div></div>';
+    }
+  } catch(e) {
+    document.getElementById('invoice-list').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div>' + e.message + '</div></div>';
+  }
+}
+
+// ── Date range helpers ────────────────────────────────────────
+function getRangeDates(range) {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = dt => dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());
+  const today = fmt(now);
+  if (range === 'today')  return { from: today, to: today };
+  if (range === 'week') {
+    const day = now.getDay(); // 0=Sun
+    const mon = new Date(now); mon.setDate(d - (day === 0 ? 6 : day - 1));
+    return { from: fmt(mon), to: today };
+  }
+  if (range === 'mtd')  return { from: y+'-'+pad(m+1)+'-01', to: today };
+  if (range === 'qtd') {
+    const qStart = new Date(y, Math.floor(m/3)*3, 1);
+    return { from: fmt(qStart), to: today };
+  }
+  if (range === 'ytd')  return { from: y+'-01-01', to: today };
+  if (range === 'year') return { from: y+'-01-01', to: y+'-12-31' };
+  // custom — read inputs
+  return { from: document.getElementById('from-date').value || '', to: document.getElementById('to-date').value || '' };
+}
+
+function setChip(el, range) {
+  activeRange = range;
+  document.querySelectorAll('.chip[data-range]').forEach(c => c.classList.replace('chip-active','chip-default'));
+  if (el) { el.classList.replace('chip-default','chip-active'); }
+  if (range !== 'custom') {
+    const { from, to } = getRangeDates(range);
+    document.getElementById('from-date').value = from;
+    document.getElementById('to-date').value   = to;
+  }
+  applyFilters();
+}
+
+// ── Filter + render list ──────────────────────────────────────
+function applyFilters() {
+  const locId  = document.getElementById('loc-sel').value;
+  const q      = document.getElementById('search-input').value.trim().toLowerCase();
+  const from   = document.getElementById('from-date').value;
+  const to     = document.getElementById('to-date').value;
+  const locName = locId ? (LOCS.find(l => l.uuid === locId)||{}).name : null;
+
+  filtered = allRecords.filter(inv => {
+    if (locId && inv.location_id !== locId) return false;
+    const dateStr = inv.received_date || (inv.created_at ? inv.created_at.split('T')[0] : '');
+    if (from && dateStr && dateStr < from) return false;
+    if (to   && dateStr && dateStr > to)   return false;
+    if (q) {
+      const hay = [inv.vendor, inv.po_reference, inv.invoice_number, inv.received_by].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('sb-count').textContent = filtered.length;
+  renderList();
+}
+
+function locName(id) {
+  const l = LOCS.find(l => l.uuid === id);
+  return l ? l.name : (id ? id.slice(0,8) : '—');
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d + (d.length === 10 ? 'T12:00:00' : ''));
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+function fmtAmt(v) {
+  if (v == null) return '—';
+  return '$' + parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function renderList() {
+  const list = document.getElementById('invoice-list');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>No invoices in this period</div></div>';
+    return;
+  }
+  list.innerHTML = filtered.map(inv => {
+    const hasFile = !!inv.invoice_url;
+    const status  = inv.has_discrepancy ? 'flagged' : (hasFile ? 'uploaded' : 'pending');
+    const badgeCls = status === 'uploaded' ? 'b-uploaded' : status === 'flagged' ? 'b-flagged' : 'b-pending';
+    const badgeTxt = status === 'uploaded' ? '✓ Invoice' : status === 'flagged' ? '⚠ Flagged' : '○ No invoice';
+    return `<div class="inv-row${inv.id===activeId?' active':''}" onclick="selectInvoice(${JSON.stringify(inv.id)})">
+      <div class="inv-row-top">
+        <div class="inv-row-vendor">${inv.vendor || '—'}</div>
+        <div class="inv-row-amount">${fmtAmt(inv.total_amount)}</div>
+      </div>
+      <div class="inv-row-meta">${locName(inv.location_id)} · ${fmtDate(inv.received_date)}</div>
+      <div class="inv-row-footer">
+        <div style="font-size:11px;color:var(--mist);">${inv.po_reference || '—'}</div>
+        <span class="badge ${badgeCls}">${badgeTxt}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Select invoice → detail ───────────────────────────────────
+async function selectInvoice(id) {
+  activeId = id;
+  renderList(); // update active state
+
+  const inv = allRecords.find(r => r.id === id);
+  if (!inv) return;
+
+  document.getElementById('detail-empty').style.display = 'none';
+  const bodyEl = document.getElementById('detail-body');
+  bodyEl.style.display = 'flex';
+  bodyEl.innerHTML = '<div class="empty"><div class="spinner"></div><div style="font-size:12px;margin-top:4px;">Loading…</div></div>';
+
+  // Fetch po_items for this session/po_reference
+  let lines = [];
+  if (inv.po_reference && inv.po_reference !== '—') {
+    try {
+      const pr = await fetch(
+        SUPA_URL + `/rest/v1/po_items?po_reference=eq.${encodeURIComponent(inv.po_reference)}&select=*&limit=100`,
+        { headers: H }
+      );
+      if (pr.ok) lines = await pr.json();
+    } catch(e) {}
+    // Fallback: query by location + status=received + po_number
+    if (!Array.isArray(lines) || !lines.length) {
+      try {
+        const pr2 = await fetch(
+          SUPA_URL + `/rest/v1/po_items?location_id=eq.${inv.location_id}&po_number=eq.${encodeURIComponent(inv.po_reference)}&select=*&limit=100`,
+          { headers: H }
+        );
+        if (pr2.ok) lines = await pr2.json();
+      } catch(e) {}
+    }
+  }
+  // If still nothing, try session_id on receiving_sessions for po_items
+  if ((!Array.isArray(lines) || !lines.length) && inv.session_id) {
+    try {
+      const pr3 = await fetch(
+        SUPA_URL + `/rest/v1/po_items?location_id=eq.${inv.location_id}&status=eq.received&select=*&limit=100`,
+        { headers: H }
+      );
+      if (pr3.ok) lines = await pr3.json();
+    } catch(e) {}
+  }
+  if (!Array.isArray(lines)) lines = [];
+
+  renderDetail(inv, lines);
+}
+
+function renderDetail(inv, lines) {
+  const bodyEl = document.getElementById('detail-body');
+  const hasFile = !!inv.invoice_url;
+  const isPdf = hasFile && (inv.invoice_url.endsWith('.pdf') || inv.invoice_url.includes('.pdf'));
+  const totalComputed = lines.reduce((s,l) => s + (parseFloat(l.unit_price||0)*parseFloat(l.qty_ordered||1)), 0);
+  const total = inv.total_amount || (totalComputed > 0 ? totalComputed : null);
+  const skusReceived = lines.filter(l => l.status === 'received').length || inv.skus_count || lines.length;
+  const skusTotal = lines.length || inv.skus_count || 0;
+
+  bodyEl.innerHTML = `
+    <!-- Invoice header -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;">${inv.vendor || 'Unknown Vendor'}</div>
+        <div style="font-size:12px;color:var(--mist);margin-top:3px;">${inv.po_reference || '—'} · ${locName(inv.location_id)} · Received ${fmtDate(inv.received_date)}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${inv.has_discrepancy ? '<span class="badge b-flagged">⚠ Discrepancy</span>' : '<span class="badge b-ok">✓ Received</span>'}
+        ${hasFile ? `<a href="${inv.invoice_url}" target="_blank" style="padding:6px 12px;background:var(--navy);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">↗ Open PDF</a>` : `<button onclick="triggerUpload(${JSON.stringify(inv.id)})" style="padding:6px 12px;background:#f1f0f7;color:var(--navy);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">📎 Upload Invoice</button>`}
+      </div>
+    </div>
+
+    <div class="detail-top">
+      <!-- Left: items + pdf -->
+      <div class="detail-left">
+        <!-- Items received -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Items Received</h3>
+            <span style="font-size:11px;color:var(--mist);">${skusReceived} of ${skusTotal} SKUs</span>
+          </div>
+          ${lines.length ? `
+          <div style="overflow-x:auto;">
+            <table class="items-table">
+              <thead><tr>
+                <th>Product</th>
+                <th class="num">Qty Ordered</th>
+                <th class="num">Unit Price</th>
+                <th class="num">Extended</th>
+                <th>Status</th>
+              </tr></thead>
+              <tbody>
+                ${lines.map(l => `<tr>
+                  <td><div class="prod-name">${l.product_name || '—'}</div><div class="prod-sub">${l.vendor || ''}</div></td>
+                  <td class="num">${l.qty_ordered || '—'}</td>
+                  <td class="num">${l.unit_price ? '$'+parseFloat(l.unit_price).toFixed(2) : '—'}</td>
+                  <td class="num">${l.unit_price && l.qty_ordered ? '$'+(parseFloat(l.unit_price)*parseFloat(l.qty_ordered)).toFixed(2) : '—'}</td>
+                  <td><span class="badge ${l.status==='received'?'b-ok':'b-pending'}">${l.status||'—'}</span></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>` : '<div style="padding:20px;text-align:center;font-size:12px;color:var(--mist);">No line items found for this PO</div>'}
+        </div>
+
+        <!-- PDF / Image preview -->
+        <div class="card">
+          <div class="card-header"><h3>Invoice Document</h3></div>
+          ${hasFile ? (isPdf
+            ? `<div id="pdf-viewer-wrap" class="pdf-wrap"><div class="pdf-toolbar"><span>invoice_${inv.po_reference||inv.id}.pdf</span></div><div class="pdf-canvas-wrap" id="pdf-canvas-area"><div class="spinner"></div></div></div>`
+            : `<div style="padding:12px;"><img src="${inv.invoice_url}" alt="Invoice" style="max-width:100%;border-radius:6px;" onload="this.style.opacity=1" onerror="this.style.display='none'"></div>`)
+            : `<div class="upload-zone" onclick="triggerUpload(${JSON.stringify(inv.id)})">
+                <div class="upload-zone-icon">📎</div>
+                <strong>Attach Invoice PDF</strong>
+                <p>Click to upload the vendor invoice for this delivery</p>
+              </div>`}
+        </div>
+      </div>
+
+      <!-- Right: metadata -->
+      <div class="detail-right">
+        <!-- Total -->
+        <div class="meta-section">
+          <div class="meta-total">${total != null ? fmtAmt(total) : '—'}</div>
+          <div class="meta-status-row">
+            <span style="font-size:11px;color:var(--mist);">Total</span>
+            <span class="meta-received-badge">${skusReceived}/${skusTotal} items</span>
+          </div>
+        </div>
+
+        <!-- Invoice Details -->
+        <div class="meta-section">
+          <div class="meta-title">Invoice Details</div>
+          <div class="meta-row"><span class="meta-label">Type</span><span class="meta-value">Invoice</span></div>
+          <div class="meta-row"><span class="meta-label">Supplier</span><span class="meta-value">${inv.vendor || '—'}</span></div>
+          <div class="meta-row"><span class="meta-label">Invoice #</span><span class="meta-value" style="font-family:monospace;font-size:11px;">${inv.invoice_number || '—'}</span></div>
+          <div class="meta-row"><span class="meta-label">PO Number</span><span class="meta-value" style="font-family:monospace;font-size:11px;">${inv.po_reference || '—'}</span></div>
+        </div>
+
+        <!-- Invoice Dates -->
+        <div class="meta-section">
+          <div class="meta-title">Invoice Dates</div>
+          <div class="meta-row"><span class="meta-label">Invoice Date</span><span class="meta-value">${fmtDate(inv.invoice_date)}</span></div>
+          <div class="meta-row"><span class="meta-label">Received</span><span class="meta-value">${fmtDate(inv.received_date)}</span></div>
+        </div>
+
+        <!-- Received by -->
+        <div class="meta-section">
+          <div class="meta-title">Received By</div>
+          <div style="font-size:12px;font-weight:600;color:var(--navy);">${inv.received_by || '—'}</div>
+          <div style="font-size:11px;color:var(--mist);margin-top:3px;">${locName(inv.location_id)}</div>
+        </div>
+
+        <!-- Notes -->
+        <div class="meta-section">
+          <div class="meta-title">Notes</div>
+          <textarea class="notes-area" id="notes-area" placeholder="Add notes about this delivery…">${inv.notes || ''}</textarea>
+          <button class="btn-save-notes" onclick="saveNotes(${JSON.stringify(inv.id)})">Save notes</button>
+        </div>
+      </div>
+    </div>`;
+
+  // Render PDF if applicable
+  if (hasFile && isPdf) {
+    renderPdf(inv.invoice_url);
+  }
+}
+
+async function renderPdf(url) {
+  const area = document.getElementById('pdf-canvas-area');
+  if (!area) return;
+  try {
+    const pdf = await pdfjsLib.getDocument(url).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.4 });
+    const canvas = document.createElement('canvas');
+    canvas.width  = viewport.width;
+    canvas.height = viewport.height;
+    area.innerHTML = '';
+    area.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  } catch(e) {
+    area.innerHTML = '<div class="pdf-placeholder"><div class="pdf-placeholder-icon">📄</div><div>Could not render PDF preview</div><div style="font-size:10px;margin-top:4px;opacity:.6;">'+e.message+'</div></div>';
+  }
+}
+
+// ── Upload ────────────────────────────────────────────────────
+function triggerUpload(id) {
+  uploadTargetId = id;
+  document.getElementById('global-file-input').click();
+}
+
+async function handleUpload(event) {
+  const file = event.target.files[0];
+  if (!file || !uploadTargetId) return;
+  const inv = allRecords.find(r => r.id === uploadTargetId);
+  if (!inv) return;
+
+  // Show loading state
+  const bodyEl = document.getElementById('detail-body');
+  const uploadBtn = bodyEl.querySelector('[onclick*="triggerUpload"]');
+  if (uploadBtn) { uploadBtn.textContent = 'Uploading…'; uploadBtn.disabled = true; }
+
+  try {
+    const dateStr = inv.received_date || new Date().toISOString().split('T')[0];
+    const safeName = (inv.po_reference||'invoice').replace(/[^a-z0-9\-]/gi,'_');
+    const ext = file.name.split('.').pop();
+    const path = `${inv.location_id}/${dateStr}/${safeName}_${Date.now()}.${ext}`;
+    const uploadRes = await fetch(
+      `${SUPA_URL}/storage/v1/object/invoices/${path}`,
+      { method: 'POST', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+(_sess.access_token||SUPA_KEY), 'Content-Type': file.type, 'x-upsert': 'true' }, body: file }
+    );
+    if (!uploadRes.ok) throw new Error('Upload failed: ' + uploadRes.status);
+    const invoiceUrl = `${SUPA_URL}/storage/v1/object/public/invoices/${path}`;
+
+    // Update record
+    const updateTable = inv.session_id && inv.id === inv.session_id ? 'receiving_sessions' : 'received_invoices';
+    await fetch(SUPA_URL + `/rest/v1/${updateTable}?id=eq.${inv.id}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ invoice_url: invoiceUrl })
+    });
+
+    // Update local record
+    inv.invoice_url = invoiceUrl;
+    selectInvoice(uploadTargetId);
+  } catch(e) {
+    alert('Upload failed: ' + e.message);
+  }
+  event.target.value = '';
+}
+
+// ── Save notes ────────────────────────────────────────────────
+async function saveNotes(id) {
+  const inv = allRecords.find(r => r.id === id);
+  if (!inv) return;
+  const notes = document.getElementById('notes-area').value;
+  const btn = document.querySelector('.btn-save-notes');
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  const updateTable = inv.session_id && inv.id === inv.session_id ? 'receiving_sessions' : 'received_invoices';
+  try {
+    await fetch(SUPA_URL + `/rest/v1/${updateTable}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ notes })
+    });
+    inv.notes = notes;
+    if (btn) { btn.textContent = '✓ Saved'; setTimeout(()=>{ if(btn) {btn.textContent='Save notes';btn.disabled=false;} }, 1500); }
+  } catch(e) {
+    if (btn) { btn.textContent = 'Save notes'; btn.disabled = false; }
+    alert('Error saving: ' + e.message);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

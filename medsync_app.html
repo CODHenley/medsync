@@ -9,7 +9,7 @@
 <script src="medsync_locations.js"></script>
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cyclecount','users','settings','regions','newlocation','reports'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cyclecount','invoices','users','settings','regions','newlocation','reports'];
 function showScreen(name) {
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
@@ -524,6 +524,7 @@ window.addEventListener('message', function(e) {
   <div class="asb-item" id="asb-receiver" onclick="showScreen('receiver')">🏥 Hospital Receiver</div>
   <div class="asb-item" id="asb-goods" onclick="showScreen('goods')">⚠️ Goods Lost</div>
   <div class="asb-item" id="asb-cyclecount" onclick="showScreen('cyclecount')">🔄 Cycle Count</div>
+  <div class="asb-item" id="asb-invoices" onclick="showScreen('invoices')">🧾 Received Invoices</div>
   <hr style="border:none;border-top:0.5px solid #E4E0F0;margin:6px 0;">
   <div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Settings &amp; Admin</div>
   <div class="asb-item" id="asb-settings" onclick="showScreen('settings')">⚙️ Admin Settings</div>
@@ -784,6 +785,12 @@ window.addEventListener('message', function(e) {
   <iframe src="medsync_cycle_count_live.html"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Cycle Count">
+  </iframe>
+</div>
+<div id="ms-invoices" class="ms-screen" style="background:var(--bg,#F5F3FA);">
+  <iframe src="medsync_received_invoices_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Received Invoices">
   </iframe>
 </div>
 <div id="ms-users" class="ms-screen" style="background:var(--bg,#F5F3FA);">

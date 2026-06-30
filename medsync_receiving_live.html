@@ -262,6 +262,16 @@ select.nav-sel option{background:var(--navy);}
   <div class="success-icon">✓</div>
   <div class="success-title">Receiving complete</div>
   <div class="success-sub" id="success-detail">Session logged.</div>
+  <!-- Invoice upload -->
+  <div id="invoice-upload-area" style="margin:16px 0 8px;width:100%;max-width:360px;">
+    <div id="invoice-upload-prompt" style="border:1.5px dashed var(--border);border-radius:10px;padding:16px 20px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('invoice-file-input').click()">
+      <div style="font-size:22px;margin-bottom:6px;">📎</div>
+      <div style="font-size:13px;font-weight:600;color:var(--navy);">Attach Invoice PDF</div>
+      <div style="font-size:11px;color:var(--mist);margin-top:3px;">Click to upload the vendor invoice for this delivery</div>
+    </div>
+    <input type="file" id="invoice-file-input" accept=".pdf,image/*" style="display:none;" onchange="handleInvoiceUpload(event)">
+    <div id="invoice-upload-status" style="display:none;font-size:12px;margin-top:8px;text-align:center;"></div>
+  </div>
   <button class="btn-new" onclick="resetSession()">Receive another delivery</button>
 </div>
 
@@ -778,9 +788,16 @@ async function completeSession() {
         skus_scanned:    confirmed.length,
         has_discrepancy: hasDisc,
         completed_at:    new Date().toISOString(),
+        vendor:          (state.lines[0] && state.lines[0].vendor) || null,
+        po_reference:    state.selectedOrder ? state.selectedOrder.ref : null,
+        received_by:     _sess.email || _sess.user?.email || null,
+        invoice_date:    state.invoiceDate || null,
+        received_date:   state.receivedDate || new Date().toISOString().split('T')[0],
+        total_amount:    state.selectedOrder ? state.selectedOrder.total : null,
       })
     });
-    await sessRes.json();
+    const sessData = await sessRes.json();
+    state.sessionId = Array.isArray(sessData) && sessData[0] ? sessData[0].id : null;
 
     // Create or increment lot records for confirmed items
     for (const line of confirmed) {
@@ -883,6 +900,57 @@ async function completeSession() {
   }
 }
 
+async function handleInvoiceUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('invoice-upload-status');
+  const promptEl = document.getElementById('invoice-upload-prompt');
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Uploading…';
+  statusEl.style.color = 'var(--mist)';
+  try {
+    // Upload to Supabase Storage bucket "invoices"
+    const dateStr = (state.receivedDate || new Date().toISOString().split('T')[0]);
+    const safeName = (state.selectedOrder ? state.selectedOrder.ref : 'invoice').replace(/[^a-z0-9\-]/gi,'_');
+    const path = `${state.locationId}/${dateStr}/${safeName}_${Date.now()}.${file.name.split('.').pop()}`;
+    const uploadRes = await fetch(
+      `${SUPA_URL}/storage/v1/object/invoices/${path}`,
+      { method: 'POST', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': file.type, 'x-upsert': 'true' },
+        body: file }
+    );
+    if (!uploadRes.ok) throw new Error('Storage upload failed: ' + uploadRes.status);
+    const invoiceUrl = `${SUPA_URL}/storage/v1/object/public/invoices/${path}`;
+
+    // Save to received_invoices table
+    await fetch(SUPA_URL + '/rest/v1/received_invoices', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        location_id:   state.locationId,
+        session_id:    state.sessionId || null,
+        po_reference:  state.selectedOrder ? state.selectedOrder.ref : null,
+        vendor:        (state.lines[0] && state.lines[0].vendor) || null,
+        invoice_date:  state.invoiceDate || null,
+        received_date: state.receivedDate || new Date().toISOString().split('T')[0],
+        received_by:   _sess.email || _sess.user?.email || null,
+        total_amount:  state.selectedOrder ? state.selectedOrder.total : null,
+        skus_count:    state.lines.length,
+        has_discrepancy: state.hasDiscrepancy,
+        invoice_url:   invoiceUrl,
+        notes:         null,
+      })
+    });
+    promptEl.style.background = '#f0fff4';
+    promptEl.style.borderColor = '#22c55e';
+    promptEl.innerHTML = '<div style="font-size:22px;">✅</div><div style="font-size:13px;font-weight:600;color:#166534;">Invoice uploaded</div><div style="font-size:11px;color:#4ade80;margin-top:3px;">' + file.name + '</div>';
+    statusEl.style.display = 'none';
+  } catch(err) {
+    statusEl.textContent = '⚠ Upload failed: ' + err.message;
+    statusEl.style.color = 'var(--red)';
+    console.error('Invoice upload error:', err);
+  }
+}
+
 function resetSession() {
   state.selectedOrder = null;
   state.lines = [];
@@ -890,6 +958,17 @@ function resetSession() {
   document.getElementById('receiving-panel').style.display = 'none';
   document.getElementById('main-view').style.display = 'flex';
   document.getElementById('success-view').style.display = 'none';
+  // Reset invoice upload area
+  const promptEl = document.getElementById('invoice-upload-prompt');
+  if (promptEl) {
+    promptEl.style.background = '#fafafa';
+    promptEl.style.borderColor = 'var(--border)';
+    promptEl.innerHTML = '<div style="font-size:22px;margin-bottom:6px;">📎</div><div style="font-size:13px;font-weight:600;color:var(--navy);">Attach Invoice PDF</div><div style="font-size:11px;color:var(--mist);margin-top:3px;">Click to upload the vendor invoice for this delivery</div>';
+  }
+  const statusEl = document.getElementById('invoice-upload-status');
+  if (statusEl) statusEl.style.display = 'none';
+  const fileEl = document.getElementById('invoice-file-input');
+  if (fileEl) fileEl.value = '';
   loadOrders();
 }
 
