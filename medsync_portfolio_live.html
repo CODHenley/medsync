@@ -108,12 +108,8 @@ async function loadRecognition() {
 
     // ── Location card lead labels ─────────────────────────────────────────────
     if (Array.isArray(leadsData)) {
-      const LOC_LEAD_ELS = {
-        '11111111-0000-0000-0000-000000000002': 'loc-lead-oo',
-        '11111111-0000-0000-0000-000000000004': 'loc-lead-wh',
-        '11111111-0000-0000-0000-000000000001': 'loc-lead-lp',
-        '11111111-0000-0000-0000-000000000003': 'loc-lead-wl',
-      };
+      const LOC_LEAD_ELS = {};
+      if (typeof LOCS !== 'undefined') LOCS.forEach(function(l) { LOC_LEAD_ELS[l.uuid] = 'loc-lead-' + l.key; });
       leadsData.forEach(function(u) {
         const elId = LOC_LEAD_ELS[u.location_id];
         if (!elId) return;
@@ -126,8 +122,8 @@ async function loadRecognition() {
       });
     }
 
-    // ── Wheaton: live goods lost $ ────────────────────────────────────────────
-    const glEl = document.getElementById('wheaton-gl-val');
+    // ── Wheaton: live goods lost $ (also update card element) ────────────────
+    const glEl = document.getElementById('lc-wh-gl') || document.getElementById('wheaton-gl-val');
     if (glEl && Array.isArray(whGlData)) {
       const total = whGlData.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
       glEl.textContent = total > 0 ? '$' + total.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}) : '$0';
@@ -339,22 +335,28 @@ async function loadLocationCards() {
   const monthStart = localIso(new Date(now.getFullYear(), now.getMonth(), 1));
   const today = localIso(now);
   const _H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
-  const CARD_IDS = { lp: 'lp', oo: 'oo', wl: 'wl', wh: 'wheaton' };
 
-  const vidFilter  = LOCS.map(l => 'location_id.eq.' + l.vid).join(',');
-  const uuidFilter = LOCS.map(l => 'location_id.eq.' + l.uuid).join(',');
+  const vidFilter  = LOCS.map(function(l){ return 'location_id.eq.' + l.vid; }).join(',');
+  const uuidFilter = LOCS.map(function(l){ return 'location_id.eq.' + l.uuid; }).join(',');
+
+  // Build card DOM from LOCS/COMING_SOON_LOCS before fetching data
+  renderLocationCards(null, null, null, null);
 
   try {
-    const [revRes, phRes, diRes, glRes] = await Promise.all([
+    const [revRes, phRes, diRes, glRes, cycleRes, poRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&or=(' + vidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&or=(' + uuidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&or=(' + vidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,value_lost&created_at=gte.' + monthStart + 'T00:00:00&or=(' + uuidFilter + ')', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + monthStart + '&or=(' + uuidFilter + ')&order=created_at.desc', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/po_items?select=location_id,status&submitted_at=gte.' + monthStart + '&or=(' + uuidFilter + ')&order=submitted_at.desc', { headers: _H }),
     ]);
-    const revRows = revRes.ok ? await revRes.json() : [];
-    const phRows  = phRes.ok  ? await phRes.json()  : [];
-    const diRows  = diRes.ok  ? await diRes.json()  : [];
-    const glRows  = glRes.ok  ? await glRes.json()  : [];
+    const revRows   = revRes.ok   ? await revRes.json()   : [];
+    const phRows    = phRes.ok    ? await phRes.json()    : [];
+    const diRows    = diRes.ok    ? await diRes.json()    : [];
+    const glRows    = glRes.ok    ? await glRes.json()    : [];
+    const cycleRows = cycleRes.ok ? await cycleRes.json() : [];
+    const poRows    = poRes.ok    ? await poRes.json()    : [];
 
     const revByVid = {}, phByUuid = {}, diByVid = {}, glByUuid = {};
     (Array.isArray(revRows) ? revRows : []).forEach(function(r) { revByVid[r.location_id]  = (revByVid[r.location_id]  || 0) + (Number(r.revenue)    || 0); });
@@ -362,13 +364,27 @@ async function loadLocationCards() {
     (Array.isArray(diRows)  ? diRows  : []).forEach(function(r) { diByVid[r.location_id]   = (diByVid[r.location_id]   || 0) + (Number(r.unit_cost)  || 0) * (Number(r.quantity) || 1); });
     (Array.isArray(glRows)  ? glRows  : []).forEach(function(r) { glByUuid[r.location_id]  = (glByUuid[r.location_id]  || 0) + (Number(r.value_lost) || 0); });
 
+    // Latest cycle status per location (rows already sorted desc)
+    const cycleStatusByLoc = {};
+    (Array.isArray(cycleRows) ? cycleRows : []).forEach(function(r) {
+      if (r.location_id && !cycleStatusByLoc[r.location_id]) cycleStatusByLoc[r.location_id] = r.status;
+    });
+
+    // Latest PO status per location
+    const poStatusByLoc = {};
+    (Array.isArray(poRows) ? poRows : []).forEach(function(r) {
+      if (r.location_id && !poStatusByLoc[r.location_id]) poStatusByLoc[r.location_id] = r.status;
+    });
+
+    // Re-render cards with real cycle/PO status, then update COGs/GL values
+    renderLocationCards(glByUuid, null, cycleStatusByLoc, poStatusByLoc);
+
     LOCS.forEach(function(l) {
       const rev   = revByVid[l.vid]  || 0;
       const spend = phByUuid[l.uuid] ? phByUuid[l.uuid] : (diByVid[l.vid] || 0);
       const lost  = glByUuid[l.uuid] || 0;
-      const idBase = CARD_IDS[l.key] || l.key;
 
-      const cogsEl = document.getElementById(idBase + '-cogs-val');
+      const cogsEl = document.getElementById('lc-' + l.key + '-cogs');
       if (cogsEl) {
         if (rev < 1) {
           cogsEl.textContent = '—';
@@ -380,7 +396,7 @@ async function loadLocationCards() {
         }
       }
 
-      const lostEl = document.getElementById(idBase + '-lost-val') || document.getElementById(idBase + '-gl-val');
+      const lostEl = document.getElementById('lc-' + l.key + '-gl');
       if (lostEl) {
         lostEl.textContent = lost > 0 ? '$' + lost.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '$0';
         lostEl.style.color = lost > 1000 ? '#a33030' : lost > 300 ? '#a0700a' : '#1C2B4A';
@@ -1684,148 +1700,10 @@ function deepDiveLoc(locCode) {
     <!-- ── LOCATION CARDS ── -->
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8A93A8;" id="loc-section-label">Locations — Chicagoland Region</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8A93A8;" id="loc-section-label">Locations</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;" id="location-cards-grid">
-
-        <!-- Lincoln Park -->
-        <div class="loc-card" data-region="Chicagoland" style="background:#fff;border:1px solid #DCD4EC;border-radius:16px;overflow:hidden;">
-          <div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#22C55E;flex-shrink:0;box-shadow:0 0 0 3px rgba(34,197,94,0.15);"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Lincoln Park</span>
-            </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Maria K.</div>
-          </div>
-          <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div onclick="dbNav('cogs')" style="cursor:pointer;text-align:center;" title="View COGs">
-              <div id="lp-cogs-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div>
-            </div>
-            <div onclick="showScreen('lifecycle')" style="cursor:pointer;text-align:center;" title="View alerts">
-              <div style="font-size:17px;font-weight:700;color:#E8922A;">3</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div>
-            </div>
-            <div onclick="showScreen('goods')" style="cursor:pointer;text-align:center;" title="View goods lost">
-              <div id="lp-lost-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div>
-            </div>
-          </div>
-          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-            <span onclick="showScreen('cycle')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Count done</span>
-            <span onclick="showScreen('procurement')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Order submitted</span>
-            <span onclick="showScreen('lifecycle')" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⚠ 2 expiring</span>
-          </div>
-        </div>
-
-        <!-- Old Orchard — needs attention -->
-        <div class="loc-card" data-region="Chicagoland" style="background:#fff;border:2px solid #FBBF24;border-radius:16px;overflow:hidden;">
-          <div style="padding:16px 18px 12px;border-bottom:1px solid #FEF3C7;background:#FFFBF0;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#F59E0B;flex-shrink:0;box-shadow:0 0 0 3px rgba(245,158,11,0.2);"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Old Orchard</span>
-              <span style="margin-left:auto;font-size:10px;font-weight:700;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:20px;">Needs attention</span>
-            </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;" id="loc-lead-oo">IL · —</div>
-          </div>
-          <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div onclick="dbNav('cogs')" style="cursor:pointer;text-align:center;" title="View COGs">
-              <div id="oo-cogs-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div>
-            </div>
-            <div onclick="showScreen('lifecycle')" style="cursor:pointer;text-align:center;" title="View alerts">
-              <div style="font-size:17px;font-weight:700;color:#E8922A;">2</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div>
-            </div>
-            <div onclick="showScreen('goods')" style="cursor:pointer;text-align:center;" title="View goods lost">
-              <div id="oo-lost-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div>
-            </div>
-          </div>
-          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-            <span onclick="showScreen('order')" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">⏱ Order due — 58m</span>
-            <span onclick="showScreen('cycle')" style="cursor:pointer;background:#FEE2E2;color:#991B1B;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✗ Count not done</span>
-            <span onclick="dbNav('wg')" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">↑ Gauze +38%</span>
-          </div>
-        </div>
-
-        <!-- West Loop -->
-        <div class="loc-card" data-region="Chicagoland" style="background:#fff;border:1px solid #DCD4EC;border-radius:16px;overflow:hidden;">
-          <div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#22C55E;flex-shrink:0;box-shadow:0 0 0 3px rgba(34,197,94,0.15);"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">West Loop</span>
-            </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Felicia G.</div>
-          </div>
-          <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div onclick="dbNav('cogs')" style="cursor:pointer;text-align:center;" title="View COGs">
-              <div id="wl-cogs-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div>
-            </div>
-            <div onclick="showScreen('lifecycle')" style="cursor:pointer;text-align:center;" title="View alerts">
-              <div style="font-size:17px;font-weight:700;color:#E8922A;">2</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div>
-            </div>
-            <div onclick="showScreen('goods')" style="cursor:pointer;text-align:center;" title="View goods lost">
-              <div id="wl-lost-val" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div>
-            </div>
-          </div>
-          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-            <span onclick="showScreen('cycle')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Count done</span>
-            <span onclick="showScreen('procurement')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Order submitted</span>
-            <span onclick="dbNav('wg')" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">↑ Syringes +21%</span>
-          </div>
-        </div>
-
-        <!-- Wheaton -->
-        <div class="loc-card" data-region="Chicagoland" style="background:#fff;border:1px solid #DCD4EC;border-radius:16px;overflow:hidden;">
-          <div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#22C55E;flex-shrink:0;box-shadow:0 0 0 3px rgba(34,197,94,0.15);"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Wheaton</span>
-            </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;" id="loc-lead-wh">IL · —</div>
-          </div>
-          <div style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div onclick="dbNav('cogs')" style="cursor:pointer;text-align:center;" title="View COGs">
-              <div id="wheaton-cogs-val" style="font-size:17px;font-weight:700;color:#22C55E;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div>
-            </div>
-            <div onclick="showScreen('lifecycle')" style="cursor:pointer;text-align:center;" title="View alerts">
-              <div style="font-size:17px;font-weight:700;color:#1C2B4A;">0</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Alerts</div>
-            </div>
-            <div onclick="showScreen('goods')" style="cursor:pointer;text-align:center;" title="View goods lost">
-              <div id="wheaton-gl-val" style="font-size:17px;font-weight:700;color:#1C2B4A;">…</div>
-              <div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div>
-            </div>
-          </div>
-          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-            <span onclick="showScreen('cycle')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Count done</span>
-            <span id="wheaton-order-val" onclick="showScreen('procurement')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Order submitted</span>
-            <span onclick="showScreen('lifecycle')" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⚠ 1 expiring</span>
-          </div>
-        </div>
-
-        <!-- Westchester — Coming Soon -->
-        <div class="loc-card" data-region="Chicagoland West" style="background:#F8F7FC;border:2px dashed #C4B8E8;border-radius:16px;overflow:hidden;">
-          <div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:#A78BFA;flex-shrink:0;box-shadow:0 0 0 3px rgba(167,139,250,0.15);"></span>
-              <span style="font-size:15px;font-weight:700;color:#1C2B4A;">Westchester</span>
-              <span style="margin-left:auto;font-size:9px;font-weight:700;background:#EDE9FE;color:#6D28D9;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;">Coming Soon</span>
-            </div>
-            <div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Lease signed</div>
-          </div>
-          <div style="padding:20px 18px 16px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:8px;">🏗️</div>
-            <div style="font-size:13px;font-weight:600;color:#6D28D9;margin-bottom:4px;">Opening soon</div>
-            <div style="font-size:11px;color:#8A93A8;line-height:1.5;">MedSync will activate automatically<br>once the location goes live.</div>
-          </div>
-        </div>
-
+        <div style="color:#8A93A8;font-size:13px;padding:12px;">Loading locations…</div>
       </div>
     </div>
 
@@ -2349,14 +2227,87 @@ function updateHeroCOGs(portCogs, totalRev, totalSpend) {
   }
 }
 
+// ── Render location cards ─────────────────────────────────────
+function renderLocationCards(glByLocMtd, leadsByLoc, cycleByLoc, poByLoc) {
+  const grid = document.getElementById('location-cards-grid');
+  if (!grid) return;
+  const liveLocs = (typeof LOCS !== 'undefined') ? LOCS : [];
+  const soonLocs = (typeof COMING_SOON_LOCS !== 'undefined') ? COMING_SOON_LOCS : [];
+
+  // Update section label with region info
+  var regions = [...new Set(liveLocs.map(function(l){ return l.region; }))];
+  var labelEl = document.getElementById('loc-section-label');
+  if (labelEl) labelEl.textContent = 'Locations' + (regions.length === 1 ? ' — ' + regions[0] : '');
+
+  var html = '';
+
+  liveLocs.forEach(function(loc) {
+    var gl = glByLocMtd ? (glByLocMtd[loc.uuid] || 0) : null;
+    var glFmt = gl !== null ? (gl > 0 ? '$' + gl.toLocaleString('en-US',{maximumFractionDigits:0}) : '$0') : '…';
+    var glColor = gl !== null ? (gl > 500 ? '#a33030' : gl > 0 ? '#a0700a' : '#1C2B4A') : '#8A93A8';
+
+    var leadName = leadsByLoc ? (leadsByLoc[loc.uuid] || '—') : '—';
+
+    var cycleStatus = cycleByLoc ? (cycleByLoc[loc.uuid] || null) : null;
+    var cycleBadge = cycleStatus === 'completed'
+      ? '<span onclick="showScreen(\'cycle\')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Count done</span>'
+      : cycleStatus === 'in_progress'
+        ? '<span onclick="showScreen(\'cycle\')" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⏳ Count in progress</span>'
+        : '<span onclick="showScreen(\'cycle\')" style="cursor:pointer;background:#F3F4F6;color:#8A93A8;border-radius:20px;padding:3px 10px;font-size:11px;">— No count yet</span>';
+
+    var poStatus = poByLoc ? (poByLoc[loc.uuid] || null) : null;
+    var poBadge = poStatus === 'received'
+      ? '<span onclick="showScreen(\'procurement\')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Order received</span>'
+      : poStatus === 'submitted'
+        ? '<span onclick="showScreen(\'procurement\')" style="cursor:pointer;background:#ECFDF5;color:#15803D;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">✓ Order submitted</span>'
+        : poStatus === 'pending'
+          ? '<span onclick="showScreen(\'procurement\')" style="cursor:pointer;background:#FEF3C7;color:#92400E;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">⏳ Order pending</span>'
+          : '';
+
+    html += '<div class="loc-card" data-region="' + (loc.region||'') + '" style="background:#fff;border:1px solid #DCD4EC;border-radius:16px;overflow:hidden;">'
+      + '<div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
+      + '<span style="width:10px;height:10px;border-radius:50%;background:#22C55E;flex-shrink:0;box-shadow:0 0 0 3px rgba(34,197,94,0.15);"></span>'
+      + '<span style="font-size:15px;font-weight:700;color:#1C2B4A;">' + loc.name + '</span>'
+      + '</div>'
+      + '<div style="font-size:12px;color:#8A93A8;padding-left:20px;" id="loc-lead-' + loc.key + '">IL · ' + leadName + '</div>'
+      + '</div>'
+      + '<div style="padding:12px 18px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">'
+      + '<div onclick="dbNav(\'cogs\')" style="cursor:pointer;text-align:center;" title="View COGs">'
+      + '<div id="lc-' + loc.key + '-cogs" style="font-size:17px;font-weight:700;color:#8A93A8;">…</div>'
+      + '<div style="font-size:10px;color:#8A93A8;margin-top:1px;">COGs</div></div>'
+      + '<div onclick="showScreen(\'goods\')" style="cursor:pointer;text-align:center;" title="View goods lost">'
+      + '<div id="lc-' + loc.key + '-gl" style="font-size:17px;font-weight:700;' + 'color:' + glColor + ';">' + glFmt + '</div>'
+      + '<div style="font-size:10px;color:#8A93A8;margin-top:1px;">Lost MTD</div></div>'
+      + '</div>'
+      + '<div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap;">'
+      + cycleBadge + poBadge
+      + '</div></div>';
+  });
+
+  soonLocs.forEach(function(loc) {
+    html += '<div class="loc-card" data-region="' + (loc.region||'') + '" style="background:#F8F7FC;border:2px dashed #C4B8E8;border-radius:16px;overflow:hidden;">'
+      + '<div style="padding:16px 18px 12px;border-bottom:1px solid #E8E2F6;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
+      + '<span style="width:10px;height:10px;border-radius:50%;background:#A78BFA;flex-shrink:0;box-shadow:0 0 0 3px rgba(167,139,250,0.15);"></span>'
+      + '<span style="font-size:15px;font-weight:700;color:#1C2B4A;">' + loc.name + '</span>'
+      + '<span style="margin-left:auto;font-size:9px;font-weight:700;background:#EDE9FE;color:#6D28D9;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;">Coming Soon</span>'
+      + '</div>'
+      + '<div style="font-size:12px;color:#8A93A8;padding-left:20px;">IL · Lease signed</div>'
+      + '</div>'
+      + '<div style="padding:20px 18px 16px;text-align:center;">'
+      + '<div style="font-size:28px;margin-bottom:8px;">🏗️</div>'
+      + '<div style="font-size:13px;font-weight:600;color:#6D28D9;margin-bottom:4px;">Opening soon</div>'
+      + '<div style="font-size:11px;color:#8A93A8;line-height:1.5;">MedSync will activate automatically<br>once the location goes live.</div>'
+      + '</div></div>';
+  });
+
+  grid.innerHTML = html;
+}
+
 // ── Render order compliance ───────────────────────────────────
 function renderCompliance(orders, loc) {
-  const locs = [
-    { id:'11111111-0000-0000-0000-000000000001', name:'Lincoln Park' },
-    { id:'11111111-0000-0000-0000-000000000002', name:'Old Orchard'  },
-    { id:'11111111-0000-0000-0000-000000000003', name:'West Loop'    },
-    { id:'11111111-0000-0000-0000-000000000004', name:'Wheaton'      }
-  ];
+  const locs = (typeof LOCS !== 'undefined' ? LOCS : []).map(l => ({ id: l.uuid, name: l.name }));
   const filtered = loc === 'all' ? locs : locs.filter(l => l.id === LOC_IDS[loc]);
   // Compliance table
   const tbody = document.getElementById('comp-tbody');
