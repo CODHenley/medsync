@@ -863,6 +863,28 @@ function closeMobileMenu() {
   if (cc) cc.remove();
 }
 
+function switchAnalyticsTab(tab) {
+  var aPanel = document.getElementById('analytics-panel');
+  var rPanel = document.getElementById('reports-panel');
+  var aTab   = document.getElementById('atab-analytics');
+  var rTab   = document.getElementById('atab-reports');
+  if (!aPanel) return;
+  if (tab === 'reports') {
+    aPanel.style.display = 'none';
+    rPanel.style.display = '';
+    aTab.style.borderBottomColor = 'transparent'; aTab.style.color = '#8899AA';
+    rTab.style.borderBottomColor = '#6C4AB6';     rTab.style.color = '#6C4AB6';
+    // Lazy-load the reports iframe on first switch
+    var ri = document.getElementById('reports-iframe');
+    if (ri && !ri.src) ri.src = 'medsync_reports_live.html';
+  } else {
+    rPanel.style.display = 'none';
+    aPanel.style.display = '';
+    rTab.style.borderBottomColor = 'transparent'; rTab.style.color = '#8899AA';
+    aTab.style.borderBottomColor = '#6C4AB6';     aTab.style.color = '#6C4AB6';
+  }
+}
+
 function signOut() {
   localStorage.removeItem('medsync_session');
   localStorage.removeItem('medsync_user');
@@ -1557,29 +1579,38 @@ function deepDiveLoc(locCode) {
     <div style="font-size:9px;font-weight:700;color:#C8922A;text-transform:uppercase;letter-spacing:.08em;" id="sb-role-name">Admin</div>
     <div style="font-size:10px;color:#4A5568;margin-top:1px;" id="sb-role-loc">Megan Henley · Scout</div>
   </div>
+
+  <!-- Portfolio — admin/IL only -->
   <div class="asb-item" id="asb-portfolio" onclick="closeMobileMenu();showScreen('portfolio')" style="font-weight:600;">🏠 Portfolio</div>
+
+  <!-- Daily Work — all roles -->
   <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
-  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Reports &amp; Insights</div>
-  <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 Analytics</div>
-  <div class="asb-item" id="asb-quarterly" onclick="closeMobileMenu();showScreen('quarterly')">📋 Quarterly Report</div>
-  <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
-  <div class="asb-item" id="asb-procurement" onclick="closeMobileMenu();showScreen('procurement')">🛍️ Procurement</div>
-  <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">🕐 Activity Log</div>
-  <div class="asb-item" id="asb-reports" onclick="closeMobileMenu();showScreen('reports')">📊 Reports</div>
-  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
-  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Operations</div>
-  <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Daily Work</div>
   <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
+  <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
   <div class="asb-item" id="asb-cycle" onclick="closeMobileMenu();showScreen('cycle')">🔄 Cycle Count</div>
   <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
-  <div class="asb-item" id="asb-vcimport" onclick="closeMobileMenu();showScreen('vcimport')" style="padding-left:28px;font-size:12px;color:#6B7A99;">↑ Vetcove Import</div>
-  <div class="asb-item" id="asb-invoices" onclick="closeMobileMenu();showScreen('invoices')">🧾 Invoice Reconciliation</div>
-  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
-  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Admin</div>
+  <div class="asb-item" id="asb-vcimport" onclick="closeMobileMenu();showScreen('vcimport')">↑ Vetcove Import</div>
+
+  <!-- Reports & Analytics — Inventory Lead + admin only -->
+  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;" id="asb-hr-insights">
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;" id="asb-sec-insights">Reports &amp; Analytics</div>
+  <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 Analytics &amp; Reports</div>
+  <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
+  <div class="asb-item" id="asb-procurement" onclick="closeMobileMenu();showScreen('procurement')">🛍️ Procurement &amp; COGS</div>
+  <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">🕐 Activity Log</div>
+
+  <!-- Admin — admin/superadmin only -->
+  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;" id="asb-hr-admin">
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;" id="asb-sec-admin">Admin</div>
   <div class="asb-item" id="asb-users" onclick="closeMobileMenu();showScreen('users')">👥 Manage Users</div>
   <div class="asb-item" id="asb-newlocation" onclick="closeMobileMenu();showScreen('newlocation')">🏗️ New Location Setup</div>
   <div class="asb-item" id="asb-regions" onclick="closeMobileMenu();showScreen('regions')">🗺️ Manage Regions</div>
-  <div class="asb-item" id="asb-admin-label" id="asb-settings" onclick="closeMobileMenu();showScreen('settings')">⚙️ Settings</div>
+  <div class="asb-item" id="asb-settings" onclick="closeMobileMenu();showScreen('settings')">⚙️ Settings</div>
+
+  <!-- Help & Training — all roles -->
+  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Help &amp; Training</div>
   <div class="asb-item" onclick="closeMobileMenu();window.location.href='medsync_userguide_live.html'">📖 User Guide</div>
   <div class="asb-item" id="asb-training" onclick="closeMobileMenu();showScreen('training')">📋 Training Log</div>
 </div>
@@ -1749,11 +1780,23 @@ function deepDiveLoc(locCode) {
 
 <!-- SCREEN 3: MEDSYNC ANALYTICS --></div>
 
-<div id="ms-analytics" class="ms-screen">
-  <iframe src="medsync_analytics_live.html?v=20260611" 
-    style="width:100%;height:calc(100vh - 48px);border:none;display:block;" 
-    title="ms-analytics">
-  </iframe>
+<div id="ms-analytics" class="ms-screen" style="display:flex;flex-direction:column;">
+  <div id="analytics-tabs" style="display:flex;gap:0;border-bottom:1px solid #DDD9EC;background:#fff;flex-shrink:0;">
+    <button id="atab-analytics" onclick="switchAnalyticsTab('analytics')" style="padding:10px 20px;font-size:12px;font-weight:600;border:none;border-bottom:2px solid #6C4AB6;background:none;color:#6C4AB6;cursor:pointer;">📊 Analytics</button>
+    <button id="atab-reports" onclick="switchAnalyticsTab('reports')" style="padding:10px 20px;font-size:12px;font-weight:600;border:none;border-bottom:2px solid transparent;background:none;color:#8899AA;cursor:pointer;">📄 Reports</button>
+  </div>
+  <div id="analytics-panel" style="flex:1;overflow:hidden;">
+    <iframe src="medsync_analytics_live.html?v=20260611"
+      style="width:100%;height:100%;border:none;display:block;"
+      title="ms-analytics">
+    </iframe>
+  </div>
+  <div id="reports-panel" style="flex:1;overflow:hidden;display:none;">
+    <iframe id="reports-iframe" src=""
+      style="width:100%;height:100%;border:none;display:block;"
+      title="ms-reports">
+    </iframe>
+  </div>
 </div>
 <div id="ms-lifecycle" class="ms-screen">
   <iframe src="medsync_lot_lifecycle_live.html?v=20260611" 
@@ -3951,24 +3994,23 @@ function renderTrainingStaffCards(rows) {
     user.role === 'inventory_lead' ? 'Inv. Lead' : 'Hosp. Director';
   }
   if (user.role === 'receiver') {
-    // Receiver: receiving + goods lost only
+    // Receiver: Daily Work only — no portfolio, no reports, no admin
     ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    ['asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog',
-     'asb-order','asb-receiving','asb-cycle','asb-goods','asb-users','asb-newlocation',
-     'asb-regions','asb-settings','asb-admin-label'].forEach(function(id){
+    ['asb-portfolio','asb-hr-insights','asb-sec-insights',
+     'asb-analytics','asb-lifecycle','asb-procurement','asb-actlog',
+     'asb-hr-admin','asb-sec-admin','asb-users','asb-newlocation','asb-regions','asb-settings'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('receiver');
   } else if (user.role === 'inventory_lead') {
-    // Inventory Lead: analytics (location-scoped), order, receiving, cycle count, goods lost, lot lifecycle
-    // View-only: portfolio, activity log. Limited: manage users (add receivers only).
-    // No admin screens (new location, regions, settings).
+    // Inventory Lead: Daily Work + Reports & Analytics (location-scoped). No admin section.
     ['mnb-portfolio','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    ['asb-receiver','asb-newlocation','asb-regions','asb-settings','asb-admin-label'].forEach(function(id){
+    ['asb-portfolio','asb-hr-admin','asb-sec-admin',
+     'asb-users','asb-newlocation','asb-regions','asb-settings'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     // Scope analytics to their location
@@ -3985,16 +4027,18 @@ function renderTrainingStaffCards(rows) {
     }
     showScreen('analytics');
   } else if (user.role === 'manager') {
-    // Manager: operations screens only
+    // Manager: Daily Work only — no portfolio, no reports, no admin
     ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    ['asb-portfolio','asb-analytics','asb-lifecycle','asb-actlog','asb-newlocation','asb-regions','asb-settings','asb-admin-label'].forEach(function(id){
+    ['asb-portfolio','asb-hr-insights','asb-sec-insights',
+     'asb-analytics','asb-lifecycle','asb-procurement','asb-actlog',
+     'asb-hr-admin','asb-sec-admin','asb-users','asb-newlocation','asb-regions','asb-settings'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('order');
   } else {
-    // admin: full access
+    // admin / medsync_superadmin: full access
     showScreen('portfolio');
     loadRegionFilter();
     setTimeout(loadRecognition, 400);
