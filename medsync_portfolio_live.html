@@ -1781,18 +1781,18 @@ function deepDiveLoc(locCode) {
 
 <!-- SCREEN 3: MEDSYNC ANALYTICS --></div>
 
-<div id="ms-analytics" class="ms-screen" style="display:flex;flex-direction:column;">
+<div id="ms-analytics" class="ms-screen" style="display:flex;flex-direction:column;height:calc(100vh - 48px);">
   <div id="analytics-tabs" style="display:flex;gap:0;border-bottom:1px solid #DDD9EC;background:#fff;flex-shrink:0;">
     <button id="atab-analytics" onclick="switchAnalyticsTab('analytics')" style="padding:10px 20px;font-size:12px;font-weight:600;border:none;border-bottom:2px solid #6C4AB6;background:none;color:#6C4AB6;cursor:pointer;">📊 Analytics</button>
     <button id="atab-reports" onclick="switchAnalyticsTab('reports')" style="padding:10px 20px;font-size:12px;font-weight:600;border:none;border-bottom:2px solid transparent;background:none;color:#8899AA;cursor:pointer;">📄 Reports</button>
   </div>
-  <div id="analytics-panel" style="flex:1;overflow:hidden;">
+  <div id="analytics-panel" style="flex:1;overflow:hidden;min-height:0;">
     <iframe src="medsync_analytics_live.html?v=20260611"
       style="width:100%;height:100%;border:none;display:block;"
       title="ms-analytics">
     </iframe>
   </div>
-  <div id="reports-panel" style="flex:1;overflow:hidden;display:none;">
+  <div id="reports-panel" style="flex:1;overflow:hidden;min-height:0;display:none;">
     <iframe id="reports-iframe" src=""
       style="width:100%;height:100%;border:none;display:block;"
       title="ms-reports">
