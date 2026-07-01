@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Price Audit — MedSync</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F4F2FA;color:#1C2B4A;font-size:14px;}
+:root{
+  --navy:#1C2B4A;--purple:#6C4AB6;--gold:#C8922A;
+  --green:#2a6e2a;--red:#a33030;--amber:#b45309;
+  --border:#DDD9EC;--mist:#8A93A8;--surface:#fff;
+}
+
+/* ── Top bar ── */
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:52px;background:var(--navy);color:#fff;position:sticky;top:0;z-index:100;}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:.01em;}
+.topbar-sub{font-size:11px;color:#9BA8C0;margin-left:4px;}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;font-size:11px;font-weight:700;background:#a33030;color:#fff;}
+
+/* ── Filter bar ── */
+.filter-bar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.filter-bar select,.filter-bar input{padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:var(--navy);}
+.filter-bar input{width:220px;}
+.btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;}
+.btn-primary{background:var(--purple);color:#fff;border-color:var(--purple);}
+.btn-sm{padding:4px 11px;font-size:12px;border-radius:20px;}
+
+/* ── Status tabs ── */
+.status-tabs{display:flex;gap:6px;padding:14px 20px 0;}
+.stab{padding:7px 16px;border-radius:8px 8px 0 0;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);border-bottom:none;background:#F4F2FA;color:var(--mist);}
+.stab.active{background:#fff;color:var(--navy);}
+
+/* ── Main table ── */
+.table-wrap{padding:0 20px 30px;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+th{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mist);background:#F9F8FC;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:12px 14px;border-bottom:1px solid #F0EDF8;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FAFAFE;}
+.product-name{font-weight:600;color:var(--navy);}
+.product-sub{font-size:11px;color:var(--mist);margin-top:1px;}
+.drift-up{color:var(--red);font-weight:700;}
+.drift-dn{color:var(--green);font-weight:700;}
+.mono{font-variant-numeric:tabular-nums;}
+
+/* Status pills */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.pill-pending{background:#FEF3C7;color:#92400E;}
+.pill-approved{background:#D1FAE5;color:#065F46;}
+.pill-sync{background:#DBEAFE;color:#1E40AF;}
+.pill-rejected{background:#FEE2E2;color:#991B1B;}
+.pill-hold{background:#F3F4F6;color:#374151;}
+
+/* Action buttons */
+.action-row{display:flex;gap:6px;flex-wrap:wrap;}
+.act-approve{background:#065F46;color:#fff;border-color:#065F46;}
+.act-reject{background:#fff;color:var(--red);border-color:var(--red);}
+.act-hold{background:#fff;color:var(--mist);border-color:var(--border);}
+
+/* Empty state */
+.empty{padding:60px 20px;text-align:center;color:var(--mist);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;}
+
+/* Resolve modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:16px;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:480px;padding:24px;}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--mist);margin-bottom:16px;}
+.field-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mist);margin-bottom:5px;}
+textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px;}
+.modal-actions{display:flex;gap:8px;margin-top:16px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="topbar-title">Price Audit</span>
+    <span class="topbar-sub">Flagged by Inventory Leads · Pending super-admin review</span>
+  </div>
+  <span id="pending-badge" class="badge" style="margin-left:8px;display:none;"></span>
+  <div style="flex:1;"></div>
+  <button class="btn" onclick="loadFlags()" style="color:#fff;border-color:#ffffff44;background:transparent;font-size:12px;">↻ Refresh</button>
+</div>
+
+<div class="filter-bar">
+  <select id="sel-status" onchange="render()">
+    <option value="pending">Pending review</option>
+    <option value="approved_pending_sync">Approved — awaiting VetSpire sync</option>
+    <option value="approved_synced">Approved &amp; synced</option>
+    <option value="rejected">Rejected</option>
+    <option value="hold">On hold</option>
+    <option value="">All</option>
+  </select>
+  <select id="sel-location" onchange="render()">
+    <option value="">All locations</option>
+  </select>
+  <input id="search" type="text" placeholder="Search product…" oninput="render()">
+</div>
+
+<div class="status-tabs">
+  <div class="stab active" id="stab-pending" onclick="switchTab('pending')">Pending <span id="cnt-pending" style="margin-left:4px;"></span></div>
+  <div class="stab" id="stab-approved_pending_sync" onclick="switchTab('approved_pending_sync')">Approved</div>
+  <div class="stab" id="stab-rejected" onclick="switchTab('rejected')">Rejected</div>
+  <div class="stab" id="stab-all" onclick="switchTab('')">All</div>
+</div>
+
+<div class="table-wrap" style="padding-top:0;">
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Location</th>
+        <th style="text-align:right;">VetSpire Cost</th>
+        <th style="text-align:right;">Invoice Cost</th>
+        <th style="text-align:right;">Drift</th>
+        <th>Flagged By</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="flags-tbody"></tbody>
+  </table>
+  <div id="empty-state" class="empty" style="display:none;">
+    <div class="empty-icon">✅</div>
+    <div style="font-weight:600;color:var(--navy);">No flags in this category</div>
+    <div style="font-size:12px;margin-top:4px;">Inventory Leads haven't flagged any price changes matching this filter.</div>
+  </div>
+</div>
+
+<!-- Resolve modal -->
+<div id="resolve-modal" class="modal-bg">
+  <div class="modal">
+    <h3 id="rm-title">Approve cost update?</h3>
+    <div id="rm-detail" class="modal-sub"></div>
+    <div id="rm-new-cost-wrap" style="margin-bottom:12px;">
+      <div class="field-label">New unit cost to apply in VetSpire</div>
+      <input id="rm-new-cost" type="number" step="0.0001" min="0"
+        style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+    </div>
+    <div style="margin-bottom:0;">
+      <div class="field-label">Notes (optional)</div>
+      <textarea id="rm-notes" placeholder="e.g. Vendor confirmed price increase effective July 1…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button id="rm-confirm-btn" class="btn btn-primary" onclick="submitResolve()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const _sess = (() => { try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + ((_sess.access_token) || SUPA_KEY), 'Content-Type': 'application/json' };
+
+let _flags = [];
+let _resolveId   = null;
+let _resolveAction = null;
+
+function fmt(v) { return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}); }
+function fmtDate(s) {
+  if (!s) return '—';
+  const d = new Date(s);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · ' +
+         d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+async function loadFlags() {
+  const res = await fetch(
+    SUPA_URL + '/rest/v1/price_review_flags?select=*,locations(name)&order=flagged_at.desc&limit=500',
+    { headers: H }
+  );
+  _flags = res.ok ? (await res.json()) : [];
+
+  // Populate location filter
+  const locs = [...new Set(_flags.map(f => f.location_name).filter(Boolean))].sort();
+  const locSel = document.getElementById('sel-location');
+  locSel.innerHTML = '<option value="">All locations</option>' +
+    locs.map(l => `<option value="${l}">${l}</option>`).join('');
+
+  // Update pending badge
+  const pending = _flags.filter(f => f.status === 'pending').length;
+  const badge = document.getElementById('pending-badge');
+  if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+  document.getElementById('cnt-pending').innerHTML = pending > 0
+    ? `<span style="background:#a33030;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;">${pending}</span>`
+    : '';
+
+  render();
+}
+
+function switchTab(status) {
+  document.getElementById('sel-status').value = status;
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  const tabId = 'stab-' + (status || 'all');
+  const tab = document.getElementById(tabId);
+  if (tab) tab.classList.add('active');
+  render();
+}
+
+function render() {
+  const statusFilter = document.getElementById('sel-status').value;
+  const locFilter    = document.getElementById('sel-location').value;
+  const search       = document.getElementById('search').value.toLowerCase();
+
+  let rows = _flags.filter(f => {
+    if (statusFilter && f.status !== statusFilter) return false;
+    if (locFilter && f.location_name !== locFilter) return false;
+    if (search && !f.product_name.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('flags-tbody');
+  const empty = document.getElementById('empty-state');
+
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = rows.map(f => {
+    const drift = f.drift_pct;
+    const driftClass = drift > 0 ? 'drift-up' : drift < 0 ? 'drift-dn' : '';
+    const driftStr   = drift !== null ? (drift > 0 ? '+' : '') + Number(drift).toFixed(1) + '%' : '—';
+
+    const pillMap = {
+      pending:               '<span class="pill pill-pending">Pending</span>',
+      approved_pending_sync: '<span class="pill pill-sync">Approved — awaiting sync</span>',
+      approved_synced:       '<span class="pill pill-approved">✓ Synced to VetSpire</span>',
+      rejected:              '<span class="pill pill-rejected">Rejected</span>',
+      hold:                  '<span class="pill pill-hold">On Hold</span>',
+    };
+
+    const actions = f.status === 'pending' ? `
+      <div class="action-row">
+        <button class="btn btn-sm act-approve" onclick="openResolve('${f.id}','approve')">Approve</button>
+        <button class="btn btn-sm act-hold"    onclick="openResolve('${f.id}','hold')">Hold</button>
+        <button class="btn btn-sm act-reject"  onclick="openResolve('${f.id}','reject')">Reject</button>
+      </div>` :
+      f.status === 'approved_pending_sync' ? `
+      <div class="action-row">
+        <button class="btn btn-sm act-approve" onclick="markSynced('${f.id}')">Mark Synced ✓</button>
+      </div>` : '—';
+
+    return `<tr>
+      <td>
+        <div class="product-name">${esc(f.product_name)}</div>
+        ${f.sku ? `<div class="product-sub">SKU: ${esc(f.sku)}</div>` : ''}
+        ${f.po_reference ? `<div class="product-sub">PO: ${esc(f.po_reference)}</div>` : ''}
+      </td>
+      <td>${esc(f.location_name || '—')}</td>
+      <td class="mono" style="text-align:right;">${f.vetspire_cost !== null ? '$' + fmt(f.vetspire_cost) : '—'}</td>
+      <td class="mono" style="text-align:right;">${f.invoice_cost !== null ? '$' + fmt(f.invoice_cost) : '—'}</td>
+      <td class="mono ${driftClass}" style="text-align:right;">${driftStr}</td>
+      <td style="font-size:12px;">${esc(f.flagged_by || '—')}</td>
+      <td style="font-size:12px;white-space:nowrap;">${fmtDate(f.flagged_at)}</td>
+      <td>${pillMap[f.status] || f.status}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openResolve(id, action) {
+  _resolveId     = id;
+  _resolveAction = action;
+  const flag = _flags.find(f => f.id === id);
+  const modal = document.getElementById('resolve-modal');
+  const newCostWrap = document.getElementById('rm-new-cost-wrap');
+  const btn = document.getElementById('rm-confirm-btn');
+
+  document.getElementById('rm-notes').value = '';
+  document.getElementById('rm-new-cost').value = flag ? (flag.invoice_cost || '') : '';
+
+  if (action === 'approve') {
+    document.getElementById('rm-title').textContent = 'Approve cost update';
+    document.getElementById('rm-detail').textContent =
+      flag ? `${flag.product_name} · Invoice cost $${fmt(flag.invoice_cost)} vs VetSpire $${fmt(flag.vetspire_cost)}` : '';
+    newCostWrap.style.display = '';
+    btn.textContent = 'Approve & Queue for Sync';
+    btn.style.background = '#065F46';
+  } else if (action === 'hold') {
+    document.getElementById('rm-title').textContent = 'Place on hold';
+    document.getElementById('rm-detail').textContent = 'Add a note explaining why this flag is being held.';
+    newCostWrap.style.display = 'none';
+    btn.textContent = 'Place on Hold';
+    btn.style.background = '#374151';
+  } else {
+    document.getElementById('rm-title').textContent = 'Reject price change';
+    document.getElementById('rm-detail').textContent = 'The unit cost in VetSpire will remain unchanged.';
+    newCostWrap.style.display = 'none';
+    btn.textContent = 'Reject';
+    btn.style.background = '#a33030';
+  }
+
+  modal.classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('resolve-modal').classList.remove('open');
+  _resolveId = _resolveAction = null;
+}
+
+async function submitResolve() {
+  if (!_resolveId) return;
+  const btn = document.getElementById('rm-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const notes   = document.getElementById('rm-notes').value.trim();
+  const newCost = parseFloat(document.getElementById('rm-new-cost').value) || null;
+  const resolver = (_sess && _sess.user && _sess.user.email) || 'admin';
+
+  const statusMap = { approve: 'approved_pending_sync', hold: 'hold', reject: 'rejected' };
+  const body = {
+    status:           statusMap[_resolveAction],
+    resolved_by:      resolver,
+    resolved_at:      new Date().toISOString(),
+    resolution_notes: notes || null,
+  };
+  if (_resolveAction === 'approve' && newCost) body.invoice_cost = newCost;
+
+  const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + _resolveId, {
+    method: 'PATCH',
+    headers: { ...H, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body)
+  });
+
+  btn.disabled = false;
+  closeModal();
+
+  if (res.ok) {
+    const flag = _flags.find(f => f.id === _resolveId);
+    if (flag) Object.assign(flag, body);
+    render();
+    const msgs = { approve: 'Approved — queued for VetSpire sync', hold: 'Flag placed on hold', reject: 'Flag rejected' };
+    showToast(msgs[_resolveAction] || 'Saved');
+    // Update pending badge
+    const pending = _flags.filter(f => f.status === 'pending').length;
+    const badge = document.getElementById('pending-badge');
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+    else badge.style.display = 'none';
+  } else {
+    showToast('Error saving — please try again');
+  }
+}
+
+async function markSynced(id) {
+  const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + id, {
+    method: 'PATCH',
+    headers: { ...H, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ status: 'approved_synced', vetspire_synced: true, resolved_at: new Date().toISOString() })
+  });
+  if (res.ok) {
+    const flag = _flags.find(f => f.id === id);
+    if (flag) { flag.status = 'approved_synced'; flag.vetspire_synced = true; }
+    render();
+    showToast('Marked as synced to VetSpire ✓');
+  }
+}
+
+let _toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+loadFlags();
+</script>
+</body>
+</html>

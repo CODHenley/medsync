@@ -9,7 +9,7 @@
 <script src="medsync_locations.js"></script>
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings','training','reports'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings','training','reports','priceaudit'];
 function showScreen(name) {
   if (name === 'cycle') {
     var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
@@ -1607,6 +1607,7 @@ function deepDiveLoc(locCode) {
   <div class="asb-item" id="asb-newlocation" onclick="closeMobileMenu();showScreen('newlocation')">🏗️ New Location Setup</div>
   <div class="asb-item" id="asb-regions" onclick="closeMobileMenu();showScreen('regions')">🗺️ Manage Regions</div>
   <div class="asb-item" id="asb-settings" onclick="closeMobileMenu();showScreen('settings')">⚙️ Settings</div>
+  <div class="asb-item" id="asb-priceaudit" onclick="closeMobileMenu();showScreen('priceaudit')">🏷️ Price Audit</div>
 
   <!-- Help & Training — all roles -->
   <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
@@ -1886,6 +1887,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_settings_live.html?v=20260611"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Admin Settings">
+  </iframe>
+</div>
+<div id="ms-priceaudit" class="ms-screen" style="display:none;">
+  <iframe src="medsync_price_audit_live.html"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="Price Audit">
   </iframe>
 </div>
 <div id="ms-training" class="ms-screen" style="display:none;">
@@ -4000,7 +4007,7 @@ function renderTrainingStaffCards(rows) {
     });
     ['asb-portfolio','asb-hr-insights','asb-sec-insights',
      'asb-analytics','asb-lifecycle','asb-procurement','asb-actlog',
-     'asb-hr-admin','asb-sec-admin','asb-users','asb-newlocation','asb-regions','asb-settings'].forEach(function(id){
+     'asb-hr-admin','asb-sec-admin','asb-users','asb-newlocation','asb-regions','asb-settings','asb-priceaudit'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('receiver');
@@ -4033,7 +4040,7 @@ function renderTrainingStaffCards(rows) {
     });
     ['asb-portfolio','asb-hr-insights','asb-sec-insights',
      'asb-analytics','asb-lifecycle','asb-procurement','asb-actlog',
-     'asb-hr-admin','asb-sec-admin','asb-users','asb-newlocation','asb-regions','asb-settings'].forEach(function(id){
+     'asb-hr-admin','asb-sec-admin','asb-users','asb-newlocation','asb-regions','asb-settings','asb-priceaudit'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     showScreen('order');
