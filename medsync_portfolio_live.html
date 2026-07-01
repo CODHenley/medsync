@@ -1557,11 +1557,11 @@ function deepDiveLoc(locCode) {
     </a>
     <div style="display:flex;gap:2px;">
       <button class="mnb active" id="mnb-portfolio" onclick="showScreen('portfolio');closeMobileMenu()">Portfolio</button>
-      <button class="mnb" id="mnb-analytics" onclick="showScreen('analytics')">Analytics</button>
+      <button class="mnb" id="mnb-analytics" onclick="showScreen('analytics')">Analytics &amp; Reports</button>
       <button class="mnb" id="mnb-lifecycle" onclick="showScreen('lifecycle')">Lot Lifecycle</button>
       <button class="mnb" id="mnb-procurement" onclick="showScreen('procurement')">Procurement</button>
       <button class="mnb" id="mnb-actlog" onclick="showScreen('actlog')">Activity Log</button>
-      <button class="mnb" id="mnb-reports" onclick="showScreen('reports')">Reports</button>
+
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
@@ -4002,7 +4002,7 @@ function renderTrainingStaffCards(rows) {
   }
   if (user.role === 'receiver') {
     // Receiver: Daily Work only — no portfolio, no reports, no admin
-    ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
+    ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-procurement','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     ['asb-portfolio','asb-hr-insights','asb-sec-insights',
@@ -4035,7 +4035,7 @@ function renderTrainingStaffCards(rows) {
     showScreen('analytics');
   } else if (user.role === 'manager') {
     // Manager: Daily Work only — no portfolio, no reports, no admin
-    ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-actlog'].forEach(function(id){
+    ['mnb-portfolio','mnb-analytics','mnb-lifecycle','mnb-procurement','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
     ['asb-portfolio','asb-hr-insights','asb-sec-insights',
