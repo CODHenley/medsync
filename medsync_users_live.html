@@ -394,12 +394,14 @@ const ROLE_LABELS = {
   hospital_manager: 'Hospital Director', clinical: 'Vet / Tech'
 };
 const CREATABLE = {
+  medsync_superadmin: ['medsync_superadmin','admin','hospital_manager','manager','receiver','inventory_lead'],
   admin:            ['admin','hospital_manager','manager','receiver','inventory_lead'],
   hospital_manager: ['hospital_manager','manager','receiver','inventory_lead'],
   manager:          ['receiver','inventory_lead']
 };
 // Roles a given role can manage (activate/deactivate/delete)
 const MANAGEABLE = {
+  medsync_superadmin: ['medsync_superadmin','admin','hospital_manager','manager','receiver','inventory_lead'],
   admin:            ['admin','hospital_manager','manager','receiver','inventory_lead'],
   hospital_manager: ['hospital_manager','manager','receiver','inventory_lead'],
   manager:          ['receiver','inventory_lead']
