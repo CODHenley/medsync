@@ -239,7 +239,7 @@ function render() {
 
     const pillMap = {
       pending:               '<span class="pill pill-pending">Pending</span>',
-      approved_pending_sync: '<span class="pill pill-sync">Approved — awaiting sync</span>',
+      approved_pending_sync: '<span class="pill pill-sync">Approved — syncing…</span>',
       approved_synced:       '<span class="pill pill-approved">✓ Synced to VetSpire</span>',
       rejected:              '<span class="pill pill-rejected">Rejected</span>',
       hold:                  '<span class="pill pill-hold">On Hold</span>',
@@ -251,10 +251,7 @@ function render() {
         <button class="btn btn-sm act-hold"    onclick="openResolve('${f.id}','hold')">Hold</button>
         <button class="btn btn-sm act-reject"  onclick="openResolve('${f.id}','reject')">Reject</button>
       </div>` :
-      f.status === 'approved_pending_sync' ? `
-      <div class="action-row">
-        <button class="btn btn-sm act-approve" onclick="markSynced('${f.id}')">Mark Synced ✓</button>
-      </div>` : '—';
+      '—';
 
     return `<tr>
       <td>
@@ -317,57 +314,72 @@ function closeModal() {
 async function submitResolve() {
   if (!_resolveId) return;
   const btn = document.getElementById('rm-confirm-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  btn.disabled = true;
 
-  const notes   = document.getElementById('rm-notes').value.trim();
-  const newCost = parseFloat(document.getElementById('rm-new-cost').value) || null;
+  const notes    = document.getElementById('rm-notes').value.trim();
+  const newCost  = parseFloat(document.getElementById('rm-new-cost').value) || null;
   const resolver = (_sess && _sess.user && _sess.user.email) || 'admin';
+  const flag     = _flags.find(f => f.id === _resolveId);
 
-  const statusMap = { approve: 'approved_pending_sync', hold: 'hold', reject: 'rejected' };
-  const body = {
-    status:           statusMap[_resolveAction],
-    resolved_by:      resolver,
-    resolved_at:      new Date().toISOString(),
-    resolution_notes: notes || null,
-  };
-  if (_resolveAction === 'approve' && newCost) body.invoice_cost = newCost;
+  try {
+    if (_resolveAction === 'approve') {
+      if (!newCost) { showToast('Enter a unit cost to approve'); btn.disabled = false; return; }
+      btn.textContent = 'Syncing to VetSpire…';
 
-  const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + _resolveId, {
-    method: 'PATCH',
-    headers: { ...H, 'Prefer': 'return=minimal' },
-    body: JSON.stringify(body)
-  });
+      // Call Edge Function — updates VetSpire + marks flag approved_synced in one step
+      const res = await fetch(
+        SUPA_URL + '/functions/v1/update-unit-cost',
+        {
+          method: 'POST',
+          headers: { ...H },
+          body: JSON.stringify({
+            flag_id:             _resolveId,
+            vetspire_product_id: flag?.vetspire_product_id,
+            new_unit_cost:       newCost,
+            resolved_by:         resolver,
+          })
+        }
+      );
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || 'Edge Function error');
 
-  btn.disabled = false;
-  closeModal();
+      if (flag) Object.assign(flag, { status: 'approved_synced', vetspire_synced: true, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: newCost, resolution_notes: notes || null });
+      closeModal();
+      render();
+      showToast('✓ Cost updated in VetSpire — $' + newCost.toFixed(4));
 
-  if (res.ok) {
-    const flag = _flags.find(f => f.id === _resolveId);
-    if (flag) Object.assign(flag, body);
-    render();
-    const msgs = { approve: 'Approved — queued for VetSpire sync', hold: 'Flag placed on hold', reject: 'Flag rejected' };
-    showToast(msgs[_resolveAction] || 'Saved');
-    // Update pending badge
+    } else {
+      // Hold or Reject — direct Supabase patch, no VetSpire call
+      btn.textContent = 'Saving…';
+      const statusMap = { hold: 'hold', reject: 'rejected' };
+      const body = {
+        status:           statusMap[_resolveAction],
+        resolved_by:      resolver,
+        resolved_at:      new Date().toISOString(),
+        resolution_notes: notes || null,
+      };
+      const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + _resolveId, {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (flag) Object.assign(flag, body);
+      closeModal();
+      render();
+      const msgs = { hold: 'Flag placed on hold', reject: 'Flag rejected' };
+      showToast(msgs[_resolveAction] || 'Saved');
+    }
+
+    // Refresh pending badge
     const pending = _flags.filter(f => f.status === 'pending').length;
     const badge = document.getElementById('pending-badge');
     if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
     else badge.style.display = 'none';
-  } else {
-    showToast('Error saving — please try again');
-  }
-}
 
-async function markSynced(id) {
-  const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + id, {
-    method: 'PATCH',
-    headers: { ...H, 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ status: 'approved_synced', vetspire_synced: true, resolved_at: new Date().toISOString() })
-  });
-  if (res.ok) {
-    const flag = _flags.find(f => f.id === id);
-    if (flag) { flag.status = 'approved_synced'; flag.vetspire_synced = true; }
-    render();
-    showToast('Marked as synced to VetSpire ✓');
+  } catch(err) {
+    closeModal();
+    showToast('Error: ' + (err instanceof Error ? err.message : String(err)));
   }
 }
 
