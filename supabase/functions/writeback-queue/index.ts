@@ -6,8 +6,8 @@ const SUPA_URL = Deno.env.get('SUPABASE_URL')
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
 async function getVetspireToken() {
-  const token = Deno.env.get('VETSPIRE_API_TOKEN')
-  if (!token) throw new Error('VETSPIRE_API_TOKEN secret not set')
+  const token = Deno.env.get('Medsync_API_Key')
+  if (!token) throw new Error('Medsync_API_Key secret not set')
   return token
 }
 

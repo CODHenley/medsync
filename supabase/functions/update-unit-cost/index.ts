@@ -16,8 +16,8 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'flag_id, vetspire_product_id, and new_unit_cost are required' }), { status: 400, headers: CORS })
     }
 
-    const token = Deno.env.get('VETSPIRE_API_TOKEN')
-    if (!token) throw new Error('VETSPIRE_API_TOKEN secret not set')
+    const token = Deno.env.get('Medsync_API_Key')
+    if (!token) throw new Error('Medsync_API_Key secret not set')
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
