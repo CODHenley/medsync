@@ -19,7 +19,7 @@ function showScreen(name) {
   }
   __screens.forEach(function(s) {
     var el = document.getElementById('ms-' + s);
-    if (el) el.style.display = (s === name) ? 'block' : 'none';
+    if (el) el.style.display = (s === name) ? (s === 'analytics' ? 'flex' : 'block') : 'none';
   });
   document.querySelectorAll('.mnb').forEach(function(b) { b.classList.remove('active'); });
   var nb = document.getElementById('mnb-' + name);
