@@ -91,6 +91,20 @@ body{font-family:'DM Sans',sans-serif;background:#EDE8F8;color:var(--navy);font-
 .btn-activate:hover{background:#D0EDD8;}
 .btn-delete{background:var(--red-bg);color:var(--red);border-color:#F0AAAA;}
 .btn-delete:hover{background:#FACACA;}
+.btn-edit{background:#EDE8F8;color:#6C4AB6;border-color:#C8B8F0;}
+.btn-edit:hover{background:#DDD0F5;}
+/* Edit user modal */
+#edit-user-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;}
+#edit-user-overlay.open{display:flex;}
+#edit-user-modal{background:#fff;border-radius:14px;padding:28px 28px 24px;width:420px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.18);}
+#edit-user-modal h3{margin:0 0 18px;font-size:15px;font-weight:700;color:#1C2B4A;}
+#edit-user-modal .field{margin-bottom:14px;}
+#edit-user-modal label{display:block;font-size:12px;font-weight:600;color:#556;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;}
+#edit-user-modal select{width:100%;padding:9px 11px;border:1px solid #DDD9EC;border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;}
+#edit-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.btn-modal-save{padding:9px 20px;background:#6C4AB6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-modal-save:hover{background:#5A3A9A;}
+.btn-modal-cancel{padding:9px 16px;background:#F4F2FA;color:#556;border:1px solid #DDD9EC;border-radius:8px;font-size:13px;cursor:pointer;}
 
 /* Confirm delete inline */
 .confirm-row{background:#FEF3E2;border-radius:8px;padding:10px 14px;margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
@@ -311,6 +325,37 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- Edit User Modal -->
+<div id="edit-user-overlay">
+  <div id="edit-user-modal">
+    <h3 id="edit-modal-title">Edit User</h3>
+    <div class="field">
+      <label>Role</label>
+      <select id="edit-role"></select>
+    </div>
+    <div class="field">
+      <label>Access</label>
+      <select id="edit-access-scope">
+        <option value="all">All locations</option>
+        <option value="region">By region</option>
+        <option value="locations">Specific locations</option>
+      </select>
+    </div>
+    <div class="field" id="edit-region-field" style="display:none;">
+      <label>Region</label>
+      <select id="edit-region"></select>
+    </div>
+    <div class="field" id="edit-locs-field" style="display:none;">
+      <label>Locations</label>
+      <div id="edit-loc-checkboxes" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;padding:4px 0;"></div>
+    </div>
+    <div id="edit-modal-actions">
+      <button class="btn-modal-cancel" onclick="closeEditUser()">Cancel</button>
+      <button class="btn-modal-save" onclick="saveEditUser()">Save changes</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPA_URL   = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
@@ -388,6 +433,7 @@ function formatAccess(u) {
 let myRole = 'manager';
 let myId   = null;
 let _pendingDeleteId = null;
+let _allUsers = [];
 
 const ROLE_LABELS = {
   admin: 'Admin', manager: 'Hospital Director', receiver: 'Receiver', inventory_lead: 'Inventory Lead',
@@ -449,6 +495,7 @@ async function loadUsers() {
     { headers: H }
   );
   const users = await res.json();
+  _allUsers = Array.isArray(users) ? users : [];
   const el = document.getElementById('user-list');
   if (!Array.isArray(users) || users.length === 0) {
     el.innerHTML = '<div class="empty">No users found.</div>';
@@ -469,8 +516,9 @@ async function loadUsers() {
       const toggleBtn = active
         ? `<button class="action-btn btn-deactivate" data-id="${u.id}" onclick="deactivateUser('${u.id}','${u.full_name}')">Deactivate</button>`
         : `<button class="action-btn btn-activate"   data-id="${u.id}" onclick="activateUser('${u.id}','${u.full_name}')">Activate</button>`;
+      const editBtn   = `<button class="action-btn btn-edit" onclick="openEditUser('${u.id}')">Edit</button>`;
       const deleteBtn = `<button class="action-btn btn-delete" onclick="confirmDelete('${u.id}','${u.full_name}')">Delete</button>`;
-      actionBtns = toggleBtn + deleteBtn;
+      actionBtns = editBtn + toggleBtn + deleteBtn;
     }
 
     return `
@@ -529,6 +577,87 @@ function cancelDelete(id) {
   const el = document.getElementById('confirm-' + id);
   if (el) el.style.display = 'none';
   _pendingDeleteId = null;
+}
+
+let _editUserId = null;
+
+function openEditUser(id) {
+  const u = _allUsers.find(u => u.id === id);
+  if (!u) return;
+  _editUserId = id;
+  document.getElementById('edit-modal-title').textContent = 'Edit — ' + (u.full_name || u.email);
+
+  // Populate role dropdown with roles this admin can assign
+  const allowed = CREATABLE[myRole] || [];
+  const roleSel = document.getElementById('edit-role');
+  roleSel.innerHTML = allowed.map(r => `<option value="${r}"${r === u.role ? ' selected' : ''}>${ROLE_LABELS[r] || r}</option>`).join('');
+
+  // Access scope
+  const scope = u.access_scope || 'all';
+  document.getElementById('edit-access-scope').value = scope;
+  onEditScopeChange();
+
+  // Pre-select region
+  if (scope === 'region' && u.access_region_id) {
+    document.getElementById('edit-region').value = u.access_region_id;
+  }
+
+  // Pre-check locations
+  if (scope === 'locations' && Array.isArray(u.access_location_ids)) {
+    document.querySelectorAll('#edit-loc-checkboxes input').forEach(cb => {
+      cb.checked = u.access_location_ids.includes(cb.value);
+    });
+  }
+
+  document.getElementById('edit-user-overlay').classList.add('open');
+}
+
+function onEditScopeChange() {
+  const val = document.getElementById('edit-access-scope').value;
+  document.getElementById('edit-region-field').style.display  = val === 'region'    ? 'block' : 'none';
+  document.getElementById('edit-locs-field').style.display    = val === 'locations' ? 'block' : 'none';
+
+  // Populate region dropdown
+  const rSel = document.getElementById('edit-region');
+  if (Array.isArray(_regions)) {
+    rSel.innerHTML = _regions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  }
+  // Populate location checkboxes
+  const lBox = document.getElementById('edit-loc-checkboxes');
+  if (Array.isArray(_locations)) {
+    lBox.innerHTML = _locations.map(l =>
+      `<label class="loc-check"><input type="checkbox" value="${l.id}"> ${l.name}</label>`
+    ).join('');
+  }
+}
+document.getElementById('edit-access-scope').addEventListener('change', onEditScopeChange);
+
+function closeEditUser() {
+  document.getElementById('edit-user-overlay').classList.remove('open');
+  _editUserId = null;
+}
+
+async function saveEditUser() {
+  if (!_editUserId) return;
+  const role  = document.getElementById('edit-role').value;
+  const scope = document.getElementById('edit-access-scope').value;
+  let region_id = null, location_ids = null;
+  if (scope === 'region') {
+    region_id = document.getElementById('edit-region').value || null;
+  } else if (scope === 'locations') {
+    const checked = [...document.querySelectorAll('#edit-loc-checkboxes input:checked')].map(i => i.value);
+    location_ids = checked.length ? checked : null;
+  }
+
+  const patch = { role, access_scope: scope, access_region_id: region_id, access_location_ids: location_ids };
+  const res = await fetch(SUPA_URL + '/rest/v1/users?id=eq.' + _editUserId, {
+    method: 'PATCH', headers: H,
+    body: JSON.stringify(patch)
+  });
+  if (!res.ok) { showToast('Save failed'); return; }
+  showToast('User updated');
+  closeEditUser();
+  await loadUsers();
 }
 
 async function deleteUser(id, name) {
