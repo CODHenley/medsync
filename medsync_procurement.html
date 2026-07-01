@@ -1412,6 +1412,18 @@ function showToast(msg) {
 }
 
 // ── Boot ──────────────────────────────────────────────────────────
+// If today is the 1st of a month/quarter, MTD/QTD have no data yet — default to last 30 days
+(function smartDefaultPeriod() {
+  const now = new Date();
+  const d = now.getDate();
+  const m = now.getMonth();
+  const isFirstOfMonth   = d === 1;
+  const isFirstOfQuarter = d === 1 && (m === 0 || m === 3 || m === 6 || m === 9);
+  const sel = document.getElementById('sel-period');
+  if (sel && (sel.value === 'mtd' || sel.value === 'qtd')) {
+    if (isFirstOfMonth) sel.value = '30';
+  }
+})();
 reload();
 </script>
 </body>
