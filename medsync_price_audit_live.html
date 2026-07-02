@@ -589,27 +589,46 @@ function matchProducts(vetcoveItems, msProducts) {
 
     if (ms && ms.unit_price != null) {
       const msPrice = parseFloat(ms.unit_price);
-      const vcPrice = v.latest_price; // already per-dose after aggregation
+      let vcPrice = v.latest_price; // already per-dose after aggregation
+      let inferredUnits = null;
+      let basisNote = null;
+
+      // Auto-detect package vs unit basis mismatch:
+      // If vcPrice >> msPrice and vcPrice/msPrice is close to a whole number N (2–1000),
+      // the invoice likely shows package price while MedSync stores per-unit price.
+      if (vcPrice && msPrice && vcPrice > msPrice * 1.5) {
+        const ratio = vcPrice / msPrice;
+        const rounded = Math.round(ratio);
+        if (rounded >= 2 && rounded <= 1000 && Math.abs(ratio - rounded) / rounded < 0.15) {
+          inferredUnits = rounded;
+          vcPrice = vcPrice / rounded;
+          basisNote = `pkg÷${rounded}`;
+        }
+      }
+
       const drift = (vcPrice && msPrice) ? Math.round((vcPrice - msPrice) / msPrice * 10000) / 100 : null;
       results.push({
         ms_name: ms.name,
         ms_price: msPrice,
         vc_name: v.name,
-        vc_latest: vcPrice,          // per-dose comparison price
+        vc_latest: vcPrice,          // per-unit comparison price (normalized)
+        vc_raw_price: v.latest_price, // original invoice price before normalization
         vc_min: v.min_price,
         vc_max: v.max_price,
         vc_orders: v.order_count,
         // package context (display only)
         vc_pkg_price:    v.pkg_price,
-        vc_units_per_pkg:v.units_per_pkg,
+        vc_units_per_pkg: inferredUnits || v.units_per_pkg,
         vc_unit_meas:    v.unit_meas,
         vc_has_dose_price: v.has_dose_price,
+        inferred_units: inferredUnits,
+        basis_note: basisNote,
         drift_pct: drift,
         ndc: ms.ndc || null,
-        sku: ms.SKU || null,
+        sku: ms.sku || ms.SKU || null,
         vetspire_product_id: ms.vetspire_product_id || null,
         match: method,
-        unit_mismatch: false, // no longer flagging — prices are normalized
+        unit_mismatch: false,
       });
     }
   });
@@ -792,7 +811,7 @@ function renderComp() {
     return `<tr>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
       <td class="cprice">$${fmt2(d.ms_price)}</td>
-      <td class="cprice">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}</td>
+      <td class="cprice">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}${d.inferred_units ? `<div style="font-size:10px;color:var(--mist);margin-top:2px;">÷${d.inferred_units} units/pkg</div>` : ''}</td>
       <td style="font-size:12.5px;line-height:1.5;">${pkgCell}</td>
       <td>${driftCell(d.drift_pct, d.unit_mismatch)}</td>
       <td style="color:var(--mist)">${d.vc_orders || 0}</td>
