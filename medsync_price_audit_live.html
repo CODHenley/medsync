@@ -407,14 +407,45 @@ let _compSortDir = -1;
 // Fetch MedSync products from Supabase (paginated, up to 2000)
 async function loadMSProducts() {
   if (_msProducts) return _msProducts;
+  // Try lowercase 'sku' first (PostgREST is case-sensitive to the actual column name)
+  let skuCol = 'sku';
   let all = [], page = 0, pageSize = 1000;
   while (true) {
-    const res = await fetch(
-      `${SUPA_URL}/rest/v1/products?select=name,unit_price,ndc,SKU,vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`,
-      { headers: H }
-    );
-    if (!res.ok) throw new Error('Failed to load products: HTTP ' + res.status);
+    const url = `${SUPA_URL}/rest/v1/products?select=name,unit_price,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
+    const res = await fetch(url, { headers: H });
+    if (!res.ok) {
+      if (page === 0 && skuCol === 'sku') {
+        // Try uppercase SKU
+        skuCol = 'SKU';
+        const res2 = await fetch(
+          `${SUPA_URL}/rest/v1/products?select=name,unit_price,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
+          { headers: H }
+        );
+        if (!res2.ok) {
+          // Fall back to no SKU column
+          skuCol = null;
+          const res3 = await fetch(
+            `${SUPA_URL}/rest/v1/products?select=name,unit_price,ndc,vetspire_product_id&limit=${pageSize}&offset=0`,
+            { headers: H }
+          );
+          if (!res3.ok) throw new Error(`Failed to load products (HTTP ${res3.status}). Check Supabase RLS policies.`);
+          const chunk3 = await res3.json();
+          all = all.concat(chunk3);
+          if (chunk3.length < pageSize) break;
+          page++;
+          continue;
+        }
+        const chunk2 = await res2.json();
+        all = all.concat(chunk2);
+        if (chunk2.length < pageSize) break;
+        page++;
+        continue;
+      }
+      throw new Error(`Failed to load products (HTTP ${res.status}). Check Supabase RLS policies.`);
+    }
     const chunk = await res.json();
+    // Normalize SKU field to lowercase key for consistency
+    if (skuCol === 'SKU') chunk.forEach(r => { r.sku = r.SKU; delete r.SKU; });
     all = all.concat(chunk);
     if (chunk.length < pageSize) break;
     page++;
@@ -647,7 +678,12 @@ async function handleInvoiceUpload(input) {
     if (!vcRows.length) throw new Error('File appears empty or no recognizable data found');
 
     const vcItems = aggregateVetcove(vcRows);
+    if (!vcItems.length) throw new Error(`CSV parsed ${vcRows.length} rows but found 0 products. Check that the file is a Vetcove line-item export with "Name" and price columns.`);
+
     const ms = await loadMSProducts();
+    if (!ms.length) throw new Error('No products loaded from MedSync catalog. Check Supabase connection and RLS policies.');
+
+    showToast(`Loaded ${ms.length} MedSync products · ${vcItems.length} Vetcove items — matching…`, 3000);
     _compRows = matchProducts(vcItems, ms);
 
     // Items where Vetcove had neither a Cost per Dose nor a Units count — price basis unknown
@@ -655,10 +691,15 @@ async function handleInvoiceUpload(input) {
     document.getElementById('comp-mismatch-count').textContent = unknowable + ' item' + (unknowable === 1 ? '' : 's');
     document.getElementById('comp-notice-mismatch').style.display = unknowable > 0 ? '' : 'none';
 
+    if (!_compRows.length) {
+      throw new Error(`Loaded ${ms.length} catalog products and ${vcItems.length} invoice items but 0 matched. Names may not overlap — try a different Vetcove export.`);
+    }
+
     document.getElementById('comp-content').style.display = '';
     renderComp();
+    showToast(`Matched ${_compRows.length} of ${vcItems.length} invoice items`, 4000);
   } catch(err) {
-    showToast('Error: ' + err.message);
+    showToast('Error: ' + err.message, 6000);
     document.getElementById('comp-empty-upload').style.display = '';
   }
   document.getElementById('comp-loading').style.display = 'none';
@@ -1229,11 +1270,11 @@ async function bulkReject() {
 
 // ── Shared utils ─────────────────────────────────────────
 let _toastTimer;
-function showToast(msg) {
+function showToast(msg, dur) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.opacity = '1';
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3200);
+  _toastTimer = setTimeout(() => { t.style.opacity = '0'; }, dur || 3200);
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmt2(v) { return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}); }
