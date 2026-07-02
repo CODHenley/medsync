@@ -42,15 +42,16 @@ Deno.serve(async (req: Request) => {
               'Origin': 'https://scoutcare.vetspire.com',
             },
             body: JSON.stringify({
-              query: `mutation UpdateProductCost($id: ID!, $input: UpdateProductInput!) {
+              query: `mutation UpdateProductCost($id: ID!, $input: ProductInput!) {
                 updateProduct(id: $id, input: $input) {
                   id
                   unitCost
+                  realUnitCost
                 }
               }`,
               variables: {
                 id: String(vetspire_product_id),
-                input: { unitCost: updatedCost },
+                input: { unitCost: updatedCost, realUnitCost: updatedCost },
               },
             }),
           })
@@ -69,7 +70,7 @@ Deno.serve(async (req: Request) => {
               vetspireError = 'VetSpire error: ' + JSON.stringify(vsJson.errors)
               console.error('update-unit-cost: VetSpire GQL error —', vetspireError)
             } else {
-              updatedCost = vsJson.data?.updateProduct?.unitCost ?? updatedCost
+              updatedCost = vsJson.data?.updateProduct?.realUnitCost ?? vsJson.data?.updateProduct?.unitCost ?? updatedCost
               vetspireSynced = true
             }
           }
