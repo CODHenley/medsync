@@ -898,7 +898,7 @@ function parseCovetrusPDF(lines) {
 // First two pages are summary/lab invoice — supply items start when item# pattern appears
 function parseIDEXXPDF(lines) {
   const items = [];
-  const itemRe = /^\s*(\d{2}-[\w][\w-]*)\s+(.+?)\s+([\d,]+\.\d{2})\s+(EA|BOX|PAK|BX|CS|BOT|KIT|TUB|VL|EA\/CS)\s+(\d+)\s+([\d,]+\.\d{2})/i;
+  const itemRe = /^\s*(?:\d{2}\/\d{2}\/\d{4}\s+)?(\d{2}-[\w][\w-]*)\s+(.+?)\s+([\d,]+\.\d{2})\s+(EA|BOX|PAK|BX|CS|BOT|KIT|TUB|VL|EA\/CS|PAK)\s+(\d+)\s+([\d,]+\.\d{2})/i;
   const skipRe = /^(item#|description|unit price|ship date|subtotal|shipping|sales tax|total|page\s|\d{10}\s)/i;
 
   lines.forEach(l => {
