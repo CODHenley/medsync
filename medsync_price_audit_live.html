@@ -397,11 +397,13 @@ function _getToken() {
 
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _getToken(), 'Content-Type': 'application/json' };
 
-// For Edge Function calls: refresh token dynamically so a long-running session doesn't 401
+// For Edge Function calls: always use a fresh token — opts.headers must NOT override auth
 async function edgeFetch(url, opts) {
   const tok = _getToken();
-  const headers = { ...H, 'Authorization': 'Bearer ' + tok, ...(opts.headers || {}) };
-  return fetch(url, { ...opts, headers });
+  // Spread opts.headers FIRST so our Authorization always wins
+  const { headers: _ignored, ...restOpts } = opts;
+  const headers = { 'apikey': SUPA_KEY, 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok };
+  return fetch(url, { ...restOpts, headers });
 }
 
 // ── Tab switching ────────────────────────────────────────
