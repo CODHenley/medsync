@@ -6,11 +6,12 @@
 <title>Price Audit — MedSync</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',system-ui,sans-serif;background:#F4F2FA;color:#1C2B4A;font-size:14px;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#F4F2FA;color:#1C2B4A;font-size:14px;}
 :root{
   --navy:#1C2B4A;--purple:#6C4AB6;--gold:#C8922A;
   --green:#2a6e2a;--red:#a33030;--amber:#b45309;
   --border:#DDD9EC;--mist:#8A93A8;--surface:#fff;
+  --up:#d95f5f;--dn:#3da874;--warn:#cc8a2b;
 }
 
 /* ── Top bar ── */
@@ -19,54 +20,114 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:#F4F2FA;color:#1C2B4A
 .topbar-sub{font-size:11px;color:#9BA8C0;margin-left:4px;}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;font-size:11px;font-weight:700;background:#a33030;color:#fff;}
 
-/* ── Filter bar ── */
+/* ── Main tabs ── */
+.main-tabs{display:flex;gap:0;background:var(--navy);padding:0 20px;border-bottom:2px solid rgba(255,255,255,.12);}
+.mtab{padding:10px 20px;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap;}
+.mtab:hover{color:rgba(255,255,255,.8);}
+.mtab.active{color:#fff;border-bottom-color:#fff;}
+
+/* ── PRICE COMPARISON TAB ── */
+#tab-comparison{display:none;}
+#tab-comparison.active{display:block;}
+
+.comp-toolbar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.comp-toolbar label{font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;}
+.upload-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--purple);color:#fff;border:none;border-radius:8px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;transition:background .15s;}
+.upload-btn:hover{background:#5a3aa0;}
+.upload-btn svg{flex-shrink:0;}
+#csv-filename{font-size:12px;color:var(--mist);}
+
+.comp-filters{display:flex;align-items:center;gap:8px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.cf-search{padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;width:210px;}
+.cf-select{padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer;}
+.toggle-chip{padding:6px 13px;border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--mist);transition:all .15s;}
+.toggle-chip.on{background:#EEE9F8;border-color:var(--purple);color:var(--purple);}
+.comp-count{margin-left:auto;font-size:12px;color:var(--mist);}
+
+.comp-stats{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border);}
+.cstat{padding:14px 20px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;}
+.cstat:last-child{border-right:none;}
+.cstat-n{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;}
+.cstat-l{font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
+
+.comp-notice{margin:12px 20px;padding:9px 13px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:12px;color:#92400E;}
+#comp-notice-mismatch{display:none;}
+
+.comp-upload-empty{padding:60px 20px;text-align:center;color:var(--mist);}
+.comp-upload-empty-icon{font-size:48px;margin-bottom:16px;}
+.comp-upload-empty h3{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+.comp-upload-empty p{font-size:13px;max-width:380px;margin:0 auto 20px;}
+
+/* Comparison table */
+.comp-table-wrap{overflow-x:auto;padding:0 0 40px;}
+table.comp-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+table.comp-tbl thead th{padding:9px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mist);background:#F9F8FC;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:5;}
+table.comp-tbl thead th:hover{color:var(--navy);}
+table.comp-tbl thead th.sorted{color:var(--purple);}
+table.comp-tbl tbody tr{border-bottom:1px solid #F0EDF8;}
+table.comp-tbl tbody tr:hover td{background:#FAFAFE;}
+table.comp-tbl td{padding:10px 14px;vertical-align:middle;}
+.cn1{font-weight:600;color:var(--navy);line-height:1.3;}
+.cn2{font-size:11.5px;color:var(--mist);margin-top:2px;line-height:1.3;}
+.cprice{font-variant-numeric:tabular-nums;font-size:13px;}
+
+/* Drift cell */
+.drift-wrap{position:relative;min-width:90px;}
+.drift-bar{position:absolute;left:0;top:0;bottom:0;opacity:.15;pointer-events:none;}
+.drift-pill{position:relative;display:inline-block;font-size:12px;font-weight:700;padding:2px 7px;border-radius:4px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.dp-up   {background:rgba(169,51,48,.1);color:var(--red);}
+.dp-warn {background:rgba(180,83,9,.1);color:var(--amber);}
+.dp-dn   {background:rgba(42,110,42,.1);color:var(--green);}
+.dp-flat {background:rgba(138,147,168,.1);color:var(--mist);}
+.dp-miss {background:rgba(180,83,9,.08);color:var(--amber);font-size:11px;}
+
+.mbadge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-variant-numeric:tabular-nums;}
+.mb-ndc {background:#EEE9F8;color:var(--purple);}
+.mb-nm  {background:rgba(138,147,168,.12);color:var(--mist);}
+
+.btn-flag-comp{background:#fff;border:1px solid var(--border);color:var(--mist);padding:4px 11px;border-radius:6px;font-size:12px;font-family:inherit;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-flag-comp:hover{border-color:var(--gold);color:var(--gold);}
+.btn-flag-comp.flagged{background:#FEF3C7;border-color:var(--gold);color:var(--amber);font-weight:600;}
+
+/* ── AUDIT QUEUE TAB ── */
+#tab-queue{display:none;}
+#tab-queue.active{display:block;}
+
 .filter-bar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .filter-bar select,.filter-bar input{padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:var(--navy);}
 .filter-bar input{width:220px;}
 .btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;}
 .btn-primary{background:var(--purple);color:#fff;border-color:var(--purple);}
 .btn-sm{padding:4px 11px;font-size:12px;border-radius:20px;}
-
-/* ── Status tabs ── */
 .status-tabs{display:flex;gap:6px;padding:14px 20px 0;}
 .stab{padding:7px 16px;border-radius:8px 8px 0 0;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);border-bottom:none;background:#F4F2FA;color:var(--mist);}
 .stab.active{background:#fff;color:var(--navy);}
-
-/* ── Main table ── */
 .table-wrap{padding:0 20px 30px;overflow-x:auto;}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}
-th{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mist);background:#F9F8FC;border-bottom:1px solid var(--border);white-space:nowrap;}
-td{padding:12px 14px;border-bottom:1px solid #F0EDF8;vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:#FAFAFE;}
+table.audit-tbl{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+table.audit-tbl th{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mist);background:#F9F8FC;border-bottom:1px solid var(--border);white-space:nowrap;}
+table.audit-tbl td{padding:12px 14px;border-bottom:1px solid #F0EDF8;vertical-align:middle;}
+table.audit-tbl tr:last-child td{border-bottom:none;}
+table.audit-tbl tr:hover td{background:#FAFAFE;}
 .product-name{font-weight:600;color:var(--navy);}
 .product-sub{font-size:11px;color:var(--mist);margin-top:1px;}
 .drift-up{color:var(--red);font-weight:700;}
 .drift-dn{color:var(--green);font-weight:700;}
 .mono{font-variant-numeric:tabular-nums;}
-
-/* Status pills */
 .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
 .pill-pending{background:#FEF3C7;color:#92400E;}
 .pill-approved{background:#D1FAE5;color:#065F46;}
 .pill-sync{background:#DBEAFE;color:#1E40AF;}
 .pill-rejected{background:#FEE2E2;color:#991B1B;}
 .pill-hold{background:#F3F4F6;color:#374151;}
-
-/* Action buttons */
 .action-row{display:flex;gap:6px;flex-wrap:wrap;}
 .act-approve{background:#065F46;color:#fff;border-color:#065F46;}
 .act-reject{background:#fff;color:var(--red);border-color:var(--red);}
 .act-hold{background:#fff;color:var(--mist);border-color:var(--border);}
-
-/* Empty state */
 .empty{padding:60px 20px;text-align:center;color:var(--mist);}
 .empty-icon{font-size:36px;margin-bottom:10px;}
 
-/* Toast */
+/* Shared */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;}
-
-/* Resolve modal */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:16px;}
 .modal-bg.open{display:flex;}
 .modal{background:#fff;border-radius:14px;width:100%;max-width:480px;padding:24px;}
@@ -79,61 +140,159 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
 </head>
 <body>
 
+<!-- TOP BAR -->
 <div class="topbar">
   <div>
     <span class="topbar-title">Price Audit</span>
-    <span class="topbar-sub">Flagged by Inventory Leads · Pending super-admin review</span>
+    <span class="topbar-sub" id="topbar-sub">Price comparison &amp; review</span>
   </div>
   <span id="pending-badge" class="badge" style="margin-left:8px;display:none;"></span>
   <div style="flex:1;"></div>
-  <button class="btn" onclick="loadFlags()" style="color:#fff;border-color:#ffffff44;background:transparent;font-size:12px;">↻ Refresh</button>
+  <button class="btn" onclick="loadFlags()" style="color:#fff;border-color:#ffffff44;background:transparent;font-size:12px;">↻ Refresh queue</button>
 </div>
 
-<div class="filter-bar">
-  <select id="sel-status" onchange="render()">
-    <option value="pending">Pending review</option>
-    <option value="approved_pending_sync">Approved — awaiting VetSpire sync</option>
-    <option value="approved_synced">Approved &amp; synced</option>
-    <option value="rejected">Rejected</option>
-    <option value="hold">On hold</option>
-    <option value="">All</option>
-  </select>
-  <select id="sel-location" onchange="render()">
-    <option value="">All locations</option>
-  </select>
-  <input id="search" type="text" placeholder="Search product…" oninput="render()">
+<!-- MAIN TABS -->
+<div class="main-tabs">
+  <div class="mtab active" id="mtab-comparison" onclick="switchMainTab('comparison')">Price Comparison</div>
+  <div class="mtab" id="mtab-queue" onclick="switchMainTab('queue')">Audit Queue <span id="queue-badge" style="display:none;background:#a33030;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px;"></span></div>
 </div>
 
-<div class="status-tabs">
-  <div class="stab active" id="stab-pending" onclick="switchTab('pending')">Pending <span id="cnt-pending" style="margin-left:4px;"></span></div>
-  <div class="stab" id="stab-approved_pending_sync" onclick="switchTab('approved_pending_sync')">Approved</div>
-  <div class="stab" id="stab-rejected" onclick="switchTab('rejected')">Rejected</div>
-  <div class="stab" id="stab-all" onclick="switchTab('')">All</div>
-</div>
+<!-- ══════════════════ PRICE COMPARISON TAB ══════════════════ -->
+<div id="tab-comparison" class="active">
 
-<div class="table-wrap" style="padding-top:0;">
-  <table>
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Location</th>
-        <th style="text-align:right;">VetSpire Cost</th>
-        <th style="text-align:right;">Invoice Cost</th>
-        <th style="text-align:right;">Drift</th>
-        <th>Flagged By</th>
-        <th>Date</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="flags-tbody"></tbody>
-  </table>
-  <div id="empty-state" class="empty" style="display:none;">
-    <div class="empty-icon">✅</div>
-    <div style="font-weight:600;color:var(--navy);">No flags in this category</div>
-    <div style="font-size:12px;margin-top:4px;">Inventory Leads haven't flagged any price changes matching this filter.</div>
+  <!-- Upload toolbar -->
+  <div class="comp-toolbar">
+    <label>Compare invoice:</label>
+    <label class="upload-btn" for="csv-upload">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Upload Vetcove Invoice CSV
+    </label>
+    <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleCSV(this)">
+    <span id="csv-filename">No file selected</span>
+    <span id="comp-loading" style="display:none;font-size:12px;color:var(--mist);">Matching products…</span>
   </div>
-</div>
+
+  <!-- Upload empty state -->
+  <div id="comp-empty-upload" class="comp-upload-empty">
+    <div class="comp-upload-empty-icon">📊</div>
+    <h3>Upload a Vetcove invoice to compare prices</h3>
+    <p>Upload any Vetcove line-item CSV export. MedSync will match each item against your product catalog and show price drift.</p>
+    <label class="upload-btn" for="csv-upload" style="display:inline-flex;">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Choose CSV File
+    </label>
+  </div>
+
+  <!-- Comparison content (hidden until CSV loaded) -->
+  <div id="comp-content" style="display:none;">
+
+    <!-- Filters -->
+    <div class="comp-filters">
+      <input class="cf-search" id="cf-search" type="text" placeholder="Search product…" oninput="renderComp()">
+      <select class="cf-select" id="cf-drift" onchange="renderComp()">
+        <option value="all">All drift levels</option>
+        <option value="over10">Drift &gt; 10%</option>
+        <option value="over20">Drift &gt; 20%</option>
+        <option value="over50">Drift &gt; 50%</option>
+        <option value="flat">Within ±10%</option>
+        <option value="cheaper">Vetcove cheaper</option>
+      </select>
+      <select class="cf-select" id="cf-match" onchange="renderComp()">
+        <option value="all">All matches</option>
+        <option value="ndc">NDC matched</option>
+        <option value="name">Name matched</option>
+      </select>
+      <button class="toggle-chip on" id="chip-mismatch" onclick="toggleMismatch()">Hide unit mismatches</button>
+      <button class="toggle-chip" id="chip-flagged" onclick="toggleFlaggedOnly()">Flagged only</button>
+      <span class="comp-count" id="comp-count"></span>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="comp-stats">
+      <div class="cstat"><span class="cstat-n" id="cs-total" style="color:var(--navy)">—</span><span class="cstat-l">Matched</span></div>
+      <div class="cstat"><span class="cstat-n" id="cs-up" style="color:var(--red)">—</span><span class="cstat-l">Vetcove Higher</span></div>
+      <div class="cstat"><span class="cstat-n" id="cs-dn" style="color:var(--green)">—</span><span class="cstat-l">Vetcove Lower</span></div>
+      <div class="cstat"><span class="cstat-n" id="cs-over20" style="color:var(--amber)">—</span><span class="cstat-l">&gt;20% Drift</span></div>
+      <div class="cstat"><span class="cstat-n" id="cs-flagged" style="color:var(--purple)">0</span><span class="cstat-l">Flagged</span></div>
+    </div>
+
+    <div class="comp-notice" id="comp-notice-mismatch">
+      <strong id="comp-mismatch-count">0 items</strong> likely have unit mismatches — MedSync stores per-dose price while Vetcove shows per-package. Hidden by default.
+    </div>
+
+    <!-- Table -->
+    <div class="comp-table-wrap">
+      <table class="comp-tbl">
+        <thead>
+          <tr>
+            <th data-col="ms_name" style="width:36%">Product <span class="sarr">↕</span></th>
+            <th data-col="ms_price">MedSync Price <span class="sarr">↕</span></th>
+            <th data-col="vc_latest">Vetcove Price <span class="sarr">↕</span></th>
+            <th data-col="drift_pct" class="sorted">Drift <span class="sarr">↓</span></th>
+            <th data-col="vc_orders">Orders <span class="sarr">↕</span></th>
+            <th>Match</th>
+            <th>Flag for Audit</th>
+          </tr>
+        </thead>
+        <tbody id="comp-tbody"></tbody>
+      </table>
+      <div id="comp-empty-rows" class="empty" style="display:none;">
+        <div class="empty-icon">🔍</div>
+        <div style="font-weight:600;color:var(--navy);">No items match the current filters</div>
+      </div>
+    </div>
+  </div><!-- /comp-content -->
+</div><!-- /tab-comparison -->
+
+<!-- ══════════════════ AUDIT QUEUE TAB ══════════════════ -->
+<div id="tab-queue">
+
+  <div class="filter-bar">
+    <select id="sel-status" onchange="render()">
+      <option value="pending">Pending review</option>
+      <option value="approved_pending_sync">Approved — awaiting VetSpire sync</option>
+      <option value="approved_synced">Approved &amp; synced</option>
+      <option value="rejected">Rejected</option>
+      <option value="hold">On hold</option>
+      <option value="">All</option>
+    </select>
+    <select id="sel-location" onchange="render()">
+      <option value="">All locations</option>
+    </select>
+    <input id="search" type="text" placeholder="Search product…" oninput="render()">
+  </div>
+
+  <div class="status-tabs">
+    <div class="stab active" id="stab-pending" onclick="switchTab('pending')">Pending <span id="cnt-pending" style="margin-left:4px;"></span></div>
+    <div class="stab" id="stab-approved_pending_sync" onclick="switchTab('approved_pending_sync')">Approved</div>
+    <div class="stab" id="stab-rejected" onclick="switchTab('rejected')">Rejected</div>
+    <div class="stab" id="stab-all" onclick="switchTab('')">All</div>
+  </div>
+
+  <div class="table-wrap" style="padding-top:0;">
+    <table class="audit-tbl">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Location</th>
+          <th style="text-align:right;">VetSpire Cost</th>
+          <th style="text-align:right;">Invoice Cost</th>
+          <th style="text-align:right;">Drift</th>
+          <th>Flagged By</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="flags-tbody"></tbody>
+    </table>
+    <div id="empty-state" class="empty" style="display:none;">
+      <div class="empty-icon">✅</div>
+      <div style="font-weight:600;color:var(--navy);">No flags in this category</div>
+      <div style="font-size:12px;margin-top:4px;">Nothing matching this filter has been flagged for review.</div>
+    </div>
+  </div>
+</div><!-- /tab-queue -->
 
 <!-- Resolve modal -->
 <div id="resolve-modal" class="modal-bg">
@@ -159,22 +318,360 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
 <div id="toast"></div>
 
 <script>
+// ── Config ──────────────────────────────────────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (() => { try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + ((_sess.access_token) || SUPA_KEY), 'Content-Type': 'application/json' };
 
+// ── Tab switching ────────────────────────────────────────
+function switchMainTab(tab) {
+  document.querySelectorAll('.mtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#tab-comparison,#tab-queue').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+  document.getElementById('mtab-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).style.display = 'block';
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+// PRICE COMPARISON
+// ═══════════════════════════════════════════════════════
+let _msProducts = null; // fetched from Supabase
+let _compRows = [];     // matched rows
+let _compFlagged = new Set();
+let _compHideMismatch = true;
+let _compFlaggedOnly = false;
+let _compSortCol = 'drift_pct';
+let _compSortDir = -1;
+
+// Fetch MedSync products from Supabase (paginated, up to 2000)
+async function loadMSProducts() {
+  if (_msProducts) return _msProducts;
+  let all = [], page = 0, pageSize = 1000;
+  while (true) {
+    const res = await fetch(
+      `${SUPA_URL}/rest/v1/products?select=name,unit_price,ndc,SKU,vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`,
+      { headers: H }
+    );
+    if (!res.ok) throw new Error('Failed to load products: HTTP ' + res.status);
+    const chunk = await res.json();
+    all = all.concat(chunk);
+    if (chunk.length < pageSize) break;
+    page++;
+  }
+  _msProducts = all;
+  return all;
+}
+
+// Parse Vetcove CSV
+function parseVetcoveCSV(text) {
+  const lines = text.split(/\r?\n/);
+  if (!lines.length) return [];
+  const headers = parseCSVLine(lines[0]);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseCSVLine(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h.trim()] = (vals[idx] || '').trim(); });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// Aggregate Vetcove rows by product (Name + Mfr Number)
+function aggregateVetcove(rows) {
+  const map = new Map();
+  rows.forEach(r => {
+    const name = r['Name'] || r['name'] || '';
+    const mfrNum = r['Manufacturer Number'] || r['manufacturer_number'] || '';
+    const key = (mfrNum || name).toLowerCase();
+    const price = parseFloat(r['Unit Price'] || r['unit_price'] || '0') || 0;
+    if (!map.has(key)) {
+      map.set(key, { name, mfr_number: mfrNum, prices: [], order_count: 0 });
+    }
+    const entry = map.get(key);
+    if (price > 0) entry.prices.push(price);
+    entry.order_count++;
+  });
+  return Array.from(map.values()).map(e => ({
+    name: e.name,
+    mfr_number: e.mfr_number,
+    latest_price: e.prices.length ? e.prices[e.prices.length - 1] : null,
+    min_price: e.prices.length ? Math.min(...e.prices) : null,
+    max_price: e.prices.length ? Math.max(...e.prices) : null,
+    order_count: e.order_count,
+  }));
+}
+
+// Fuzzy name match
+function wordTokens(s) {
+  return new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));
+}
+function nameOverlap(a, b) {
+  const ta = wordTokens(a), tb = wordTokens(b);
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0;
+  ta.forEach(w => { if (tb.has(w)) inter++; });
+  return inter / Math.min(ta.size, tb.size);
+}
+function normNDC(s) { return (s || '').replace(/[\-\s]/g, '').toLowerCase(); }
+
+function matchProducts(vetcoveItems, msProducts) {
+  // Build NDC index
+  const ndcIdx = new Map();
+  msProducts.forEach(p => {
+    const k = normNDC(p.ndc);
+    if (k) ndcIdx.set(k, p);
+  });
+
+  const results = [];
+  vetcoveItems.forEach(v => {
+    const vNDC = normNDC(v.mfr_number);
+    let ms = null, method = null;
+
+    // 1. Exact NDC
+    if (vNDC && ndcIdx.has(vNDC)) { ms = ndcIdx.get(vNDC); method = 'ndc'; }
+
+    // 2. Fuzzy name
+    if (!ms) {
+      let best = 0, bestP = null;
+      msProducts.forEach(p => {
+        const s = nameOverlap(v.name, p.name);
+        if (s > best) { best = s; bestP = p; }
+      });
+      if (best >= 0.55) { ms = bestP; method = `name(${best.toFixed(2)})`; }
+    }
+
+    if (ms && ms.unit_price != null) {
+      const msPrice = parseFloat(ms.unit_price);
+      const vcPrice = v.latest_price;
+      const drift = (vcPrice && msPrice) ? Math.round((vcPrice - msPrice) / msPrice * 10000) / 100 : null;
+      results.push({
+        ms_name: ms.name,
+        ms_price: msPrice,
+        vc_name: v.name,
+        vc_latest: vcPrice,
+        vc_min: v.min_price,
+        vc_max: v.max_price,
+        vc_orders: v.order_count,
+        drift_pct: drift,
+        ndc: ms.ndc || null,
+        sku: ms.SKU || null,
+        vetspire_product_id: ms.vetspire_product_id || null,
+        match: method,
+        unit_mismatch: drift !== null && Math.abs(drift) > 5000,
+      });
+    }
+  });
+  return results;
+}
+
+async function handleCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('csv-filename').textContent = file.name;
+  document.getElementById('comp-loading').style.display = '';
+  document.getElementById('comp-empty-upload').style.display = 'none';
+
+  try {
+    const text = await file.text();
+    const vcRows = parseVetcoveCSV(text);
+    if (!vcRows.length) throw new Error('CSV appears empty or unreadable');
+
+    const vcItems = aggregateVetcove(vcRows);
+    const ms = await loadMSProducts();
+    _compRows = matchProducts(vcItems, ms);
+
+    const mismatches = _compRows.filter(r => r.unit_mismatch).length;
+    document.getElementById('comp-mismatch-count').textContent = mismatches + ' item' + (mismatches === 1 ? '' : 's');
+    if (mismatches > 0) document.getElementById('comp-notice-mismatch').style.display = '';
+
+    document.getElementById('comp-content').style.display = '';
+    renderComp();
+  } catch(err) {
+    showToast('Error: ' + err.message);
+    document.getElementById('comp-empty-upload').style.display = '';
+  }
+  document.getElementById('comp-loading').style.display = 'none';
+  input.value = '';
+}
+
+function getCompFiltered() {
+  const q = document.getElementById('cf-search').value.toLowerCase();
+  const drift = document.getElementById('cf-drift').value;
+  const match = document.getElementById('cf-match').value;
+  return _compRows.filter(d => {
+    if (_compHideMismatch && d.unit_mismatch) return false;
+    if (_compFlaggedOnly && !_compFlagged.has(d.ms_name)) return false;
+    if (q && !d.ms_name.toLowerCase().includes(q) && !d.vc_name.toLowerCase().includes(q)) return false;
+    const p = d.drift_pct;
+    if (drift === 'over10'  && !(p >  10)) return false;
+    if (drift === 'over20'  && !(p >  20)) return false;
+    if (drift === 'over50'  && !(p >  50)) return false;
+    if (drift === 'flat'    && !(p != null && Math.abs(p) <= 10)) return false;
+    if (drift === 'cheaper' && !(p != null && p < 0)) return false;
+    if (match === 'ndc'  && d.match !== 'ndc') return false;
+    if (match === 'name' && d.match === 'ndc') return false;
+    return true;
+  }).sort((a, b) => {
+    let av = a[_compSortCol], bv = b[_compSortCol];
+    if (av == null) av = _compSortDir > 0 ? 1e15 : -1e15;
+    if (bv == null) bv = _compSortDir > 0 ? 1e15 : -1e15;
+    return typeof av === 'string' ? _compSortDir * av.localeCompare(bv) : _compSortDir * (av - bv);
+  });
+}
+
+function driftCell(pct, mismatch) {
+  if (mismatch) return `<div class="drift-wrap"><span class="drift-pill dp-miss">unit mismatch</span></div>`;
+  if (pct == null) return `<div class="drift-wrap"><span class="drift-pill dp-flat">—</span></div>`;
+  const abs = Math.abs(pct);
+  const barPct = Math.min(abs / 100, 1) * 100;
+  const isUp = pct > 0, isFlat = abs <= 5;
+  const cls = isFlat ? 'dp-flat' : isUp ? (abs > 20 ? 'dp-up' : 'dp-warn') : 'dp-dn';
+  const barClr = isFlat ? '#8A93A8' : isUp ? '#d95f5f' : '#3da874';
+  return `<div class="drift-wrap">
+    <div class="drift-bar" style="width:${barPct}%;background:${barClr}"></div>
+    <span class="drift-pill ${cls}">${pct > 0 ? '+' : ''}${pct.toFixed(1)}%</span>
+  </div>`;
+}
+
+function renderComp() {
+  const rows = getCompFiltered();
+  const clean = _compRows.filter(d => !d.unit_mismatch);
+  document.getElementById('cs-total').textContent   = clean.length;
+  document.getElementById('cs-up').textContent      = clean.filter(d => d.drift_pct > 0).length;
+  document.getElementById('cs-dn').textContent      = clean.filter(d => d.drift_pct < 0).length;
+  document.getElementById('cs-over20').textContent  = clean.filter(d => d.drift_pct > 20).length;
+  document.getElementById('cs-flagged').textContent = _compFlagged.size;
+  document.getElementById('comp-count').textContent = `${rows.length} of ${_compRows.filter(d => !(_compHideMismatch && d.unit_mismatch)).length} items`;
+
+  const tbody = document.getElementById('comp-tbody');
+  const emptyEl = document.getElementById('comp-empty-rows');
+  if (!rows.length) { tbody.innerHTML = ''; emptyEl.style.display = ''; return; }
+  emptyEl.style.display = 'none';
+
+  tbody.innerHTML = rows.map(d => {
+    const isFlagged = _compFlagged.has(d.ms_name);
+    const mb = d.match === 'ndc' ? '<span class="mbadge mb-ndc">NDC</span>' : '<span class="mbadge mb-nm">name</span>';
+    return `<tr>
+      <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
+      <td class="cprice">$${fmt2(d.ms_price)}</td>
+      <td class="cprice">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}</td>
+      <td>${driftCell(d.drift_pct, d.unit_mismatch)}</td>
+      <td style="color:var(--mist)">${d.vc_orders || 0}</td>
+      <td>${mb}</td>
+      <td><button class="btn-flag-comp${isFlagged?' flagged':''}" data-name="${esc(d.ms_name)}"
+        data-ms="${d.ms_price}" data-vc="${d.vc_latest}" data-drift="${d.drift_pct}"
+        data-vspid="${d.vetspire_product_id || ''}" data-sku="${d.sku || ''}">${isFlagged ? '✓ Flagged' : 'Flag for Audit'}</button></td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.btn-flag-comp').forEach(btn => {
+    btn.addEventListener('click', () => flagForAudit(btn));
+  });
+}
+
+async function flagForAudit(btn) {
+  const name = btn.dataset.name;
+  if (_compFlagged.has(name)) {
+    // already flagged — just unflag locally (don't delete from DB)
+    _compFlagged.delete(name);
+    renderComp();
+    showToast('Removed from flag list');
+    return;
+  }
+
+  const msPrice  = parseFloat(btn.dataset.ms)   || null;
+  const vcPrice  = parseFloat(btn.dataset.vc)    || null;
+  const drift    = parseFloat(btn.dataset.drift) || null;
+  const vspid    = btn.dataset.vspid || null;
+  const sku      = btn.dataset.sku   || null;
+  const flaggedBy = (_sess && _sess.user && _sess.user.email) || 'unknown';
+
+  btn.textContent = 'Flagging…';
+  btn.disabled = true;
+
+  try {
+    const body = {
+      product_name:        name,
+      vetspire_product_id: vspid,
+      sku:                 sku,
+      vetspire_cost:       msPrice,
+      invoice_cost:        vcPrice,
+      drift_pct:           drift,
+      flagged_by:          flaggedBy,
+      status:              'pending',
+    };
+    const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags', {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    _compFlagged.add(name);
+    renderComp();
+    showToast('✓ Flagged — check the Audit Queue tab');
+
+    // Refresh queue badge
+    loadFlags();
+  } catch(err) {
+    btn.disabled = false;
+    renderComp();
+    showToast('Error flagging: ' + err.message);
+  }
+}
+
+// Column sort
+document.querySelectorAll('table.comp-tbl thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (_compSortCol === col) _compSortDir *= -1;
+    else { _compSortCol = col; _compSortDir = -1; }
+    document.querySelectorAll('table.comp-tbl thead th').forEach(t => {
+      t.classList.remove('sorted');
+      const a = t.querySelector('.sarr'); if (a) a.textContent = '↕';
+    });
+    th.classList.add('sorted');
+    const a = th.querySelector('.sarr'); if (a) a.textContent = _compSortDir > 0 ? '↑' : '↓';
+    renderComp();
+  });
+});
+
+function toggleMismatch() {
+  _compHideMismatch = !_compHideMismatch;
+  const btn = document.getElementById('chip-mismatch');
+  btn.classList.toggle('on', _compHideMismatch);
+  btn.textContent = _compHideMismatch ? 'Hide unit mismatches' : 'Show unit mismatches';
+  document.getElementById('comp-notice-mismatch').style.display = _compHideMismatch ? '' : 'none';
+  renderComp();
+}
+function toggleFlaggedOnly() {
+  _compFlaggedOnly = !_compFlaggedOnly;
+  document.getElementById('chip-flagged').classList.toggle('on', _compFlaggedOnly);
+  renderComp();
+}
+
+// ═══════════════════════════════════════════════════════
+// AUDIT QUEUE
+// ═══════════════════════════════════════════════════════
 let _flags = [];
 let _resolveId   = null;
 let _resolveAction = null;
-
-function fmt(v) { return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}); }
-function fmtDate(s) {
-  if (!s) return '—';
-  const d = new Date(s);
-  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · ' +
-         d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-}
 
 async function loadFlags() {
   const res = await fetch(
@@ -183,17 +680,21 @@ async function loadFlags() {
   );
   _flags = res.ok ? (await res.json()) : [];
 
-  // Populate location filter
   const locs = [...new Set(_flags.map(f => f.location_name).filter(Boolean))].sort();
   const locSel = document.getElementById('sel-location');
   locSel.innerHTML = '<option value="">All locations</option>' +
-    locs.map(l => `<option value="${l}">${l}</option>`).join('');
+    locs.map(l => `<option value="${l}">${esc(l)}</option>`).join('');
 
-  // Update pending badge
   const pending = _flags.filter(f => f.status === 'pending').length;
   const badge = document.getElementById('pending-badge');
-  if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
-  else { badge.style.display = 'none'; }
+  const qbadge = document.getElementById('queue-badge');
+  if (pending > 0) {
+    badge.textContent = pending; badge.style.display = '';
+    qbadge.textContent = pending; qbadge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+    qbadge.style.display = 'none';
+  }
   document.getElementById('cnt-pending').innerHTML = pending > 0
     ? `<span style="background:#a33030;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;">${pending}</span>`
     : '';
@@ -215,21 +716,17 @@ function render() {
   const locFilter    = document.getElementById('sel-location').value;
   const search       = document.getElementById('search').value.toLowerCase();
 
-  let rows = _flags.filter(f => {
+  const rows = _flags.filter(f => {
     if (statusFilter && f.status !== statusFilter) return false;
     if (locFilter && f.location_name !== locFilter) return false;
-    if (search && !f.product_name.toLowerCase().includes(search)) return false;
+    if (search && !(f.product_name || '').toLowerCase().includes(search)) return false;
     return true;
   });
 
   const tbody = document.getElementById('flags-tbody');
   const empty = document.getElementById('empty-state');
 
-  if (!rows.length) {
-    tbody.innerHTML = '';
-    empty.style.display = '';
-    return;
-  }
+  if (!rows.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
 
   tbody.innerHTML = rows.map(f => {
@@ -250,8 +747,7 @@ function render() {
         <button class="btn btn-sm act-approve" onclick="openResolve('${f.id}','approve')">Approve</button>
         <button class="btn btn-sm act-hold"    onclick="openResolve('${f.id}','hold')">Hold</button>
         <button class="btn btn-sm act-reject"  onclick="openResolve('${f.id}','reject')">Reject</button>
-      </div>` :
-      '—';
+      </div>` : '—';
 
     return `<tr>
       <td>
@@ -260,12 +756,12 @@ function render() {
         ${f.po_reference ? `<div class="product-sub">PO: ${esc(f.po_reference)}</div>` : ''}
       </td>
       <td>${esc(f.location_name || '—')}</td>
-      <td class="mono" style="text-align:right;">${f.vetspire_cost !== null ? '$' + fmt(f.vetspire_cost) : '—'}</td>
-      <td class="mono" style="text-align:right;">${f.invoice_cost !== null ? '$' + fmt(f.invoice_cost) : '—'}</td>
+      <td class="mono" style="text-align:right;">${f.vetspire_cost !== null ? '$' + fmt2(f.vetspire_cost) : '—'}</td>
+      <td class="mono" style="text-align:right;">${f.invoice_cost !== null ? '$' + fmt2(f.invoice_cost) : '—'}</td>
       <td class="mono ${driftClass}" style="text-align:right;">${driftStr}</td>
       <td style="font-size:12px;">${esc(f.flagged_by || '—')}</td>
       <td style="font-size:12px;white-space:nowrap;">${fmtDate(f.flagged_at)}</td>
-      <td>${pillMap[f.status] || f.status}</td>
+      <td>${pillMap[f.status] || esc(f.status)}</td>
       <td>${actions}</td>
     </tr>`;
   }).join('');
@@ -285,22 +781,25 @@ function openResolve(id, action) {
   if (action === 'approve') {
     document.getElementById('rm-title').textContent = 'Approve cost update';
     document.getElementById('rm-detail').textContent =
-      flag ? `${flag.product_name} · Invoice cost $${fmt(flag.invoice_cost)} vs VetSpire $${fmt(flag.vetspire_cost)}` : '';
+      flag ? `${flag.product_name} · Invoice $${fmt2(flag.invoice_cost)} vs VetSpire $${fmt2(flag.vetspire_cost)}` : '';
     newCostWrap.style.display = '';
-    btn.textContent = 'Approve & Queue for Sync';
+    btn.textContent = 'Approve & Update VetSpire';
     btn.style.background = '#065F46';
+    btn.style.borderColor = '#065F46';
   } else if (action === 'hold') {
     document.getElementById('rm-title').textContent = 'Place on hold';
     document.getElementById('rm-detail').textContent = 'Add a note explaining why this flag is being held.';
     newCostWrap.style.display = 'none';
     btn.textContent = 'Place on Hold';
     btn.style.background = '#374151';
+    btn.style.borderColor = '#374151';
   } else {
     document.getElementById('rm-title').textContent = 'Reject price change';
     document.getElementById('rm-detail').textContent = 'The unit cost in VetSpire will remain unchanged.';
     newCostWrap.style.display = 'none';
     btn.textContent = 'Reject';
     btn.style.background = '#a33030';
+    btn.style.borderColor = '#a33030';
   }
 
   modal.classList.add('open');
@@ -324,40 +823,29 @@ async function submitResolve() {
   try {
     if (_resolveAction === 'approve') {
       if (!newCost) { showToast('Enter a unit cost to approve'); btn.disabled = false; return; }
-      btn.textContent = 'Syncing to VetSpire…';
+      btn.textContent = 'Updating VetSpire…';
 
-      // Call Edge Function — updates VetSpire + marks flag approved_synced in one step
-      const res = await fetch(
-        SUPA_URL + '/functions/v1/update-unit-cost',
-        {
-          method: 'POST',
-          headers: { ...H },
-          body: JSON.stringify({
-            flag_id:             _resolveId,
-            vetspire_product_id: flag?.vetspire_product_id,
-            new_unit_cost:       newCost,
-            resolved_by:         resolver,
-          })
-        }
-      );
+      const res = await fetch(SUPA_URL + '/functions/v1/update-unit-cost', {
+        method: 'POST',
+        headers: { ...H },
+        body: JSON.stringify({
+          flag_id:             _resolveId,
+          vetspire_product_id: flag?.vetspire_product_id,
+          new_unit_cost:       newCost,
+          resolved_by:         resolver,
+        })
+      });
       const json = await res.json();
       if (!res.ok || json.error) throw new Error(json.error || 'Edge Function error');
 
       if (flag) Object.assign(flag, { status: 'approved_synced', vetspire_synced: true, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: newCost, resolution_notes: notes || null });
-      closeModal();
-      render();
-      showToast('✓ Cost updated in VetSpire — $' + newCost.toFixed(4));
+      closeModal(); render();
+      showToast('✓ Price updated in VetSpire — $' + newCost.toFixed(4));
 
     } else {
-      // Hold or Reject — direct Supabase patch, no VetSpire call
       btn.textContent = 'Saving…';
       const statusMap = { hold: 'hold', reject: 'rejected' };
-      const body = {
-        status:           statusMap[_resolveAction],
-        resolved_by:      resolver,
-        resolved_at:      new Date().toISOString(),
-        resolution_notes: notes || null,
-      };
+      const body = { status: statusMap[_resolveAction], resolved_by: resolver, resolved_at: new Date().toISOString(), resolution_notes: notes || null };
       const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + _resolveId, {
         method: 'PATCH',
         headers: { ...H, 'Prefer': 'return=minimal' },
@@ -365,34 +853,42 @@ async function submitResolve() {
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       if (flag) Object.assign(flag, body);
-      closeModal();
-      render();
-      const msgs = { hold: 'Flag placed on hold', reject: 'Flag rejected' };
-      showToast(msgs[_resolveAction] || 'Saved');
+      closeModal(); render();
+      showToast({ hold: 'Flag placed on hold', reject: 'Flag rejected' }[_resolveAction] || 'Saved');
     }
 
-    // Refresh pending badge
+    // Refresh badge
     const pending = _flags.filter(f => f.status === 'pending').length;
     const badge = document.getElementById('pending-badge');
-    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
-    else badge.style.display = 'none';
+    const qbadge = document.getElementById('queue-badge');
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; qbadge.textContent = pending; qbadge.style.display = ''; }
+    else { badge.style.display = 'none'; qbadge.style.display = 'none'; }
 
   } catch(err) {
     closeModal();
     showToast('Error: ' + (err instanceof Error ? err.message : String(err)));
   }
+  btn.disabled = false;
 }
 
+// ── Shared utils ─────────────────────────────────────────
 let _toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.opacity = '1';
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+  _toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3200);
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt2(v) { return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}); }
+function fmtDate(s) {
+  if (!s) return '—';
+  const d = new Date(s);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · ' +
+         d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
+// Init
 loadFlags();
 </script>
 </body>
