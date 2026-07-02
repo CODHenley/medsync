@@ -499,14 +499,38 @@ function aggregateVetcove(rows) {
   const detectedHeaders = Object.keys(rows[0]);
   console.log('[MedSync] Vetcove CSV headers detected:', detectedHeaders);
 
+  // Auto-detect columns when none of our known aliases match —
+  // find whichever column has the most text content (name) and
+  // whichever has dollar-style numbers (price).
+  const knownNameAliases = ['Name','name','Product Name','product_name','Item Name','item_name','Description','description','Product','product'];
+  const knownPriceAliases = ['Unit Price','unit_price','Price','price','Cost','cost','Cost per Dose','cost_per_dose','List Price','list_price','Extended Price','extended_price'];
+  let autoNameCol = null, autoPriceCol = null;
+  if (rows.length > 1 && !detectedHeaders.some(h => knownNameAliases.includes(h))) {
+    // Score each column: text length sum → name; numeric hit rate → price
+    const scores = detectedHeaders.map(h => {
+      let textLen = 0, numHits = 0;
+      rows.slice(0, 20).forEach(r => {
+        const v = (r[h] || '').trim();
+        textLen += v.replace(/[$\d.,]/g,'').length;
+        if (/^\$?[\d,]+\.\d{2}$/.test(v)) numHits++;
+      });
+      return { h, textLen, numHits };
+    });
+    const nameCol = scores.sort((a,b) => b.textLen - a.textLen)[0];
+    const priceCol = scores.sort((a,b) => b.numHits - a.numHits)[0];
+    if (nameCol && nameCol.textLen > 0) autoNameCol = nameCol.h;
+    if (priceCol && priceCol.numHits > 0 && priceCol.h !== autoNameCol) autoPriceCol = priceCol.h;
+    if (autoNameCol) console.log('[MedSync] Auto-detected name col:', autoNameCol, '| price col:', autoPriceCol);
+  }
+
   const map = new Map();
   rows.forEach(r => {
-    const name    = col(r, 'Name', 'name', 'Product Name', 'product_name', 'Item Name', 'item_name', 'Description', 'description', 'Product', 'product');
+    const name    = col(r, 'Name', 'name', 'Product Name', 'product_name', 'Item Name', 'item_name', 'Description', 'description', 'Product', 'product') || (autoNameCol ? (r[autoNameCol]||'').trim() : '');
     const mfrNum  = col(r, 'Manufacturer Number', 'manufacturer_number', 'Mfr #', 'mfr_number', 'NDC', 'ndc', 'Item #', 'Item Number', 'SKU', 'sku');
     const key     = (mfrNum || name).toLowerCase();
     if (!key) return; // skip blank rows
 
-    const pkgPrice    = parseFloat(col(r, 'Unit Price', 'unit_price', 'Price', 'price', 'Cost', 'cost', 'Extended Price', 'extended_price', 'List Price', 'list_price').replace(/[$,]/g,'')) || 0;
+    const pkgPrice    = parseFloat((col(r, 'Unit Price', 'unit_price', 'Price', 'price', 'Cost', 'cost', 'Extended Price', 'extended_price', 'List Price', 'list_price') || (autoPriceCol ? r[autoPriceCol] : '') || '').replace(/[$,]/g,'')) || 0;
     const costPerDose = parseFloat(col(r, 'Cost per Dose', 'cost_per_dose', 'Cost Per Dose', 'Unit Cost', 'unit_cost').replace(/[$,]/g,'')) || 0;
     const units       = parseFloat(col(r, 'Units', 'units', 'Qty', 'qty', 'Quantity', 'quantity', 'Count', 'count').replace(/,/g,'')) || 0;
     const unitMeas    = col(r, 'Unit Measurement', 'unit_measurement', 'UOM', 'uom', 'Unit', 'unit').trim();
