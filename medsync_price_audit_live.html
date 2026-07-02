@@ -199,7 +199,8 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       Upload Vetcove Invoice
     </label>
     <input type="file" id="csv-upload" accept=".csv,.xlsx,.xls,.pdf" style="display:none" onchange="handleInvoiceUpload(this)">
-    <span id="csv-filename">No file selected</span>
+    <span id="csv-filename" style="display:none;"></span>
+    <button id="clear-invoice-btn" onclick="clearInvoice()" style="display:none;background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;color:var(--mist);cursor:pointer;" title="Clear and upload a new file">✕ Clear</button>
     <span id="comp-loading" style="display:none;font-size:12px;color:var(--mist);">Matching products…</span>
   </div>
 
@@ -745,7 +746,10 @@ async function parsePDFFile(file) {
 async function handleInvoiceUpload(input) {
   const file = input.files[0];
   if (!file) return;
-  document.getElementById('csv-filename').textContent = file.name;
+  const fnEl = document.getElementById('csv-filename');
+  fnEl.textContent = file.name;
+  fnEl.style.display = '';
+  document.getElementById('clear-invoice-btn').style.display = '';
   document.getElementById('comp-loading').style.display = '';
   document.getElementById('comp-empty-upload').style.display = 'none';
 
@@ -780,6 +784,18 @@ async function handleInvoiceUpload(input) {
   }
   document.getElementById('comp-loading').style.display = 'none';
   input.value = '';
+}
+
+function clearInvoice() {
+  _compRows = [];
+  _compFlagged = new Set();
+  document.getElementById('csv-upload').value = '';
+  const fnEl = document.getElementById('csv-filename');
+  fnEl.textContent = '';
+  fnEl.style.display = 'none';
+  document.getElementById('clear-invoice-btn').style.display = 'none';
+  document.getElementById('comp-content').style.display = 'none';
+  document.getElementById('comp-empty-upload').style.display = '';
 }
 
 function getCompFiltered() {
