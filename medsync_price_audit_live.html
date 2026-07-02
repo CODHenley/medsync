@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Price Audit — MedSync</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#F4F2FA;color:#1C2B4A;font-size:14px;}
@@ -194,9 +196,9 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <label>Compare invoice:</label>
     <label class="upload-btn" for="csv-upload">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Upload Vetcove Invoice CSV
+      Upload Vetcove Invoice
     </label>
-    <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleCSV(this)">
+    <input type="file" id="csv-upload" accept=".csv,.xlsx,.xls,.pdf" style="display:none" onchange="handleInvoiceUpload(this)">
     <span id="csv-filename">No file selected</span>
     <span id="comp-loading" style="display:none;font-size:12px;color:var(--mist);">Matching products…</span>
   </div>
@@ -208,8 +210,9 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <p>Upload any Vetcove line-item CSV export. MedSync will match each item against your product catalog and show price drift.</p>
     <label class="upload-btn" for="csv-upload" style="display:inline-flex;">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Choose CSV File
+      Choose File
     </label>
+    <p style="margin-top:8px;font-size:12px;color:#8A93A8;">CSV, Excel (.xlsx/.xls), or PDF</p>
   </div>
 
   <!-- Comparison content (hidden until CSV loaded) -->
@@ -568,7 +571,71 @@ function matchProducts(vetcoveItems, msProducts) {
   return results;
 }
 
-async function handleCSV(input) {
+async function parseInvoiceFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.csv')) {
+    const text = await file.text();
+    return parseVetcoveCSV(text);
+  }
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    return await parseExcelFile(file);
+  }
+  if (name.endsWith('.pdf')) {
+    return await parsePDFFile(file);
+  }
+  throw new Error('Unsupported file type. Please upload a CSV, Excel (.xlsx/.xls), or PDF file.');
+}
+
+async function parseExcelFile(file) {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: 'array' });
+  // Use first sheet
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const csvText = XLSX.utils.sheet_to_csv(ws);
+  return parseVetcoveCSV(csvText);
+}
+
+async function parsePDFFile(file) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('PDF parser not loaded. Please try CSV or Excel format.');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let allText = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    // Collect items with their x/y positions for table reconstruction
+    const items = tc.items.map(it => ({ str: it.str, x: Math.round(it.transform[4]), y: Math.round(it.transform[5]) }));
+    // Group by row (same Y ± 3px)
+    const rows = [];
+    items.forEach(it => {
+      if (!it.str.trim()) return;
+      const row = rows.find(r => Math.abs(r.y - it.y) <= 3);
+      if (row) { row.cells.push(it); }
+      else { rows.push({ y: it.y, cells: [it] }); }
+    });
+    rows.sort((a, b) => b.y - a.y);
+    rows.forEach(row => {
+      row.cells.sort((a, b) => a.x - b.x);
+      allText += row.cells.map(c => c.str).join('\t') + '\n';
+    });
+  }
+  // Try to find a header row that looks like a Vetcove invoice
+  const lines = allText.split('\n').filter(l => l.trim());
+  const headerIdx = lines.findIndex(l => /name/i.test(l) && (/cost|price/i.test(l)));
+  if (headerIdx === -1) {
+    throw new Error('Could not detect a Vetcove-style table in this PDF. Please export as CSV or Excel from Vetcove.');
+  }
+  // Convert tab-separated to CSV
+  const csvLines = lines.slice(headerIdx).map(l => l.split('\t').map(cell => {
+    cell = cell.trim();
+    return cell.includes(',') ? '"' + cell.replace(/"/g, '""') + '"' : cell;
+  }).join(','));
+  return parseVetcoveCSV(csvLines.join('\n'));
+}
+
+async function handleInvoiceUpload(input) {
   const file = input.files[0];
   if (!file) return;
   document.getElementById('csv-filename').textContent = file.name;
@@ -576,9 +643,8 @@ async function handleCSV(input) {
   document.getElementById('comp-empty-upload').style.display = 'none';
 
   try {
-    const text = await file.text();
-    const vcRows = parseVetcoveCSV(text);
-    if (!vcRows.length) throw new Error('CSV appears empty or unreadable');
+    const vcRows = await parseInvoiceFile(file);
+    if (!vcRows.length) throw new Error('File appears empty or no recognizable data found');
 
     const vcItems = aggregateVetcove(vcRows);
     const ms = await loadMSProducts();
