@@ -700,23 +700,70 @@ function detectSupplier(text) {
 // Vetcove-style (covers Vetcove marketplace, Wedgewood, MCHNJ/MedCare)
 // Format: numbered list with "# | Item & Description | Qty | Unit Price | Total Price"
 // Sub-line pattern: "SUPPLIER · NDC_OR_SKU"
+//
+// Two layout variants from pdfjs extraction:
+//   A) Columns extracted as one line: "N DESCRIPTION QTY $UNIT $TOTAL"
+//      (happens when all cells share the same baseline y — common in Wedgewood PDFs)
+//   B) Price on a separate line: description line + "QTY $UNIT $TOTAL" line
+//      (common in Vetcove marketplace / MCHNJ invoices)
 function parseVetcoveStylePDF(lines) {
   const items = [];
   const headerIdx = lines.findIndex(l => /item.*description/i.test(l) && /unit price/i.test(l));
   let i = headerIdx !== -1 ? headerIdx + 1 : 0;
 
+  // Variant A: item# + description + qty + prices all on one line
+  // Lazy match so description stops before the trailing "QTY $UNIT $TOTAL"
+  const embeddedPriceRe = /^(\d+)\s+(.{4,}?)\s+(\d+)\s+\$?([\d,]+\.[\d]{2})\s+\$?([\d,]+\.[\d]{2})\s*$/;
+  // Variant B: separate price line
+  const separatePriceRe = /^(\d+)\s+\$?([\d,]+\.[\d]{2})\s+\$?([\d,]+\.[\d]{2})\s*$/;
+
+  const isFooter = l => /^(subtotal|tax\b|total\b|page\s)/i.test(l);
+
   while (i < lines.length) {
     const line = lines[i];
+    if (isFooter(line)) { i++; continue; }
+
+    // --- Variant A: embedded price ---
+    const embM = line.match(embeddedPriceRe);
+    if (embM) {
+      const rowNum = parseInt(embM[1]);
+      let name = embM[2].trim();
+      const qty = embM[3];
+      const unitPrice = embM[4].replace(/,/g, '');
+      i++;
+      let ndc = '';
+      while (i < lines.length) {
+        const l = lines[i];
+        if (isFooter(l)) break;
+        if (/·/.test(l)) {
+          const ndcM = l.match(/·\s+(\S+)/);
+          if (ndcM) ndc = ndcM[1].replace(/(each|ea)\s*$/i, '').trim();
+          i++; continue;
+        }
+        // Next item starts (higher sequential number, or another embedded-price item)
+        if (embeddedPriceRe.test(l)) break;
+        const nextM = l.match(/^(\d+)\s+.{4,}/);
+        if (nextM && parseInt(nextM[1]) > rowNum) break;
+        // Continuation of description (e.g. "120 ml" wrapping to next line)
+        if (!separatePriceRe.test(l)) name += ' ' + l.trim();
+        i++;
+      }
+      if (parseFloat(unitPrice) > 0 && name.replace(/[\d$.,\s]/g, '').length >= 3) {
+        items.push({ Name: name.trim(), 'Unit Price': unitPrice, Qty: qty, NDC: ndc });
+      }
+      continue;
+    }
+
+    // --- Variant B: description line, then separate price line ---
     const itemM = line.match(/^(\d+)\s+(.{4,})/);
-    if (itemM && !/^(subtotal|tax\b|total\b|page\s)/i.test(line)) {
+    if (itemM) {
       const rowNum = parseInt(itemM[1]);
       let nameParts = [itemM[2].trim()];
       let ndc = '';
       i++;
       while (i < lines.length) {
         const l = lines[i];
-        // Price line: "QTY $UNIT $TOTAL"
-        const priceM = l.match(/^(\d+)\s+\$?([\d,]+\.[\d]{2})\s+\$?([\d,]+\.[\d]{2})\s*$/);
+        const priceM = l.match(separatePriceRe);
         if (priceM) {
           items.push({
             Name: nameParts.join(' ').trim(),
@@ -727,19 +774,14 @@ function parseVetcoveStylePDF(lines) {
           i++;
           break;
         }
-        // NDC/SKU sub-line: "SUPPLIER · CODE"
         if (/·/.test(l)) {
           const ndcM = l.match(/·\s+(\S+)/);
           if (ndcM) ndc = ndcM[1].replace(/(each|ea)\s*$/i, '').trim();
-          i++;
-          continue;
+          i++; continue;
         }
-        // Next item starts (sequential number)
         const nextItemM = l.match(/^(\d+)\s+.{4,}/);
         if (nextItemM && parseInt(nextItemM[1]) > rowNum) break;
-        // Footer
-        if (/^(subtotal|tax\b|total\b|page\s)/i.test(l)) break;
-        // Continued description
+        if (isFooter(l)) break;
         nameParts.push(l.trim());
         i++;
       }
