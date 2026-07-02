@@ -383,7 +383,26 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (() => { try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + ((_sess.access_token) || SUPA_KEY), 'Content-Type': 'application/json' };
+
+// Return a valid bearer token — check JWT expiry, fall back to anon key if expired
+function _getToken() {
+  const tok = _sess.access_token;
+  if (!tok) return SUPA_KEY;
+  try {
+    const exp = JSON.parse(atob(tok.split('.')[1])).exp;
+    if (exp && exp < Date.now() / 1000 + 10) return SUPA_KEY; // expired or expiring in 10s
+  } catch(e) { /* ignore decode errors */ }
+  return tok;
+}
+
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _getToken(), 'Content-Type': 'application/json' };
+
+// For Edge Function calls: refresh token dynamically so a long-running session doesn't 401
+async function edgeFetch(url, opts) {
+  const tok = _getToken();
+  const headers = { ...H, 'Authorization': 'Bearer ' + tok, ...(opts.headers || {}) };
+  return fetch(url, { ...opts, headers });
+}
 
 // ── Tab switching ────────────────────────────────────────
 function switchMainTab(tab) {
@@ -1405,7 +1424,7 @@ async function submitResolve() {
       if (!newCost) { showToast('Enter a unit cost to approve'); btn.disabled = false; return; }
       btn.textContent = 'Updating VetSpire…';
 
-      const res = await fetch(SUPA_URL + '/functions/v1/update-unit-cost', {
+      const res = await edgeFetch(SUPA_URL + '/functions/v1/update-unit-cost', {
         method: 'POST',
         headers: { ...H },
         body: JSON.stringify({
@@ -1544,7 +1563,7 @@ async function submitBulkApprove() {
     const batch = items.slice(i, i + 4);
     await Promise.all(batch.map(async item => {
       try {
-        const res = await fetch(SUPA_URL + '/functions/v1/update-unit-cost', {
+        const res = await edgeFetch(SUPA_URL + '/functions/v1/update-unit-cost', {
           method: 'POST',
           headers: { ...H },
           body: JSON.stringify({ flag_id: item.id, vetspire_product_id: item.vspid, new_unit_cost: item.cost, resolved_by: resolver })
