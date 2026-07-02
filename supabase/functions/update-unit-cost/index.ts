@@ -12,54 +12,58 @@ Deno.serve(async (req: Request) => {
   try {
     const { flag_id, vetspire_product_id, new_unit_cost, resolved_by } = await req.json()
 
-    if (!flag_id || !vetspire_product_id || new_unit_cost == null) {
-      return new Response(JSON.stringify({ error: 'flag_id, vetspire_product_id, and new_unit_cost are required' }), { status: 400, headers: CORS })
+    if (!flag_id || new_unit_cost == null) {
+      return new Response(JSON.stringify({ error: 'flag_id and new_unit_cost are required' }), { status: 400, headers: CORS })
     }
-
-    const token = Deno.env.get('Medsync_API_Key')
-    if (!token) throw new Error('Medsync_API_Key secret not set')
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Call VetSpire updateProduct mutation
-    const vsRes = await fetch('https://api.vetspire.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-        'Origin': 'https://scoutcare.vetspire.com',
-      },
-      body: JSON.stringify({
-        query: `mutation UpdateProductCost($id: ID!, $input: UpdateProductInput!) {
-          updateProduct(id: $id, input: $input) {
-            id
-            unitCost
-          }
-        }`,
-        variables: {
-          id: String(vetspire_product_id),
-          input: { unitCost: parseFloat(new_unit_cost) },
+    let updatedCost = parseFloat(new_unit_cost)
+    let vetspireSynced = false
+
+    // Call VetSpire only when we have a product ID
+    if (vetspire_product_id) {
+      const token = Deno.env.get('Medsync_API_Key')
+      if (!token) throw new Error('Medsync_API_Key secret not set')
+
+      const vsRes = await fetch('https://api.vetspire.com/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+          'Origin': 'https://scoutcare.vetspire.com',
         },
-      }),
-    })
+        body: JSON.stringify({
+          query: `mutation UpdateProductCost($id: ID!, $input: UpdateProductInput!) {
+            updateProduct(id: $id, input: $input) {
+              id
+              unitCost
+            }
+          }`,
+          variables: {
+            id: String(vetspire_product_id),
+            input: { unitCost: updatedCost },
+          },
+        }),
+      })
 
-    const vsJson = await vsRes.json()
-
-    if (vsJson.errors && vsJson.errors.length > 0) {
-      throw new Error('VetSpire error: ' + JSON.stringify(vsJson.errors))
+      const vsJson = await vsRes.json()
+      if (vsJson.errors && vsJson.errors.length > 0) {
+        throw new Error('VetSpire error: ' + JSON.stringify(vsJson.errors))
+      }
+      updatedCost = vsJson.data?.updateProduct?.unitCost ?? updatedCost
+      vetspireSynced = true
     }
 
-    const updatedCost = vsJson.data?.updateProduct?.unitCost ?? new_unit_cost
-
-    // Mark flag as synced
+    // Mark flag resolved in Supabase
     const { error: patchErr } = await supabase
       .from('price_review_flags')
       .update({
-        status: 'approved_synced',
-        vetspire_synced: true,
+        status: vetspireSynced ? 'approved_synced' : 'approved_pending_sync',
+        vetspire_synced: vetspireSynced,
         resolved_by: resolved_by || null,
         resolved_at: new Date().toISOString(),
       })
@@ -67,7 +71,7 @@ Deno.serve(async (req: Request) => {
 
     if (patchErr) throw new Error('Supabase patch failed: ' + patchErr.message)
 
-    // Also update unit_cost in local products table if product_id is available
+    // Also update unit_price in local products table if product_id is available
     const { data: flagRow } = await supabase
       .from('price_review_flags')
       .select('product_id')
@@ -77,13 +81,14 @@ Deno.serve(async (req: Request) => {
     if (flagRow?.product_id) {
       await supabase
         .from('products')
-        .update({ unit_cost: parseFloat(new_unit_cost) })
+        .update({ unit_price: updatedCost })
         .eq('id', flagRow.product_id)
     }
 
     return new Response(JSON.stringify({
       ok: true,
-      vetspire_product_id,
+      vetspire_product_id: vetspire_product_id || null,
+      vetspire_synced: vetspireSynced,
       new_unit_cost: updatedCost,
       flag_id,
     }), { headers: CORS })

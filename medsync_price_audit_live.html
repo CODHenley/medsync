@@ -1418,9 +1418,10 @@ async function submitResolve() {
       const json = await res.json();
       if (!res.ok || json.error) throw new Error(json.error || 'Edge Function error');
 
-      if (flag) Object.assign(flag, { status: 'approved_synced', vetspire_synced: true, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: newCost, resolution_notes: notes || null });
+      const synced = json.vetspire_synced;
+      if (flag) Object.assign(flag, { status: synced ? 'approved_synced' : 'approved_pending_sync', vetspire_synced: synced, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: newCost, resolution_notes: notes || null });
       closeModal(); render();
-      showToast('✓ Price updated in VetSpire — $' + newCost.toFixed(4));
+      showToast(synced ? '✓ Price updated in VetSpire — $' + newCost.toFixed(4) : '✓ Cost saved locally (no VetSpire ID on file)');
 
     } else {
       btn.textContent = 'Saving…';
@@ -1552,7 +1553,8 @@ async function submitBulkApprove() {
         if (!res.ok || json.error) throw new Error(json.error || 'err');
         // Update local cache
         const flag = _flags.find(f => f.id === item.id);
-        if (flag) Object.assign(flag, { status: 'approved_synced', vetspire_synced: true, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: item.cost, resolution_notes: notes || null });
+        const synced = json.vetspire_synced;
+        if (flag) Object.assign(flag, { status: synced ? 'approved_synced' : 'approved_pending_sync', vetspire_synced: synced, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: item.cost, resolution_notes: notes || null });
         done++;
       } catch(e) {
         errors++;
