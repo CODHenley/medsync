@@ -1,0 +1,2 @@
+[functions.update-unit-cost]
+verify_jwt = false
