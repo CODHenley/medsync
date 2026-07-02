@@ -832,34 +832,74 @@ function parseMidwestPDF(lines) {
 
 // Amatheon Pharmaceuticals
 // Format: Ordered Shipped B/O ItemCode [description lines] Lot#(Qty) $UnitPrice $Total
+// pdfjs may split the qty numbers and bold item code across adjacent lines, so we handle
+// both "4 4 0 SAN-NEPF-3-BL-SM" on one line and "4 4 0" / "SAN-NEPF-3-BL-SM" on two lines.
 function parseAmatheonPDF(lines) {
   const items = [];
-  // Find column header row
-  const hIdx = lines.findIndex(l => /ordered.*shipped|qty.*shipped/i.test(l));
-  let i = hIdx !== -1 ? hIdx + 1 : 0;
-  const itemStartRe = /^\s*(\d+)\s+\d+\s+\d+\s+([\w][\w\-]+)\s*$/;
-  const priceLineRe = /\$?([\d,]+\.[\d]{2})\s+\$?([\d,]+\.[\d]{2})\s*$/;
+  const hIdx = lines.findIndex(l => /ordered.*shipped/i.test(l));
+  const start = hIdx !== -1 ? hIdx + 1 : 0;
 
+  // Item codes: 2+ uppercase letters, at least one hyphen group (e.g. SAN-NEPF-3-BL-SM)
+  const itemCodeRe = /([A-Z]{2,}[A-Z0-9]*(?:-[A-Z0-9]+)+)/;
+  // Qty row: "ordered shipped b/o" — three integers, optional trailing text
+  const qtyRowRe   = /^(\d+)\s+\d+\s+\d+\s*(.*)/;
+  // Price at end of line
+  const priceRe    = /\$([\d,]+\.\d{2})\s+\$([\d,]+\.\d{2})\s*$/;
+  const stopRe     = /^(subtotal|shipping|tax|total|tracking)/i;
+
+  let i = start;
   while (i < lines.length) {
-    const m = lines[i].match(itemStartRe);
-    if (m) {
-      const qty = m[1], itemCode = m[2];
-      let desc = '';
+    const line = lines[i];
+    if (stopRe.test(line.trim())) { i++; continue; }
+
+    const qtyM = line.match(qtyRowRe);
+    if (!qtyM) { i++; continue; }
+
+    const qty  = qtyM[1];
+    const rest = qtyM[2].trim(); // text after the three numbers, if any
+
+    let itemCode = null;
+
+    // Item code may be on the same line as the qty numbers
+    const codeInRest = rest.match(itemCodeRe);
+    if (codeInRest) {
+      itemCode = codeInRest[1];
       i++;
-      while (i < lines.length) {
-        const priceM = lines[i].match(priceLineRe);
-        if (priceM) {
-          const unitPrice = priceM[1].replace(/,/g,'');
-          items.push({ Name: (itemCode + ' ' + desc).trim(), 'Unit Price': unitPrice, Qty: qty, NDC: '' });
-          i++;
-          break;
-        }
-        if (/^(subtotal|shipping|tax|total)/i.test(lines[i])) { i++; break; }
-        desc += ' ' + lines[i].trim();
-        i++;
-      }
     } else {
+      // Bold item code lands on the next line (different Y due to font)
       i++;
+      if (i < lines.length && !stopRe.test(lines[i].trim())) {
+        const nextCode = lines[i].match(itemCodeRe);
+        if (nextCode && !/^\d/.test(lines[i].trim())) {
+          itemCode = nextCode[1];
+          i++;
+        }
+      }
+    }
+
+    if (!itemCode) continue;
+
+    // Collect description lines then find the price line
+    const descParts = [];
+    let unitPrice   = null;
+    while (i < lines.length) {
+      const l = lines[i];
+      if (stopRe.test(l.trim())) break;
+      if (l.match(qtyRowRe))    break; // start of next item
+      const pM = l.match(priceRe);
+      if (pM) {
+        unitPrice = pM[1].replace(/,/g, '');
+        i++;
+        break;
+      }
+      // Skip lot# lines like "610126026,R-01(4)" — start with 6+ digits
+      if (!l.trim().match(/^\d{6,}/)) descParts.push(l.trim());
+      i++;
+    }
+
+    if (unitPrice !== null) {
+      const name = [itemCode, ...descParts].filter(Boolean).join(' ');
+      items.push({ Name: name, 'Unit Price': unitPrice, Qty: qty, NDC: '' });
     }
   }
   return items;
