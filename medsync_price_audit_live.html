@@ -665,38 +665,81 @@ async function parsePDFFile(file) {
 
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  let allText = '';
+
+  // Collect all text items across all pages with position data
+  const allItems = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
-    // Collect items with their x/y positions for table reconstruction
-    const items = tc.items.map(it => ({ str: it.str, x: Math.round(it.transform[4]), y: Math.round(it.transform[5]) }));
-    // Group by row (same Y ± 3px)
-    const rows = [];
-    items.forEach(it => {
-      if (!it.str.trim()) return;
-      const row = rows.find(r => Math.abs(r.y - it.y) <= 3);
-      if (row) { row.cells.push(it); }
-      else { rows.push({ y: it.y, cells: [it] }); }
-    });
-    rows.sort((a, b) => b.y - a.y);
-    rows.forEach(row => {
-      row.cells.sort((a, b) => a.x - b.x);
-      allText += row.cells.map(c => c.str).join('\t') + '\n';
+    tc.items.forEach(it => {
+      if (it.str.trim()) allItems.push({ str: it.str.trim(), x: Math.round(it.transform[4]), y: Math.round(it.transform[5]) + (p - 1) * 10000 });
     });
   }
-  // Try to find a header row that looks like a Vetcove invoice
-  const lines = allText.split('\n').filter(l => l.trim());
-  const headerIdx = lines.findIndex(l => /name/i.test(l) && (/cost|price/i.test(l)));
-  if (headerIdx === -1) {
-    throw new Error('Could not detect a Vetcove-style table in this PDF. Please export as CSV or Excel from Vetcove.');
+
+  // Group into rows by Y position (±4px tolerance)
+  const rowMap = new Map();
+  allItems.forEach(it => {
+    const key = [...rowMap.keys()].find(k => Math.abs(k - it.y) <= 4);
+    if (key !== undefined) rowMap.get(key).push(it);
+    else rowMap.set(it.y, [it]);
+  });
+  const rows = [...rowMap.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([, cells]) => cells.sort((a, b) => a.x - b.x).map(c => c.str));
+
+  console.log('[MedSync] PDF rows extracted:', rows.slice(0, 10));
+
+  // Strategy 1: find a header row with product name + price columns
+  const HEADER_PATTERNS = [
+    r => /product|item|description|name/i.test(r.join(' ')) && /price|cost/i.test(r.join(' ')),
+    r => /product|item|description|name/i.test(r.join(' ')),
+    r => r.length >= 3 && /\$/.test(r.join(' ')) === false && r.some(c => c.length > 5),
+  ];
+
+  let headerIdx = -1, strategy = -1;
+  for (let s = 0; s < HEADER_PATTERNS.length && headerIdx === -1; s++) {
+    headerIdx = rows.findIndex(HEADER_PATTERNS[s]);
+    if (headerIdx !== -1) strategy = s;
   }
-  // Convert tab-separated to CSV
-  const csvLines = lines.slice(headerIdx).map(l => l.split('\t').map(cell => {
-    cell = cell.trim();
-    return cell.includes(',') ? '"' + cell.replace(/"/g, '""') + '"' : cell;
-  }).join(','));
-  return parseVetcoveCSV(csvLines.join('\n'));
+
+  if (headerIdx !== -1 && strategy <= 1) {
+    // Build synthetic CSV from positioned rows
+    const headers = rows[headerIdx];
+    console.log('[MedSync] PDF headers found:', headers);
+    const csvRows = [headers.map(h => `"${h.replace(/"/g,'""')}"`).join(',')];
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r.length || r.join('').trim() === '') continue;
+      // Skip obvious subtotal/total/footer rows
+      if (/^(sub)?total|order total|shipping|tax|^page\s/i.test(r[0])) continue;
+      while (r.length < headers.length) r.push('');
+      csvRows.push(r.map(c => `"${c.replace(/"/g,'""')}"`).join(','));
+    }
+    const result = parseVetcoveCSV(csvRows.join('\n'));
+    if (result.length > 0) return result;
+  }
+
+  // Strategy 2: look for lines that are a product name followed by a dollar amount
+  // Build synthetic rows: Name, Unit Price
+  const syntheticRows = [['Name', 'Unit Price']];
+  const priceRe = /^\$?[\d,]+\.\d{2}$/;
+  rows.forEach(r => {
+    const priceCell = r.find(c => priceRe.test(c.replace(/\s/g,'')));
+    const nameCell = r.find(c => c.length > 4 && !priceRe.test(c.replace(/\s/g,'')) && !/^\d+$/.test(c));
+    if (nameCell && priceCell) syntheticRows.push([nameCell, priceCell.replace(/[$,]/g,'')]);
+  });
+
+  if (syntheticRows.length > 1) {
+    console.log('[MedSync] PDF strategy 2 found', syntheticRows.length - 1, 'price rows');
+    const csv = syntheticRows.map(r => r.map(c => `"${c.replace(/"/g,'""')}"`).join(',')).join('\n');
+    const result = parseVetcoveCSV(csv);
+    if (result.length > 0) return result;
+  }
+
+  // Nothing worked — give the user the raw text so they can see what was extracted
+  const rawPreview = rows.slice(0, 20).map(r => r.join(' | ')).join('\n');
+  console.warn('[MedSync] PDF extraction failed. First 20 rows:\n', rawPreview);
+  throw new Error('Could not parse this PDF invoice. Vetcove PDFs vary in format — please export as CSV or Excel from Vetcove instead (Orders → Export). If this is a supplier invoice, CSV is the most reliable format.');
 }
 
 async function handleInvoiceUpload(input) {
