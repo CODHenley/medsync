@@ -811,7 +811,18 @@ function renderComp() {
     return `<tr>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
       <td class="cprice">$${fmt2(d.ms_price)}</td>
-      <td class="cprice">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}${d.inferred_units ? `<div style="font-size:10px;color:var(--mist);margin-top:2px;">÷${d.inferred_units} units/pkg</div>` : ''}</td>
+      <td class="cprice" style="white-space:nowrap;">
+        <span class="vc-unit-price">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}</span>
+        ${d.vc_raw_price && d.vc_raw_price !== d.vc_latest ? `
+        <div style="font-size:10px;color:var(--mist);margin-top:2px;display:flex;align-items:center;gap:4px;">
+          ÷<input type="number" class="units-override" min="1" max="10000" step="1"
+            value="${d.inferred_units || d.vc_units_per_pkg || 1}"
+            title="Units per package — edit to correct"
+            style="width:46px;font-size:10px;padding:1px 3px;border:1px solid var(--border);border-radius:3px;text-align:center;"
+            data-raw="${d.vc_raw_price}" data-ms="${d.ms_price}" data-rowname="${esc(d.ms_name)}">
+          <span style="color:var(--mist)">units/pkg</span>
+        </div>` : ''}
+      </td>
       <td style="font-size:12.5px;line-height:1.5;">${pkgCell}</td>
       <td>${driftCell(d.drift_pct, d.unit_mismatch)}</td>
       <td style="color:var(--mist)">${d.vc_orders || 0}</td>
@@ -824,6 +835,28 @@ function renderComp() {
 
   tbody.querySelectorAll('.btn-flag-comp').forEach(btn => {
     btn.addEventListener('click', () => flagForAudit(btn));
+  });
+
+  // Live recalc when user edits units/pkg
+  tbody.querySelectorAll('.units-override').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const n = Math.max(1, parseInt(inp.value) || 1);
+      const rawPkg = parseFloat(inp.dataset.raw);
+      const msPrice = parseFloat(inp.dataset.ms);
+      const newUnitPrice = rawPkg / n;
+      const newDrift = msPrice ? Math.round((newUnitPrice - msPrice) / msPrice * 10000) / 100 : null;
+      const row = inp.closest('tr');
+      row.querySelector('.vc-unit-price').textContent = '$' + fmt2(newUnitPrice);
+      const driftTd = row.querySelector('td:nth-child(5)');
+      if (driftTd) driftTd.innerHTML = driftCell(newDrift, false);
+      // Update the flag button's data attributes
+      const btn = row.querySelector('.btn-flag-comp');
+      if (btn) { btn.dataset.vc = newUnitPrice; btn.dataset.drift = newDrift; }
+      // Update _compRows entry so Flag for Audit uses corrected price
+      const rowName = inp.dataset.rowname;
+      const entry = _compRows.find(r => r.ms_name === rowName);
+      if (entry) { entry.vc_latest = newUnitPrice; entry.drift_pct = newDrift; entry.inferred_units = n; }
+    });
   });
 }
 
