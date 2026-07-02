@@ -907,7 +907,12 @@ function parseIDEXXPDF(lines) {
     if (m) {
       const unitPrice = m[3].replace(/,/g, '');
       if (parseFloat(unitPrice) > 0) {
-        items.push({ Name: m[2].trim(), 'Unit Price': unitPrice, Qty: m[5], NDC: '', sku: m[1] });
+        const name = m[2].trim();
+        // Use tests-per-package from description "(N)" rather than order quantity.
+        // e.g. "Catalyst PL (12)" → 12 tests/box; "SNAP Parvo Test (5)" → 5 tests/box.
+        const pkgMatch = name.match(/\((\d+)\)\s*$/);
+        const qty = pkgMatch ? pkgMatch[1] : m[5];
+        items.push({ Name: name, 'Unit Price': unitPrice, Qty: qty, NDC: '', sku: m[1] });
       }
     }
   });
