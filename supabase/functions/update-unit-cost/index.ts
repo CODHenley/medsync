@@ -58,6 +58,8 @@ Deno.serve(async (req: Request) => {
       vetspireSynced = true
     }
 
+    console.log('update-unit-cost: patching flag', flag_id, 'synced=', vetspireSynced, 'cost=', updatedCost)
+
     // Mark flag resolved in Supabase
     const { error: patchErr } = await supabase
       .from('price_review_flags')
@@ -69,20 +71,31 @@ Deno.serve(async (req: Request) => {
       })
       .eq('id', flag_id)
 
-    if (patchErr) throw new Error('Supabase patch failed: ' + patchErr.message)
+    if (patchErr) {
+      console.error('patch error:', JSON.stringify(patchErr))
+      throw new Error('Supabase patch failed: ' + patchErr.message + ' | code: ' + patchErr.code + ' | details: ' + patchErr.details)
+    }
+
+    console.log('update-unit-cost: patch ok, fetching product_id from flag')
 
     // Also update unit_price in local products table if product_id is available
-    const { data: flagRow } = await supabase
+    const { data: flagRow, error: fetchErr } = await supabase
       .from('price_review_flags')
       .select('product_id')
       .eq('id', flag_id)
       .single()
 
+    if (fetchErr && fetchErr.code !== 'PGRST116') {
+      console.error('fetch flag error:', JSON.stringify(fetchErr))
+    }
+
     if (flagRow?.product_id) {
-      await supabase
+      console.log('update-unit-cost: updating product', flagRow.product_id)
+      const { error: prodErr } = await supabase
         .from('products')
         .update({ unit_price: updatedCost })
         .eq('id', flagRow.product_id)
+      if (prodErr) console.error('product update error:', JSON.stringify(prodErr))
     }
 
     return new Response(JSON.stringify({
