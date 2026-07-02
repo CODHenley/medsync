@@ -483,18 +483,32 @@ function parseCSVLine(line) {
   return result;
 }
 
+// Flexible column finder — tries multiple known aliases
+function col(row, ...aliases) {
+  for (const a of aliases) {
+    if (row[a] !== undefined && row[a] !== '') return row[a];
+  }
+  return '';
+}
+
 // Aggregate Vetcove rows by product (Name + Mfr Number)
 function aggregateVetcove(rows) {
+  if (!rows.length) return [];
+  // Log detected headers to console for debugging
+  const detectedHeaders = Object.keys(rows[0]);
+  console.log('[MedSync] Vetcove CSV headers detected:', detectedHeaders);
+
   const map = new Map();
   rows.forEach(r => {
-    const name       = r['Name'] || r['name'] || '';
-    const mfrNum     = r['Manufacturer Number'] || r['manufacturer_number'] || '';
-    const key        = (mfrNum || name).toLowerCase();
+    const name    = col(r, 'Name', 'name', 'Product Name', 'product_name', 'Item Name', 'item_name', 'Description', 'description', 'Product', 'product');
+    const mfrNum  = col(r, 'Manufacturer Number', 'manufacturer_number', 'Mfr #', 'mfr_number', 'NDC', 'ndc', 'Item #', 'Item Number', 'SKU', 'sku');
+    const key     = (mfrNum || name).toLowerCase();
+    if (!key) return; // skip blank rows
 
-    const pkgPrice   = parseFloat(r['Unit Price']     || r['unit_price']     || '0') || 0;
-    const costPerDose= parseFloat(r['Cost per Dose']  || r['cost_per_dose']  || '0') || 0;
-    const units      = parseFloat(r['Units']          || r['units']          || '0') || 0;
-    const unitMeas   = (r['Unit Measurement'] || r['unit_measurement'] || '').trim();
+    const pkgPrice    = parseFloat(col(r, 'Unit Price', 'unit_price', 'Price', 'price', 'Cost', 'cost', 'Extended Price', 'extended_price', 'List Price', 'list_price').replace(/[$,]/g,'')) || 0;
+    const costPerDose = parseFloat(col(r, 'Cost per Dose', 'cost_per_dose', 'Cost Per Dose', 'Unit Cost', 'unit_cost').replace(/[$,]/g,'')) || 0;
+    const units       = parseFloat(col(r, 'Units', 'units', 'Qty', 'qty', 'Quantity', 'quantity', 'Count', 'count').replace(/,/g,'')) || 0;
+    const unitMeas    = col(r, 'Unit Measurement', 'unit_measurement', 'UOM', 'uom', 'Unit', 'unit').trim();
 
     // Per-dose price: prefer explicit Cost per Dose; fall back to pkg ÷ units
     let dosePrice = costPerDose;
