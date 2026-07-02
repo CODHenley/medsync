@@ -900,13 +900,15 @@ function parseIDEXXPDF(lines) {
   const items = [];
   const itemRe = /^\s*(?:\d{2}\/\d{2}\/\d{4}\s+)?(\d{2}-[\w][\w-]*)\s+(.+?)\s+([\d,]+\.\d{2})\s+(EA|BOX|PAK|BX|CS|BOT|KIT|TUB|VL|EA\/CS|PAK)\s+(\d+)\s+([\d,]+\.\d{2})/i;
   const skipRe = /^(item#|description|unit price|ship date|subtotal|shipping|sales tax|total|page\s|\d{10}\s)/i;
+  // Skip consumables/supplies that are not billable diagnostic tests
+  const consumableRe = /pipette tip|syringe tip|tube.*edta|tube.*citrate|tube.*sst|tube.*no additive|microscope slide|slide holder|specimen bag|whole blood separator|sedivue.*tip|reagent kit|qc set|qc level|web pacs|billing period|optical slide/i;
 
   lines.forEach(l => {
     if (skipRe.test(l.trim())) return;
     const m = l.match(itemRe);
     if (m) {
       const unitPrice = m[3].replace(/,/g, '');
-      if (parseFloat(unitPrice) > 0) {
+      if (parseFloat(unitPrice) > 0 && !consumableRe.test(m[2])) {
         const name = m[2].trim();
         // Use tests-per-package from description "(N)" rather than order quantity.
         // e.g. "Catalyst PL (12)" → 12 tests/box; "SNAP Parvo Test (5)" → 5 tests/box.
