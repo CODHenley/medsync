@@ -24,38 +24,60 @@ Deno.serve(async (req: Request) => {
     let updatedCost = parseFloat(new_unit_cost)
     let vetspireSynced = false
 
+    let vetspireError: string | null = null
+
     // Call VetSpire only when we have a product ID
     if (vetspire_product_id) {
       const token = Deno.env.get('Medsync_API_Key')
-      if (!token) throw new Error('Medsync_API_Key secret not set')
+      if (!token) {
+        vetspireError = 'Medsync_API_Key secret not set'
+        console.error('update-unit-cost: VetSpire skipped —', vetspireError)
+      } else {
+        try {
+          const vsRes = await fetch('https://api.vetspire.com/graphql', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token,
+              'Origin': 'https://scoutcare.vetspire.com',
+            },
+            body: JSON.stringify({
+              query: `mutation UpdateProductCost($id: ID!, $input: UpdateProductInput!) {
+                updateProduct(id: $id, input: $input) {
+                  id
+                  unitCost
+                }
+              }`,
+              variables: {
+                id: String(vetspire_product_id),
+                input: { unitCost: updatedCost },
+              },
+            }),
+          })
 
-      const vsRes = await fetch('https://api.vetspire.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token,
-          'Origin': 'https://scoutcare.vetspire.com',
-        },
-        body: JSON.stringify({
-          query: `mutation UpdateProductCost($id: ID!, $input: UpdateProductInput!) {
-            updateProduct(id: $id, input: $input) {
-              id
-              unitCost
+          const rawText = await vsRes.text()
+          let vsJson: any
+          try {
+            vsJson = JSON.parse(rawText)
+          } catch {
+            vetspireError = `VetSpire returned non-JSON (HTTP ${vsRes.status}): ${rawText.slice(0, 200)}`
+            console.error('update-unit-cost: VetSpire parse error —', vetspireError)
+          }
+
+          if (vsJson) {
+            if (vsJson.errors && vsJson.errors.length > 0) {
+              vetspireError = 'VetSpire error: ' + JSON.stringify(vsJson.errors)
+              console.error('update-unit-cost: VetSpire GQL error —', vetspireError)
+            } else {
+              updatedCost = vsJson.data?.updateProduct?.unitCost ?? updatedCost
+              vetspireSynced = true
             }
-          }`,
-          variables: {
-            id: String(vetspire_product_id),
-            input: { unitCost: updatedCost },
-          },
-        }),
-      })
-
-      const vsJson = await vsRes.json()
-      if (vsJson.errors && vsJson.errors.length > 0) {
-        throw new Error('VetSpire error: ' + JSON.stringify(vsJson.errors))
+          }
+        } catch (vsErr) {
+          vetspireError = 'VetSpire fetch failed: ' + String(vsErr)
+          console.error('update-unit-cost: VetSpire fetch error —', vetspireError)
+        }
       }
-      updatedCost = vsJson.data?.updateProduct?.unitCost ?? updatedCost
-      vetspireSynced = true
     }
 
     console.log('update-unit-cost: patching flag', flag_id, 'synced=', vetspireSynced, 'cost=', updatedCost)
@@ -102,6 +124,7 @@ Deno.serve(async (req: Request) => {
       ok: true,
       vetspire_product_id: vetspire_product_id || null,
       vetspire_synced: vetspireSynced,
+      vetspire_error: vetspireError,
       new_unit_cost: updatedCost,
       flag_id,
     }), { headers: CORS })
