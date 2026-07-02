@@ -126,6 +126,35 @@ table.audit-tbl tr:hover td{background:#FAFAFE;}
 .empty{padding:60px 20px;text-align:center;color:var(--mist);}
 .empty-icon{font-size:36px;margin-bottom:10px;}
 
+/* ── Bulk action bar ── */
+.bulk-bar{display:none;align-items:center;gap:12px;padding:10px 20px;background:#1C2B4A;color:#fff;position:sticky;top:100px;z-index:50;flex-wrap:wrap;}
+.bulk-bar.visible{display:flex;}
+.bulk-count{font-size:13px;font-weight:600;}
+.bulk-btn{padding:7px 16px;border-radius:8px;border:none;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;transition:all .15s;}
+.bulk-approve{background:#22c55e;color:#fff;}
+.bulk-approve:hover{background:#16a34a;}
+.bulk-approve:disabled{background:#4a8060;cursor:not-allowed;}
+.bulk-reject{background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);}
+.bulk-reject:hover{background:rgba(255,255,255,.1);}
+.bulk-clear{background:transparent;border:none;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;margin-left:auto;}
+.bulk-clear:hover{color:#fff;}
+.bulk-progress{font-size:12px;color:rgba(255,255,255,.7);}
+
+/* Checkbox col */
+table.audit-tbl th.cb-col,table.audit-tbl td.cb-col{width:36px;padding-left:14px;padding-right:4px;}
+input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--purple);}
+tr.selected td{background:#EEE9F8 !important;}
+
+/* Bulk confirm modal */
+.bulk-modal .modal{max-width:560px;}
+.bulk-item-list{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;}
+.bulk-item-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12.5px;}
+.bulk-item-row:last-child{border-bottom:none;}
+.bir-name{font-weight:600;color:var(--navy);}
+.bir-price{font-variant-numeric:tabular-nums;font-size:12px;}
+.bir-input{width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;font-variant-numeric:tabular-nums;}
+.bir-drift{font-size:11px;font-weight:700;}
+
 /* Shared */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:16px;}
@@ -204,6 +233,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       </select>
       <button class="toggle-chip on" id="chip-mismatch" onclick="toggleMismatch()">Hide unit mismatches</button>
       <button class="toggle-chip" id="chip-flagged" onclick="toggleFlaggedOnly()">Flagged only</button>
+      <button class="toggle-chip" id="chip-flag-all" onclick="flagAllVisible()" style="border-color:var(--gold);color:var(--amber);">Flag All Visible</button>
       <span class="comp-count" id="comp-count"></span>
     </div>
 
@@ -269,10 +299,20 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <div class="stab" id="stab-all" onclick="switchTab('')">All</div>
   </div>
 
+  <!-- Bulk action bar -->
+  <div class="bulk-bar" id="bulk-bar">
+    <span class="bulk-count" id="bulk-count">0 selected</span>
+    <button class="bulk-btn bulk-approve" id="bulk-approve-btn" onclick="openBulkModal()">Approve &amp; Update VetSpire</button>
+    <button class="bulk-btn bulk-reject" onclick="bulkReject()">Reject All</button>
+    <span class="bulk-progress" id="bulk-progress"></span>
+    <button class="bulk-clear" onclick="clearSelection()">✕ Clear selection</button>
+  </div>
+
   <div class="table-wrap" style="padding-top:0;">
     <table class="audit-tbl">
       <thead>
         <tr>
+          <th class="cb-col"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
           <th>Product</th>
           <th>Location</th>
           <th style="text-align:right;">VetSpire Cost</th>
@@ -293,6 +333,23 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     </div>
   </div>
 </div><!-- /tab-queue -->
+
+<!-- Bulk confirm modal -->
+<div id="bulk-modal" class="modal-bg bulk-modal">
+  <div class="modal">
+    <h3>Approve &amp; update <span id="bm-count">0</span> items in VetSpire</h3>
+    <div class="modal-sub">Review and adjust the new unit cost for each item before applying.</div>
+    <div class="bulk-item-list" id="bm-list"></div>
+    <div style="margin-bottom:12px;">
+      <div class="field-label">Notes (optional — applies to all)</div>
+      <textarea id="bm-notes" placeholder="e.g. Vendor price sheet effective July 1…" style="min-height:60px;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeBulkModal()">Cancel</button>
+      <button id="bm-confirm-btn" class="btn" style="background:#065F46;color:#fff;border-color:#065F46;" onclick="submitBulkApprove()">Apply All to VetSpire</button>
+    </div>
+  </div>
+</div>
 
 <!-- Resolve modal -->
 <div id="resolve-modal" class="modal-bg">
@@ -666,12 +723,52 @@ function toggleFlaggedOnly() {
   renderComp();
 }
 
+async function flagAllVisible() {
+  const rows = getCompFiltered().filter(d => !_compFlagged.has(d.ms_name));
+  if (!rows.length) { showToast('All visible items already flagged'); return; }
+  const btn = document.getElementById('chip-flag-all');
+  btn.textContent = `Flagging ${rows.length}…`;
+  btn.style.pointerEvents = 'none';
+
+  const flaggedBy = (_sess && _sess.user && _sess.user.email) || 'unknown';
+  let done = 0;
+  // Batch inserts of 10
+  for (let i = 0; i < rows.length; i += 10) {
+    const batch = rows.slice(i, i + 10).map(d => ({
+      product_name: d.ms_name,
+      vetspire_product_id: d.vetspire_product_id,
+      sku: d.sku,
+      vetspire_cost: d.ms_price,
+      invoice_cost: d.vc_latest,
+      drift_pct: d.drift_pct,
+      flagged_by: flaggedBy,
+      status: 'pending',
+    }));
+    try {
+      const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(batch),
+      });
+      if (res.ok) { batch.forEach((_, j) => { _compFlagged.add(rows[i + j].ms_name); done++; }); }
+    } catch(e) { /* continue */ }
+    btn.textContent = `Flagging… ${done}/${rows.length}`;
+  }
+
+  renderComp();
+  loadFlags();
+  btn.textContent = 'Flag All Visible';
+  btn.style.pointerEvents = '';
+  showToast(`✓ ${done} item${done === 1 ? '' : 's'} sent to Audit Queue`);
+}
+
 // ═══════════════════════════════════════════════════════
 // AUDIT QUEUE
 // ═══════════════════════════════════════════════════════
 let _flags = [];
 let _resolveId   = null;
 let _resolveAction = null;
+const _selected = new Set(); // selected flag IDs
 
 async function loadFlags() {
   const res = await fetch(
@@ -749,7 +846,9 @@ function render() {
         <button class="btn btn-sm act-reject"  onclick="openResolve('${f.id}','reject')">Reject</button>
       </div>` : '—';
 
-    return `<tr>
+    const isSel = _selected.has(f.id);
+    return `<tr class="${isSel ? 'selected' : ''}">
+      <td class="cb-col">${f.status === 'pending' ? `<input type="checkbox" class="row-cb" data-id="${f.id}" ${isSel ? 'checked' : ''} onchange="toggleRow(this)">` : ''}</td>
       <td>
         <div class="product-name">${esc(f.product_name)}</div>
         ${f.sku ? `<div class="product-sub">SKU: ${esc(f.sku)}</div>` : ''}
@@ -869,6 +968,152 @@ async function submitResolve() {
     showToast('Error: ' + (err instanceof Error ? err.message : String(err)));
   }
   btn.disabled = false;
+}
+
+// ── Bulk selection ───────────────────────────────────────
+function toggleRow(cb) {
+  const id = cb.dataset.id;
+  if (cb.checked) _selected.add(id); else _selected.delete(id);
+  cb.closest('tr').classList.toggle('selected', cb.checked);
+  updateBulkBar();
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-cb').forEach(el => {
+    el.checked = cb.checked;
+    if (cb.checked) _selected.add(el.dataset.id); else _selected.delete(el.dataset.id);
+    el.closest('tr').classList.toggle('selected', cb.checked);
+  });
+  updateBulkBar();
+}
+
+function clearSelection() {
+  _selected.clear();
+  document.querySelectorAll('.row-cb').forEach(el => { el.checked = false; el.closest('tr').classList.remove('selected'); });
+  const sa = document.getElementById('select-all'); if (sa) sa.checked = false;
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const n = _selected.size;
+  document.getElementById('bulk-count').textContent = n + ' item' + (n === 1 ? '' : 's') + ' selected';
+  bar.classList.toggle('visible', n > 0);
+}
+
+// ── Bulk modal ───────────────────────────────────────────
+function openBulkModal() {
+  const ids = [..._selected];
+  const flags = ids.map(id => _flags.find(f => f.id === id)).filter(Boolean);
+  const pending = flags.filter(f => f.status === 'pending');
+  if (!pending.length) { showToast('No pending items selected'); return; }
+
+  document.getElementById('bm-count').textContent = pending.length;
+  document.getElementById('bm-notes').value = '';
+  document.getElementById('bm-confirm-btn').disabled = false;
+  document.getElementById('bm-confirm-btn').textContent = 'Apply All to VetSpire';
+
+  const list = document.getElementById('bm-list');
+  list.innerHTML = pending.map(f => {
+    const driftStr = f.drift_pct != null ? (f.drift_pct > 0 ? '+' : '') + Number(f.drift_pct).toFixed(1) + '%' : '—';
+    const driftColor = f.drift_pct > 0 ? 'var(--red)' : f.drift_pct < 0 ? 'var(--green)' : 'var(--mist)';
+    return `<div class="bulk-item-row">
+      <div class="bir-name">${esc(f.product_name)}</div>
+      <div class="bir-price" style="color:var(--mist)">MedSync: $${fmt2(f.vetspire_cost)}</div>
+      <input class="bir-input" type="number" step="0.0001" min="0"
+        data-id="${f.id}" data-vspid="${f.vetspire_product_id || ''}"
+        value="${f.invoice_cost || ''}" placeholder="New cost">
+      <div class="bir-drift" style="color:${driftColor}">${driftStr}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('bulk-modal').classList.add('open');
+}
+
+function closeBulkModal() {
+  document.getElementById('bulk-modal').classList.remove('open');
+}
+
+async function submitBulkApprove() {
+  const inputs = document.querySelectorAll('#bm-list .bir-input');
+  const notes = document.getElementById('bm-notes').value.trim();
+  const resolver = (_sess && _sess.user && _sess.user.email) || 'admin';
+  const btn = document.getElementById('bm-confirm-btn');
+
+  // Validate
+  const items = [];
+  let invalid = false;
+  inputs.forEach(inp => {
+    const cost = parseFloat(inp.value);
+    if (!cost || cost <= 0) { inp.style.borderColor = 'var(--red)'; invalid = true; }
+    else { inp.style.borderColor = ''; items.push({ id: inp.dataset.id, vspid: inp.dataset.vspid, cost }); }
+  });
+  if (invalid) { showToast('Enter a valid cost for all items'); return; }
+
+  btn.disabled = true;
+  btn.textContent = `Updating 0 / ${items.length}…`;
+  document.getElementById('bulk-progress').textContent = '';
+
+  let done = 0, errors = 0;
+  const prog = document.getElementById('bulk-progress');
+
+  // Process in parallel batches of 4
+  for (let i = 0; i < items.length; i += 4) {
+    const batch = items.slice(i, i + 4);
+    await Promise.all(batch.map(async item => {
+      try {
+        const res = await fetch(SUPA_URL + '/functions/v1/update-unit-cost', {
+          method: 'POST',
+          headers: { ...H },
+          body: JSON.stringify({ flag_id: item.id, vetspire_product_id: item.vspid, new_unit_cost: item.cost, resolved_by: resolver })
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.error || 'err');
+        // Update local cache
+        const flag = _flags.find(f => f.id === item.id);
+        if (flag) Object.assign(flag, { status: 'approved_synced', vetspire_synced: true, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: item.cost, resolution_notes: notes || null });
+        done++;
+      } catch(e) {
+        errors++;
+      }
+      btn.textContent = `Updating ${done + errors} / ${items.length}…`;
+      prog.textContent = errors > 0 ? `${errors} error${errors > 1 ? 's' : ''}` : '';
+    }));
+  }
+
+  closeBulkModal();
+  clearSelection();
+  render();
+
+  // Refresh badge
+  const pending = _flags.filter(f => f.status === 'pending').length;
+  const badge = document.getElementById('pending-badge');
+  const qbadge = document.getElementById('queue-badge');
+  if (pending > 0) { badge.textContent = pending; badge.style.display = ''; qbadge.textContent = pending; qbadge.style.display = ''; }
+  else { badge.style.display = 'none'; qbadge.style.display = 'none'; }
+
+  if (errors === 0) showToast(`✓ ${done} price${done === 1 ? '' : 's'} updated in VetSpire`);
+  else showToast(`${done} updated, ${errors} failed — check queue`);
+}
+
+async function bulkReject() {
+  const ids = [..._selected];
+  if (!ids.length) return;
+  const resolver = (_sess && _sess.user && _sess.user.email) || 'admin';
+  if (!confirm(`Reject ${ids.length} flagged item${ids.length === 1 ? '' : 's'}?`)) return;
+
+  await Promise.all(ids.map(async id => {
+    const body = { status: 'rejected', resolved_by: resolver, resolved_at: new Date().toISOString() };
+    await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + id, {
+      method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
+    });
+    const flag = _flags.find(f => f.id === id);
+    if (flag) Object.assign(flag, body);
+  }));
+
+  clearSelection();
+  render();
+  showToast(`${ids.length} flag${ids.length === 1 ? '' : 's'} rejected`);
 }
 
 // ── Shared utils ─────────────────────────────────────────
