@@ -1442,7 +1442,9 @@ async function submitResolve() {
       const synced = json.vetspire_synced;
       if (flag) Object.assign(flag, { status: synced ? 'approved_synced' : 'approved_pending_sync', vetspire_synced: synced, resolved_by: resolver, resolved_at: new Date().toISOString(), invoice_cost: newCost, resolution_notes: notes || null });
       closeModal(); render();
-      showToast(synced ? '✓ Price updated in VetSpire — $' + newCost.toFixed(4) : '✓ Cost saved locally (no VetSpire ID on file)');
+      if (synced) showToast('✓ Price updated in VetSpire — $' + newCost.toFixed(4));
+      else if (json.vetspire_error) showToast('✓ Cost saved — VetSpire sync pending (auth error)', 'warn');
+      else showToast('✓ Cost saved locally (no VetSpire ID on file)');
 
     } else {
       btn.textContent = 'Saving…';
