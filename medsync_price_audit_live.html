@@ -231,7 +231,6 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
         <option value="ndc">NDC matched</option>
         <option value="name">Name matched</option>
       </select>
-      <button class="toggle-chip on" id="chip-mismatch" onclick="toggleMismatch()">Hide unit mismatches</button>
       <button class="toggle-chip" id="chip-flagged" onclick="toggleFlaggedOnly()">Flagged only</button>
       <button class="toggle-chip" id="chip-flag-all" onclick="flagAllVisible()" style="border-color:var(--gold);color:var(--amber);">Flag All Visible</button>
       <span class="comp-count" id="comp-count"></span>
@@ -246,8 +245,8 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <div class="cstat"><span class="cstat-n" id="cs-flagged" style="color:var(--purple)">0</span><span class="cstat-l">Flagged</span></div>
     </div>
 
-    <div class="comp-notice" id="comp-notice-mismatch">
-      <strong id="comp-mismatch-count">0 items</strong> likely have unit mismatches — MedSync stores per-dose price while Vetcove shows per-package. Hidden by default.
+    <div class="comp-notice" id="comp-notice-mismatch" style="display:none;">
+      <strong id="comp-mismatch-count">0 items</strong> could not be normalized — no <em>Cost per Dose</em> or <em>Units</em> count in the CSV. Package price shown as-is; verify manually before flagging.
     </div>
 
     <!-- Table -->
@@ -255,9 +254,10 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <table class="comp-tbl">
         <thead>
           <tr>
-            <th data-col="ms_name" style="width:36%">Product <span class="sarr">↕</span></th>
-            <th data-col="ms_price">MedSync Price <span class="sarr">↕</span></th>
-            <th data-col="vc_latest">Vetcove Price <span class="sarr">↕</span></th>
+            <th data-col="ms_name" style="width:32%">Product <span class="sarr">↕</span></th>
+            <th data-col="ms_price">MedSync / unit <span class="sarr">↕</span></th>
+            <th data-col="vc_latest">Vetcove / unit <span class="sarr">↕</span></th>
+            <th>Package (Vetcove)</th>
             <th data-col="drift_pct" class="sorted">Drift <span class="sarr">↓</span></th>
             <th data-col="vc_orders">Orders <span class="sarr">↕</span></th>
             <th>Match</th>
@@ -453,25 +453,51 @@ function parseCSVLine(line) {
 function aggregateVetcove(rows) {
   const map = new Map();
   rows.forEach(r => {
-    const name = r['Name'] || r['name'] || '';
-    const mfrNum = r['Manufacturer Number'] || r['manufacturer_number'] || '';
-    const key = (mfrNum || name).toLowerCase();
-    const price = parseFloat(r['Unit Price'] || r['unit_price'] || '0') || 0;
+    const name       = r['Name'] || r['name'] || '';
+    const mfrNum     = r['Manufacturer Number'] || r['manufacturer_number'] || '';
+    const key        = (mfrNum || name).toLowerCase();
+
+    const pkgPrice   = parseFloat(r['Unit Price']     || r['unit_price']     || '0') || 0;
+    const costPerDose= parseFloat(r['Cost per Dose']  || r['cost_per_dose']  || '0') || 0;
+    const units      = parseFloat(r['Units']          || r['units']          || '0') || 0;
+    const unitMeas   = (r['Unit Measurement'] || r['unit_measurement'] || '').trim();
+
+    // Per-dose price: prefer explicit Cost per Dose; fall back to pkg ÷ units
+    let dosePrice = costPerDose;
+    if (!dosePrice && pkgPrice && units) dosePrice = pkgPrice / units;
+
     if (!map.has(key)) {
-      map.set(key, { name, mfr_number: mfrNum, prices: [], order_count: 0 });
+      map.set(key, {
+        name, mfr_number: mfrNum,
+        dose_prices: [], pkg_prices: [], units_list: [], unit_meas: unitMeas,
+        order_count: 0,
+      });
     }
     const entry = map.get(key);
-    if (price > 0) entry.prices.push(price);
+    if (dosePrice > 0)  entry.dose_prices.push(dosePrice);
+    if (pkgPrice  > 0)  entry.pkg_prices.push(pkgPrice);
+    if (units     > 0)  entry.units_list.push(units);
     entry.order_count++;
   });
-  return Array.from(map.values()).map(e => ({
-    name: e.name,
-    mfr_number: e.mfr_number,
-    latest_price: e.prices.length ? e.prices[e.prices.length - 1] : null,
-    min_price: e.prices.length ? Math.min(...e.prices) : null,
-    max_price: e.prices.length ? Math.max(...e.prices) : null,
-    order_count: e.order_count,
-  }));
+
+  return Array.from(map.values()).map(e => {
+    // Latest = last seen; use dose price for comparison
+    const dp = e.dose_prices, pp = e.pkg_prices, ul = e.units_list;
+    return {
+      name:         e.name,
+      mfr_number:   e.mfr_number,
+      // per-dose (normalized) — what we compare against MedSync unit_price
+      latest_price: dp.length ? dp[dp.length - 1] : null,
+      min_price:    dp.length ? Math.min(...dp)    : null,
+      max_price:    dp.length ? Math.max(...dp)    : null,
+      // package context (for display only)
+      pkg_price:    pp.length ? pp[pp.length - 1]  : null,
+      units_per_pkg:ul.length ? ul[ul.length - 1]  : null,
+      unit_meas:    e.unit_meas,
+      order_count:  e.order_count,
+      has_dose_price: e.dose_prices.length > 0,
+    };
+  });
 }
 
 // Fuzzy name match
@@ -515,22 +541,27 @@ function matchProducts(vetcoveItems, msProducts) {
 
     if (ms && ms.unit_price != null) {
       const msPrice = parseFloat(ms.unit_price);
-      const vcPrice = v.latest_price;
+      const vcPrice = v.latest_price; // already per-dose after aggregation
       const drift = (vcPrice && msPrice) ? Math.round((vcPrice - msPrice) / msPrice * 10000) / 100 : null;
       results.push({
         ms_name: ms.name,
         ms_price: msPrice,
         vc_name: v.name,
-        vc_latest: vcPrice,
+        vc_latest: vcPrice,          // per-dose comparison price
         vc_min: v.min_price,
         vc_max: v.max_price,
         vc_orders: v.order_count,
+        // package context (display only)
+        vc_pkg_price:    v.pkg_price,
+        vc_units_per_pkg:v.units_per_pkg,
+        vc_unit_meas:    v.unit_meas,
+        vc_has_dose_price: v.has_dose_price,
         drift_pct: drift,
         ndc: ms.ndc || null,
         sku: ms.SKU || null,
         vetspire_product_id: ms.vetspire_product_id || null,
         match: method,
-        unit_mismatch: drift !== null && Math.abs(drift) > 5000,
+        unit_mismatch: false, // no longer flagging — prices are normalized
       });
     }
   });
@@ -553,9 +584,10 @@ async function handleCSV(input) {
     const ms = await loadMSProducts();
     _compRows = matchProducts(vcItems, ms);
 
-    const mismatches = _compRows.filter(r => r.unit_mismatch).length;
-    document.getElementById('comp-mismatch-count').textContent = mismatches + ' item' + (mismatches === 1 ? '' : 's');
-    if (mismatches > 0) document.getElementById('comp-notice-mismatch').style.display = '';
+    // Items where Vetcove had neither a Cost per Dose nor a Units count — price basis unknown
+    const unknowable = _compRows.filter(r => !r.vc_has_dose_price && !r.vc_units_per_pkg).length;
+    document.getElementById('comp-mismatch-count').textContent = unknowable + ' item' + (unknowable === 1 ? '' : 's');
+    document.getElementById('comp-notice-mismatch').style.display = unknowable > 0 ? '' : 'none';
 
     document.getElementById('comp-content').style.display = '';
     renderComp();
@@ -624,10 +656,23 @@ function renderComp() {
   tbody.innerHTML = rows.map(d => {
     const isFlagged = _compFlagged.has(d.ms_name);
     const mb = d.match === 'ndc' ? '<span class="mbadge mb-ndc">NDC</span>' : '<span class="mbadge mb-nm">name</span>';
+
+    // Package context — what was actually purchased
+    let pkgCell = '<span style="color:var(--mist)">—</span>';
+    if (d.vc_pkg_price && d.vc_units_per_pkg) {
+      const basis = d.vc_has_dose_price ? 'dose cost' : 'pkg ÷ units';
+      pkgCell = `<span style="font-variant-numeric:tabular-nums;">$${fmt2(d.vc_pkg_price)}</span>`
+              + `<span style="color:var(--mist);font-size:11px;"> / ${d.vc_units_per_pkg}${d.vc_unit_meas ? ' ' + esc(d.vc_unit_meas) : ''}</span>`
+              + `<div style="font-size:10px;color:var(--mist);margin-top:1px;">${basis}</div>`;
+    } else if (d.vc_pkg_price) {
+      pkgCell = `<span style="font-variant-numeric:tabular-nums;">$${fmt2(d.vc_pkg_price)}</span>`;
+    }
+
     return `<tr>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
       <td class="cprice">$${fmt2(d.ms_price)}</td>
       <td class="cprice">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}</td>
+      <td style="font-size:12.5px;line-height:1.5;">${pkgCell}</td>
       <td>${driftCell(d.drift_pct, d.unit_mismatch)}</td>
       <td style="color:var(--mist)">${d.vc_orders || 0}</td>
       <td>${mb}</td>
