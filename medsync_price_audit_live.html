@@ -835,6 +835,7 @@ function parseMidwestPDF(lines) {
 // pdfjs may split the qty numbers and bold item code across adjacent lines, so we handle
 // both "4 4 0 SAN-NEPF-3-BL-SM" on one line and "4 4 0" / "SAN-NEPF-3-BL-SM" on two lines.
 function parseAmatheonPDF(lines) {
+  console.log('[Amatheon] raw lines:', JSON.stringify(lines));
   const items = [];
   const hIdx = lines.findIndex(l => /ordered.*shipped/i.test(l));
   const start = hIdx !== -1 ? hIdx + 1 : 0;
