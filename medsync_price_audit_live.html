@@ -831,77 +831,59 @@ function parseMidwestPDF(lines) {
 }
 
 // Amatheon Pharmaceuticals
-// Format: Ordered Shipped B/O ItemCode [description lines] Lot#(Qty) $UnitPrice $Total
-// pdfjs may split the qty numbers and bold item code across adjacent lines, so we handle
-// both "4 4 0 SAN-NEPF-3-BL-SM" on one line and "4 4 0" / "SAN-NEPF-3-BL-SM" on two lines.
+// pdfjs extracts the item row as one line: "4 4 0 SAN-NEPF-3-BL-SM 610126026,R-01(4) $6.10 $24.40"
+// Description lines ("POWDER FREE CHEMO NITRILE EXAM", "GLOVES SMALL 100/BOX") follow on separate lines.
 function parseAmatheonPDF(lines) {
-  console.log('[Amatheon] raw lines:', JSON.stringify(lines));
   const items = [];
   const hIdx = lines.findIndex(l => /ordered.*shipped/i.test(l));
   const start = hIdx !== -1 ? hIdx + 1 : 0;
+  const stopRe = /^(subtotal|shipping|tax|total|tracking)/i;
 
-  // Item codes: 2+ uppercase letters, at least one hyphen group (e.g. SAN-NEPF-3-BL-SM)
-  const itemCodeRe = /([A-Z]{2,}[A-Z0-9]*(?:-[A-Z0-9]+)+)/;
-  // Qty row: "ordered shipped b/o" — three integers, optional trailing text
-  const qtyRowRe   = /^(\d+)\s+\d+\s+\d+\s*(.*)/;
-  // Price at end of line
-  const priceRe    = /\$([\d,]+\.\d{2})\s+\$([\d,]+\.\d{2})\s*$/;
-  const stopRe     = /^(subtotal|shipping|tax|total|tracking)/i;
+  // Full single-line: "QTY SHIP BO ITEM-CODE LOT(QTY) $UNIT $TOTAL"
+  // Item codes: 2+ caps letters then hyphen groups (SAN-NEPF-3-BL-SM, KET-10MG-50ML, etc.)
+  // Lot field: non-whitespace token before the prices (e.g. 610126026,R-01(4))
+  const fullRe = /^(\d+)\s+\d+\s+\d+\s+([A-Z]{2,}[A-Z0-9]*(?:-[A-Z0-9]+)+)\s+\S+\s+\$?([\d,]+\.\d{2})\s+\$?([\d,]+\.\d{2})\s*$/;
+  // Qty+code without lot/price on same line: "4 4 0 SAN-NEPF-3-BL-SM"
+  const qtyCodeRe = /^(\d+)\s+\d+\s+\d+\s+([A-Z]{2,}[A-Z0-9]*(?:-[A-Z0-9]+)+)\s*$/;
+  // Price at end of line (fallback for multi-line items)
+  const priceRe = /\$?([\d,]+\.\d{2})\s+\$?([\d,]+\.\d{2})\s*$/;
 
   let i = start;
   while (i < lines.length) {
     const line = lines[i];
     if (stopRe.test(line.trim())) { i++; continue; }
 
-    const qtyM = line.match(qtyRowRe);
-    if (!qtyM) { i++; continue; }
-
-    const qty  = qtyM[1];
-    const rest = qtyM[2].trim(); // text after the three numbers, if any
-
-    let itemCode = null;
-
-    // Item code may be on the same line as the qty numbers
-    const codeInRest = rest.match(itemCodeRe);
-    if (codeInRest) {
-      itemCode = codeInRest[1];
+    // Case 1: everything on one line (most common with pdfjs)
+    const fm = line.match(fullRe);
+    if (fm) {
+      items.push({ Name: fm[2], 'Unit Price': fm[3].replace(/,/g,''), Qty: fm[1], NDC: '' });
       i++;
-    } else {
-      // Bold item code lands on the next line (different Y due to font)
-      i++;
-      if (i < lines.length && !stopRe.test(lines[i].trim())) {
-        const nextCode = lines[i].match(itemCodeRe);
-        if (nextCode && !/^\d/.test(lines[i].trim())) {
-          itemCode = nextCode[1];
-          i++;
-        }
-      }
+      continue;
     }
 
-    if (!itemCode) continue;
-
-    // Collect description lines then find the price line
-    const descParts = [];
-    let unitPrice   = null;
-    while (i < lines.length) {
-      const l = lines[i];
-      if (stopRe.test(l.trim())) break;
-      if (l.match(qtyRowRe))    break; // start of next item
-      const pM = l.match(priceRe);
-      if (pM) {
-        unitPrice = pM[1].replace(/,/g, '');
+    // Case 2: qty+code on one line, lot+price on a subsequent line
+    const qcM = line.match(qtyCodeRe);
+    if (qcM) {
+      const qty = qcM[1], itemCode = qcM[2];
+      i++;
+      const descParts = [];
+      let unitPrice = null;
+      while (i < lines.length) {
+        const l = lines[i];
+        if (stopRe.test(l.trim())) break;
+        if (l.match(fullRe) || l.match(qtyCodeRe)) break; // next item
+        const pM = l.match(priceRe);
+        if (pM) { unitPrice = pM[1].replace(/,/g,''); i++; break; }
+        if (!l.trim().match(/^\d{6,}/)) descParts.push(l.trim()); // skip lot# lines
         i++;
-        break;
       }
-      // Skip lot# lines like "610126026,R-01(4)" — start with 6+ digits
-      if (!l.trim().match(/^\d{6,}/)) descParts.push(l.trim());
-      i++;
+      if (unitPrice !== null) {
+        items.push({ Name: [itemCode, ...descParts].filter(Boolean).join(' '), 'Unit Price': unitPrice, Qty: qty, NDC: '' });
+      }
+      continue;
     }
 
-    if (unitPrice !== null) {
-      const name = [itemCode, ...descParts].filter(Boolean).join(' ');
-      items.push({ Name: name, 'Unit Price': unitPrice, Qty: qty, NDC: '' });
-    }
+    i++;
   }
   return items;
 }
