@@ -763,16 +763,17 @@ function matchProducts(vetcoveItems, msProducts) {
     // Skip MedSync products not found in this Vetcove invoice
     if (!v) return;
 
-    if (ms.unit_cost == null && ms.unit_price == null) return;
+    // Use VetSpire unit cost (purchase cost per unit) when available — unit_price is the client sell price
+    const vsId = ms.vetspire_product_id ? String(ms.vetspire_product_id).trim() : null;
+    const vsPurchaseCost = vsId ? (_vsCostMap.get(vsId) ?? null) : null;
+    if (vsPurchaseCost == null && ms.unit_cost == null && ms.unit_price == null) return;
     {
-      // Prefer unit_cost (VetSpire purchase cost) over unit_price (may be sell price)
-      const msPrice = parseFloat(ms.unit_cost ?? ms.unit_price);
+      const msPrice = vsPurchaseCost ?? parseFloat(ms.unit_cost ?? ms.unit_price);
       let vcPrice = v.latest_price; // already per-dose after aggregation
       let inferredUnits = null;
       let basisNote = null;
 
       // Use VetSpire buying quantity if available for precise per-unit normalization
-      const vsId = ms.vetspire_product_id ? String(ms.vetspire_product_id).trim() : null;
       const knownBuyQty = vsId ? (_vsBuyQtyMap.get(vsId) || null) : null;
       if (knownBuyQty != null && knownBuyQty > 1 && vcPrice && vcPrice > msPrice * 1.5) {
         inferredUnits = knownBuyQty;
@@ -1935,6 +1936,8 @@ let _vsSortDir = -1;
 let _vsSyncedCount = 0;
 // Map<vetspire_id_string, buying_qty> — populated when VetSpire CSV is loaded; used by Vetcove comparison
 let _vsBuyQtyMap = new Map();
+// Map<vetspire_id_string, unit_cost> — populated when VetSpire CSV is loaded; used by Vetcove comparison as purchase cost
+let _vsCostMap = new Map();
 
 // Parse VetSpire mass products CSV → Map<vetspire_id_string, {name, sku, unit_cost, buying_qty, selling_qty}>
 function parseVsProductsCSV(text) {
@@ -1991,9 +1994,10 @@ async function handleVsCSV(input) {
     const ms = await loadMSProducts();
     if (!ms.length) throw new Error('No products loaded from MedSync. Check Supabase connection.');
 
-    // Match by vetspire_product_id; build _vsBuyQtyMap for Vetcove comparison
+    // Match by vetspire_product_id; build _vsBuyQtyMap and _vsCostMap for Vetcove comparison
     _vsRows = [];
     _vsBuyQtyMap = new Map();
+    _vsCostMap = new Map();
     ms.forEach(p => {
       const vsId = String(p.vetspire_product_id || '').trim();
       if (!vsId) return;
@@ -2004,8 +2008,9 @@ async function handleVsCSV(input) {
       const diff = (vsCost != null && msPrice != null && msPrice !== 0)
         ? Math.round((vsCost - msPrice) / msPrice * 10000) / 100
         : null;
-      // Expose buying_qty so Vetcove comparison can explicitly normalize package prices
+      // Expose buying_qty and unit_cost so Vetcove comparison can normalize and use purchase cost
       if (buyQty != null && buyQty > 1) _vsBuyQtyMap.set(vsId, buyQty);
+      if (vsCost != null) _vsCostMap.set(vsId, vsCost);
       _vsRows.push({
         product_id:          String(p.id),
         vetspire_product_id: vsId,
