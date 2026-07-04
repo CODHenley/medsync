@@ -381,24 +381,27 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
   <div class="vs-toolbar">
     <div style="flex:1;">
       <h2>VetSpire vs MedSync Price Review</h2>
-      <p style="margin-top:3px;">Compares VetSpire's stored unit cost (realUnitCost) against MedSync's product unit_price. Use this to find and fix discrepancies.</p>
+      <p style="margin-top:3px;">Upload the VetSpire mass products CSV to compare unit costs against MedSync and sync any differences.</p>
     </div>
-    <button class="upload-btn" id="vs-load-btn" onclick="loadVetspirePrices()">
+    <label class="upload-btn" for="vs-csv-upload" id="vs-load-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Load VetSpire Prices
-    </button>
+      Upload VetSpire CSV
+    </label>
+    <input type="file" id="vs-csv-upload" accept=".csv" style="display:none" onchange="handleVsCSV(this)">
     <button class="upload-btn" id="vs-syncall-btn" onclick="syncAllVetspire()" style="display:none;background:#2a6e2a;">Sync All Visible to MedSync</button>
   </div>
 
-  <div id="vs-progress" class="vs-progress" style="display:none;">
-    <span id="vs-progress-text">Loading…</span>
-    <div class="vs-progress-bar-wrap"><div class="vs-progress-bar" id="vs-progress-bar" style="width:0%"></div></div>
-  </div>
-
-  <div id="vs-empty" style="padding:60px 20px;text-align:center;color:var(--mist);">
-    <div style="font-size:48px;margin-bottom:16px;">🔄</div>
-    <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">Click Load VetSpire Prices to begin</h3>
-    <p style="font-size:13px;max-width:400px;margin:0 auto;">Fetches current unit costs from VetSpire for all products with a linked VetSpire product ID and compares them to what MedSync has recorded.</p>
+  <div id="vs-empty" style="padding:48px 20px;text-align:center;color:var(--mist);">
+    <div id="vs-drop-zone" class="drop-zone" style="max-width:480px;margin:0 auto;" onclick="document.getElementById('vs-csv-upload').click()">
+      <div class="drop-zone-icon">💊</div>
+      <h3>Drop your VetSpire mass products CSV here</h3>
+      <p>Export from VetSpire → Products → E-Mail Excel (save as CSV). MedSync matches by VetSpire product ID and compares unit costs.</p>
+      <div class="drop-zone-or">or</div>
+      <label class="upload-btn" for="vs-csv-upload" style="display:inline-flex;" onclick="event.stopPropagation()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Browse for CSV
+      </label>
+    </div>
   </div>
 
   <div id="vs-content" style="display:none;">
@@ -1840,6 +1843,29 @@ function fmtDate(s) {
          d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 
+// ── Drag-and-drop helper (reusable) ──────────────────────
+function initDropZone(zoneId, inputId, handler) {
+  const zone = document.getElementById(zoneId);
+  if (!zone) return;
+  ['dragenter','dragover','dragleave','drop'].forEach(evt => {
+    document.addEventListener(evt, e => e.preventDefault(), false);
+  });
+  let depth = 0;
+  zone.addEventListener('dragenter', () => { depth++; zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => { depth--; if (depth <= 0) { depth = 0; zone.classList.remove('drag-over'); } });
+  zone.addEventListener('dragover',  e => { e.dataTransfer.dropEffect = 'copy'; });
+  zone.addEventListener('drop', e => {
+    depth = 0; zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) { showToast('Please drop a CSV file.', 4000); return; }
+    const dt = new DataTransfer(); dt.items.add(file);
+    const input = document.getElementById(inputId);
+    input.files = dt.files;
+    handler(input);
+  });
+}
+
 // ── Drag-and-drop for CSV upload ─────────────────────────
 (function() {
   const zone = document.getElementById('csv-drop-zone');
@@ -1881,6 +1907,9 @@ function fmtDate(s) {
   });
 })();
 
+// ── Drag-and-drop for VetSpire products CSV ───────────────
+initDropZone('vs-drop-zone', 'vs-csv-upload', handleVsCSV);
+
 // Init
 loadFlags();
 
@@ -1892,61 +1921,87 @@ let _vsSortCol = 'diff';
 let _vsSortDir = -1;
 let _vsSyncedCount = 0;
 
-async function loadVetspirePrices() {
-  const btn = document.getElementById('vs-load-btn');
-  const prog = document.getElementById('vs-progress');
-  const progressText = document.getElementById('vs-progress-text');
-  const progressBar = document.getElementById('vs-progress-bar');
-  const empty = document.getElementById('vs-empty');
-  const content = document.getElementById('vs-content');
+// Parse VetSpire mass products CSV → Map<vetspire_id_string, {name, sku, unit_cost}>
+function parseVsProductsCSV(text) {
+  const lines = text.split(/\r?\n/);
+  if (!lines.length) return new Map();
+  const headers = parseCSVLine(lines[0]);
+  const idIdx   = headers.indexOf('id');
+  const nameIdx = headers.indexOf('name');
+  const skuIdx  = headers.indexOf('sku');
+  const costIdx = headers.indexOf('unit cost');
+  if (idIdx === -1 || costIdx === -1) {
+    throw new Error('CSV missing required columns. Expected "id" and "unit cost" columns from VetSpire mass products export.');
+  }
+  const map = new Map();
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseCSVLine(lines[i]);
+    const id = (vals[idIdx] || '').trim();
+    if (!id) continue;
+    const cost = parseFloat((vals[costIdx] || '').trim());
+    map.set(id, {
+      name:      nameIdx !== -1 ? (vals[nameIdx] || '').trim() : '',
+      sku:       skuIdx  !== -1 ? (vals[skuIdx]  || '').trim() : '',
+      unit_cost: isNaN(cost) ? null : cost,
+    });
+  }
+  return map;
+}
 
-  btn.disabled = true;
-  btn.textContent = 'Loading…';
-  prog.style.display = 'block';
+async function handleVsCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  const empty   = document.getElementById('vs-empty');
+  const content = document.getElementById('vs-content');
   empty.style.display = 'none';
-  content.style.display = 'none';
-  progressText.textContent = 'Fetching prices from VetSpire…';
-  progressBar.style.width = '10%';
+
+  showToast('Parsing VetSpire CSV…', 2000);
 
   try {
-    const res = await edgeFetch(`${SUPA_URL}/functions/v1/fetch-vetspire-prices`, {
-      method: 'POST',
-      body: JSON.stringify({}),
+    const text = await file.text();
+    const vsMap = parseVsProductsCSV(text);
+    if (!vsMap.size) throw new Error('No products found in CSV.');
+
+    // Load MedSync products
+    showToast(`Matched ${vsMap.size} VetSpire products — loading MedSync catalog…`, 2000);
+    const ms = await loadMSProducts();
+    if (!ms.length) throw new Error('No products loaded from MedSync. Check Supabase connection.');
+
+    // Match by vetspire_product_id
+    _vsRows = [];
+    ms.forEach(p => {
+      const vsId = String(p.vetspire_product_id || '').trim();
+      if (!vsId) return;
+      const vs = vsMap.get(vsId);
+      const msPrice  = p.unit_price != null ? parseFloat(p.unit_price) : null;
+      const vsCost   = vs ? vs.unit_cost : null;
+      const diff = (vsCost != null && msPrice != null && msPrice !== 0)
+        ? Math.round((vsCost - msPrice) / msPrice * 10000) / 100
+        : null;
+      _vsRows.push({
+        product_id:          String(p.id),
+        vetspire_product_id: vsId,
+        name:                p.name || (vs ? vs.name : vsId),
+        unit_price:          msPrice,
+        vetspire_cost:       vsCost,
+        vs_sku:              vs ? vs.sku : null,
+        diff,
+      });
     });
 
-    progressBar.style.width = '80%';
-    progressText.textContent = 'Processing results…';
+    if (!_vsRows.length) throw new Error('No MedSync products have a VetSpire product ID linked. Use the SKU import flow first.');
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Edge function error (${res.status}): ${errText.slice(0, 200)}`);
-    }
-
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    _vsRows = (data.results || []).map(r => ({
-      ...r,
-      diff: (r.vetspire_cost != null && r.unit_price != null)
-        ? Math.round((r.vetspire_cost - r.unit_price) / r.unit_price * 10000) / 100
-        : null,
-    }));
-
-    progressBar.style.width = '100%';
-    prog.style.display = 'none';
+    _vsSyncedCount = 0;
     content.style.display = 'block';
     document.getElementById('vs-syncall-btn').style.display = '';
     renderVsTable();
+    showToast(`Matched ${_vsRows.length} products from ${vsMap.size} VetSpire entries`, 4000);
   } catch (err) {
-    prog.style.display = 'none';
     empty.style.display = 'block';
-    empty.innerHTML = `<div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-      <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">Failed to load VetSpire prices</h3>
-      <p style="font-size:13px;color:var(--red);max-width:400px;margin:0 auto;">${err.message}</p>
-      <button class="upload-btn" onclick="loadVetspirePrices()" style="margin-top:16px;">Retry</button>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg> Refresh`;
+    showToast('Error: ' + err.message, 6000);
   }
 }
 
@@ -2024,7 +2079,7 @@ function renderVsTable() {
       : '<span style="color:var(--mist);font-size:12px;">In sync</span>';
 
     return `<tr>
-      <td><div class="cn1">${r.name}</div><div class="cn2">VS ID: ${r.vetspire_product_id}</div></td>
+      <td><div class="cn1">${r.name}</div><div class="cn2">VS ID: ${r.vetspire_product_id}${r.vs_sku ? ' · SKU: ' + r.vs_sku : ''}</div></td>
       <td class="cprice">${msPrice}</td>
       <td class="cprice">${vsPrice}</td>
       <td>${diffCell}</td>
