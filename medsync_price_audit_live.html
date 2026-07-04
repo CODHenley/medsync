@@ -223,9 +223,9 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <label>Compare invoice:</label>
     <label class="upload-btn" for="csv-upload">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Upload Vetcove Invoice
+      Upload Vetcove CSV
     </label>
-    <input type="file" id="csv-upload" accept=".csv,.xlsx,.xls,.pdf" style="display:none" onchange="handleInvoiceUpload(this)">
+    <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleInvoiceUpload(this)">
     <span id="csv-filename" style="display:none;"></span>
     <button id="clear-invoice-btn" onclick="clearInvoice()" style="display:none;background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;color:var(--mist);cursor:pointer;" title="Clear and upload a new file">✕ Clear</button>
     <span id="comp-loading" style="display:none;font-size:12px;color:var(--mist);">Matching products…</span>
@@ -234,13 +234,13 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
   <!-- Upload empty state -->
   <div id="comp-empty-upload" class="comp-upload-empty">
     <div class="comp-upload-empty-icon">📊</div>
-    <h3>Upload a Vetcove invoice to compare prices</h3>
-    <p>Upload an invoice PDF or CSV from Vetcove, Midwest, Covetrus, Amatheon, or Wedgewood. MedSync will match each item against your product catalog and show price drift.</p>
+    <h3>Upload a Vetcove order history CSV</h3>
+    <p>Export your order history from Vetcove as a CSV. MedSync will match each item against your product catalog, show price drift, and let you save Supplier SKUs to your products.</p>
     <label class="upload-btn" for="csv-upload" style="display:inline-flex;">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Choose File
+      Choose CSV File
     </label>
-    <p style="margin-top:8px;font-size:12px;color:#8A93A8;">CSV, Excel, or PDF — Vetcove, Midwest, Covetrus, Amatheon, Wedgewood</p>
+    <p style="margin-top:8px;font-size:12px;color:#8A93A8;">CSV only — Vetcove order history export</p>
   </div>
 
   <!-- Comparison content (hidden until CSV loaded) -->
@@ -285,13 +285,14 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <table class="comp-tbl">
         <thead>
           <tr>
-            <th data-col="ms_name" style="width:32%">Product <span class="sarr">↕</span></th>
+            <th data-col="ms_name" style="width:28%">Product <span class="sarr">↕</span></th>
             <th data-col="ms_price">MedSync / unit <span class="sarr">↕</span></th>
             <th data-col="vc_latest">Vetcove / unit <span class="sarr">↕</span></th>
             <th>Package (Vetcove)</th>
             <th data-col="drift_pct" class="sorted">Drift <span class="sarr">↓</span></th>
             <th data-col="vc_orders">Orders <span class="sarr">↕</span></th>
             <th>Match</th>
+            <th>Supplier SKU</th>
             <th>Flag for Audit</th>
           </tr>
         </thead>
@@ -534,21 +535,21 @@ async function loadMSProducts() {
   const costCols = hasUnitCost ? 'unit_price,unit_cost' : 'unit_price';
   let all = [], page = 0, pageSize = 1000;
   while (true) {
-    const url = `${SUPA_URL}/rest/v1/products?select=name,${costCols},ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
+    const url = `${SUPA_URL}/rest/v1/products?select=id,name,${costCols},ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
     const res = await fetch(url, { headers: H });
     if (!res.ok) {
       if (page === 0 && skuCol === 'sku') {
         // Try uppercase SKU
         skuCol = 'SKU';
         const res2 = await fetch(
-          `${SUPA_URL}/rest/v1/products?select=name,${costCols},ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
+          `${SUPA_URL}/rest/v1/products?select=id,name,${costCols},ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
           { headers: H }
         );
         if (!res2.ok) {
           // Fall back to no SKU column
           skuCol = null;
           const res3 = await fetch(
-            `${SUPA_URL}/rest/v1/products?select=name,${costCols},ndc,vetspire_product_id&limit=${pageSize}&offset=0`,
+            `${SUPA_URL}/rest/v1/products?select=id,name,${costCols},ndc,vetspire_product_id&limit=${pageSize}&offset=0`,
             { headers: H }
           );
           if (!res3.ok) throw new Error(`Failed to load products (HTTP ${res3.status}). Check Supabase RLS policies.`);
@@ -661,17 +662,19 @@ function aggregateVetcove(rows) {
     let dosePrice = costPerDose;
     if (!dosePrice && pkgPrice && units) dosePrice = pkgPrice / units;
 
+    const supplierSKU = col(r, "Supplier's SKU", 'Supplier SKU', 'supplier_sku', 'SupplierSKU').trim();
     if (!map.has(key)) {
       map.set(key, {
         name, mfr_number: mfrNum,
         dose_prices: [], pkg_prices: [], units_list: [], unit_meas: unitMeas,
-        order_count: 0,
+        order_count: 0, supplier_sku: supplierSKU || null,
       });
     }
     const entry = map.get(key);
     if (dosePrice > 0)  entry.dose_prices.push(dosePrice);
     if (pkgPrice  > 0)  entry.pkg_prices.push(pkgPrice);
     if (units     > 0)  entry.units_list.push(units);
+    if (supplierSKU && !entry.supplier_sku) entry.supplier_sku = supplierSKU;
     entry.order_count++;
   });
 
@@ -691,6 +694,7 @@ function aggregateVetcove(rows) {
       unit_meas:    e.unit_meas,
       order_count:  e.order_count,
       has_dose_price: e.dose_prices.length > 0,
+      supplier_sku: e.supplier_sku || null,
     };
   });
 }
@@ -780,6 +784,8 @@ function matchProducts(vetcoveItems, msProducts) {
         drift_pct: drift,
         ndc: ms.ndc || null,
         sku: ms.sku || ms.SKU || null,
+        supplier_sku: v.supplier_sku || null,
+        product_id: ms.id || null,
         vetspire_product_id: ms.vetspire_product_id || null,
         match: method,
         unit_mismatch: false,
@@ -790,18 +796,11 @@ function matchProducts(vetcoveItems, msProducts) {
 }
 
 async function parseInvoiceFile(file) {
-  const name = file.name.toLowerCase();
-  if (name.endsWith('.csv')) {
-    const text = await file.text();
-    return parseVetcoveCSV(text);
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    throw new Error('Please upload a CSV file. Export your order history from Vetcove as CSV.');
   }
-  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-    return await parseExcelFile(file);
-  }
-  if (name.endsWith('.pdf')) {
-    return await parsePDFFile(file);
-  }
-  throw new Error('Unsupported file type. Please upload a CSV or Excel (.xlsx/.xls) export from Vetcove.');
+  const text = await file.text();
+  return parseVetcoveCSV(text);
 }
 
 async function parseExcelFile(file) {
@@ -1121,6 +1120,45 @@ async function parsePDFFile(file) {
   );
 }
 
+function renderSkuCell(d) {
+  const incoming = d.supplier_sku;
+  const current  = d.sku;
+  if (!incoming) return `<span style="color:var(--mist);font-size:12px;">—</span>`;
+  if (current && current === incoming) {
+    return `<span style="color:var(--green);font-size:12px;font-weight:600;">✓ ${esc(incoming)}</span>`;
+  }
+  const label = current
+    ? `<span style="font-size:11px;color:var(--mist);display:block;">was: ${esc(current)}</span>`
+    : '';
+  return `<span style="font-size:12px;font-weight:600;">${esc(incoming)}</span>${label}
+    <button class="vs-sync-btn" style="margin-top:4px;font-size:11px;padding:3px 8px;"
+      onclick="saveSupplierSKU('${esc(d.product_id)}','${esc(d.ms_name)}','${esc(incoming)}',this)">Save SKU</button>`;
+}
+
+async function saveSupplierSKU(productId, msName, sku, btn) {
+  if (!productId) { showToast('No product ID — cannot save SKU'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${productId}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ sku }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // Update local state so the cell re-renders as "saved"
+    const row = _compRows.find(r => r.ms_name === msName);
+    if (row) row.sku = sku;
+    btn.textContent = '✓ Saved';
+    btn.style.background = 'var(--green)';
+    showToast(`SKU saved for ${msName}`);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Save SKU';
+    showToast('Failed to save SKU: ' + err.message, 5000);
+  }
+}
+
 async function handleInvoiceUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1264,6 +1302,7 @@ function renderComp() {
       <td>${driftCell(d.drift_pct, d.unit_mismatch)}</td>
       <td style="color:var(--mist)">${d.vc_orders || 0}</td>
       <td>${mb}</td>
+      <td style="white-space:nowrap;">${renderSkuCell(d)}</td>
       <td><button class="btn-flag-comp${isFlagged?' flagged':''}" data-name="${esc(d.ms_name)}"
         data-ms="${d.ms_price}" data-vc="${d.vc_latest}" data-drift="${d.drift_pct}"
         data-vspid="${d.vetspire_product_id || ''}" data-sku="${d.sku || ''}">${isFlagged ? '✓ Flagged' : 'Flag for Audit'}</button></td>
