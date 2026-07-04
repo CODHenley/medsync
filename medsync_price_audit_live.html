@@ -429,9 +429,10 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <table class="vs-tbl">
         <thead>
           <tr>
-            <th data-vscol="name" style="width:38%">Product <span class="sarr">↕</span></th>
+            <th data-vscol="name" style="width:36%">Product <span class="sarr">↕</span></th>
             <th data-vscol="unit_price">MedSync Price <span class="sarr">↕</span></th>
             <th data-vscol="vetspire_cost">VetSpire Cost <span class="sarr">↕</span></th>
+            <th data-vscol="buying_qty" title="Units per package from VetSpire CSV">Pkg Size <span class="sarr">↕</span></th>
             <th data-vscol="diff" class="sorted">Difference <span class="sarr">↓</span></th>
             <th>Action</th>
           </tr>
@@ -763,10 +764,15 @@ function matchProducts(vetcoveItems, msProducts) {
       let inferredUnits = null;
       let basisNote = null;
 
-      // Auto-detect package vs unit basis mismatch:
-      // If vcPrice >> msPrice and vcPrice/msPrice is close to a whole number N (2–1000),
-      // the invoice likely shows package price while MedSync stores per-unit price.
-      if (vcPrice && msPrice && vcPrice > msPrice * 1.5) {
+      // Use VetSpire buying quantity if available for precise per-unit normalization
+      const vsId = ms.vetspire_product_id ? String(ms.vetspire_product_id).trim() : null;
+      const knownBuyQty = vsId ? (_vsBuyQtyMap.get(vsId) || null) : null;
+      if (knownBuyQty != null && knownBuyQty > 1 && vcPrice && vcPrice > msPrice * 1.5) {
+        inferredUnits = knownBuyQty;
+        vcPrice = vcPrice / knownBuyQty;
+        basisNote = `pkg÷${knownBuyQty}`;
+      } else if (vcPrice && msPrice && vcPrice > msPrice * 1.5) {
+        // Fallback: auto-detect ratio when VetSpire CSV not loaded
         const ratio = vcPrice / msPrice;
         const rounded = Math.round(ratio);
         if (rounded >= 2 && rounded <= 1000 && Math.abs(ratio - rounded) / rounded < 0.15) {
@@ -1920,16 +1926,20 @@ let _vsRows = [];
 let _vsSortCol = 'diff';
 let _vsSortDir = -1;
 let _vsSyncedCount = 0;
+// Map<vetspire_id_string, buying_qty> — populated when VetSpire CSV is loaded; used by Vetcove comparison
+let _vsBuyQtyMap = new Map();
 
-// Parse VetSpire mass products CSV → Map<vetspire_id_string, {name, sku, unit_cost}>
+// Parse VetSpire mass products CSV → Map<vetspire_id_string, {name, sku, unit_cost, buying_qty, selling_qty}>
 function parseVsProductsCSV(text) {
   const lines = text.split(/\r?\n/);
   if (!lines.length) return new Map();
   const headers = parseCSVLine(lines[0]);
-  const idIdx   = headers.indexOf('id');
-  const nameIdx = headers.indexOf('name');
-  const skuIdx  = headers.indexOf('sku');
-  const costIdx = headers.indexOf('unit cost');
+  const idIdx      = headers.indexOf('id');
+  const nameIdx    = headers.indexOf('name');
+  const skuIdx     = headers.indexOf('sku');
+  const costIdx    = headers.indexOf('unit cost');
+  const buyQtyIdx  = headers.indexOf('buying quantity');
+  const sellQtyIdx = headers.indexOf('selling quantity');
   if (idIdx === -1 || costIdx === -1) {
     throw new Error('CSV missing required columns. Expected "id" and "unit cost" columns from VetSpire mass products export.');
   }
@@ -1939,11 +1949,15 @@ function parseVsProductsCSV(text) {
     const vals = parseCSVLine(lines[i]);
     const id = (vals[idIdx] || '').trim();
     if (!id) continue;
-    const cost = parseFloat((vals[costIdx] || '').trim());
+    const cost     = parseFloat((vals[costIdx]    || '').trim());
+    const buyQty   = buyQtyIdx  !== -1 ? parseFloat((vals[buyQtyIdx]  || '').trim()) : NaN;
+    const sellQty  = sellQtyIdx !== -1 ? parseFloat((vals[sellQtyIdx] || '').trim()) : NaN;
     map.set(id, {
-      name:      nameIdx !== -1 ? (vals[nameIdx] || '').trim() : '',
-      sku:       skuIdx  !== -1 ? (vals[skuIdx]  || '').trim() : '',
-      unit_cost: isNaN(cost) ? null : cost,
+      name:        nameIdx !== -1 ? (vals[nameIdx] || '').trim() : '',
+      sku:         skuIdx  !== -1 ? (vals[skuIdx]  || '').trim() : '',
+      unit_cost:   isNaN(cost)   ? null : cost,
+      buying_qty:  isNaN(buyQty) ? null : buyQty,
+      selling_qty: isNaN(sellQty) ? null : sellQty,
     });
   }
   return map;
@@ -1970,17 +1984,21 @@ async function handleVsCSV(input) {
     const ms = await loadMSProducts();
     if (!ms.length) throw new Error('No products loaded from MedSync. Check Supabase connection.');
 
-    // Match by vetspire_product_id
+    // Match by vetspire_product_id; build _vsBuyQtyMap for Vetcove comparison
     _vsRows = [];
+    _vsBuyQtyMap = new Map();
     ms.forEach(p => {
       const vsId = String(p.vetspire_product_id || '').trim();
       if (!vsId) return;
       const vs = vsMap.get(vsId);
       const msPrice  = p.unit_price != null ? parseFloat(p.unit_price) : null;
       const vsCost   = vs ? vs.unit_cost : null;
+      const buyQty   = vs ? vs.buying_qty : null;
       const diff = (vsCost != null && msPrice != null && msPrice !== 0)
         ? Math.round((vsCost - msPrice) / msPrice * 10000) / 100
         : null;
+      // Expose buying_qty so Vetcove comparison can explicitly normalize package prices
+      if (buyQty != null && buyQty > 1) _vsBuyQtyMap.set(vsId, buyQty);
       _vsRows.push({
         product_id:          String(p.id),
         vetspire_product_id: vsId,
@@ -1988,6 +2006,7 @@ async function handleVsCSV(input) {
         unit_price:          msPrice,
         vetspire_cost:       vsCost,
         vs_sku:              vs ? vs.sku : null,
+        buying_qty:          buyQty,
         diff,
       });
     });
@@ -2078,10 +2097,15 @@ function renderVsTable() {
       ? `<button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)" title="Set MedSync unit_price to VetSpire cost">← Sync to MedSync</button>`
       : '<span style="color:var(--mist);font-size:12px;">In sync</span>';
 
+    const pkgCell = r.buying_qty != null && r.buying_qty > 1
+      ? `<span style="font-weight:600;">${r.buying_qty}</span><span style="color:var(--mist);font-size:11px;"> units</span>`
+      : `<span style="color:var(--mist);font-size:12px;">—</span>`;
+
     return `<tr>
       <td><div class="cn1">${r.name}</div><div class="cn2">VS ID: ${r.vetspire_product_id}${r.vs_sku ? ' · SKU: ' + r.vs_sku : ''}</div></td>
       <td class="cprice">${msPrice}</td>
       <td class="cprice">${vsPrice}</td>
+      <td style="text-align:center;">${pkgCell}</td>
       <td>${diffCell}</td>
       <td>${syncBtn}</td>
     </tr>`;
