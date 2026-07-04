@@ -433,14 +433,14 @@ async function loadMSProducts() {
   let skuCol = 'sku';
   let all = [], page = 0, pageSize = 1000;
   while (true) {
-    const url = `${SUPA_URL}/rest/v1/products?select=name,unit_price,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
+    const url = `${SUPA_URL}/rest/v1/products?select=name,unit_price,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
     const res = await fetch(url, { headers: H });
     if (!res.ok) {
       if (page === 0 && skuCol === 'sku') {
         // Try uppercase SKU
         skuCol = 'SKU';
         const res2 = await fetch(
-          `${SUPA_URL}/rest/v1/products?select=name,unit_price,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
+          `${SUPA_URL}/rest/v1/products?select=name,unit_price,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
           { headers: H }
         );
         if (!res2.ok) {
@@ -596,7 +596,13 @@ function aggregateVetcove(rows) {
 
 // Fuzzy name match
 function wordTokens(s) {
-  return new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));
+  return new Set(
+    s.toLowerCase()
+     .replace(/([a-z])(\d)/g, '$1 $2')  // "ointment15ml" → "ointment 15 ml"
+     .replace(/(\d)([a-z])/g, '$1 $2')
+     .replace(/[^a-z0-9\s]/g, ' ')
+     .split(/\s+/).filter(Boolean)
+  );
 }
 function nameOverlap(a, b) {
   const ta = wordTokens(a), tb = wordTokens(b);
@@ -633,8 +639,9 @@ function matchProducts(vetcoveItems, msProducts) {
       if (best >= 0.55) { ms = bestP; method = `name(${best.toFixed(2)})`; }
     }
 
-    if (ms && ms.unit_price != null) {
-      const msPrice = parseFloat(ms.unit_price);
+    if (ms && (ms.unit_cost != null || ms.unit_price != null)) {
+      // Prefer unit_cost (VetSpire purchase cost) over unit_price (may be sell price)
+      const msPrice = parseFloat(ms.unit_cost ?? ms.unit_price);
       let vcPrice = v.latest_price; // already per-dose after aggregation
       let inferredUnits = null;
       let basisNote = null;
