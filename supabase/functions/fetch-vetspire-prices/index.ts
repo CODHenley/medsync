@@ -81,7 +81,6 @@ Deno.serve(async (req: Request) => {
         .from('products')
         .select('id, name, unit_price, vetspire_product_id')
         .not('vetspire_product_id', 'is', null)
-        .neq('vetspire_product_id', '')
         .limit(2000)
 
       if (error) throw new Error('Supabase error: ' + error.message)
