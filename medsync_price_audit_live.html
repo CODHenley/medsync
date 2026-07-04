@@ -81,10 +81,17 @@ table.vs-tbl td{padding:10px 14px;vertical-align:middle;}
 .comp-notice{margin:12px 20px;padding:9px 13px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:12px;color:#92400E;}
 #comp-notice-mismatch{display:none;}
 
-.comp-upload-empty{padding:60px 20px;text-align:center;color:var(--mist);}
+.comp-upload-empty{padding:48px 20px;text-align:center;color:var(--mist);}
 .comp-upload-empty-icon{font-size:48px;margin-bottom:16px;}
 .comp-upload-empty h3{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;}
 .comp-upload-empty p{font-size:13px;max-width:380px;margin:0 auto 20px;}
+.drop-zone{margin:20px auto;max-width:480px;border:2px dashed var(--border);border-radius:12px;padding:36px 24px;cursor:pointer;transition:border-color .15s,background .15s;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--purple);background:#F5F2FC;}
+.drop-zone.drag-over .drop-zone-icon{transform:scale(1.1);}
+.drop-zone-icon{font-size:36px;margin-bottom:12px;transition:transform .15s;}
+.drop-zone h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:5px;}
+.drop-zone p{font-size:12px;color:var(--mist);margin:0 0 14px;}
+.drop-zone-or{font-size:11px;color:var(--mist);margin:10px 0;text-transform:uppercase;letter-spacing:.07em;}
 
 /* Comparison table */
 .comp-table-wrap{overflow-x:auto;padding:0 0 40px;}
@@ -233,14 +240,16 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
 
   <!-- Upload empty state -->
   <div id="comp-empty-upload" class="comp-upload-empty">
-    <div class="comp-upload-empty-icon">📊</div>
-    <h3>Upload a Vetcove order history CSV</h3>
-    <p>Export your order history from Vetcove as a CSV. MedSync will match each item against your product catalog, show price drift, and let you save Supplier SKUs to your products.</p>
-    <label class="upload-btn" for="csv-upload" style="display:inline-flex;">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Choose CSV File
-    </label>
-    <p style="margin-top:8px;font-size:12px;color:#8A93A8;">CSV only — Vetcove order history export</p>
+    <div id="csv-drop-zone" class="drop-zone" onclick="document.getElementById('csv-upload').click()">
+      <div class="drop-zone-icon">📂</div>
+      <h3>Drop your Vetcove CSV here</h3>
+      <p>Export your order history from Vetcove as a CSV. MedSync will match each item, show price drift, and let you save Supplier SKUs.</p>
+      <div class="drop-zone-or">or</div>
+      <label class="upload-btn" for="csv-upload" style="display:inline-flex;" onclick="event.stopPropagation()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Browse for CSV
+      </label>
+    </div>
   </div>
 
   <!-- Comparison content (hidden until CSV loaded) -->
@@ -1830,6 +1839,47 @@ function fmtDate(s) {
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · ' +
          d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
+
+// ── Drag-and-drop for CSV upload ─────────────────────────
+(function() {
+  const zone = document.getElementById('csv-drop-zone');
+  if (!zone) return;
+
+  // Prevent browser default (open file) on the whole page
+  ['dragenter','dragover','dragleave','drop'].forEach(evt => {
+    document.addEventListener(evt, e => e.preventDefault(), false);
+  });
+
+  let dragDepth = 0; // track nested elements so dragleave doesn't flicker
+
+  zone.addEventListener('dragenter', e => {
+    dragDepth++;
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', e => {
+    dragDepth--;
+    if (dragDepth <= 0) { dragDepth = 0; zone.classList.remove('drag-over'); }
+  });
+  zone.addEventListener('dragover', e => {
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  zone.addEventListener('drop', e => {
+    dragDepth = 0;
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showToast('Please drop a CSV file.', 4000);
+      return;
+    }
+    // Fake the input so handleInvoiceUpload can reuse it
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    const input = document.getElementById('csv-upload');
+    input.files = dt.files;
+    handleInvoiceUpload(input);
+  });
+})();
 
 // Init
 loadFlags();
