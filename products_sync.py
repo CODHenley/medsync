@@ -187,7 +187,7 @@ for p in all_products:
         "name":         name,
         "ndc":          ndc_raw or None,
         "manufacturer": ((p.get("manufacturer") or {}).get("name") or "").strip() or None,
-        "unit_price":   p.get("unitCost") or None,
+        "unit_cost":    p.get("unitCost") or None,
     })
 
 print(f"\n{len(records)} records to upsert into Supabase products table")
