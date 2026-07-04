@@ -31,6 +31,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 /* ── PRICE COMPARISON TAB ── */
 #tab-comparison{display:none;}
 #tab-comparison.active{display:block;}
+#tab-vsync{display:none;}
+#tab-vsync.active{display:block;}
+
+/* ── VetSpire Prices tab ── */
+.vs-toolbar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.vs-toolbar h2{font-size:14px;font-weight:700;color:var(--navy);}
+.vs-toolbar p{font-size:12px;color:var(--mist);}
+.vs-stats{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border);}
+.vs-stat{padding:14px 20px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;}
+.vs-stat:last-child{border-right:none;}
+.vs-stat-n{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;}
+.vs-stat-l{font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
+.vs-filters{display:flex;align-items:center;gap:8px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.vs-tbl-wrap{overflow-x:auto;padding:0 0 60px;}
+table.vs-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+table.vs-tbl thead th{padding:9px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mist);background:#F9F8FC;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:5;cursor:pointer;}
+table.vs-tbl thead th:hover{color:var(--navy);}
+table.vs-tbl thead th.sorted{color:var(--purple);}
+table.vs-tbl tbody tr{border-bottom:1px solid #F0EDF8;}
+table.vs-tbl tbody tr:hover td{background:#FAFAFE;}
+table.vs-tbl td{padding:10px 14px;vertical-align:middle;}
+.vs-sync-btn{padding:4px 10px;background:var(--purple);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;}
+.vs-sync-btn:disabled{background:#ccc;cursor:default;}
+.vs-progress{margin:20px;padding:14px 18px;background:#EEE9F8;border-radius:8px;font-size:13px;color:var(--navy);}
+.vs-progress-bar-wrap{height:6px;background:#DDD9EC;border-radius:3px;margin-top:8px;}
+.vs-progress-bar{height:6px;background:var(--purple);border-radius:3px;transition:width .3s;}
 
 .comp-toolbar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .comp-toolbar label{font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;}
@@ -186,6 +212,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
 <div class="main-tabs">
   <div class="mtab active" id="mtab-comparison" onclick="switchMainTab('comparison')">Price Comparison</div>
   <div class="mtab" id="mtab-queue" onclick="switchMainTab('queue')">Audit Queue <span id="queue-badge" style="display:none;background:#a33030;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px;"></span></div>
+  <div class="mtab" id="mtab-vsync" onclick="switchMainTab('vsync')">VetSpire Prices</div>
 </div>
 
 <!-- ══════════════════ PRICE COMPARISON TAB ══════════════════ -->
@@ -338,6 +365,71 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
   </div>
 </div><!-- /tab-queue -->
 
+<!-- ══════════════════ VETSPIRE PRICES TAB ══════════════════ -->
+<div id="tab-vsync">
+
+  <div class="vs-toolbar">
+    <div style="flex:1;">
+      <h2>VetSpire vs MedSync Price Review</h2>
+      <p style="margin-top:3px;">Compares VetSpire's stored unit cost (realUnitCost) against MedSync's product unit_price. Use this to find and fix discrepancies.</p>
+    </div>
+    <button class="upload-btn" id="vs-load-btn" onclick="loadVetspirePrices()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Load VetSpire Prices
+    </button>
+    <button class="upload-btn" id="vs-syncall-btn" onclick="syncAllVetspire()" style="display:none;background:#2a6e2a;">Sync All Visible to MedSync</button>
+  </div>
+
+  <div id="vs-progress" class="vs-progress" style="display:none;">
+    <span id="vs-progress-text">Loading…</span>
+    <div class="vs-progress-bar-wrap"><div class="vs-progress-bar" id="vs-progress-bar" style="width:0%"></div></div>
+  </div>
+
+  <div id="vs-empty" style="padding:60px 20px;text-align:center;color:var(--mist);">
+    <div style="font-size:48px;margin-bottom:16px;">🔄</div>
+    <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">Click Load VetSpire Prices to begin</h3>
+    <p style="font-size:13px;max-width:400px;margin:0 auto;">Fetches current unit costs from VetSpire for all products with a linked VetSpire product ID and compares them to what MedSync has recorded.</p>
+  </div>
+
+  <div id="vs-content" style="display:none;">
+    <div class="vs-stats">
+      <div class="vs-stat"><span class="vs-stat-n" id="vss-total" style="color:var(--navy)">—</span><span class="vs-stat-l">Products</span></div>
+      <div class="vs-stat"><span class="vs-stat-n" id="vss-match" style="color:var(--green)">—</span><span class="vs-stat-l">In Sync (±5%)</span></div>
+      <div class="vs-stat"><span class="vs-stat-n" id="vss-drift" style="color:var(--amber)">—</span><span class="vs-stat-l">Drifted &gt;5%</span></div>
+      <div class="vs-stat"><span class="vs-stat-n" id="vss-missing" style="color:var(--mist)">—</span><span class="vs-stat-l">No VetSpire Cost</span></div>
+      <div class="vs-stat"><span class="vs-stat-n" id="vss-synced" style="color:var(--purple)">0</span><span class="vs-stat-l">Synced This Session</span></div>
+    </div>
+
+    <div class="vs-filters">
+      <input class="cf-search" id="vs-search" type="text" placeholder="Search product…" oninput="renderVsTable()">
+      <select class="cf-select" id="vs-drift-filter" onchange="renderVsTable()">
+        <option value="all">All products</option>
+        <option value="drift">Drifted &gt;5%</option>
+        <option value="over20">Drift &gt;20%</option>
+        <option value="synced">In sync</option>
+        <option value="nomatch">No VetSpire cost</option>
+      </select>
+      <span class="comp-count" id="vs-count"></span>
+    </div>
+
+    <div class="vs-tbl-wrap">
+      <table class="vs-tbl">
+        <thead>
+          <tr>
+            <th data-vscol="name" style="width:38%">Product <span class="sarr">↕</span></th>
+            <th data-vscol="unit_price">MedSync Price <span class="sarr">↕</span></th>
+            <th data-vscol="vetspire_cost">VetSpire Cost <span class="sarr">↕</span></th>
+            <th data-vscol="diff" class="sorted">Difference <span class="sarr">↓</span></th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="vs-tbody"></tbody>
+      </table>
+      <div id="vs-empty-rows" style="display:none;padding:40px;text-align:center;color:var(--mist);">No products match the current filter.</div>
+    </div>
+  </div>
+</div><!-- /tab-vsync -->
+
 <!-- Bulk confirm modal -->
 <div id="bulk-modal" class="modal-bg bulk-modal">
   <div class="modal">
@@ -409,7 +501,7 @@ async function edgeFetch(url, opts) {
 // ── Tab switching ────────────────────────────────────────
 function switchMainTab(tab) {
   document.querySelectorAll('.mtab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('#tab-comparison,#tab-queue').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+  document.querySelectorAll('#tab-comparison,#tab-queue,#tab-vsync').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
   document.getElementById('mtab-' + tab).classList.add('active');
   document.getElementById('tab-' + tab).style.display = 'block';
   document.getElementById('tab-' + tab).classList.add('active');
@@ -1702,6 +1794,238 @@ function fmtDate(s) {
 
 // Init
 loadFlags();
+
+// ═══════════════════════════════════════════════════════
+// VETSPIRE PRICES TAB
+// ═══════════════════════════════════════════════════════
+let _vsRows = [];
+let _vsSortCol = 'diff';
+let _vsSortDir = -1;
+let _vsSyncedCount = 0;
+
+async function loadVetspirePrices() {
+  const btn = document.getElementById('vs-load-btn');
+  const prog = document.getElementById('vs-progress');
+  const progressText = document.getElementById('vs-progress-text');
+  const progressBar = document.getElementById('vs-progress-bar');
+  const empty = document.getElementById('vs-empty');
+  const content = document.getElementById('vs-content');
+
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+  prog.style.display = 'block';
+  empty.style.display = 'none';
+  content.style.display = 'none';
+  progressText.textContent = 'Fetching prices from VetSpire…';
+  progressBar.style.width = '10%';
+
+  try {
+    const res = await edgeFetch(`${SUPA_URL}/functions/v1/fetch-vetspire-prices`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+
+    progressBar.style.width = '80%';
+    progressText.textContent = 'Processing results…';
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Edge function error (${res.status}): ${errText.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    _vsRows = (data.results || []).map(r => ({
+      ...r,
+      diff: (r.vetspire_cost != null && r.unit_price != null)
+        ? Math.round((r.vetspire_cost - r.unit_price) / r.unit_price * 10000) / 100
+        : null,
+    }));
+
+    progressBar.style.width = '100%';
+    prog.style.display = 'none';
+    content.style.display = 'block';
+    document.getElementById('vs-syncall-btn').style.display = '';
+    renderVsTable();
+  } catch (err) {
+    prog.style.display = 'none';
+    empty.style.display = 'block';
+    empty.innerHTML = `<div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+      <h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">Failed to load VetSpire prices</h3>
+      <p style="font-size:13px;color:var(--red);max-width:400px;margin:0 auto;">${err.message}</p>
+      <button class="upload-btn" onclick="loadVetspirePrices()" style="margin-top:16px;">Retry</button>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg> Refresh`;
+  }
+}
+
+function renderVsTable() {
+  const search = (document.getElementById('vs-search').value || '').toLowerCase();
+  const driftFilter = document.getElementById('vs-drift-filter').value;
+
+  let rows = _vsRows.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search)) return false;
+    if (driftFilter === 'drift') return r.diff != null && Math.abs(r.diff) > 5;
+    if (driftFilter === 'over20') return r.diff != null && Math.abs(r.diff) > 20;
+    if (driftFilter === 'synced') return r.diff != null && Math.abs(r.diff) <= 5;
+    if (driftFilter === 'nomatch') return r.vetspire_cost == null;
+    return true;
+  });
+
+  // Sort
+  rows.sort((a, b) => {
+    let av = a[_vsSortCol], bv = b[_vsSortCol];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === 'string') return _vsSortDir * av.localeCompare(bv);
+    return _vsSortDir * (av - bv);
+  });
+
+  // Stats
+  const total = _vsRows.length;
+  const match = _vsRows.filter(r => r.diff != null && Math.abs(r.diff) <= 5).length;
+  const drift = _vsRows.filter(r => r.diff != null && Math.abs(r.diff) > 5).length;
+  const missing = _vsRows.filter(r => r.vetspire_cost == null).length;
+  document.getElementById('vss-total').textContent = total;
+  document.getElementById('vss-match').textContent = match;
+  document.getElementById('vss-drift').textContent = drift;
+  document.getElementById('vss-missing').textContent = missing;
+  document.getElementById('vss-synced').textContent = _vsSyncedCount;
+  document.getElementById('vs-count').textContent = `${rows.length} of ${total} products`;
+
+  // Sort header
+  document.querySelectorAll('table.vs-tbl thead th').forEach(th => {
+    th.classList.remove('sorted');
+    const arr = th.querySelector('.sarr');
+    if (arr) arr.textContent = '↕';
+    if (th.dataset.vscol === _vsSortCol) {
+      th.classList.add('sorted');
+      if (arr) arr.textContent = _vsSortDir === 1 ? '↑' : '↓';
+    }
+  });
+
+  const tbody = document.getElementById('vs-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    document.getElementById('vs-empty-rows').style.display = 'block';
+    return;
+  }
+  document.getElementById('vs-empty-rows').style.display = 'none';
+
+  tbody.innerHTML = rows.map(r => {
+    const msPrice = r.unit_price != null ? `$${r.unit_price.toFixed(2)}` : '<span style="color:var(--mist)">—</span>';
+    const vsPrice = r.vetspire_cost != null ? `$${r.vetspire_cost.toFixed(2)}` : '<span style="color:var(--mist)">—</span>';
+
+    let diffCell = '<span style="color:var(--mist)">—</span>';
+    if (r.diff != null) {
+      const abs = Math.abs(r.diff);
+      const cls = abs <= 5 ? 'dp-dn' : r.diff > 0 ? 'dp-up' : 'dp-dn';
+      const sign = r.diff > 0 ? '+' : '';
+      const color = abs <= 5 ? 'var(--green)' : abs > 20 ? 'var(--red)' : 'var(--amber)';
+      diffCell = `<span class="drift-pill" style="background:${color}18;color:${color};">${sign}${r.diff.toFixed(1)}%</span>
+        <div style="font-size:11px;color:var(--mist);margin-top:2px;">${r.diff > 0 ? 'VS higher' : 'VS lower'} by $${Math.abs(r.vetspire_cost - r.unit_price).toFixed(2)}</div>`;
+    }
+
+    const canSync = r.vetspire_cost != null && r.diff != null && Math.abs(r.diff) > 0.5;
+    const syncBtn = canSync
+      ? `<button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)" title="Set MedSync unit_price to VetSpire cost">← Sync to MedSync</button>`
+      : '<span style="color:var(--mist);font-size:12px;">In sync</span>';
+
+    return `<tr>
+      <td><div class="cn1">${r.name}</div><div class="cn2">VS ID: ${r.vetspire_product_id}</div></td>
+      <td class="cprice">${msPrice}</td>
+      <td class="cprice">${vsPrice}</td>
+      <td>${diffCell}</td>
+      <td>${syncBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Sort handler for VetSpire table headers
+document.addEventListener('click', e => {
+  const th = e.target.closest('table.vs-tbl thead th[data-vscol]');
+  if (!th) return;
+  const col = th.dataset.vscol;
+  if (_vsSortCol === col) _vsSortDir *= -1;
+  else { _vsSortCol = col; _vsSortDir = -1; }
+  renderVsTable();
+});
+
+async function syncOneToMedSync(productId, vetspireProductId, vetspireCost, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Syncing…';
+  try {
+    // Update products.unit_price in Supabase directly via REST
+    const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${productId}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ unit_price: vetspireCost }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`Supabase error (${res.status}): ${t.slice(0,100)}`);
+    }
+    // Update local state
+    const row = _vsRows.find(r => r.product_id === productId);
+    if (row) { row.unit_price = vetspireCost; row.diff = 0; }
+    _vsSyncedCount++;
+    btn.textContent = '✓ Synced';
+    btn.style.background = 'var(--green)';
+    renderVsTable();
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = '← Sync to MedSync';
+    alert('Sync failed: ' + err.message);
+  }
+}
+
+async function syncAllVetspire() {
+  const driftRows = _vsRows.filter(r => r.vetspire_cost != null && r.diff != null && Math.abs(r.diff) > 0.5);
+  if (!driftRows.length) { alert('No drifted products to sync.'); return; }
+
+  // Apply current filters
+  const search = (document.getElementById('vs-search').value || '').toLowerCase();
+  const driftFilter = document.getElementById('vs-drift-filter').value;
+  const visible = driftRows.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search)) return false;
+    if (driftFilter === 'drift') return Math.abs(r.diff) > 5;
+    if (driftFilter === 'over20') return Math.abs(r.diff) > 20;
+    if (driftFilter === 'nomatch') return false;
+    return true;
+  });
+
+  if (!visible.length) { alert('No visible drifted products.'); return; }
+  if (!confirm(`Sync ${visible.length} products from VetSpire to MedSync?\n\nThis will update unit_price in your products table to match VetSpire's stored cost.`)) return;
+
+  const btn = document.getElementById('vs-syncall-btn');
+  btn.disabled = true;
+  btn.textContent = `Syncing 0 / ${visible.length}…`;
+
+  let done = 0;
+  for (const r of visible) {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${r.product_id}`, {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ unit_price: r.vetspire_cost }),
+      });
+      if (res.ok) {
+        r.unit_price = r.vetspire_cost;
+        r.diff = 0;
+        _vsSyncedCount++;
+      }
+    } catch {}
+    done++;
+    btn.textContent = `Syncing ${done} / ${visible.length}…`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Sync All Visible to MedSync';
+  renderVsTable();
+}
 </script>
 </body>
 </html>
