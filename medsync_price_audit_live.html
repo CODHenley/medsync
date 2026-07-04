@@ -235,6 +235,13 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleInvoiceUpload(this)">
     <span id="csv-filename" style="display:none;"></span>
     <button id="clear-invoice-btn" onclick="clearInvoice()" style="display:none;background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;color:var(--mist);cursor:pointer;" title="Clear and upload a new file">✕ Clear</button>
+    <span style="width:1px;height:24px;background:var(--border);display:inline-block;margin:0 4px;flex-shrink:0;"></span>
+    <label class="upload-btn" for="comp-vs-upload" id="comp-vs-upload-btn" style="background:#3a5a8a;" title="Load VetSpire mass products CSV for accurate per-unit cost comparison">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      VetSpire Prices CSV
+    </label>
+    <input type="file" id="comp-vs-upload" accept=".csv" style="display:none" onchange="handleCompVsCSV(this)">
+    <span id="comp-vs-status" style="font-size:12px;color:var(--mist);">No VetSpire CSV — using MedSync sell price</span>
     <span id="comp-loading" style="display:none;font-size:12px;color:var(--mist);">Matching products…</span>
   </div>
 
@@ -525,6 +532,7 @@ function switchMainTab(tab) {
 // PRICE COMPARISON
 // ═══════════════════════════════════════════════════════
 let _msProducts = null; // fetched from Supabase
+let _vcRawItems = [];   // raw aggregated Vetcove items — stored so comparison can re-run after VetSpire CSV loads
 let _compRows = [];     // matched rows
 let _compFlagged = new Set();
 let _compHideMismatch = true;
@@ -1206,6 +1214,7 @@ async function handleInvoiceUpload(input) {
     if (!ms.length) throw new Error('No products loaded from MedSync catalog. Check Supabase connection and RLS policies.');
 
     showToast(`Loaded ${ms.length} MedSync products · ${vcItems.length} Vetcove items — matching…`, 3000);
+    _vcRawItems = vcItems;
     _compRows = matchProducts(vcItems, ms);
 
     // Items where Vetcove had neither a Cost per Dose nor a Units count — price basis unknown
@@ -1228,8 +1237,40 @@ async function handleInvoiceUpload(input) {
   input.value = '';
 }
 
+async function handleCompVsCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  try {
+    const text = await file.text();
+    const vsMap = parseVsProductsCSV(text);
+    if (!vsMap.size) throw new Error('No products found in VetSpire CSV.');
+    // Rebuild cost + buy-qty maps (shared with VetSpire Prices tab)
+    _vsBuyQtyMap = new Map();
+    _vsCostMap = new Map();
+    vsMap.forEach((vs, id) => {
+      if (vs.buying_qty != null && vs.buying_qty > 1) _vsBuyQtyMap.set(id, vs.buying_qty);
+      if (vs.unit_cost != null) _vsCostMap.set(id, vs.unit_cost);
+    });
+    const statusEl = document.getElementById('comp-vs-status');
+    statusEl.textContent = `✓ ${_vsCostMap.size} VetSpire costs loaded`;
+    statusEl.style.color = 'var(--green)';
+    document.getElementById('comp-vs-upload-btn').style.background = '#2a6e2a';
+    showToast(`Loaded ${_vsCostMap.size} VetSpire unit costs`, 3000);
+    // Re-run comparison if Vetcove data already loaded
+    if (_msProducts && _vcRawItems.length) {
+      _compRows = matchProducts(_vcRawItems, _msProducts);
+      renderComp();
+      showToast('Comparison updated with VetSpire purchase costs', 3000);
+    }
+  } catch (err) {
+    showToast('VetSpire CSV error: ' + err.message, 5000);
+  }
+}
+
 function clearInvoice() {
   _compRows = [];
+  _vcRawItems = [];
   _compFlagged = new Set();
   document.getElementById('csv-upload').value = '';
   const fnEl = document.getElementById('csv-filename');
