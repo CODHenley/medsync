@@ -289,12 +289,12 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <strong id="comp-mismatch-count">0 items</strong> could not be normalized — no <em>Cost per Dose</em> or <em>Units</em> count in the CSV. Package price shown as-is; verify manually before flagging.
     </div>
 
-    <!-- Selection action bar (shown when rows are checked) -->
-    <div id="cost-selection-bar" style="display:none;align-items:center;gap:12px;padding:8px 16px;background:var(--purple);color:#fff;border-radius:6px;margin:8px 0;font-size:13px;">
-      <span id="cost-sel-count" style="font-weight:600;"></span>
-      <span style="opacity:.7;">rows selected</span>
-      <button onclick="saveSelectedCosts()" style="margin-left:auto;background:#fff;color:var(--purple);border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;" id="btn-save-selected">Save Selected Costs</button>
-      <button onclick="clearCostSelection()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer;">✕ Clear</button>
+    <!-- Selection action bar -->
+    <div id="cost-selection-bar" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:var(--navy);color:#fff;border-radius:6px;margin:8px 0;font-size:13px;">
+      <span><strong id="cost-sel-count">0</strong> rows selected</span>
+      <button id="btn-save-sel-costs" onclick="saveSelected('costs')" style="margin-left:auto;background:var(--purple);color:#fff;border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save Costs</button>
+      <button id="btn-save-sel-skus" onclick="saveSelected('skus')" style="background:#fff;color:var(--navy);border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save SKUs (Vetcove Catalog #)</button>
+      <button onclick="clearSelection()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer;">✕ Clear</button>
     </div>
 
     <!-- Table -->
@@ -302,8 +302,8 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <table class="comp-tbl">
         <thead>
           <tr>
-            <th style="width:32px;text-align:center;padding:0 4px;">
-              <input type="checkbox" id="chk-select-all" title="Select all visible" onchange="toggleSelectAll(this.checked)" style="cursor:pointer;width:15px;height:15px;">
+            <th style="width:32px;padding:0 6px;text-align:center;">
+              <input type="checkbox" id="chk-select-all" title="Select / deselect all visible" style="width:15px;height:15px;cursor:pointer;" onchange="toggleSelectAll(this.checked)">
             </th>
             <th data-col="ms_name" style="width:26%">Product <span class="sarr">↕</span></th>
             <th data-col="ms_price">Unit Cost (MedSync) <span class="sarr">↕</span></th>
@@ -358,14 +358,14 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <button class="bulk-btn bulk-approve" id="bulk-approve-btn" onclick="openBulkModal()">Approve &amp; Update VetSpire</button>
     <button class="bulk-btn bulk-reject" onclick="bulkReject()">Reject All</button>
     <span class="bulk-progress" id="bulk-progress"></span>
-    <button class="bulk-clear" onclick="clearSelection()">✕ Clear selection</button>
+    <button class="bulk-clear" onclick="clearQueueSelection()">✕ Clear selection</button>
   </div>
 
   <div class="table-wrap" style="padding-top:0;">
     <table class="audit-tbl">
       <thead>
         <tr>
-          <th class="cb-col"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+          <th class="cb-col"><input type="checkbox" id="select-all" onchange="toggleQueueSelectAll(this)"></th>
           <th>Product</th>
           <th>Location</th>
           <th style="text-align:right;">VetSpire Cost</th>
@@ -540,7 +540,7 @@ let _msProducts = null; // fetched from Supabase
 let _vcRawItems = [];   // raw aggregated Vetcove items — stored so comparison can re-run after VetSpire CSV loads
 let _compRows = [];     // matched rows
 let _compFlagged = new Set();
-let _selectedCosts = new Set(); // ms_name values checked for batch cost save
+let _selectedRows = new Set(); // ms_name values checked for batch save (comparison tab)
 let _compHideMismatch = true;
 let _compFlaggedOnly = false;
 let _compSortCol = 'drift_pct';
@@ -1387,10 +1387,12 @@ function renderComp() {
     }
 
     const vsDisplayCost = d.vetspire_cost != null ? `$${fmt2(d.vetspire_cost)}` : '<span style="color:var(--mist)">—</span>';
-    const canSave = d.vc_latest != null && d.product_id;
     return `<tr>
-      <td style="text-align:center;padding:0 4px;">
-        ${canSave ? `<input type="checkbox" class="row-cost-chk" data-name="${esc(d.ms_name)}" onchange="onRowCostChk(this)" style="cursor:pointer;width:15px;height:15px;"${_selectedCosts.has(d.ms_name) ? ' checked' : ''}>` : ''}
+      <td style="text-align:center;padding:0 6px;">
+        <input type="checkbox" class="row-chk" data-name="${esc(d.ms_name)}"
+          style="width:15px;height:15px;cursor:pointer;"
+          ${_selectedRows.has(d.ms_name) ? 'checked' : ''}
+          onchange="_selectedRows[this.checked?'add':'delete'](this.dataset.name);syncSelectionBar()">
       </td>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
       <td class="cprice">${d.ms_price != null ? '$' + fmt2(d.ms_price) : '<span style="color:var(--mist)">—</span>'}</td>
@@ -1430,7 +1432,7 @@ function renderComp() {
   });
 
   // Sync selection bar after re-render (new DOM nodes need state applied from Set)
-  updateSelectionBar();
+  syncSelectionBar();
 
   // Live recalc when user edits units/pkg
   tbody.querySelectorAll('.units-override').forEach(inp => {
@@ -1575,10 +1577,10 @@ async function flagAllVisible() {
   showToast(`✓ ${done} item${done === 1 ? '' : 's'} sent to Audit Queue`);
 }
 
-function updateSelectionBar() {
-  const visibleSaveable = getCompFiltered().filter(d => d.vc_latest != null && d.product_id);
-  const n = _selectedCosts.size;
-  const total = visibleSaveable.length;
+function syncSelectionBar() {
+  const visible = getCompFiltered();
+  const n = _selectedRows.size;
+  const total = visible.length;
   const bar = document.getElementById('cost-selection-bar');
   const selAll = document.getElementById('chk-select-all');
   document.getElementById('cost-sel-count').textContent = n;
@@ -1587,58 +1589,58 @@ function updateSelectionBar() {
     selAll.checked = total > 0 && n >= total;
     selAll.indeterminate = n > 0 && n < total;
   }
-  // Sync DOM checkboxes to Set state
-  document.querySelectorAll('.row-cost-chk').forEach(c => {
-    c.checked = _selectedCosts.has(c.dataset.name);
-  });
-}
-
-function onRowCostChk(chk) {
-  if (chk.checked) _selectedCosts.add(chk.dataset.name);
-  else _selectedCosts.delete(chk.dataset.name);
-  updateSelectionBar();
+  document.querySelectorAll('.row-chk').forEach(c => { c.checked = _selectedRows.has(c.dataset.name); });
 }
 
 function toggleSelectAll(checked) {
-  const visibleSaveable = getCompFiltered().filter(d => d.vc_latest != null && d.product_id);
-  if (checked) visibleSaveable.forEach(d => _selectedCosts.add(d.ms_name));
-  else visibleSaveable.forEach(d => _selectedCosts.delete(d.ms_name));
-  updateSelectionBar();
+  getCompFiltered().forEach(d => { if (checked) _selectedRows.add(d.ms_name); else _selectedRows.delete(d.ms_name); });
+  syncSelectionBar();
 }
 
-function clearCostSelection() {
-  _selectedCosts.clear();
-  updateSelectionBar();
+function clearSelection() {
+  _selectedRows.clear();
+  syncSelectionBar();
 }
 
-async function saveSelectedCosts() {
-  const names = _selectedCosts;
-  if (!names.size) return;
-  const rows = getCompFiltered().filter(d => names.has(d.ms_name) && d.vc_latest != null && d.product_id);
+async function saveSelected(mode) {
+  const rows = getCompFiltered().filter(d => _selectedRows.has(d.ms_name));
   if (!rows.length) return;
-
-  const btn = document.getElementById('btn-save-selected');
-  btn.textContent = `Saving 0/${rows.length}…`;
+  const btnId = mode === 'costs' ? 'btn-save-sel-costs' : 'btn-save-sel-skus';
+  const btn = document.getElementById(btnId);
   btn.disabled = true;
-
   let done = 0, failed = 0, vsOk = 0;
+  btn.textContent = `Saving 0/${rows.length}…`;
+
   for (const d of rows) {
     try {
-      const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
-        body: JSON.stringify({ product_id: d.product_id, vetspire_product_id: d.vetspire_product_id || undefined, unit_cost: d.vc_latest }),
-      });
-      const json = await res.json();
-      if (res.ok && json.ok) { done++; if (json.vetspire_synced) vsOk++; d.ms_price = d.vc_latest; d.vetspire_cost = d.vc_latest; }
-      else failed++;
+      if (mode === 'costs' && d.vc_latest != null && d.product_id) {
+        const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+          body: JSON.stringify({ product_id: d.product_id, vetspire_product_id: d.vetspire_product_id || undefined, unit_cost: d.vc_latest }),
+        });
+        const json = await res.json();
+        if (res.ok && json.ok) { done++; if (json.vetspire_synced) vsOk++; d.ms_price = d.vc_latest; d.vetspire_cost = d.vc_latest; }
+        else failed++;
+      } else if (mode === 'skus' && d.supplier_sku && d.product_id) {
+        const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${d.product_id}`, {
+          method: 'PATCH',
+          headers: { ...H, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ sku: d.supplier_sku }),
+        });
+        if (res.ok) { done++; d.sku = d.supplier_sku; }
+        else failed++;
+      } else { failed++; }
     } catch { failed++; }
     btn.textContent = `Saving ${done + failed}/${rows.length}…`;
   }
 
-  clearCostSelection();
+  btn.disabled = false;
+  btn.textContent = mode === 'costs' ? 'Save Costs' : 'Save SKUs (Vetcove Catalog #)';
+  clearSelection();
   renderComp();
-  showToast(`✓ ${done} costs saved (${vsOk} synced to VetSpire)${failed ? ` · ${failed} failed` : ''}`, 5000);
+  if (mode === 'costs') showToast(`✓ ${done} costs saved (${vsOk} synced to VetSpire)${failed ? ` · ${failed} failed` : ''}`, 5000);
+  else showToast(`✓ ${done} supplier catalog numbers saved${failed ? ` · ${failed} failed` : ''}`, 5000);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1860,7 +1862,7 @@ function toggleRow(cb) {
   updateBulkBar();
 }
 
-function toggleSelectAll(cb) {
+function toggleQueueSelectAll(cb) {
   document.querySelectorAll('.row-cb').forEach(el => {
     el.checked = cb.checked;
     if (cb.checked) _selected.add(el.dataset.id); else _selected.delete(el.dataset.id);
@@ -1869,7 +1871,7 @@ function toggleSelectAll(cb) {
   updateBulkBar();
 }
 
-function clearSelection() {
+function clearQueueSelection() {
   _selected.clear();
   document.querySelectorAll('.row-cb').forEach(el => { el.checked = false; el.closest('tr').classList.remove('selected'); });
   const sa = document.getElementById('select-all'); if (sa) sa.checked = false;
@@ -1965,7 +1967,7 @@ async function submitBulkApprove() {
   }
 
   closeBulkModal();
-  clearSelection();
+  clearQueueSelection();
   render();
 
   // Refresh badge
@@ -1994,7 +1996,7 @@ async function bulkReject() {
     if (flag) Object.assign(flag, body);
   }));
 
-  clearSelection();
+  clearQueueSelection();
   render();
   showToast(`${ids.length} flag${ids.length === 1 ? '' : 's'} rejected`);
 }
