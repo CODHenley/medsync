@@ -732,32 +732,39 @@ function nameOverlap(a, b) {
 function normNDC(s) { return (s || '').replace(/[\-\s]/g, '').toLowerCase(); }
 
 function matchProducts(vetcoveItems, msProducts) {
-  // Build NDC index
-  const ndcIdx = new Map();
-  msProducts.forEach(p => {
-    const k = normNDC(p.ndc);
-    if (k) ndcIdx.set(k, p);
+  // Build indexes on Vetcove side for fast lookup
+  const vcNdcIdx  = new Map(); // NDC → vetcove item
+  const vcNameIdx = new Map(); // normalized name → vetcove item (fallback)
+  vetcoveItems.forEach(v => {
+    const k = normNDC(v.mfr_number);
+    if (k) vcNdcIdx.set(k, v);
+    vcNameIdx.set(v.name.toLowerCase(), v);
   });
 
+  // Iterate MedSync products — only items we track appear in results
   const results = [];
-  vetcoveItems.forEach(v => {
-    const vNDC = normNDC(v.mfr_number);
-    let ms = null, method = null;
+  msProducts.forEach(ms => {
+    const msNDC = normNDC(ms.ndc);
+    let v = null, method = null;
 
     // 1. Exact NDC
-    if (vNDC && ndcIdx.has(vNDC)) { ms = ndcIdx.get(vNDC); method = 'ndc'; }
+    if (msNDC && vcNdcIdx.has(msNDC)) { v = vcNdcIdx.get(msNDC); method = 'ndc'; }
 
-    // 2. Fuzzy name
-    if (!ms) {
-      let best = 0, bestP = null;
-      msProducts.forEach(p => {
-        const s = nameOverlap(v.name, p.name);
-        if (s > best) { best = s; bestP = p; }
+    // 2. Fuzzy name against all Vetcove items
+    if (!v) {
+      let best = 0, bestV = null;
+      vetcoveItems.forEach(vc => {
+        const s = nameOverlap(ms.name, vc.name);
+        if (s > best) { best = s; bestV = vc; }
       });
-      if (best >= 0.55) { ms = bestP; method = `name(${best.toFixed(2)})`; }
+      if (best >= 0.55) { v = bestV; method = `name(${best.toFixed(2)})`; }
     }
 
-    if (ms && (ms.unit_cost != null || ms.unit_price != null)) {
+    // Skip MedSync products not found in this Vetcove invoice
+    if (!v) return;
+
+    if (ms.unit_cost == null && ms.unit_price == null) return;
+    {
       // Prefer unit_cost (VetSpire purchase cost) over unit_price (may be sell price)
       const msPrice = parseFloat(ms.unit_cost ?? ms.unit_price);
       let vcPrice = v.latest_price; // already per-dose after aggregation
