@@ -116,7 +116,7 @@ Deno.serve(async (req: Request) => {
       console.log('update-unit-cost: updating product', flagRow.product_id)
       const { error: prodErr } = await supabase
         .from('products')
-        .update({ unit_price: updatedCost })
+        .update({ unit_cost: updatedCost })
         .eq('id', flagRow.product_id)
       if (prodErr) console.error('product update error:', JSON.stringify(prodErr))
     }

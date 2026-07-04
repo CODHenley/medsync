@@ -302,8 +302,8 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
         <thead>
           <tr>
             <th data-col="ms_name" style="width:28%">Product <span class="sarr">↕</span></th>
-            <th data-col="ms_price">MedSync / unit <span class="sarr">↕</span></th>
-            <th data-col="vc_latest">Vetcove / unit <span class="sarr">↕</span></th>
+            <th data-col="ms_price">Unit Cost (MedSync) <span class="sarr">↕</span></th>
+            <th data-col="vc_latest">Unit Cost (Vetcove) <span class="sarr">↕</span></th>
             <th>Package (Vetcove)</th>
             <th data-col="drift_pct" class="sorted">Drift <span class="sarr">↓</span></th>
             <th data-col="vc_orders">Orders <span class="sarr">↕</span></th>
@@ -437,8 +437,8 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
         <thead>
           <tr>
             <th data-vscol="name" style="width:36%">Product <span class="sarr">↕</span></th>
-            <th data-vscol="unit_price">MedSync Price <span class="sarr">↕</span></th>
-            <th data-vscol="vetspire_cost">VetSpire Cost <span class="sarr">↕</span></th>
+            <th data-vscol="unit_cost">Unit Cost (MedSync) <span class="sarr">↕</span></th>
+            <th data-vscol="vetspire_cost">Unit Cost (VetSpire) <span class="sarr">↕</span></th>
             <th data-vscol="buying_qty" title="Units per package from VetSpire CSV">Pkg Size <span class="sarr">↕</span></th>
             <th data-vscol="diff" class="sorted">Difference <span class="sarr">↓</span></th>
             <th>Action</th>
@@ -544,33 +544,25 @@ let _compSortDir = -1;
 async function loadMSProducts() {
   if (_msProducts) return _msProducts;
 
-  // Probe which optional columns exist (unit_cost may not be in all deployments)
-  const probeRes = await fetch(
-    `${SUPA_URL}/rest/v1/products?select=unit_cost&limit=1`,
-    { headers: H }
-  );
-  const hasUnitCost = probeRes.ok;
-
   // Try lowercase 'sku' first (PostgREST is case-sensitive to the actual column name)
   let skuCol = 'sku';
-  const costCols = hasUnitCost ? 'unit_price,unit_cost' : 'unit_price';
   let all = [], page = 0, pageSize = 1000;
   while (true) {
-    const url = `${SUPA_URL}/rest/v1/products?select=id,name,${costCols},ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
+    const url = `${SUPA_URL}/rest/v1/products?select=id,name,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
     const res = await fetch(url, { headers: H });
     if (!res.ok) {
       if (page === 0 && skuCol === 'sku') {
         // Try uppercase SKU
         skuCol = 'SKU';
         const res2 = await fetch(
-          `${SUPA_URL}/rest/v1/products?select=id,name,${costCols},ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
+          `${SUPA_URL}/rest/v1/products?select=id,name,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
           { headers: H }
         );
         if (!res2.ok) {
           // Fall back to no SKU column
           skuCol = null;
           const res3 = await fetch(
-            `${SUPA_URL}/rest/v1/products?select=id,name,${costCols},ndc,vetspire_product_id&limit=${pageSize}&offset=0`,
+            `${SUPA_URL}/rest/v1/products?select=id,name,unit_cost,ndc,vetspire_product_id&limit=${pageSize}&offset=0`,
             { headers: H }
           );
           if (!res3.ok) throw new Error(`Failed to load products (HTTP ${res3.status}). Check Supabase RLS policies.`);
@@ -705,7 +697,7 @@ function aggregateVetcove(rows) {
     return {
       name:         e.name,
       mfr_number:   e.mfr_number,
-      // per-dose (normalized) — what we compare against MedSync unit_price
+      // per-dose (normalized) — what we compare against MedSync unit_cost
       latest_price: dp.length ? dp[dp.length - 1] : null,
       min_price:    dp.length ? Math.min(...dp)    : null,
       max_price:    dp.length ? Math.max(...dp)    : null,
@@ -771,12 +763,12 @@ function matchProducts(vetcoveItems, msProducts) {
     // Skip MedSync products not found in this Vetcove invoice
     if (!v) return;
 
-    // Use VetSpire unit cost (purchase cost per unit) when available — unit_price is the client sell price
     const vsId = ms.vetspire_product_id ? String(ms.vetspire_product_id).trim() : null;
+    // VetSpire CSV cost takes precedence; fall back to unit_cost stored in MedSync
     const vsPurchaseCost = vsId ? (_vsCostMap.get(vsId) ?? null) : null;
-    if (vsPurchaseCost == null && ms.unit_cost == null && ms.unit_price == null) return;
+    if (vsPurchaseCost == null && ms.unit_cost == null) return;
     {
-      const msPrice = vsPurchaseCost ?? parseFloat(ms.unit_cost ?? ms.unit_price);
+      const msPrice = vsPurchaseCost ?? parseFloat(ms.unit_cost);
       let vcPrice = v.latest_price; // already per-dose after aggregation
       let inferredUnits = null;
       let basisNote = null;
@@ -2043,20 +2035,19 @@ async function handleVsCSV(input) {
       const vsId = String(p.vetspire_product_id || '').trim();
       if (!vsId) return;
       const vs = vsMap.get(vsId);
-      const msPrice  = p.unit_price != null ? parseFloat(p.unit_price) : null;
-      const vsCost   = vs ? vs.unit_cost : null;
-      const buyQty   = vs ? vs.buying_qty : null;
-      const diff = (vsCost != null && msPrice != null && msPrice !== 0)
-        ? Math.round((vsCost - msPrice) / msPrice * 10000) / 100
+      const msUnitCost = p.unit_cost != null ? parseFloat(p.unit_cost) : null;
+      const vsCost     = vs ? vs.unit_cost : null;
+      const buyQty     = vs ? vs.buying_qty : null;
+      const diff = (vsCost != null && msUnitCost != null && msUnitCost !== 0)
+        ? Math.round((vsCost - msUnitCost) / msUnitCost * 10000) / 100
         : null;
-      // Expose buying_qty and unit_cost so Vetcove comparison can normalize and use purchase cost
       if (buyQty != null && buyQty > 1) _vsBuyQtyMap.set(vsId, buyQty);
       if (vsCost != null) _vsCostMap.set(vsId, vsCost);
       _vsRows.push({
         product_id:          String(p.id),
         vetspire_product_id: vsId,
         name:                p.name || (vs ? vs.name : vsId),
-        unit_price:          msPrice,
+        unit_cost:           msUnitCost,
         vetspire_cost:       vsCost,
         vs_sku:              vs ? vs.sku : null,
         buying_qty:          buyQty,
@@ -2132,7 +2123,7 @@ function renderVsTable() {
   document.getElementById('vs-empty-rows').style.display = 'none';
 
   tbody.innerHTML = rows.map(r => {
-    const msPrice = r.unit_price != null ? `$${r.unit_price.toFixed(2)}` : '<span style="color:var(--mist)">—</span>';
+    const msPrice = r.unit_cost != null ? `$${r.unit_cost.toFixed(2)}` : '<span style="color:var(--mist)">—</span>';
     const vsPrice = r.vetspire_cost != null ? `$${r.vetspire_cost.toFixed(2)}` : '<span style="color:var(--mist)">—</span>';
 
     let diffCell = '<span style="color:var(--mist)">—</span>';
@@ -2142,12 +2133,12 @@ function renderVsTable() {
       const sign = r.diff > 0 ? '+' : '';
       const color = abs <= 5 ? 'var(--green)' : abs > 20 ? 'var(--red)' : 'var(--amber)';
       diffCell = `<span class="drift-pill" style="background:${color}18;color:${color};">${sign}${r.diff.toFixed(1)}%</span>
-        <div style="font-size:11px;color:var(--mist);margin-top:2px;">${r.diff > 0 ? 'VS higher' : 'VS lower'} by $${Math.abs(r.vetspire_cost - r.unit_price).toFixed(2)}</div>`;
+        <div style="font-size:11px;color:var(--mist);margin-top:2px;">${r.diff > 0 ? 'VS higher' : 'VS lower'} by $${Math.abs(r.vetspire_cost - (r.unit_cost ?? 0)).toFixed(2)}</div>`;
     }
 
     const canSync = r.vetspire_cost != null && r.diff != null && Math.abs(r.diff) > 0.5;
     const syncBtn = canSync
-      ? `<button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)" title="Set MedSync unit_price to VetSpire cost">← Sync to MedSync</button>`
+      ? `<button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)" title="Set MedSync unit_cost to VetSpire unit cost">← Sync to MedSync</button>`
       : '<span style="color:var(--mist);font-size:12px;">In sync</span>';
 
     const pkgCell = r.buying_qty != null && r.buying_qty > 1
@@ -2179,11 +2170,11 @@ async function syncOneToMedSync(productId, vetspireProductId, vetspireCost, btn)
   btn.disabled = true;
   btn.textContent = 'Syncing…';
   try {
-    // Update products.unit_price in Supabase directly via REST
+    // Update products.unit_cost in Supabase directly via REST
     const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${productId}`, {
       method: 'PATCH',
       headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ unit_price: vetspireCost }),
+      body: JSON.stringify({ unit_cost: vetspireCost }),
     });
     if (!res.ok) {
       const t = await res.text();
@@ -2191,7 +2182,7 @@ async function syncOneToMedSync(productId, vetspireProductId, vetspireCost, btn)
     }
     // Update local state
     const row = _vsRows.find(r => r.product_id === productId);
-    if (row) { row.unit_price = vetspireCost; row.diff = 0; }
+    if (row) { row.unit_cost = vetspireCost; row.diff = 0; }
     _vsSyncedCount++;
     btn.textContent = '✓ Synced';
     btn.style.background = 'var(--green)';
@@ -2219,7 +2210,7 @@ async function syncAllVetspire() {
   });
 
   if (!visible.length) { alert('No visible drifted products.'); return; }
-  if (!confirm(`Sync ${visible.length} products from VetSpire to MedSync?\n\nThis will update unit_price in your products table to match VetSpire's stored cost.`)) return;
+  if (!confirm(`Sync ${visible.length} products from VetSpire to MedSync?\n\nThis will update unit_cost in your products table to match VetSpire's unit cost.`)) return;
 
   const btn = document.getElementById('vs-syncall-btn');
   btn.disabled = true;
@@ -2231,10 +2222,10 @@ async function syncAllVetspire() {
       const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${r.product_id}`, {
         method: 'PATCH',
         headers: { ...H, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ unit_price: r.vetspire_cost }),
+        body: JSON.stringify({ unit_cost: r.vetspire_cost }),
       });
       if (res.ok) {
-        r.unit_price = r.vetspire_cost;
+        r.unit_cost = r.vetspire_cost;
         r.diff = 0;
         _vsSyncedCount++;
       }
