@@ -273,6 +273,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       </select>
       <button class="toggle-chip" id="chip-flagged" onclick="toggleFlaggedOnly()">Flagged only</button>
       <button class="toggle-chip" id="chip-flag-all" onclick="flagAllVisible()" style="border-color:var(--gold);color:var(--amber);">Flag All Visible</button>
+      <button class="toggle-chip" id="chip-save-all-costs" onclick="saveAllVisibleCosts()" style="border-color:var(--purple);color:var(--purple);">Save All Costs</button>
       <span class="comp-count" id="comp-count"></span>
     </div>
 
@@ -1554,6 +1555,44 @@ async function flagAllVisible() {
   btn.textContent = 'Flag All Visible';
   btn.style.pointerEvents = '';
   showToast(`✓ ${done} item${done === 1 ? '' : 's'} sent to Audit Queue`);
+}
+
+async function saveAllVisibleCosts() {
+  const rows = getCompFiltered().filter(d => d.vc_latest != null && d.product_id);
+  if (!rows.length) { showToast('No rows with Vetcove costs to save'); return; }
+
+  const btn = document.getElementById('chip-save-all-costs');
+  btn.style.pointerEvents = 'none';
+
+  let done = 0, failed = 0, vsOk = 0;
+  btn.textContent = `Saving 0/${rows.length}…`;
+
+  for (const d of rows) {
+    try {
+      const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+        body: JSON.stringify({
+          product_id: d.product_id,
+          vetspire_product_id: d.vetspire_product_id || undefined,
+          unit_cost: d.vc_latest,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        done++;
+        if (json.vetspire_synced) vsOk++;
+        d.ms_price = d.vc_latest;
+        d.vetspire_cost = d.vc_latest;
+      } else { failed++; }
+    } catch { failed++; }
+    btn.textContent = `Saving ${done + failed}/${rows.length}…`;
+  }
+
+  renderComp();
+  btn.textContent = 'Save All Costs';
+  btn.style.pointerEvents = '';
+  showToast(`✓ ${done} costs saved (${vsOk} synced to VetSpire)${failed ? ` · ${failed} failed` : ''}`, 5000);
 }
 
 // ═══════════════════════════════════════════════════════
