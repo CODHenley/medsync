@@ -235,13 +235,6 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleInvoiceUpload(this)">
     <span id="csv-filename" style="display:none;"></span>
     <button id="clear-invoice-btn" onclick="clearInvoice()" style="display:none;background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;color:var(--mist);cursor:pointer;" title="Clear and upload a new file">✕ Clear</button>
-    <span style="width:1px;height:24px;background:var(--border);display:inline-block;margin:0 4px;flex-shrink:0;"></span>
-    <label class="upload-btn" for="comp-vs-upload" id="comp-vs-upload-btn" style="background:#3a5a8a;" title="Load VetSpire mass products CSV for accurate per-unit cost comparison">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
-      VetSpire Prices CSV
-    </label>
-    <input type="file" id="comp-vs-upload" accept=".csv" style="display:none" onchange="handleCompVsCSV(this)">
-    <span id="comp-vs-status" style="font-size:12px;color:var(--amber);font-weight:600;">⚠ Load VetSpire CSV to see unit costs</span>
     <span id="comp-loading" style="display:none;font-size:12px;color:var(--mist);">Matching products…</span>
   </div>
 
@@ -301,15 +294,16 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <table class="comp-tbl">
         <thead>
           <tr>
-            <th data-col="ms_name" style="width:28%">Product <span class="sarr">↕</span></th>
+            <th data-col="ms_name" style="width:26%">Product <span class="sarr">↕</span></th>
             <th data-col="ms_price">Unit Cost (MedSync) <span class="sarr">↕</span></th>
+            <th data-col="vetspire_cost" title="Current unit cost in VetSpire (from daily sync or CSV)">VetSpire Cost <span class="sarr">↕</span></th>
             <th data-col="vc_latest">Unit Cost (Vetcove) <span class="sarr">↕</span></th>
             <th>Package (Vetcove)</th>
             <th data-col="drift_pct" class="sorted">Drift <span class="sarr">↓</span></th>
             <th data-col="vc_orders">Orders <span class="sarr">↕</span></th>
             <th>Match</th>
             <th>Supplier SKU</th>
-            <th>Flag for Audit</th>
+            <th>Flag / Save Cost</th>
           </tr>
         </thead>
         <tbody id="comp-tbody"></tbody>
@@ -764,10 +758,11 @@ function matchProducts(vetcoveItems, msProducts) {
     if (!v) return;
 
     const vsId = ms.vetspire_product_id ? String(ms.vetspire_product_id).trim() : null;
-    // Unit cost comes ONLY from the VetSpire CSV — the DB value is stale and must not be used
+    // Unit cost: VetSpire CSV if loaded (VetSpire Prices tab), otherwise daily-synced DB value
     const vsPurchaseCost = vsId ? (_vsCostMap.get(vsId) ?? null) : null;
+    const msPrice = vsPurchaseCost ?? (ms.unit_cost != null ? parseFloat(ms.unit_cost) : null);
+    if (msPrice == null) return; // no cost data at all — skip
     {
-      const msPrice = vsPurchaseCost; // null when VetSpire CSV not loaded — shown as "—"
       let vcPrice = v.latest_price; // already per-dose after aggregation
       let inferredUnits = null;
       let basisNote = null;
@@ -793,6 +788,7 @@ function matchProducts(vetcoveItems, msProducts) {
       results.push({
         ms_name: ms.name,
         ms_price: msPrice,
+        vetspire_cost: vsPurchaseCost, // current VetSpire unit cost (null if not loaded)
         vc_name: v.name,
         vc_latest: vcPrice,          // per-unit comparison price (normalized)
         vc_raw_price: v.latest_price, // original invoice price before normalization
@@ -1184,6 +1180,43 @@ async function saveSupplierSKU(productId, msName, sku, btn) {
   }
 }
 
+async function saveCostToVetspire(btn) {
+  const productId = btn.dataset.pid;
+  const vetspireProductId = btn.dataset.vspid || null;
+  const cost = parseFloat(btn.dataset.cost);
+  const name = btn.dataset.name;
+  if (isNaN(cost)) { showToast('No Vetcove cost available', 3000); return; }
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ product_id: productId, vetspire_product_id: vetspireProductId || undefined, unit_cost: cost }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    // Update MedSync cost cell and VetSpire cost cell in the row
+    const row = btn.closest('tr');
+    if (row) {
+      const msCostCell = row.querySelector('td.cprice:first-of-type');
+      if (msCostCell) msCostCell.textContent = '$' + fmt2(cost);
+      const vsCostCell = row.querySelector('.vs-cost-cell');
+      if (vsCostCell) vsCostCell.textContent = '$' + fmt2(cost);
+    }
+    // Update _compRows
+    const compRow = _compRows.find(r => r.ms_name === name);
+    if (compRow) { compRow.ms_price = cost; compRow.vetspire_cost = cost; }
+    btn.textContent = json.vetspire_synced ? '✓ Saved to VetSpire' : '✓ Saved (MedSync only)';
+    if (json.vetspire_error) showToast('MedSync updated. VetSpire: ' + json.vetspire_error, 6000);
+    else showToast(`Cost $${fmt2(cost)} saved for ${name}${json.vetspire_synced ? ' → VetSpire synced' : ''}`, 4000);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = `Save Cost ($${fmt2(cost)})`;
+    showToast('Failed to save cost: ' + err.message, 5000);
+  }
+}
+
 async function handleInvoiceUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1341,9 +1374,11 @@ function renderComp() {
       pkgCell = `<span style="font-variant-numeric:tabular-nums;">$${fmt2(d.vc_pkg_price)}</span>`;
     }
 
+    const vsDisplayCost = d.vetspire_cost != null ? `$${fmt2(d.vetspire_cost)}` : '<span style="color:var(--mist)">—</span>';
     return `<tr>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
       <td class="cprice">$${fmt2(d.ms_price)}</td>
+      <td class="cprice vs-cost-cell" style="white-space:nowrap;">${vsDisplayCost}</td>
       <td class="cprice" style="white-space:nowrap;">
         <span class="vc-unit-price">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}</span>
         ${d.vc_raw_price && d.vc_raw_price !== d.vc_latest ? `
@@ -1361,9 +1396,16 @@ function renderComp() {
       <td style="color:var(--mist)">${d.vc_orders || 0}</td>
       <td>${mb}</td>
       <td style="white-space:nowrap;">${renderSkuCell(d)}</td>
-      <td><button class="btn-flag-comp${isFlagged?' flagged':''}" data-name="${esc(d.ms_name)}"
-        data-ms="${d.ms_price}" data-vc="${d.vc_latest}" data-drift="${d.drift_pct}"
-        data-vspid="${d.vetspire_product_id || ''}" data-sku="${d.sku || ''}">${isFlagged ? '✓ Flagged' : 'Flag for Audit'}</button></td>
+      <td style="white-space:nowrap;min-width:120px;">
+        <button class="btn-flag-comp${isFlagged?' flagged':''}" data-name="${esc(d.ms_name)}"
+          data-ms="${d.ms_price}" data-vc="${d.vc_latest}" data-drift="${d.drift_pct}"
+          data-vspid="${d.vetspire_product_id || ''}" data-sku="${d.sku || ''}">${isFlagged ? '✓ Flagged' : 'Flag for Audit'}</button>
+        ${d.vc_latest != null && d.product_id ? `<button class="btn-save-cost vs-sync-btn"
+          style="margin-top:4px;display:block;font-size:11px;padding:3px 8px;width:100%;"
+          data-pid="${esc(d.product_id)}" data-vspid="${esc(d.vetspire_product_id || '')}"
+          data-cost="${d.vc_latest}" data-name="${esc(d.ms_name)}"
+          onclick="saveCostToVetspire(this)">Save Cost ($${fmt2(d.vc_latest)})</button>` : ''}
+      </td>
     </tr>`;
   }).join('');
 
