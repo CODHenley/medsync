@@ -758,10 +758,10 @@ function matchProducts(vetcoveItems, msProducts) {
     if (!v) return;
 
     const vsId = ms.vetspire_product_id ? String(ms.vetspire_product_id).trim() : null;
-    // Unit cost: VetSpire CSV if loaded (VetSpire Prices tab), otherwise daily-synced DB value
+    // Unit cost: VetSpire CSV if loaded, otherwise daily-synced DB value
     const vsPurchaseCost = vsId ? (_vsCostMap.get(vsId) ?? null) : null;
-    const msPrice = vsPurchaseCost ?? (ms.unit_cost != null ? parseFloat(ms.unit_cost) : null);
-    if (msPrice == null) return; // no cost data at all — skip
+    const dbCost = ms.unit_cost != null ? parseFloat(ms.unit_cost) : null;
+    const msPrice = vsPurchaseCost ?? dbCost; // null = not yet synced; row still shows with "—"
     {
       let vcPrice = v.latest_price; // already per-dose after aggregation
       let inferredUnits = null;
@@ -769,7 +769,7 @@ function matchProducts(vetcoveItems, msProducts) {
 
       // Use VetSpire buying quantity if available for precise per-unit normalization
       const knownBuyQty = vsId ? (_vsBuyQtyMap.get(vsId) || null) : null;
-      if (knownBuyQty != null && knownBuyQty > 1 && vcPrice && vcPrice > msPrice * 1.5) {
+      if (knownBuyQty != null && knownBuyQty > 1 && vcPrice && msPrice && vcPrice > msPrice * 1.5) {
         inferredUnits = knownBuyQty;
         vcPrice = vcPrice / knownBuyQty;
         basisNote = `pkg÷${knownBuyQty}`;
@@ -784,7 +784,7 @@ function matchProducts(vetcoveItems, msProducts) {
         }
       }
 
-      const drift = (vcPrice && msPrice) ? Math.round((vcPrice - msPrice) / msPrice * 10000) / 100 : null;
+      const drift = (vcPrice != null && msPrice != null) ? Math.round((vcPrice - msPrice) / msPrice * 10000) / 100 : null;
       results.push({
         ms_name: ms.name,
         ms_price: msPrice,
@@ -1377,7 +1377,7 @@ function renderComp() {
     const vsDisplayCost = d.vetspire_cost != null ? `$${fmt2(d.vetspire_cost)}` : '<span style="color:var(--mist)">—</span>';
     return `<tr>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
-      <td class="cprice">$${fmt2(d.ms_price)}</td>
+      <td class="cprice">${d.ms_price != null ? '$' + fmt2(d.ms_price) : '<span style="color:var(--mist)">—</span>'}</td>
       <td class="cprice vs-cost-cell" style="white-space:nowrap;">${vsDisplayCost}</td>
       <td class="cprice" style="white-space:nowrap;">
         <span class="vc-unit-price">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}</span>
