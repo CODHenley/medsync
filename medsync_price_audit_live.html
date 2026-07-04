@@ -540,6 +540,7 @@ let _msProducts = null; // fetched from Supabase
 let _vcRawItems = [];   // raw aggregated Vetcove items — stored so comparison can re-run after VetSpire CSV loads
 let _compRows = [];     // matched rows
 let _compFlagged = new Set();
+let _selectedCosts = new Set(); // ms_name values checked for batch cost save
 let _compHideMismatch = true;
 let _compFlaggedOnly = false;
 let _compSortCol = 'drift_pct';
@@ -1389,7 +1390,7 @@ function renderComp() {
     const canSave = d.vc_latest != null && d.product_id;
     return `<tr>
       <td style="text-align:center;padding:0 4px;">
-        ${canSave ? `<input type="checkbox" class="row-cost-chk" data-name="${esc(d.ms_name)}" onchange="onRowCostChk()" style="cursor:pointer;width:15px;height:15px;">` : ''}
+        ${canSave ? `<input type="checkbox" class="row-cost-chk" data-name="${esc(d.ms_name)}" onchange="onRowCostChk(this)" style="cursor:pointer;width:15px;height:15px;"${_selectedCosts.has(d.ms_name) ? ' checked' : ''}>` : ''}
       </td>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
       <td class="cprice">${d.ms_price != null ? '$' + fmt2(d.ms_price) : '<span style="color:var(--mist)">—</span>'}</td>
@@ -1428,10 +1429,8 @@ function renderComp() {
     btn.addEventListener('click', () => flagForAudit(btn));
   });
 
-  // Reset select-all state after re-render (checkboxes are new DOM nodes)
-  const selAll = document.getElementById('chk-select-all');
-  if (selAll) { selAll.checked = false; selAll.indeterminate = false; }
-  document.getElementById('cost-selection-bar').style.display = 'none';
+  // Sync selection bar after re-render (new DOM nodes need state applied from Set)
+  updateSelectionBar();
 
   // Live recalc when user edits units/pkg
   tbody.querySelectorAll('.units-override').forEach(inp => {
@@ -1576,35 +1575,44 @@ async function flagAllVisible() {
   showToast(`✓ ${done} item${done === 1 ? '' : 's'} sent to Audit Queue`);
 }
 
-function getCheckedNames() {
-  return Array.from(document.querySelectorAll('.row-cost-chk:checked')).map(c => c.dataset.name);
-}
-
-function onRowCostChk() {
-  const all = document.querySelectorAll('.row-cost-chk');
-  const checked = document.querySelectorAll('.row-cost-chk:checked');
+function updateSelectionBar() {
+  const visibleSaveable = getCompFiltered().filter(d => d.vc_latest != null && d.product_id);
+  const n = _selectedCosts.size;
+  const total = visibleSaveable.length;
   const bar = document.getElementById('cost-selection-bar');
   const selAll = document.getElementById('chk-select-all');
-  document.getElementById('cost-sel-count').textContent = checked.length;
-  bar.style.display = checked.length ? 'flex' : 'none';
-  selAll.indeterminate = checked.length > 0 && checked.length < all.length;
-  selAll.checked = all.length > 0 && checked.length === all.length;
+  document.getElementById('cost-sel-count').textContent = n;
+  bar.style.display = n > 0 ? 'flex' : 'none';
+  if (selAll) {
+    selAll.checked = total > 0 && n >= total;
+    selAll.indeterminate = n > 0 && n < total;
+  }
+  // Sync DOM checkboxes to Set state
+  document.querySelectorAll('.row-cost-chk').forEach(c => {
+    c.checked = _selectedCosts.has(c.dataset.name);
+  });
+}
+
+function onRowCostChk(chk) {
+  if (chk.checked) _selectedCosts.add(chk.dataset.name);
+  else _selectedCosts.delete(chk.dataset.name);
+  updateSelectionBar();
 }
 
 function toggleSelectAll(checked) {
-  document.querySelectorAll('.row-cost-chk').forEach(c => { c.checked = checked; });
-  onRowCostChk();
+  const visibleSaveable = getCompFiltered().filter(d => d.vc_latest != null && d.product_id);
+  if (checked) visibleSaveable.forEach(d => _selectedCosts.add(d.ms_name));
+  else visibleSaveable.forEach(d => _selectedCosts.delete(d.ms_name));
+  updateSelectionBar();
 }
 
 function clearCostSelection() {
-  document.querySelectorAll('.row-cost-chk').forEach(c => { c.checked = false; });
-  document.getElementById('chk-select-all').checked = false;
-  document.getElementById('chk-select-all').indeterminate = false;
-  document.getElementById('cost-selection-bar').style.display = 'none';
+  _selectedCosts.clear();
+  updateSelectionBar();
 }
 
 async function saveSelectedCosts() {
-  const names = new Set(getCheckedNames());
+  const names = _selectedCosts;
   if (!names.size) return;
   const rows = getCompFiltered().filter(d => names.has(d.ms_name) && d.vc_latest != null && d.product_id);
   if (!rows.length) return;
