@@ -273,7 +273,6 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       </select>
       <button class="toggle-chip" id="chip-flagged" onclick="toggleFlaggedOnly()">Flagged only</button>
       <button class="toggle-chip" id="chip-flag-all" onclick="flagAllVisible()" style="border-color:var(--gold);color:var(--amber);">Flag All Visible</button>
-      <button class="toggle-chip" id="chip-save-all-costs" onclick="saveAllVisibleCosts()" style="border-color:var(--purple);color:var(--purple);">Save All Costs</button>
       <span class="comp-count" id="comp-count"></span>
     </div>
 
@@ -290,11 +289,22 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <strong id="comp-mismatch-count">0 items</strong> could not be normalized — no <em>Cost per Dose</em> or <em>Units</em> count in the CSV. Package price shown as-is; verify manually before flagging.
     </div>
 
+    <!-- Selection action bar (shown when rows are checked) -->
+    <div id="cost-selection-bar" style="display:none;align-items:center;gap:12px;padding:8px 16px;background:var(--purple);color:#fff;border-radius:6px;margin:8px 0;font-size:13px;">
+      <span id="cost-sel-count" style="font-weight:600;"></span>
+      <span style="opacity:.7;">rows selected</span>
+      <button onclick="saveSelectedCosts()" style="margin-left:auto;background:#fff;color:var(--purple);border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;" id="btn-save-selected">Save Selected Costs</button>
+      <button onclick="clearCostSelection()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer;">✕ Clear</button>
+    </div>
+
     <!-- Table -->
     <div class="comp-table-wrap">
       <table class="comp-tbl">
         <thead>
           <tr>
+            <th style="width:32px;text-align:center;padding:0 4px;">
+              <input type="checkbox" id="chk-select-all" title="Select all visible" onchange="toggleSelectAll(this.checked)" style="cursor:pointer;width:15px;height:15px;">
+            </th>
             <th data-col="ms_name" style="width:26%">Product <span class="sarr">↕</span></th>
             <th data-col="ms_price">Unit Cost (MedSync) <span class="sarr">↕</span></th>
             <th data-col="vetspire_cost" title="Current unit cost in VetSpire (from daily sync or CSV)">VetSpire Cost <span class="sarr">↕</span></th>
@@ -1376,7 +1386,11 @@ function renderComp() {
     }
 
     const vsDisplayCost = d.vetspire_cost != null ? `$${fmt2(d.vetspire_cost)}` : '<span style="color:var(--mist)">—</span>';
+    const canSave = d.vc_latest != null && d.product_id;
     return `<tr>
+      <td style="text-align:center;padding:0 4px;">
+        ${canSave ? `<input type="checkbox" class="row-cost-chk" data-name="${esc(d.ms_name)}" onchange="onRowCostChk()" style="cursor:pointer;width:15px;height:15px;">` : ''}
+      </td>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
       <td class="cprice">${d.ms_price != null ? '$' + fmt2(d.ms_price) : '<span style="color:var(--mist)">—</span>'}</td>
       <td class="cprice vs-cost-cell" style="white-space:nowrap;">${vsDisplayCost}</td>
@@ -1413,6 +1427,11 @@ function renderComp() {
   tbody.querySelectorAll('.btn-flag-comp').forEach(btn => {
     btn.addEventListener('click', () => flagForAudit(btn));
   });
+
+  // Reset select-all state after re-render (checkboxes are new DOM nodes)
+  const selAll = document.getElementById('chk-select-all');
+  if (selAll) { selAll.checked = false; selAll.indeterminate = false; }
+  document.getElementById('cost-selection-bar').style.display = 'none';
 
   // Live recalc when user edits units/pkg
   tbody.querySelectorAll('.units-override').forEach(inp => {
@@ -1557,41 +1576,60 @@ async function flagAllVisible() {
   showToast(`✓ ${done} item${done === 1 ? '' : 's'} sent to Audit Queue`);
 }
 
-async function saveAllVisibleCosts() {
-  const rows = getCompFiltered().filter(d => d.vc_latest != null && d.product_id);
-  if (!rows.length) { showToast('No rows with Vetcove costs to save'); return; }
+function getCheckedNames() {
+  return Array.from(document.querySelectorAll('.row-cost-chk:checked')).map(c => c.dataset.name);
+}
 
-  const btn = document.getElementById('chip-save-all-costs');
-  btn.style.pointerEvents = 'none';
+function onRowCostChk() {
+  const all = document.querySelectorAll('.row-cost-chk');
+  const checked = document.querySelectorAll('.row-cost-chk:checked');
+  const bar = document.getElementById('cost-selection-bar');
+  const selAll = document.getElementById('chk-select-all');
+  document.getElementById('cost-sel-count').textContent = checked.length;
+  bar.style.display = checked.length ? 'flex' : 'none';
+  selAll.indeterminate = checked.length > 0 && checked.length < all.length;
+  selAll.checked = all.length > 0 && checked.length === all.length;
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.row-cost-chk').forEach(c => { c.checked = checked; });
+  onRowCostChk();
+}
+
+function clearCostSelection() {
+  document.querySelectorAll('.row-cost-chk').forEach(c => { c.checked = false; });
+  document.getElementById('chk-select-all').checked = false;
+  document.getElementById('chk-select-all').indeterminate = false;
+  document.getElementById('cost-selection-bar').style.display = 'none';
+}
+
+async function saveSelectedCosts() {
+  const names = new Set(getCheckedNames());
+  if (!names.size) return;
+  const rows = getCompFiltered().filter(d => names.has(d.ms_name) && d.vc_latest != null && d.product_id);
+  if (!rows.length) return;
+
+  const btn = document.getElementById('btn-save-selected');
+  btn.textContent = `Saving 0/${rows.length}…`;
+  btn.disabled = true;
 
   let done = 0, failed = 0, vsOk = 0;
-  btn.textContent = `Saving 0/${rows.length}…`;
-
   for (const d of rows) {
     try {
       const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
-        body: JSON.stringify({
-          product_id: d.product_id,
-          vetspire_product_id: d.vetspire_product_id || undefined,
-          unit_cost: d.vc_latest,
-        }),
+        body: JSON.stringify({ product_id: d.product_id, vetspire_product_id: d.vetspire_product_id || undefined, unit_cost: d.vc_latest }),
       });
       const json = await res.json();
-      if (res.ok && json.ok) {
-        done++;
-        if (json.vetspire_synced) vsOk++;
-        d.ms_price = d.vc_latest;
-        d.vetspire_cost = d.vc_latest;
-      } else { failed++; }
+      if (res.ok && json.ok) { done++; if (json.vetspire_synced) vsOk++; d.ms_price = d.vc_latest; d.vetspire_cost = d.vc_latest; }
+      else failed++;
     } catch { failed++; }
     btn.textContent = `Saving ${done + failed}/${rows.length}…`;
   }
 
+  clearCostSelection();
   renderComp();
-  btn.textContent = 'Save All Costs';
-  btn.style.pointerEvents = '';
   showToast(`✓ ${done} costs saved (${vsOk} synced to VetSpire)${failed ? ` · ${failed} failed` : ''}`, 5000);
 }
 
