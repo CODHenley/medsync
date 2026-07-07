@@ -10,15 +10,13 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { product_id, vetspire_product_id, unit_cost } = await req.json()
+    const { product_id, vetspire_product_id, unit_cost, sku } = await req.json()
 
-    if (!product_id || unit_cost == null) {
-      return new Response(JSON.stringify({ error: 'product_id and unit_cost are required' }), { status: 400, headers: CORS })
+    if (!product_id) {
+      return new Response(JSON.stringify({ error: 'product_id is required' }), { status: 400, headers: CORS })
     }
-
-    const cost = parseFloat(unit_cost)
-    if (isNaN(cost) || cost < 0) {
-      return new Response(JSON.stringify({ error: 'unit_cost must be a non-negative number' }), { status: 400, headers: CORS })
+    if (unit_cost == null && sku == null) {
+      return new Response(JSON.stringify({ error: 'unit_cost or sku is required' }), { status: 400, headers: CORS })
     }
 
     const supabase = createClient(
@@ -26,19 +24,35 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // 1. Update unit_cost in Supabase
+    // Build the update payload — only include fields that were provided
+    const update: Record<string, unknown> = {}
+
+    if (unit_cost != null) {
+      const cost = parseFloat(unit_cost)
+      if (isNaN(cost) || cost < 0) {
+        return new Response(JSON.stringify({ error: 'unit_cost must be a non-negative number' }), { status: 400, headers: CORS })
+      }
+      update.unit_cost = cost
+    }
+
+    if (sku != null) {
+      update.sku = String(sku).trim() || null
+    }
+
+    // 1. Update products table in Supabase
     const { error: dbErr } = await supabase
       .from('products')
-      .update({ unit_cost: cost })
+      .update(update)
       .eq('id', product_id)
 
     if (dbErr) throw new Error('Supabase update failed: ' + dbErr.message)
 
-    // 2. Push to VetSpire if we have a product ID
+    // 2. Push cost to VetSpire if we have a vetspire_product_id and a cost
     let vetspireSynced = false
     let vetspireError: string | null = null
 
-    if (vetspire_product_id) {
+    if (unit_cost != null && vetspire_product_id) {
+      const cost = update.unit_cost as number
       const token = Deno.env.get('Medsync_API_Key')
       if (!token) {
         vetspireError = 'Medsync_API_Key secret not set'
@@ -80,7 +94,8 @@ Deno.serve(async (req: Request) => {
       ok: true,
       product_id,
       vetspire_product_id: vetspire_product_id || null,
-      unit_cost: cost,
+      unit_cost: update.unit_cost ?? null,
+      sku: update.sku ?? null,
       vetspire_synced: vetspireSynced,
       vetspire_error: vetspireError,
     }), { headers: CORS })

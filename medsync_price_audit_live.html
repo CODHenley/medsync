@@ -1172,13 +1172,13 @@ async function saveSupplierSKU(productId, msName, sku, btn) {
   btn.disabled = true;
   btn.textContent = 'Saving…';
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${productId}`, {
-      method: 'PATCH',
-      headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ sku }),
+    const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ product_id: productId, sku }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // Update local state so the cell re-renders as "saved"
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
     const row = _compRows.find(r => r.ms_name === msName);
     if (row) row.sku = sku;
     btn.textContent = '✓ Saved';
@@ -1621,12 +1621,13 @@ async function saveSelected(mode) {
         if (res.ok && json.ok) { done++; if (json.vetspire_synced) vsOk++; d.ms_price = d.vc_latest; d.vetspire_cost = d.vc_latest; }
         else failed++;
       } else if (mode === 'skus' && d.supplier_sku && d.product_id) {
-        const res = await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${d.product_id}`, {
-          method: 'PATCH',
-          headers: { ...H, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ sku: d.supplier_sku }),
+        const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+          body: JSON.stringify({ product_id: d.product_id, sku: d.supplier_sku }),
         });
-        if (res.ok) { done++; d.sku = d.supplier_sku; }
+        const json = await res.json();
+        if (res.ok && json.ok) { done++; d.sku = d.supplier_sku; }
         else failed++;
       } else { failed++; }
     } catch { failed++; }
