@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 """
 products_sync.py
-Sync all Scout product catalog entries from Vetspire into the Supabase
-products table, enriching each row with NDC, manufacturer, vendor, and
-unit price so that the Lot Lifecycle SKU scanner can look up products by NDC.
+Sync the Scout product catalog from Vetspire into Supabase, with full
+per-location enabled/disabled tracking.
 
-Runs across all four Scout locations and deduplicates by Vetspire product ID
-so each product is only upserted once.
+For each Scout location:
+  1. Pulls every product enabled at that location (onlyTrackInventory=true,
+     onlyEnabledAt=<locationId>) from Vetspire.
+  2. Upserts each product into the products table (keyed on vetspire_product_id).
+  3. Upserts (product_id, location_id, enabled=true) into product_locations.
+  4. After all locations sync: any product_locations row whose location_id was
+     in scope but whose vetspire_product_id was NOT seen in this run is flipped
+     to enabled=false — mirroring deactivations in Vetspire automatically.
 
+Runs daily at 7:30am CT via GitHub Actions (products_sync.yml).
 Usage:
     python3 products_sync.py
     (reads VETSPIRE_API_TOKEN env var, or ~/.vetspire_token)
 """
 import sys, json, os, urllib.request, urllib.parse
-from datetime import date
+from datetime import date, timezone, datetime
 
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN = "https://scoutcare.vetspire.com"
@@ -59,12 +65,17 @@ def supa_req(method, path, body=None, prefer="return=minimal"):
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.status, r.read()
 
-# ── Vetspire products query ───────────────────────────────────────────────────
-# Fetch products enabled at a given location, paginated 100 at a time.
-# Fields probed and confirmed via vetspire_introspect.py:
-#   id, name, sku, unitCost, manufacturer, ndc, isControlled, deaSchedule
-# If ndc/manufacturer aren't available the server returns null — handled below.
+def supa_get(path):
+    headers = {
+        "apikey": SUPA_KEY,
+        "Authorization": f"Bearer {SUPA_KEY}",
+        "Accept": "application/json",
+    }
+    req = urllib.request.Request(SUPA_URL + path, headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read())
 
+# ── Vetspire products query ───────────────────────────────────────────────────
 PRODUCTS_QUERY = """
 query($locationId: ID!, $limit: Int, $offset: Int) {
   products(
@@ -85,27 +96,6 @@ query($locationId: ID!, $limit: Int, $offset: Int) {
 }
 """
 
-def fetch_products_for_location(location_id):
-    all_products = []
-    offset = 0
-    while True:
-        result = gql(PRODUCTS_QUERY, {"locationId": location_id, "limit": 100, "offset": offset})
-        if "errors" in result:
-            err = result["errors"][0].get("message", str(result["errors"]))
-            # If ndc/manufacturer fields don't exist, retry without them
-            if "ndc" in err or "manufacturer" in err or "Cannot query" in err:
-                return fetch_products_for_location_minimal(location_id)
-            print(f"  GraphQL error for location {location_id}: {err}")
-            break
-        page = (result.get("data") or {}).get("products") or []
-        if not page:
-            break
-        all_products.extend(page)
-        if len(page) < 100:
-            break
-        offset += 100
-    return all_products
-
 PRODUCTS_QUERY_MINIMAL = """
 query($locationId: ID!, $limit: Int, $offset: Int) {
   products(
@@ -121,6 +111,26 @@ query($locationId: ID!, $limit: Int, $offset: Int) {
   }
 }
 """
+
+def fetch_products_for_location(location_id):
+    all_products = []
+    offset = 0
+    while True:
+        result = gql(PRODUCTS_QUERY, {"locationId": location_id, "limit": 100, "offset": offset})
+        if "errors" in result:
+            err = result["errors"][0].get("message", str(result["errors"]))
+            if "ndc" in err or "manufacturer" in err or "Cannot query" in err:
+                return fetch_products_for_location_minimal(location_id)
+            print(f"  GraphQL error for location {location_id}: {err}")
+            break
+        page = (result.get("data") or {}).get("products") or []
+        if not page:
+            break
+        all_products.extend(page)
+        if len(page) < 100:
+            break
+        offset += 100
+    return all_products
 
 def fetch_products_for_location_minimal(location_id):
     all_products = []
@@ -139,62 +149,56 @@ def fetch_products_for_location_minimal(location_id):
         offset += 100
     return all_products
 
-# ── Pull products across all locations, dedup by Vetspire ID ─────────────────
+# ── Pull products per location, keeping per-location membership ───────────────
 print(f"\n=== Products Sync — {date.today()} ===")
 
-seen_ids = set()
-all_products = []
+# location_id → set of vetspire_product_ids enabled there this run
+location_enabled: dict[str, set[str]] = {}
+
+# vetspire_product_id → product dict (deduplicated for the products table upsert)
+vs_id_to_product: dict[str, dict] = {}
 
 for loc_id in LOCATION_IDS:
     print(f"  Fetching products for location {loc_id}…")
     products = fetch_products_for_location(loc_id)
+    enabled_ids: set[str] = set()
     new_count = 0
     for p in products:
-        pid = str(p.get("id") or "")
-        if pid and pid not in seen_ids:
-            seen_ids.add(pid)
-            all_products.append(p)
+        vid = str(p.get("id") or "")
+        if not vid:
+            continue
+        enabled_ids.add(vid)
+        if vid not in vs_id_to_product:
+            vs_id_to_product[vid] = p
             new_count += 1
-    print(f"    {len(products)} products returned, {new_count} new unique")
+    location_enabled[loc_id] = enabled_ids
+    print(f"    {len(products)} products enabled, {new_count} new unique this location")
 
-print(f"\nTotal unique products: {len(all_products)}")
+total_unique = len(vs_id_to_product)
+print(f"\nTotal unique products across all locations: {total_unique}")
 
-if not all_products:
+if not vs_id_to_product:
     print("No products found — exiting.")
     sys.exit(0)
 
-# ── Preview ───────────────────────────────────────────────────────────────────
-has_ndc = sum(1 for p in all_products if p.get("ndc"))
-print(f"  {has_ndc} have NDC populated ({len(all_products) - has_ndc} without)")
+# ── Upsert products table (keyed on vetspire_product_id) ─────────────────────
+print("\nUpserting products table…")
 
-print(f"\n{'Name':<45} {'NDC':<15} {'SKU':<12} {'Manufacturer'}")
-print("-" * 100)
-for p in sorted(all_products, key=lambda x: x.get("name") or "")[:30]:
-    print(f"  {(p.get('name') or '')[:43]:<43}  {(p.get('ndc') or ''):<15} {(p.get('sku') or ''):<12}  {(p.get('manufacturer') or {}).get('name') or ''}")
-if len(all_products) > 30:
-    print(f"  … and {len(all_products) - 30} more")
-
-# ── Build Supabase upsert records ─────────────────────────────────────────────
+now_iso = datetime.now(timezone.utc).isoformat()
 records = []
-for p in all_products:
+for vid, p in vs_id_to_product.items():
     name = (p.get("name") or "").strip()
     if not name:
         continue
-
     ndc_raw = (p.get("ndc") or "").strip()
-
     records.append({
-        "name":         name,
-        "ndc":          ndc_raw or None,
-        "manufacturer": ((p.get("manufacturer") or {}).get("name") or "").strip() or None,
-        "unit_cost":    p.get("unitCost") or None,
+        "name":                name,
+        "vetspire_product_id": vid,
+        "sku":                 (p.get("sku") or "").strip() or None,
+        "unit_cost":           p.get("unitCost") or None,
+        "ndc":                 ndc_raw or None,
+        "manufacturer":        ((p.get("manufacturer") or {}).get("name") or "").strip() or None,
     })
-
-print(f"\n{len(records)} records to upsert into Supabase products table")
-
-# ── Upsert into Supabase (on conflict on vetspire_id, update all fields) ──────
-# Uses Prefer: resolution=merge-duplicates with on_conflict=vetspire_id
-# Falls back to name-based upsert if vetspire_id column doesn't exist yet.
 
 upserted = 0
 failed   = 0
@@ -205,7 +209,7 @@ for i in range(0, len(records), BATCH):
     try:
         status, body = supa_req(
             "POST",
-            "/rest/v1/products?on_conflict=name",
+            "/rest/v1/products?on_conflict=vetspire_product_id",
             batch,
             prefer="resolution=merge-duplicates,return=minimal",
         )
@@ -219,5 +223,130 @@ for i in range(0, len(records), BATCH):
         print(f"  Batch {i//BATCH + 1}: ✗ {e}")
         failed += len(batch)
 
-print(f"\n=== Done — {upserted} upserted, {failed} failed ===")
-print("NDCs are now available for the Lot Lifecycle SKU scanner.")
+print(f"  Products upserted: {upserted}, failed: {failed}")
+
+# ── Fetch product_id (uuid) for every vetspire_product_id we just upserted ───
+print("\nFetching product UUIDs from Supabase…")
+
+vs_id_to_uuid: dict[str, str] = {}
+page_size = 500
+offset = 0
+while True:
+    rows = supa_get(
+        f"/rest/v1/products"
+        f"?select=id,vetspire_product_id"
+        f"&vetspire_product_id=not.is.null"
+        f"&limit={page_size}&offset={offset}"
+    )
+    if not rows:
+        break
+    for row in rows:
+        vid = row.get("vetspire_product_id")
+        uid = row.get("id")
+        if vid and uid:
+            vs_id_to_uuid[str(vid)] = str(uid)
+    if len(rows) < page_size:
+        break
+    offset += page_size
+
+print(f"  {len(vs_id_to_uuid)} products with UUIDs loaded")
+
+# ── Upsert product_locations — mark enabled for this run ─────────────────────
+print("\nUpdating product_locations…")
+
+loc_records = []
+for loc_id, enabled_ids in location_enabled.items():
+    for vid in enabled_ids:
+        uuid = vs_id_to_uuid.get(vid)
+        if not uuid:
+            continue
+        loc_records.append({
+            "product_id":          uuid,
+            "location_id":         loc_id,
+            "vetspire_product_id": vid,
+            "enabled":             True,
+            "synced_at":           now_iso,
+        })
+
+loc_upserted = 0
+loc_failed   = 0
+
+for i in range(0, len(loc_records), BATCH):
+    batch = loc_records[i:i+BATCH]
+    try:
+        status, body = supa_req(
+            "POST",
+            "/rest/v1/product_locations?on_conflict=product_id,location_id",
+            batch,
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
+        loc_upserted += len(batch)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"  product_locations batch ✗ HTTP {e.code} — {body[:300]}")
+        loc_failed += len(batch)
+    except Exception as e:
+        print(f"  product_locations batch ✗ {e}")
+        loc_failed += len(batch)
+
+print(f"  product_locations enabled: {loc_upserted}, failed: {loc_failed}")
+
+# ── Disable products no longer seen at each location ─────────────────────────
+# Any row in product_locations for a location in scope whose vetspire_product_id
+# was NOT returned by Vetspire this run → set enabled=false.
+print("\nDisabling products removed from Vetspire…")
+
+disabled_total = 0
+
+for loc_id in LOCATION_IDS:
+    enabled_this_run = location_enabled.get(loc_id, set())
+
+    # Fetch all currently-enabled rows for this location
+    try:
+        existing = supa_get(
+            f"/rest/v1/product_locations"
+            f"?select=product_id,vetspire_product_id"
+            f"&location_id=eq.{loc_id}"
+            f"&enabled=eq.true"
+            f"&limit=2000"
+        )
+    except Exception as e:
+        print(f"  Could not fetch existing rows for location {loc_id}: {e}")
+        continue
+
+    to_disable = [
+        row for row in existing
+        if row.get("vetspire_product_id") not in enabled_this_run
+    ]
+
+    if not to_disable:
+        print(f"  Location {loc_id}: no deactivations")
+        continue
+
+    # Disable in batches by product_id list
+    disable_ids = [row["product_id"] for row in to_disable]
+    for i in range(0, len(disable_ids), BATCH):
+        chunk = disable_ids[i:i+BATCH]
+        id_list = ",".join(chunk)
+        try:
+            status, _ = supa_req(
+                "PATCH",
+                f"/rest/v1/product_locations"
+                f"?location_id=eq.{loc_id}"
+                f"&product_id=in.({id_list})",
+                {"enabled": False, "synced_at": now_iso},
+            )
+            disabled_total += len(chunk)
+        except urllib.error.HTTPError as e:
+            print(f"  Disable batch error HTTP {e.code}: {e.read().decode()[:200]}")
+        except Exception as e:
+            print(f"  Disable batch error: {e}")
+
+    print(f"  Location {loc_id}: {len(to_disable)} product(s) disabled")
+
+print(f"  Total disabled this run: {disabled_total}")
+
+print(f"\n=== Done ===")
+print(f"  {upserted} products upserted")
+print(f"  {loc_upserted} location-product rows synced")
+print(f"  {disabled_total} location-product rows disabled (mirrored from Vetspire)")
