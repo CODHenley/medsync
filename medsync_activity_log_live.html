@@ -547,7 +547,7 @@ async function loadEvents() {
   setLoading(true);
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/activity_log?select=*,users(full_name,role),locations(name)&order=created_at.desc&limit=200',
+      SUPA_URL + '/rest/v1/activity_log?select=*,users(full_name,role,user_profiles(avatar_b64)),locations(name)&order=created_at.desc&limit=200',
       { headers: H }
     );
     const rows = await res.json();
@@ -559,6 +559,7 @@ async function loadEvents() {
       desc:    r.description,
       detail:  r.reference_id || '',
       user:    r.users?.full_name || 'System',
+      avatar:  r.users?.user_profiles?.avatar_b64 || null,
       role:    r.users?.role || 'System',
       loc:     r.locations?.name || (r.location_id ? '—' : 'All locations'),
       ts:      r.created_at,
@@ -746,7 +747,9 @@ function renderTable() {
         <td>${typeBadge}</td>
         <td><div class="ev-desc">${e.desc}</div><div class="ev-meta">${e.detail}</div></td>
         <td><div class="user-chip">
-          <div class="user-dot" style="background:${userColor(e.user)};">${initials(e.user)}</div>
+          ${e.avatar
+            ? `<img src="${e.avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="${e.user}">`
+            : `<div class="user-dot" style="background:${userColor(e.user)};">${initials(e.user)}</div>`}
           <span style="font-size:11px;">${e.user}</span>
         </div></td>
         <td style="font-size:11px;">${e.loc}</td>
