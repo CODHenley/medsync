@@ -207,11 +207,11 @@ def compute_avg_daily(items: list, peak_only: bool) -> dict[str, float]:
 
 def fetch_tracked_products() -> list:
     """
-    Return products table rows that have a vetspire_product_id set.
+    Return only products currently enabled at one or more Scout locations.
     Fields: id, name, vetspire_product_id, qty_min, qty_max
     """
     return supa_get(
-        "/rest/v1/products"
+        "/rest/v1/active_products"
         "?select=id,name,vetspire_product_id,qty_min,qty_max"
         "&vetspire_product_id=not.is.null"
         "&order=name.asc"

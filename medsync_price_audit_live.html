@@ -554,21 +554,21 @@ async function loadMSProducts() {
   let skuCol = 'sku';
   let all = [], page = 0, pageSize = 1000;
   while (true) {
-    const url = `${SUPA_URL}/rest/v1/products?select=id,name,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
+    const url = `${SUPA_URL}/rest/v1/active_products?select=id,name,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=${page * pageSize}`;
     const res = await fetch(url, { headers: H });
     if (!res.ok) {
       if (page === 0 && skuCol === 'sku') {
         // Try uppercase SKU
         skuCol = 'SKU';
         const res2 = await fetch(
-          `${SUPA_URL}/rest/v1/products?select=id,name,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
+          `${SUPA_URL}/rest/v1/active_products?select=id,name,unit_cost,ndc,${skuCol},vetspire_product_id&limit=${pageSize}&offset=0`,
           { headers: H }
         );
         if (!res2.ok) {
           // Fall back to no SKU column
           skuCol = null;
           const res3 = await fetch(
-            `${SUPA_URL}/rest/v1/products?select=id,name,unit_cost,ndc,vetspire_product_id&limit=${pageSize}&offset=0`,
+            `${SUPA_URL}/rest/v1/active_products?select=id,name,unit_cost,ndc,vetspire_product_id&limit=${pageSize}&offset=0`,
             { headers: H }
           );
           if (!res3.ok) throw new Error(`Failed to load products (HTTP ${res3.status}). Check Supabase RLS policies.`);
