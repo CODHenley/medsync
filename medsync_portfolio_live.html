@@ -1567,6 +1567,10 @@ function deepDiveLoc(locCode) {
   <div style="display:flex;align-items:center;gap:10px;">
       <span id="ms-role" style="font-size:10px;padding:3px 10px;border-radius:20px;background:rgba(200,146,42,.25);color:#E8B84B;font-weight:500;">Admin</span>
     <a href="medsync_profile_live.html" title="My Profile" style="text-decoration:none;"><div id="ms-avatar" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;cursor:pointer;overflow:hidden;">MH</div></a>
+    <button id="chat-nav-btn" onclick="toggleMessenger()" title="Messages" style="position:relative;background:none;border:none;cursor:pointer;padding:4px 6px;display:flex;align-items:center;justify-content:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span id="chat-unread-badge" style="display:none;position:absolute;top:0;right:0;background:#E05050;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;"></span>
+    </button>
     <button onclick="signOut()" style="background:none;border:0.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;">Sign out</button>
   </div>
 </nav>
@@ -3517,7 +3521,479 @@ function triggerPrint() {
     '<style>body{margin:0;font-family:-apple-system,sans-serif;}@media print{body{margin:0;}}</style>'+
     '</head><body>'+authScript);
   w.document.write(doc.innerHTML);
-  w.document.write('</body></html>');
+  w.document.write('
+<!-- ═══════════════════════════════════════════════
+     MESSENGER DRAWER
+═══════════════════════════════════════════════ -->
+<style>
+#msg-drawer{position:fixed;top:48px;right:0;bottom:0;width:360px;background:#fff;border-left:1px solid #DDD9EC;z-index:300;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 20px rgba(0,0,0,.1);}
+#msg-drawer.open{transform:translateX(0);}
+.msg-drawer-head{background:#1C2B4A;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.msg-drawer-title{color:#fff;font-size:14px;font-weight:600;font-family:"DM Sans",sans-serif;}
+.msg-drawer-close{background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;}
+.msg-drawer-close:hover{color:#fff;}
+.msg-tabs{display:flex;border-bottom:1px solid #E8E4F4;flex-shrink:0;background:#FAFAF8;}
+.msg-tab{flex:1;padding:9px 8px;font-size:12px;font-weight:500;color:#8899AA;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;font-family:"DM Sans",sans-serif;transition:all .15s;}
+.msg-tab.active{color:#1C2B4A;border-bottom-color:#1C2B4A;background:#fff;}
+.msg-tab .tab-badge{background:#E05050;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px;}
+.msg-body{flex:1;overflow-y:auto;padding:0;}
+.msg-empty{padding:32px 16px;text-align:center;color:#8899AA;font-size:12px;}
+/* Message bubbles */
+.msg-day-divider{text-align:center;font-size:10px;color:#AAA;margin:8px 0;position:relative;}
+.msg-day-divider::before{content:'';position:absolute;left:16px;right:16px;top:50%;height:1px;background:#EEE;z-index:0;}
+.msg-day-divider span{position:relative;z-index:1;background:#fff;padding:0 8px;}
+.msg-row{display:flex;gap:8px;padding:6px 12px;align-items:flex-end;}
+.msg-row.mine{flex-direction:row-reverse;}
+.msg-avatar{width:28px;height:28px;border-radius:50%;background:#C8922A;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}
+.msg-avatar img{width:100%;height:100%;object-fit:cover;}
+.msg-bubble-wrap{max-width:240px;display:flex;flex-direction:column;}
+.msg-row.mine .msg-bubble-wrap{align-items:flex-end;}
+.msg-sender{font-size:10px;color:#8899AA;margin-bottom:2px;font-family:"DM Sans",sans-serif;}
+.msg-bubble{padding:8px 12px;border-radius:14px;font-size:13px;line-height:1.45;font-family:"DM Sans",sans-serif;word-break:break-word;}
+.msg-bubble.theirs{background:#F0EBF8;color:#1C2B4A;border-bottom-left-radius:4px;}
+.msg-bubble.mine{background:#1C2B4A;color:#fff;border-bottom-right-radius:4px;}
+.msg-time{font-size:10px;color:#BBB;margin-top:2px;font-family:"DM Mono",monospace;}
+/* DM list */
+.dm-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:0.5px solid #F0EBF8;}
+.dm-item:hover{background:#FAFAFA;}
+.dm-item.active{background:#EDE8F8;}
+.dm-avatar{width:36px;height:36px;border-radius:50%;background:#C8922A;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}
+.dm-avatar img{width:100%;height:100%;object-fit:cover;}
+.dm-info{flex:1;min-width:0;}
+.dm-name{font-size:13px;font-weight:500;color:#1C2B4A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dm-preview{font-size:11px;color:#8899AA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.dm-badge{background:#E05050;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+/* Input */
+.msg-input-bar{padding:10px 12px;border-top:1px solid #EEE;display:flex;gap:8px;align-items:flex-end;flex-shrink:0;background:#fff;}
+.msg-input{flex:1;padding:9px 12px;border:1px solid #DDD9EC;border-radius:20px;font-size:13px;font-family:"DM Sans",sans-serif;outline:none;resize:none;line-height:1.4;max-height:80px;overflow-y:auto;}
+.msg-input:focus{border-color:#1C2B4A;}
+.msg-send-btn{width:34px;height:34px;border-radius:50%;background:#1C2B4A;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.msg-send-btn:hover{background:#243459;}
+.msg-send-btn:disabled{opacity:.4;cursor:default;}
+/* DM back + download bar */
+.msg-dm-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #EEE;flex-shrink:0;background:#FAFAF8;}
+.msg-dm-bar-name{font-size:13px;font-weight:600;color:#1C2B4A;flex:1;}
+.msg-dl-btn{background:none;border:0.5px solid #DDD9EC;border-radius:6px;padding:4px 10px;font-size:11px;color:#4A5568;cursor:pointer;font-family:"DM Sans",sans-serif;}
+.msg-dl-btn:hover{background:#EDE8F8;}
+@media(max-width:480px){#msg-drawer{width:100%;}}
+</style>
+
+<!-- Drawer HTML -->
+<div id="msg-drawer">
+  <div class="msg-drawer-head">
+    <div class="msg-drawer-title">💬 Messages</div>
+    <button class="msg-drawer-close" onclick="toggleMessenger()">✕</button>
+  </div>
+  <!-- Tabs -->
+  <div class="msg-tabs">
+    <button class="msg-tab active" id="msg-tab-staff" onclick="switchMsgTab('staff')">Staff Channel <span id="msg-badge-staff" class="tab-badge" style="display:none;"></span></button>
+    <button class="msg-tab" id="msg-tab-dms" onclick="switchMsgTab('dms')">Direct Messages <span id="msg-badge-dms" class="tab-badge" style="display:none;"></span></button>
+  </div>
+  <!-- Staff channel view -->
+  <div id="msg-view-staff" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+    <div class="msg-dm-bar" style="justify-content:flex-end;">
+      <button class="msg-dl-btn" onclick="downloadTranscript('staff')">⬇ Download transcript</button>
+    </div>
+    <div class="msg-body" id="msg-body-staff"><div class="msg-empty">No messages yet. Say hello!</div></div>
+    <div class="msg-input-bar">
+      <textarea class="msg-input" id="msg-input-staff" placeholder="Message all staff…" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage('staff');}"></textarea>
+      <button class="msg-send-btn" onclick="sendMessage('staff')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+  <!-- DM list view -->
+  <div id="msg-view-dms" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+    <div class="msg-body" id="msg-dm-list" style="overflow-y:auto;flex:1;"><div class="msg-empty">No direct messages yet.</div></div>
+  </div>
+  <!-- DM conversation view -->
+  <div id="msg-view-dm-convo" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+    <div class="msg-dm-bar">
+      <button onclick="switchMsgTab('dms')" style="background:none;border:none;cursor:pointer;color:#8899AA;font-size:18px;line-height:1;padding:0 4px 0 0;">‹</button>
+      <div class="msg-dm-bar-name" id="msg-dm-convo-name">—</div>
+      <button class="msg-dl-btn" id="msg-dl-convo-btn" onclick="downloadTranscript(_currentDMChannel)">⬇ Download</button>
+    </div>
+    <div class="msg-body" id="msg-body-dm" style="flex:1;overflow-y:auto;"></div>
+    <div class="msg-input-bar">
+      <textarea class="msg-input" id="msg-input-dm" placeholder="Send a message…" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage(_currentDMChannel);}"></textarea>
+      <button class="msg-send-btn" onclick="sendMessage(_currentDMChannel)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// MESSENGER
+// ═══════════════════════════════════════════════
+const _MSG_SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const _MSG_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+
+let _msgOpen        = false;
+let _msgTab         = 'staff';     // 'staff' | 'dms' | 'dm-convo'
+let _currentDMChannel = null;
+let _currentDMName  = null;
+let _msgRealtimeSub = null;
+let _allUsers       = [];          // [{id, full_name, avatar_b64}]
+let _readSet        = new Set();   // message IDs this user has read
+let _staffMessages  = [];
+let _dmMessages     = {};          // channel → messages[]
+
+function _msgMe() {
+  try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; }
+}
+function _msgMeUser() {
+  try { return JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) { return {}; }
+}
+function _msgHeaders() {
+  const tok = _msgMe().access_token || _MSG_KEY;
+  return { 'apikey': _MSG_KEY, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' };
+}
+function _msgInitials(name) {
+  return (name || '?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+}
+function _msgColor(name) {
+  const colors = ['#C8922A','#4A7DB5','#6B5B9E','#2E7D6B','#A03060','#5C7A2E'];
+  let h = 0; for (const c of (name||'')) h = (h*31 + c.charCodeAt(0)) & 0xFFFFFFFF;
+  return colors[Math.abs(h) % colors.length];
+}
+function _msgAvatar(u, size=28) {
+  if (u && u.avatar_b64) return `<img src="${u.avatar_b64}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;">`;
+  const name = (u && u.full_name) || '?';
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${_msgColor(name)};display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*.38)}px;font-weight:700;color:#fff;flex-shrink:0;">${_msgInitials(name)}</div>`;
+}
+function _dmChannel(uid1, uid2) {
+  return [uid1, uid2].sort().join(':');
+}
+function _fmtTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString([], {month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+function _fmtDay(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return 'Today';
+  const yest = new Date(now); yest.setDate(yest.getDate()-1);
+  if (d.toDateString() === yest.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+}
+
+function toggleMessenger() {
+  _msgOpen = !_msgOpen;
+  const drawer = document.getElementById('msg-drawer');
+  drawer.classList.toggle('open', _msgOpen);
+  if (_msgOpen) {
+    initMessenger();
+  }
+}
+
+async function initMessenger() {
+  const me = _msgMe();
+  if (!me.id) return;
+  // Load all users for DM list and avatar lookup
+  try {
+    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,user_profiles(avatar_b64)&limit=200`, { headers: _msgHeaders() });
+    const rows = r.ok ? await r.json() : [];
+    _allUsers = rows.map(u => ({ id: u.id, full_name: u.full_name, avatar_b64: u.user_profiles?.avatar_b64 || null }));
+  } catch(e) {}
+  // Load messages
+  await loadStaffMessages();
+  await loadDMList();
+  subscribeRealtime();
+}
+
+async function loadStaffMessages() {
+  try {
+    const r = await fetch(`${_MSG_SUPA}/rest/v1/messages?channel=eq.staff&order=sent_at.asc&limit=200`, { headers: _msgHeaders() });
+    _staffMessages = r.ok ? await r.json() : [];
+  } catch(e) { _staffMessages = []; }
+  renderMessages('staff', _staffMessages, 'msg-body-staff');
+  markRead(_staffMessages);
+  updateBadges();
+}
+
+async function loadDMList() {
+  const me = _msgMe();
+  if (!me.id) return;
+  // Fetch all DM channels involving me
+  try {
+    const r = await fetch(
+      `${_MSG_SUPA}/rest/v1/messages?channel=neq.staff&or=(sender_id.eq.${me.id},channel.like.*${me.id}*)&order=sent_at.desc&limit=500`,
+      { headers: _msgHeaders() }
+    );
+    const rows = r.ok ? await r.json() : [];
+    // Group by channel
+    const channels = {};
+    for (const msg of rows) {
+      if (!channels[msg.channel]) channels[msg.channel] = msg;
+    }
+    _dmMessages = {};
+    const dmList = document.getElementById('msg-dm-list');
+    if (!Object.keys(channels).length) {
+      dmList.innerHTML = '<div class="msg-empty">No direct messages yet.<br>Start a conversation below.</div>' + buildNewDMButton();
+      return;
+    }
+    // Render DM list
+    let html = buildNewDMButton();
+    for (const [ch, lastMsg] of Object.entries(channels)) {
+      const otherUid = ch.split(':').find(id => id !== me.id);
+      const other = _allUsers.find(u => u.id === otherUid) || { full_name: 'Unknown', avatar_b64: null };
+      const isMe = lastMsg.sender_id === me.id;
+      html += `<div class="dm-item" onclick="openDMConvo('${ch}','${other.full_name.replace(/'/g,'\'')}')">
+        <div class="dm-avatar">${_msgAvatar(other, 36)}</div>
+        <div class="dm-info">
+          <div class="dm-name">${other.full_name}</div>
+          <div class="dm-preview">${isMe ? 'You: ' : ''}${lastMsg.content.slice(0,50)}${lastMsg.content.length>50?'…':''}</div>
+        </div>
+      </div>`;
+    }
+    dmList.innerHTML = html;
+  } catch(e) {}
+}
+
+function buildNewDMButton() {
+  const me = _msgMe();
+  const others = _allUsers.filter(u => u.id !== me.id);
+  if (!others.length) return '';
+  const opts = others.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
+  return `<div style="padding:10px 12px;border-bottom:0.5px solid #EEE;">
+    <div style="font-size:11px;color:#8899AA;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">New message</div>
+    <div style="display:flex;gap:8px;">
+      <select id="dm-new-select" style="flex:1;padding:6px 10px;border:1px solid #DDD9EC;border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">
+        <option value="">Select teammate…</option>${opts}
+      </select>
+      <button onclick="startNewDM()" style="padding:6px 12px;background:#1C2B4A;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Chat</button>
+    </div>
+  </div>`;
+}
+
+function startNewDM() {
+  const sel = document.getElementById('dm-new-select');
+  if (!sel || !sel.value) return;
+  const other = _allUsers.find(u => u.id === sel.value);
+  if (!other) return;
+  openDMConvo(_dmChannel(_msgMe().id, other.id), other.full_name);
+}
+
+async function openDMConvo(channel, name) {
+  _currentDMChannel = channel;
+  _currentDMName    = name;
+  document.getElementById('msg-view-dms').style.display    = 'none';
+  document.getElementById('msg-view-staff').style.display  = 'none';
+  document.getElementById('msg-view-dm-convo').style.display = 'flex';
+  document.getElementById('msg-dm-convo-name').textContent  = name;
+  // Load messages for this DM
+  try {
+    const r = await fetch(
+      `${_MSG_SUPA}/rest/v1/messages?channel=eq.${channel}&order=sent_at.asc&limit=200`,
+      { headers: _msgHeaders() }
+    );
+    const msgs = r.ok ? await r.json() : [];
+    _dmMessages[channel] = msgs;
+    renderMessages(channel, msgs, 'msg-body-dm');
+    markRead(msgs);
+    updateBadges();
+  } catch(e) {}
+  document.getElementById('msg-input-dm').focus();
+}
+
+function switchMsgTab(tab) {
+  _msgTab = tab;
+  document.querySelectorAll('.msg-tab').forEach(t => t.classList.remove('active'));
+  ['msg-view-staff','msg-view-dms','msg-view-dm-convo'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  if (tab === 'staff') {
+    document.getElementById('msg-tab-staff').classList.add('active');
+    document.getElementById('msg-view-staff').style.display = 'flex';
+  } else {
+    document.getElementById('msg-tab-dms').classList.add('active');
+    document.getElementById('msg-view-dms').style.display = 'flex';
+    loadDMList();
+  }
+}
+
+function renderMessages(channel, msgs, bodyId) {
+  const me = _msgMe();
+  const bodyEl = document.getElementById(bodyId);
+  if (!bodyEl) return;
+  if (!msgs.length) { bodyEl.innerHTML = '<div class="msg-empty">No messages yet.</div>'; return; }
+  let html = '';
+  let lastDay = null;
+  for (const m of msgs) {
+    const day = new Date(m.sent_at).toDateString();
+    if (day !== lastDay) {
+      html += `<div class="msg-day-divider"><span>${_fmtDay(m.sent_at)}</span></div>`;
+      lastDay = day;
+    }
+    const isMine = m.sender_id === me.id;
+    const user = _allUsers.find(u => u.id === m.sender_id) || { full_name: m.sender_name, avatar_b64: m.sender_avatar };
+    html += `<div class="msg-row ${isMine ? 'mine' : ''}">
+      <div class="msg-avatar">${_msgAvatar(user)}</div>
+      <div class="msg-bubble-wrap">
+        ${!isMine ? `<div class="msg-sender">${m.sender_name}</div>` : ''}
+        <div class="msg-bubble ${isMine ? 'mine' : 'theirs'}">${escHtml(m.content)}</div>
+        <div class="msg-time">${_fmtTime(m.sent_at)}</div>
+      </div>
+    </div>`;
+  }
+  bodyEl.innerHTML = html;
+  bodyEl.scrollTop = bodyEl.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function sendMessage(channel) {
+  const inputId = channel === 'staff' ? 'msg-input-staff' : 'msg-input-dm';
+  const input = document.getElementById(inputId);
+  const content = (input?.value || '').trim();
+  if (!content) return;
+  const me = _msgMe();
+  const meUser = _msgMeUser();
+  if (!me.id) return;
+  input.value = '';
+  const avatar = (() => { try { return JSON.parse(localStorage.getItem('medsync_user')||'{}').avatar_b64 || null; } catch(e){return null;} })();
+  try {
+    await fetch(`${_MSG_SUPA}/rest/v1/messages`, {
+      method: 'POST',
+      headers: { ..._msgHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        sender_id:     me.id,
+        sender_name:   meUser.full_name || me.email || 'Unknown',
+        sender_avatar: avatar,
+        channel,
+        content,
+      }),
+    });
+  } catch(e) {
+    input.value = content;
+  }
+}
+
+async function markRead(msgs) {
+  const me = _msgMe();
+  if (!me.id || !msgs.length) return;
+  const unread = msgs.filter(m => m.sender_id !== me.id && !_readSet.has(m.id));
+  if (!unread.length) return;
+  const rows = unread.map(m => ({ message_id: m.id, user_id: me.id }));
+  unread.forEach(m => _readSet.add(m.id));
+  fetch(`${_MSG_SUPA}/rest/v1/message_reads`, {
+    method: 'POST',
+    headers: { ..._msgHeaders(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify(rows),
+  }).catch(()=>{});
+}
+
+async function updateBadges() {
+  const me = _msgMe();
+  if (!me.id) return;
+  // Count unread in staff channel
+  const staffUnread = _staffMessages.filter(m => m.sender_id !== me.id && !_readSet.has(m.id)).length;
+  // Count unread in DMs
+  let dmUnread = 0;
+  for (const msgs of Object.values(_dmMessages)) {
+    dmUnread += msgs.filter(m => m.sender_id !== me.id && !_readSet.has(m.id)).length;
+  }
+  const total = staffUnread + dmUnread;
+  const navBadge = document.getElementById('chat-unread-badge');
+  if (navBadge) {
+    navBadge.style.display = total > 0 ? 'flex' : 'none';
+    navBadge.textContent = total > 9 ? '9+' : String(total);
+  }
+  const staffBadge = document.getElementById('msg-badge-staff');
+  if (staffBadge) { staffBadge.style.display = staffUnread > 0 ? '' : 'none'; staffBadge.textContent = staffUnread; }
+  const dmsBadge = document.getElementById('msg-badge-dms');
+  if (dmsBadge) { dmsBadge.style.display = dmUnread > 0 ? '' : 'none'; dmsBadge.textContent = dmUnread; }
+}
+
+function subscribeRealtime() {
+  if (_msgRealtimeSub) return;
+  const me = _msgMe();
+  // Poll every 8 seconds as a lightweight alternative to WebSocket for this context
+  _msgRealtimeSub = setInterval(async () => {
+    if (!_msgOpen) {
+      // Still poll for unread badge even when drawer is closed
+      await pollUnreadCount();
+      return;
+    }
+    if (_msgTab === 'staff' || _msgTab !== 'dms') {
+      await loadStaffMessages();
+    }
+    if (_currentDMChannel) {
+      try {
+        const r = await fetch(
+          `${_MSG_SUPA}/rest/v1/messages?channel=eq.${_currentDMChannel}&order=sent_at.asc&limit=200`,
+          { headers: _msgHeaders() }
+        );
+        const msgs = r.ok ? await r.json() : [];
+        if (msgs.length !== (_dmMessages[_currentDMChannel]||[]).length) {
+          _dmMessages[_currentDMChannel] = msgs;
+          renderMessages(_currentDMChannel, msgs, 'msg-body-dm');
+          markRead(msgs);
+          updateBadges();
+        }
+      } catch(e) {}
+    }
+  }, 8000);
+}
+
+async function pollUnreadCount() {
+  const me = _msgMe();
+  if (!me.id) return;
+  try {
+    // Fetch recent unread messages not sent by me and not in _readSet
+    const since = new Date(Date.now() - 7 * 24*60*60*1000).toISOString();
+    const r = await fetch(
+      `${_MSG_SUPA}/rest/v1/messages?sender_id=neq.${me.id}&sent_at=gte.${since}&select=id,channel&limit=500`,
+      { headers: _msgHeaders() }
+    );
+    const msgs = r.ok ? await r.json() : [];
+    const unread = msgs.filter(m => !_readSet.has(m.id)).length;
+    const navBadge = document.getElementById('chat-unread-badge');
+    if (navBadge) {
+      navBadge.style.display = unread > 0 ? 'flex' : 'none';
+      navBadge.textContent = unread > 9 ? '9+' : String(unread);
+    }
+  } catch(e) {}
+}
+
+function downloadTranscript(channel) {
+  const msgs = channel === 'staff' ? _staffMessages : (_dmMessages[channel] || []);
+  if (!msgs.length) { alert('No messages to download.'); return; }
+  const label = channel === 'staff' ? 'Staff Channel' : (_currentDMName || 'DM');
+  let text = `MedSync — ${label} Transcript
+Exported: ${new Date().toLocaleString()}
+`;
+  text += '═'.repeat(60) + '\n';
+  let lastDay = null;
+  for (const m of msgs) {
+    const day = new Date(m.sent_at).toDateString();
+    if (day !== lastDay) { text += `\n── ${_fmtDay(m.sent_at)} ──\n`; lastDay = day; }
+    text += `[${_fmtTime(m.sent_at)}] ${m.sender_name}: ${m.content}\n`;
+  }
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `medsync-messages-${channel === 'staff' ? 'staff' : _currentDMName?.replace(/\s+/g,'-')}-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+}
+
+// Kick off background polling once page loads
+window.addEventListener('load', () => {
+  setTimeout(pollUnreadCount, 3000);
+  setInterval(pollUnreadCount, 30000);
+});
+</script>
+
+</body></html>');
   w.document.close();
   w.focus();
   setTimeout(() => { w.print(); }, 400);
