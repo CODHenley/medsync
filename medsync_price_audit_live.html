@@ -306,8 +306,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
               <input type="checkbox" id="chk-select-all" title="Select / deselect all visible" style="width:15px;height:15px;cursor:pointer;" onchange="toggleSelectAll(this.checked)">
             </th>
             <th data-col="ms_name" style="width:26%">Product <span class="sarr">↕</span></th>
-            <th data-col="ms_price">Unit Cost (MedSync) <span class="sarr">↕</span></th>
-            <th data-col="vetspire_cost" title="Current unit cost in VetSpire (from daily sync or CSV)">VetSpire Cost <span class="sarr">↕</span></th>
+            <th data-col="vetspire_cost" title="Current unit cost in VetSpire (synced daily)">VetSpire Cost <span class="sarr">↕</span></th>
             <th data-col="vc_latest">Unit Cost (Vetcove) <span class="sarr">↕</span></th>
             <th>Package (Vetcove)</th>
             <th data-col="drift_pct" class="sorted">Drift <span class="sarr">↓</span></th>
@@ -770,7 +769,7 @@ function matchProducts(vetcoveItems, msProducts) {
     if (!v) return;
 
     const vsId = ms.vetspire_product_id ? String(ms.vetspire_product_id).trim() : null;
-    // Unit cost: VetSpire CSV if loaded, otherwise daily-synced DB value
+    // VetSpire unit cost: CSV override if loaded, otherwise daily-synced products.unit_cost
     const vsPurchaseCost = vsId ? (_vsCostMap.get(vsId) ?? null) : null;
     const dbCost = ms.unit_cost != null ? parseFloat(ms.unit_cost) : null;
     const msPrice = vsPurchaseCost ?? dbCost; // null = not yet synced; row still shows with "—"
@@ -800,7 +799,7 @@ function matchProducts(vetcoveItems, msProducts) {
       results.push({
         ms_name: ms.name,
         ms_price: msPrice,
-        vetspire_cost: vsPurchaseCost, // current VetSpire unit cost (null if not loaded)
+        vetspire_cost: msPrice, // VetSpire unit cost (CSV override or daily-synced products.unit_cost)
         vc_name: v.name,
         vc_latest: vcPrice,          // per-unit comparison price (normalized)
         vc_raw_price: v.latest_price, // original invoice price before normalization
@@ -1395,7 +1394,6 @@ function renderComp() {
           onchange="_selectedRows[this.checked?'add':'delete'](this.dataset.name);syncSelectionBar()">
       </td>
       <td><div class="cn1">${esc(d.ms_name)}</div><div class="cn2">${esc(d.vc_name)}</div></td>
-      <td class="cprice">${d.ms_price != null ? '$' + fmt2(d.ms_price) : '<span style="color:var(--mist)">—</span>'}</td>
       <td class="cprice vs-cost-cell" style="white-space:nowrap;">${vsDisplayCost}</td>
       <td class="cprice" style="white-space:nowrap;">
         <span class="vc-unit-price">${d.vc_latest != null ? '$' + fmt2(d.vc_latest) : '—'}</span>
