@@ -1230,7 +1230,7 @@ async function loadHealthRiskBadge() {
 function navToLotHealth() {
   const url = 'medsync_lot_lifecycle_live.html';
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'lot-lifecycle', action: 'health' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'lifecycle', action: 'health' }, '*');
   } else {
     window.location.href = url;
   }
