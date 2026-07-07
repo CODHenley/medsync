@@ -346,6 +346,63 @@ for loc_id in LOCATION_IDS:
 
 print(f"  Total disabled this run: {disabled_total}")
 
+# ── Backfill unit_cost from dispensed_items where products.unit_cost is null ──
+# VetSpire's products API returns null for unitCost; use the most recent
+# dispensed unit cost per product name as a reliable fallback.
+print("\nBackfilling unit_cost from dispensed_items…")
+
+# Fetch all products that still have no unit_cost (uuid → name)
+no_cost_rows = supa_get(
+    "/rest/v1/products"
+    "?select=id,name"
+    "&unit_cost=is.null"
+    "&limit=2000"
+)
+print(f"  {len(no_cost_rows)} products with null unit_cost")
+
+if no_cost_rows:
+    # Fetch most-recent unit_cost per product_name from dispensed_items
+    dispensed = supa_get(
+        "/rest/v1/dispensed_items"
+        "?select=product_name,unit_cost,dispensed_at"
+        "&unit_cost=gt.0"
+        "&order=dispensed_at.desc"
+        "&limit=5000"
+    )
+
+    # Build name → latest cost map (dispensed_items are already ordered desc by time)
+    name_to_cost: dict[str, float] = {}
+    for row in dispensed:
+        pn = (row.get("product_name") or "").strip().lower()
+        uc = row.get("unit_cost")
+        if pn and uc and pn not in name_to_cost:
+            name_to_cost[pn] = float(uc)
+
+    print(f"  {len(name_to_cost)} distinct product costs loaded from dispensed_items")
+
+    cost_updated = 0
+    cost_skipped = 0
+    for row in no_cost_rows:
+        uid  = row.get("id")
+        name = (row.get("name") or "").strip().lower()
+        cost = name_to_cost.get(name)
+        if cost is None:
+            cost_skipped += 1
+            continue
+        try:
+            status, _ = supa_req(
+                "PATCH",
+                f"/rest/v1/products?id=eq.{uid}",
+                {"unit_cost": cost},
+            )
+            cost_updated += 1
+        except urllib.error.HTTPError as e:
+            print(f"  Cost PATCH failed for {uid}: HTTP {e.code} — {e.read().decode()[:200]}")
+        except Exception as e:
+            print(f"  Cost PATCH error for {uid}: {e}")
+
+    print(f"  unit_cost backfilled: {cost_updated}, no match: {cost_skipped}")
+
 print(f"\n=== Done ===")
 print(f"  {upserted} products upserted")
 print(f"  {loc_upserted} location-product rows synced")
