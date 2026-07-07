@@ -147,7 +147,9 @@ select.nav-sel option{background:var(--navy);}
 .ndc-line-btn:hover{background:#EDE8F8;border-color:var(--navy);}
 .ndc-line-name{font-size:13px;font-weight:500;color:var(--navy);}
 .ndc-line-meta{font-size:11px;color:var(--mist);margin-top:2px;}
-.ndc-not-on-po{width:100%;padding:10px;border:0.5px solid var(--red-border);border-radius:9px;background:var(--red-bg);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.ndc-not-on-po{width:100%;padding:10px;border:0.5px solid var(--red-border);border-radius:9px;background:var(--red-bg);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:6px;}
+.ndc-report-admin{width:100%;padding:10px;border:0.5px solid var(--border);border-radius:9px;background:#fff;color:var(--navy);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:6px;}
+.ndc-report-admin:hover{background:#F0EBF8;}
 .ndc-save-row{display:flex;align-items:center;gap:8px;padding-top:4px;border-top:0.5px solid var(--border);}
 .ndc-save-label{font-size:11px;color:var(--mist);flex:1;}
 
@@ -409,9 +411,42 @@ select.nav-sel option{background:var(--navy);}
       <div style="font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Which item on this PO is this?</div>
       <div id="nrm-lines"></div>
       <button class="ndc-not-on-po" onclick="markNotOnPO()">⚠ This product is not on this PO</button>
+      <button class="ndc-report-admin" onclick="showReportAdminForm()">📋 Report product to admin</button>
       <div class="ndc-save-row">
         <input type="checkbox" id="nrm-save-cb" checked style="accent-color:var(--navy);cursor:pointer;">
         <label for="nrm-save-cb" class="ndc-save-label">Remember this NDC → product mapping for future deliveries</label>
+      </div>
+    </div>
+
+    <!-- Report to admin inline form — hidden until button clicked -->
+    <div id="nrm-report-form" style="display:none;border-top:1px solid var(--border);padding:14px 16px 16px;background:#FAFAFA;">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;">Save pending purchase &amp; notify admin</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Qty received</div>
+          <input id="nrm-rpt-qty" type="number" min="1" placeholder="0" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Unit cost ($)</div>
+          <input id="nrm-rpt-cost" type="number" min="0" step="0.0001" placeholder="0.00" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Lot number</div>
+          <input id="nrm-rpt-lot" type="text" placeholder="e.g. A12345B" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Mono',monospace;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Expiry (MM/YYYY)</div>
+          <input id="nrm-rpt-exp" type="text" placeholder="06/2027" maxlength="7" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Notes for admin (optional)</div>
+        <textarea id="nrm-rpt-notes" rows="2" placeholder="e.g. came in with PO #1234, vendor said it's a new SKU…" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;"></textarea>
+      </div>
+      <div id="nrm-rpt-error" style="display:none;font-size:11px;color:var(--red);margin-bottom:8px;padding:6px 10px;background:#fff5f5;border-radius:6px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="hideReportAdminForm()" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--slate);">Cancel</button>
+        <button id="nrm-rpt-submit" onclick="submitReportToAdmin()" style="flex:2;padding:9px;background:#a33030;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;">Send report to admin →</button>
       </div>
     </div>
   </div>
@@ -965,8 +1000,104 @@ function showNDCResolveModal(ndc, fdaResult) {
 function closeNDCModal() {
   document.getElementById('ndc-resolve-modal').style.display = 'none';
   _pendingNDC = null;
+  hideReportAdminForm();
   const scanEl = document.getElementById('scan-last');
   scanEl.style.display = 'none';
+}
+
+function showReportAdminForm() {
+  document.getElementById('nrm-report-form').style.display = 'block';
+  document.getElementById('nrm-rpt-error').style.display = 'none';
+  document.getElementById('nrm-rpt-qty').focus();
+}
+
+function hideReportAdminForm() {
+  document.getElementById('nrm-report-form').style.display = 'none';
+  ['nrm-rpt-qty','nrm-rpt-cost','nrm-rpt-lot','nrm-rpt-exp','nrm-rpt-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function submitReportToAdmin() {
+  const qty    = parseInt(document.getElementById('nrm-rpt-qty').value) || null;
+  const cost   = parseFloat(document.getElementById('nrm-rpt-cost').value) || null;
+  const lot    = document.getElementById('nrm-rpt-lot').value.trim() || null;
+  const expiry = document.getElementById('nrm-rpt-exp').value.trim() || null;
+  const notes  = document.getElementById('nrm-rpt-notes').value.trim() || null;
+
+  const errEl = document.getElementById('nrm-rpt-error');
+  if (!qty) { errEl.textContent = 'Please enter the quantity received.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+
+  const btn = document.getElementById('nrm-rpt-submit');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  // Gather FDA data from the banner if present
+  const fdaBrand   = document.getElementById('nrm-fda-name')?.textContent?.trim() || null;
+  const fdaSub     = document.getElementById('nrm-fda-sub')?.textContent?.trim() || '';
+  // fdaSub format: "generic · dosageForm · labeler"
+  const fdaParts   = fdaSub.split(' · ');
+  const fdaGeneric = fdaBrand !== fdaParts[0] ? (fdaParts[0] || null) : null;
+  const fdaLabeler = fdaParts[fdaParts.length - 1] || null;
+
+  // Receiver identity from session
+  const receiverName  = _sess.full_name || _sess.email || null;
+  const receiverEmail = _sess.email || null;
+
+  // Location
+  const locSel  = document.getElementById('sel-location');
+  const locId   = locSel?.value || state.locationId || null;
+  const locName = locSel?.options[locSel.selectedIndex]?.text || null;
+
+  // PO reference
+  const poRef = state.selectedOrder?.ref || null;
+
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/report-unknown-product`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({
+        scanned_value:    _pendingNDC,
+        fda_brand_name:   fdaBrand,
+        fda_generic_name: fdaGeneric,
+        fda_labeler:      fdaLabeler,
+        qty_received:     qty,
+        lot_number:       lot,
+        expiry,
+        unit_cost:        cost,
+        notes,
+        po_ref:           poRef,
+        location_id:      locId,
+        location_name:    locName,
+        receiver_name:    receiverName,
+        receiver_email:   receiverEmail,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+
+    // Success
+    document.getElementById('ndc-resolve-modal').style.display = 'none';
+    _pendingNDC = null;
+    hideReportAdminForm();
+
+    const scanEl = document.getElementById('scan-last');
+    scanEl.style.display = 'block';
+    scanEl.className = 'scan-last warn';
+    scanEl.textContent = '📋 Admin notified — purchase saved as pending until product is enabled.';
+
+    showToast(json.email_sent
+      ? '✓ Admin notified by email. Purchase saved as pending.'
+      : '✓ Purchase saved as pending. (Email delivery pending — check admin settings.)', 6000);
+
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Send report to admin →';
+    errEl.textContent = 'Failed to send report: ' + err.message;
+    errEl.style.display = 'block';
+  }
 }
 
 async function resolveNDCToLine(lineIdx) {
