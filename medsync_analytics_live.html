@@ -697,69 +697,25 @@ if (window.self !== window.top) {
 
         <!-- Procurement -->
         <div class="pcontent" id="p-proc" style="display:none;">
-          <div><div class="pc-title">Procurement savings</div><div class="pc-sub">YTD · all locations · vs. list price</div></div>
-          <div class="mrow"><span class="mk">Total YTD</span><span class="mv cg" id="proc-total-ytd">$18,420</span></div>
-          <div class="mrow"><span class="mk">Annual pace</span><span class="mv cg">~$44,000</span></div>
-          <div class="mrow"><span class="mk">GPO discounts</span><span class="mv cg" id="proc-gpo-amt">$9,840</span></div>
-          <div class="mrow"><span class="mk">Best-price routing</span><span class="mv cg">$5,120</span></div>
-          <div class="mrow"><span class="mk">SKU optimization</span><span class="mv cg">$2,460</span></div>
-          <div class="mrow"><span class="mk">Order consolidation</span><span class="mv cg">$1,000</span></div>
-          <div class="mrow"><span class="mk">vs. prior year</span><span class="mv cg">↑ 12%</span></div>
-          <div class="mrow"><span class="mk">Top product saved</span><span class="mv">Gabapentin 100mg</span></div>
-          <div class="mrow"><span class="mk">Top vendor</span><span class="mv">MWI Animal Health</span></div>
-          <div class="ins">
-            <div class="ins-l">⚡ Procurement insight</div>
-            <div class="ins-t">Gabapentin 500ct MWI saves <strong>$8.44/order</strong> vs. Covetrus split packs. Apply same SKU logic to Maropitant for ~$220 additional annual savings.</div>
-          </div>
+          <div><div class="pc-title">Procurement savings</div><div class="pc-sub" id="proc-sidebar-sub">This period · all locations · GPO vs. list</div></div>
+          <div id="proc-sidebar-body"><div style="color:var(--mist);font-size:12px;padding:8px 0;">Loading…</div></div>
         </div>
 
         <!-- Order Compliance -->
         <div class="pcontent" id="p-comp" style="display:none;">
           <div><div class="pc-title">Order compliance</div><div class="pc-sub">1pm Vetcove cutoff · this period</div></div>
           <div class="mrow"><span class="mk">Portfolio rate</span><span class="mv" id="comp-rate-val">…</span></div>
-          <div style="margin-top:4px;" id="comp-sidebar">
-            <div class="oc-r"><span class="oc-loc">Lincoln Park</span><span class="cg" style="font-weight:500;font-size:11px;">100%</span><div class="oc-bar"><div class="oc-fill" style="width:100%;background:var(--green);"></div></div></div>
-            <div class="oc-r"><span class="oc-loc">Old Orchard</span><span class="ca" style="font-weight:500;font-size:11px;">75%</span><div class="oc-bar"><div class="oc-fill" style="width:75%;background:var(--amber);"></div></div></div>
-            <div class="oc-r"><span class="oc-loc">West Loop</span><span class="cg" style="font-weight:500;font-size:11px;">100%</span><div class="oc-bar"><div class="oc-fill" style="width:100%;background:var(--green);"></div></div></div>
-            <div class="oc-r"><span class="oc-loc">Wheaton</span><span class="cg" style="font-weight:500;font-size:11px;">100%</span><div class="oc-bar"><div class="oc-fill" style="width:100%;background:var(--green);"></div></div></div>
-          </div>
-          <div class="ins">
+          <div style="margin-top:4px;" id="comp-sidebar"><div style="color:var(--mist);font-size:12px;padding:8px 0;">Loading…</div></div>
+          <div class="ins" id="comp-insight" style="display:none;">
             <div class="ins-l">⚡ Compliance insight</div>
-            <div class="ins-t"><strong>Old Orchard</strong> missed the 1pm cutoff once this month. One more miss triggers a check-in. Taryn S. has 1h 18m on today's order.</div>
+            <div class="ins-t" id="comp-insight-text"></div>
           </div>
         </div>
 
         <!-- White Goods -->
         <div class="pcontent" id="p-wg" style="display:none;">
-          <div><div class="pc-title">White goods monitoring</div><div class="pc-sub">Ordering rate vs. appt volume · ±15% tolerance</div></div>
-          <div class="mrow"><span class="mk">Flagged locations</span><span class="mv ca">2 of 4</span></div>
-          <div class="mrow"><span class="mk">Est. monthly overspend</span><span class="mv ca">$133/mo</span></div>
-          <div class="mrow"><span class="mk">OO gauze overage</span><span class="mv ca">+38% · $84/mo</span></div>
-          <div class="mrow"><span class="mk">WL syringe overage</span><span class="mv ca">+21% · $49/mo</span></div>
-          <div style="margin-top:6px;">
-            <div class="wg-h"><span>Location · Item</span><span>Exp.</span><span>Act.</span><span>Flag</span></div>
-            <div class="wg-r">
-              <div><div style="font-weight:500;font-size:11px;">Old Orchard</div><div style="font-size:10px;color:var(--mist);">Gauze 4×4</div></div>
-              <span>1.3</span><span>1.8</span><span class="wg-flag wg-over">+38%</span>
-            </div>
-            <div class="wg-r">
-              <div><div style="font-weight:500;font-size:11px;">West Loop</div><div style="font-size:10px;color:var(--mist);">Syringes 3cc</div></div>
-              <span>2.6</span><span>3.2</span><span class="wg-flag wg-over">+21%</span>
-            </div>
-            <div class="wg-r">
-              <div><div style="font-weight:500;font-size:11px;">Lincoln Park</div><div style="font-size:10px;color:var(--mist);">Gauze 4×4</div></div>
-              <span>1.3</span><span>1.2</span><span class="wg-flag wg-ok">OK</span>
-            </div>
-            <div class="wg-r">
-              <div><div style="font-weight:500;font-size:11px;">Wheaton</div><div style="font-size:10px;color:var(--mist);">Syringes 3cc</div></div>
-              <span>2.6</span><span>2.5</span><span class="wg-flag wg-ok">OK</span>
-            </div>
-          </div>
-          <div style="font-size:10px;color:var(--mist);font-style:italic;">Consumption rate assumptions · Admin only</div>
-          <div class="ins">
-            <div class="ins-l">⚡ White goods insight</div>
-            <div class="ins-t">OO gauze rate adjusted from 1.8 → 2.1 per 100 appts last week. Monitor 30 days before closing flag.</div>
-          </div>
+          <div><div class="pc-title">White goods monitoring</div><div class="pc-sub" id="wg-sidebar-sub">Supply ordering · this period</div></div>
+          <div id="wg-sidebar-body"><div style="color:var(--mist);font-size:12px;padding:8px 0;">Loading…</div></div>
         </div>
 
         <!-- PURCHASE HISTORY -->
@@ -969,9 +925,19 @@ async function loadData() {
       `select=qty_ordered,unit_price,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
     );
 
-    // list_price column not yet in schema — savings breakdown unavailable
+    // Savings: actual gpo_price vs unit_price difference per line item
+    const poFull = await query('po_items',
+      `select=product_name,vendor,qty_ordered,unit_price,gpo_price&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}&limit=5000`
+    );
+    renderProcSidebar(poFull, from, to);
+    renderWgSidebar(poFull);
+    // Category breakdown requires list_price/savings_category columns not yet in schema
     const savByCategory = {};
-    const totalSav = 0;
+    const totalSav = poFull.reduce((s,r) => {
+      const qty = Number(r.qty_ordered)||1;
+      const saved = Math.max(0,(Number(r.unit_price)||0)-(Number(r.gpo_price)||Number(r.unit_price)||0));
+      return s + saved * qty;
+    }, 0);
     renderSavingsTable(savByCategory, totalSav, from, to);
 
     var _el;
@@ -1299,7 +1265,115 @@ function renderCompliance(orders, loc) {
         <div class="oc-bar"><div class="oc-fill" style="width:${rate}%;background:${color};"></div></div>
       </div>`;
     }).join('');
+    // Dynamic compliance insight
+    const lateLocations = filtered.filter(l => {
+      const lo = orders.filter(o => o.location_id === l.id && o.submitted_at);
+      const late = lo.filter(o => o.status === 'Late').length;
+      return late > 0;
+    });
+    const insightEl = document.getElementById('comp-insight');
+    const insightText = document.getElementById('comp-insight-text');
+    if (insightEl && insightText) {
+      if (lateLocations.length > 0) {
+        insightEl.style.display = '';
+        insightText.textContent = lateLocations.map(l => l.name).join(', ') + ' had late submissions this period. Review order timing to avoid next-day delivery risk.';
+      } else {
+        insightEl.style.display = '';
+        insightText.textContent = 'All locations submitted on time this period.';
+      }
+    }
   }
+}
+
+// ── Procurement savings sidebar ───────────────────────────────
+function renderProcSidebar(poItems, from, to) {
+  const body = document.getElementById('proc-sidebar-body');
+  const sub  = document.getElementById('proc-sidebar-sub');
+  if (!body) return;
+  if (!Array.isArray(poItems) || poItems.length === 0) {
+    body.innerHTML = `<div style="color:var(--mist);font-size:12px;padding:8px 0;">No order data for this period.</div>`;
+    return;
+  }
+  // Compute actual savings: gpo_price < unit_price per line item
+  let totalSavings = 0, totalSpend = 0, topByProduct = {}, topByVendor = {};
+  for (const r of poItems) {
+    const qty  = Number(r.qty_ordered) || 1;
+    const list = Number(r.unit_price)  || 0;
+    const gpo  = Number(r.gpo_price)   || list;
+    const saved = Math.max(0, (list - gpo) * qty);
+    const spent = gpo * qty;
+    totalSavings += saved;
+    totalSpend   += spent;
+    if (saved > 0) {
+      const pk = r.product_name || 'Unknown';
+      const vk = r.vendor || 'Unknown';
+      topByProduct[pk] = (topByProduct[pk] || 0) + saved;
+      topByVendor[vk]  = (topByVendor[vk]  || 0) + saved;
+    }
+  }
+  const topProduct = Object.entries(topByProduct).sort((a,b) => b[1]-a[1])[0];
+  const topVendor  = Object.entries(topByVendor).sort((a,b) => b[1]-a[1])[0];
+  const fmt = v => v >= 1000 ? '$' + (v/1000).toFixed(1) + 'K' : '$' + v.toFixed(0);
+  if (sub) {
+    const fl = from ? new Date(from+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
+    const tl = to   ? new Date(to  +'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
+    sub.textContent = (fl ? fl + (tl&&tl!==fl?' – '+tl:'') : 'This period') + ' · GPO vs. list';
+  }
+  if (totalSavings === 0) {
+    body.innerHTML = `<div style="color:var(--mist);font-size:12px;padding:8px 0;">GPO savings will appear once <code>gpo_price</code> differs from <code>unit_price</code> on PO items.</div>`;
+    return;
+  }
+  const periodDays = from && to ? Math.max(1,(new Date(to)-new Date(from))/864e5+1) : 30;
+  const pace = totalSavings / periodDays * 365;
+  body.innerHTML = `
+    <div class="mrow"><span class="mk">Total saved</span><span class="mv cg">${fmt(totalSavings)}</span></div>
+    <div class="mrow"><span class="mk">Annual pace</span><span class="mv cg">~${fmt(pace)}</span></div>
+    <div class="mrow"><span class="mk">Total spend</span><span class="mv">${fmt(totalSpend)}</span></div>
+    ${topProduct ? `<div class="mrow"><span class="mk">Top product</span><span class="mv">${topProduct[0].length>22?topProduct[0].slice(0,20)+'…':topProduct[0]}</span></div>` : ''}
+    ${topVendor  ? `<div class="mrow"><span class="mk">Top vendor</span><span class="mv">${topVendor[0]}</span></div>` : ''}
+    <div class="ins"><div class="ins-l">⚡ Procurement insight</div>
+    <div class="ins-t">GPO pricing saved ${fmt(totalSavings)} vs. list this period${pace>1000?' · on pace for '+fmt(pace)+'/yr':''}.${topProduct?' '+topProduct[0]+' was the top savings driver.':''}</div></div>`;
+}
+
+// ── White goods sidebar ───────────────────────────────────────
+function renderWgSidebar(poItems) {
+  const body = document.getElementById('wg-sidebar-body');
+  const sub  = document.getElementById('wg-sidebar-sub');
+  if (!body) return;
+  if (!poItems || !poItems.length) {
+    body.innerHTML = `<div style="color:var(--mist);font-size:12px;padding:8px 0;">No supply orders found for this period.</div>`;
+    return;
+  }
+  // Group by vendor, sum spend
+  const byVendor = {}, byProduct = {};
+  let totalSpend = 0;
+  for (const r of poItems) {
+    const qty   = Number(r.qty_ordered) || 1;
+    const price = Number(r.gpo_price) || Number(r.unit_price) || 0;
+    const spend = qty * price;
+    totalSpend += spend;
+    const vendor = r.vendor || 'Unknown vendor';
+    byVendor[vendor] = (byVendor[vendor] || 0) + spend;
+    const prod = (r.product_name || 'Unknown').slice(0, 28);
+    byProduct[prod] = (byProduct[prod] || 0) + spend;
+  }
+  const topVendors = Object.entries(byVendor).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const maxVend = topVendors[0] ? topVendors[0][1] : 1;
+  if (sub) sub.textContent = 'Supply ordering · ' + poItems.length + ' items';
+  body.innerHTML = `
+    <div class="mrow"><span class="mk">Total spend</span><span class="mv">${fmt(totalSpend)}</span></div>
+    <div class="mrow"><span class="mk">Orders</span><span class="mv">${poItems.length}</span></div>
+    <div style="margin-top:10px;font-size:11px;font-weight:600;color:var(--mist);letter-spacing:.06em;text-transform:uppercase;">By vendor</div>
+    ${topVendors.map(([v,s]) => `
+      <div style="margin-top:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">
+          <span style="color:#1C2B4A;">${v.length>22?v.slice(0,20)+'…':v}</span>
+          <span style="color:var(--ink);font-variant-numeric:tabular-nums;">${fmt(s)}</span>
+        </div>
+        <div style="height:4px;background:#EEF0F5;border-radius:2px;"><div style="height:4px;background:var(--blue);border-radius:2px;width:${Math.round(s/maxVend*100)}%;"></div></div>
+      </div>`).join('')}
+    <div class="ins" style="margin-top:10px;"><div class="ins-l">⚡ Supply insight</div>
+    <div class="ins-t">${topVendors[0]?topVendors[0][0]+' accounts for '+Math.round(topVendors[0][1]/totalSpend*100)+'% of supply spend this period.':'Track supply spend across vendors here.'}</div></div>`;
 }
 
 // ── Render procurement savings table ─────────────────────────

@@ -229,7 +229,7 @@ async function load() {
   try {
     // ── 1. PO Items for the year ──────────────────────────────
     const poRes = await fetch(
-      SUPA_URL+`/rest/v1/po_items?select=product_name,vendor,qty_ordered,unit_price,week_start,status${locFilter}&week_start=gte.${year}-01-01&week_start=lte.${year}-12-31&status=in.(submitted,received)&limit=5000`,
+      SUPA_URL+`/rest/v1/po_items?select=product_name,vendor,qty_ordered,unit_price,gpo_price,week_start,status${locFilter}&week_start=gte.${year}-01-01&week_start=lte.${year}-12-31&status=in.(submitted,received)&limit=5000`,
       { headers: H }
     );
     const poItems = await poRes.json();
@@ -278,7 +278,10 @@ async function load() {
 
     // Year totals
     const totalSpend  = quarters.reduce((s,q) => s+q.spend, 0);
-    const totalSav    = totalSpend * 0.12;
+    const totalSav    = poItems.reduce((s,r) => {
+      const qty = Number(r.qty_ordered)||1;
+      return s + Math.max(0, (Number(r.unit_price)||0) - (Number(r.gpo_price)||Number(r.unit_price)||0)) * qty;
+    }, 0);
     const totalGL     = quarters.reduce((s,q) => s+q.glTotal, 0);
     const totalUnits  = quarters.reduce((s,q) => s+q.units, 0);
     const activeLots  = lots.filter(l => l.status === 'Active').length;

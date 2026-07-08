@@ -1140,6 +1140,12 @@ function saveSettings() {
   };
   localStorage.setItem('medsync_settings', JSON.stringify(settings));
   showToast('✓ Settings saved');
+  // Also persist to Supabase so all devices/users share the same thresholds
+  fetch(SUPA_URL + '/rest/v1/organization_settings', {
+    method: 'POST',
+    headers: Object.assign({}, _settH, { 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+    body: JSON.stringify({ id: 1, settings_json: settings, updated_at: new Date().toISOString() })
+  }).catch(function(){});
 }
 
 // Expose margin targets for other pages to read
@@ -1206,6 +1212,36 @@ function showToast(msg) {
     if (s.margin_supplies_max) document.getElementById('margin-supplies-max') && (document.getElementById('margin-supplies-max').value = s.margin_supplies_max);
     if (s.margin_drift_pct)    document.getElementById('margin-drift-pct')    && (document.getElementById('margin-drift-pct').value    = s.margin_drift_pct);
   } catch(e) {}
+
+  // Also load from Supabase (overrides localStorage if remote row exists)
+  fetch(SUPA_URL + '/rest/v1/organization_settings?id=eq.1&select=settings_json&limit=1', { headers: _settH })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows) {
+      if (!rows || !rows.length || !rows[0].settings_json) return;
+      var s = rows[0].settings_json;
+      localStorage.setItem('medsync_settings', JSON.stringify(s));
+      if (s.cogs_min)        document.getElementById('cogs-min').value = s.cogs_min;
+      if (s.cogs_max)        document.getElementById('cogs-max').value = s.cogs_max;
+      if (s.gl_pct_thresh)   document.getElementById('gl-pct-thresh').value = s.gl_pct_thresh;
+      if (s.exp_days)        document.getElementById('exp-days').value = s.exp_days;
+      if (s.unreceived_days) document.getElementById('unreceived-days').value = s.unreceived_days;
+      if (typeof s.min_stock_enabled !== 'undefined') {
+        document.getElementById('min-stock-enabled').checked = s.min_stock_enabled;
+        document.getElementById('min-stock-label').textContent = s.min_stock_enabled ? 'Enabled' : 'Disabled';
+      }
+      if (s.wg_pct_min) document.getElementById('wg-pct-min').value = s.wg_pct_min;
+      if (s.wg_pct_max) document.getElementById('wg-pct-max').value = s.wg_pct_max;
+      if (s.cutoff)    document.getElementById('cutoff-time').value = s.cutoff;
+      if (s.margin_global_min)   document.getElementById('margin-global-min')   && (document.getElementById('margin-global-min').value   = s.margin_global_min);
+      if (s.margin_global_max)   document.getElementById('margin-global-max')   && (document.getElementById('margin-global-max').value   = s.margin_global_max);
+      if (s.margin_pharma_min)   document.getElementById('margin-pharma-min')   && (document.getElementById('margin-pharma-min').value   = s.margin_pharma_min);
+      if (s.margin_pharma_max)   document.getElementById('margin-pharma-max')   && (document.getElementById('margin-pharma-max').value   = s.margin_pharma_max);
+      if (s.margin_diag_min)     document.getElementById('margin-diag-min')     && (document.getElementById('margin-diag-min').value     = s.margin_diag_min);
+      if (s.margin_diag_max)     document.getElementById('margin-diag-max')     && (document.getElementById('margin-diag-max').value     = s.margin_diag_max);
+      if (s.margin_supplies_min) document.getElementById('margin-supplies-min') && (document.getElementById('margin-supplies-min').value = s.margin_supplies_min);
+      if (s.margin_supplies_max) document.getElementById('margin-supplies-max') && (document.getElementById('margin-supplies-max').value = s.margin_supplies_max);
+      if (s.margin_drift_pct)    document.getElementById('margin-drift-pct')    && (document.getElementById('margin-drift-pct').value    = s.margin_drift_pct);
+    }).catch(function(){});
 
   // Show Margin Targets section for super admins only
   try {

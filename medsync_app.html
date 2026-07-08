@@ -948,18 +948,19 @@ async function loadData() {
 
     // ── 2. PO Items — procurement savings + compliance ───────
     const poItems = await query('po_items',
-      `select=qty_ordered,unit_price,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
+      `select=qty_ordered,unit_price,gpo_price,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
     );
 
-    // Savings = 12% GPO discount on total submitted/received order value
-    const totalOrderVal = poItems.reduce((s, i) =>
-      s + (Number(i.unit_price) || 0) * (Number(i.qty_ordered) || 0), 0);
-    const totalSav = totalOrderVal * 0.12;
+    // Savings = actual gpo_price vs unit_price difference per line item
+    const totalSav = poItems.reduce((s, i) => {
+      const qty = Number(i.qty_ordered) || 1;
+      return s + Math.max(0, (Number(i.unit_price)||0) - (Number(i.gpo_price)||Number(i.unit_price)||0)) * qty;
+    }, 0);
     const ksav = document.getElementById('k-sav');
     ksav.textContent = fmt$(totalSav);
     ksav.className = totalSav > 0 ? 'kpi-v cg' : 'kpi-v cm';
     const ksavs = document.getElementById('k-sav-s');
-    if (ksavs) ksavs.textContent = 'Est. GPO discount · 12% capture rate';
+    if (ksavs) ksavs.textContent = totalSav > 0 ? 'GPO savings · actual price difference' : 'GPO savings · update gpo_price on PO items';
 
     // Order compliance — derive from po_items week coverage
     const weeksSeen = {};
