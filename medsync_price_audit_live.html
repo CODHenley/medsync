@@ -1172,9 +1172,8 @@ async function saveSupplierSKU(productId, msName, sku, btn) {
   btn.disabled = true;
   btn.textContent = 'Saving…';
   try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+    const res = await edgeFetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
       body: JSON.stringify({ product_id: productId, sku }),
     });
     const json = await res.json();
@@ -1200,9 +1199,8 @@ async function saveCostToVetspire(btn) {
   btn.disabled = true;
   btn.textContent = 'Saving…';
   try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+    const res = await edgeFetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
       body: JSON.stringify({ product_id: productId, vetspire_product_id: vetspireProductId || undefined, unit_cost: cost }),
     });
     const json = await res.json();
@@ -1612,18 +1610,16 @@ async function saveSelected(mode) {
   for (const d of rows) {
     try {
       if (mode === 'costs' && d.vc_latest != null && d.product_id) {
-        const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+        const res = await edgeFetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
           body: JSON.stringify({ product_id: d.product_id, vetspire_product_id: d.vetspire_product_id || undefined, unit_cost: d.vc_latest }),
         });
         const json = await res.json();
         if (res.ok && json.ok) { done++; if (json.vetspire_synced) vsOk++; d.ms_price = d.vc_latest; d.vetspire_cost = d.vc_latest; }
         else failed++;
       } else if (mode === 'skus' && d.supplier_sku && d.product_id) {
-        const res = await fetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+        const res = await edgeFetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
           body: JSON.stringify({ product_id: d.product_id, sku: d.supplier_sku }),
         });
         const json = await res.json();
@@ -1652,7 +1648,7 @@ const _selected = new Set(); // selected flag IDs
 
 async function loadFlags() {
   const res = await fetch(
-    SUPA_URL + '/rest/v1/price_review_flags?select=*,locations(name)&order=flagged_at.desc&limit=500',
+    SUPA_URL + '/rest/v1/price_review_flags?select=*&order=flagged_at.desc&limit=500',
     { headers: H }
   );
   _flags = res.ok ? (await res.json()) : [];
@@ -1828,11 +1824,19 @@ async function submitResolve() {
       btn.textContent = 'Saving…';
       const statusMap = { hold: 'hold', reject: 'rejected' };
       const body = { status: statusMap[_resolveAction], resolved_by: resolver, resolved_at: new Date().toISOString(), resolution_notes: notes || null };
-      const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + _resolveId, {
+      let res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + _resolveId, {
         method: 'PATCH',
         headers: { ...H, 'Prefer': 'return=minimal' },
         body: JSON.stringify(body)
       });
+      // If 400, the audit columns may not exist yet — fall back to status-only
+      if (res.status === 400) {
+        res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + _resolveId, {
+          method: 'PATCH',
+          headers: { ...H, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ status: body.status })
+        });
+      }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       if (flag) Object.assign(flag, body);
       closeModal(); render();
@@ -1988,9 +1992,15 @@ async function bulkReject() {
 
   await Promise.all(ids.map(async id => {
     const body = { status: 'rejected', resolved_by: resolver, resolved_at: new Date().toISOString() };
-    await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + id, {
+    let res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + id, {
       method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
     });
+    // Fall back to status-only if audit columns not yet in schema
+    if (res.status === 400) {
+      res = await fetch(SUPA_URL + '/rest/v1/price_review_flags?id=eq.' + id, {
+        method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' }, body: JSON.stringify({ status: 'rejected' })
+      });
+    }
     const flag = _flags.find(f => f.id === id);
     if (flag) Object.assign(flag, body);
   }));
