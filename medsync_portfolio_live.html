@@ -4111,6 +4111,14 @@ function renderTrainingStaffCards(rows) {
 .msg-dm-bar-name{font-size:13px;font-weight:600;color:#1C2B4A;flex:1;}
 .msg-dl-btn{background:none;border:0.5px solid #DDD9EC;border-radius:6px;padding:4px 10px;font-size:11px;color:#4A5568;cursor:pointer;font-family:"DM Sans",sans-serif;}
 .msg-dl-btn:hover{background:#EDE8F8;}
+/* @mention */
+.msg-input-wrap{position:relative;flex:1;}
+#msg-mention-list{position:absolute;bottom:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid #DDD9EC;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);overflow:hidden;z-index:400;max-height:200px;overflow-y:auto;display:none;}
+.mention-item{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;font-size:13px;font-family:"DM Sans",sans-serif;color:#1C2B4A;}
+.mention-item:hover,.mention-item.sel{background:#EDE8F8;}
+.mention-item-name{font-weight:500;}
+.msg-mention{display:inline;background:rgba(106,80,180,.15);color:#4A20A0;border-radius:4px;padding:0 3px;font-weight:600;}
+.msg-bubble.mine .msg-mention{background:rgba(255,255,255,.2);color:#E8D8FF;}
 @media(max-width:480px){#msg-drawer{width:100%;}}
 </style>
 
@@ -4132,8 +4140,12 @@ function renderTrainingStaffCards(rows) {
     </div>
     <div class="msg-body" id="msg-body-staff"><div class="msg-empty">No messages yet. Say hello!</div></div>
     <div class="msg-input-bar">
-      <textarea class="msg-input" id="msg-input-staff" placeholder="Message all staff…" rows="1"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage('staff');}"></textarea>
+      <div class="msg-input-wrap">
+        <div id="msg-mention-list"></div>
+        <textarea class="msg-input" id="msg-input-staff" placeholder="Message all staff… (@name to mention)" rows="1"
+          oninput="_mentionInput(this,'staff')"
+          onkeydown="_mentionKeydown(event,'staff')"></textarea>
+      </div>
       <button class="msg-send-btn" onclick="sendMessage('staff')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
@@ -4152,8 +4164,11 @@ function renderTrainingStaffCards(rows) {
     </div>
     <div class="msg-body" id="msg-body-dm" style="flex:1;overflow-y:auto;"></div>
     <div class="msg-input-bar">
-      <textarea class="msg-input" id="msg-input-dm" placeholder="Send a message…" rows="1"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage(_currentDMChannel);}"></textarea>
+      <div class="msg-input-wrap">
+        <textarea class="msg-input" id="msg-input-dm" placeholder="Send a message… (@name to mention)" rows="1"
+          oninput="_mentionInput(this,'dm')"
+          onkeydown="_mentionKeydown(event,'dm')"></textarea>
+      </div>
       <button class="msg-send-btn" onclick="sendMessage(_currentDMChannel)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
@@ -4384,7 +4399,109 @@ function renderMessages(channel, msgs, bodyId) {
 }
 
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    .replace(/@([\w .'-]+)/g, (_, name) => `<span class="msg-mention">@${name}</span>`);
+}
+
+// ── @mention picker ────────────────────────────────────────────
+let _mentionQuery    = null;   // null = not in mention mode; string = current query
+let _mentionSel      = 0;      // selected index in picker
+let _mentionInputEl  = null;   // active textarea
+let _mentionAtPos    = -1;     // caret position of the '@'
+
+function _getMentionList() { return document.getElementById('msg-mention-list'); }
+
+function _mentionInput(ta, channel) {
+  const val  = ta.value;
+  const caret = ta.selectionStart;
+  // Find nearest '@' before caret with no space after it
+  let atPos = -1;
+  for (let i = caret - 1; i >= 0; i--) {
+    if (val[i] === '@') { atPos = i; break; }
+    if (val[i] === ' ' || val[i] === '\n') break;
+  }
+  if (atPos === -1) { _closeMention(); return; }
+  const query = val.slice(atPos + 1, caret).toLowerCase();
+  _mentionQuery   = query;
+  _mentionInputEl = ta;
+  _mentionAtPos   = atPos;
+  _mentionSel     = 0;
+  _renderMentionList(query, ta);
+}
+
+function _renderMentionList(query, ta) {
+  const me = _msgMe();
+  const matches = _allUsers
+    .filter(u => u.id !== me.id && u.full_name.toLowerCase().includes(query))
+    .slice(0, 8);
+  const list = _getMentionList();
+  if (!list) return;
+  // Move list into the active input's wrapper if needed
+  const wrapper = ta.closest('.msg-input-wrap');
+  if (wrapper && list.parentElement !== wrapper) wrapper.prepend(list);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map((u, i) =>
+    `<div class="mention-item${i === _mentionSel ? ' sel' : ''}" onmousedown="_mentionPick(${i})" data-idx="${i}">
+      ${_msgAvatar(u, 24)}
+      <span class="mention-item-name">${u.full_name}</span>
+    </div>`
+  ).join('');
+  list.style.display = 'block';
+  list._matches = matches;
+}
+
+function _mentionKeydown(e, channel) {
+  const list = _getMentionList();
+  if (!list || list.style.display === 'none') {
+    // Normal enter/send behaviour
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(channel === 'staff' ? 'staff' : _currentDMChannel);
+    }
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _mentionSel = Math.min(_mentionSel + 1, (list._matches||[]).length - 1);
+    _highlightMentionSel(list);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _mentionSel = Math.max(_mentionSel - 1, 0);
+    _highlightMentionSel(list);
+  } else if (e.key === 'Enter' || e.key === 'Tab') {
+    e.preventDefault();
+    _mentionPick(_mentionSel);
+  } else if (e.key === 'Escape') {
+    _closeMention();
+  }
+}
+
+function _highlightMentionSel(list) {
+  list.querySelectorAll('.mention-item').forEach((el, i) => el.classList.toggle('sel', i === _mentionSel));
+}
+
+function _mentionPick(idx) {
+  const list = _getMentionList();
+  const matches = list?._matches || [];
+  const user = matches[idx];
+  if (!user || !_mentionInputEl) { _closeMention(); return; }
+  const ta   = _mentionInputEl;
+  const val  = ta.value;
+  const before = val.slice(0, _mentionAtPos);
+  const after  = val.slice(ta.selectionStart);
+  ta.value = before + '@' + user.full_name + ' ' + after;
+  const newCaret = (_mentionAtPos + 1 + user.full_name.length + 1);
+  ta.setSelectionRange(newCaret, newCaret);
+  ta.focus();
+  _closeMention();
+}
+
+function _closeMention() {
+  const list = _getMentionList();
+  if (list) { list.style.display = 'none'; list._matches = []; }
+  _mentionQuery = null;
+  _mentionAtPos = -1;
 }
 
 async function sendMessage(channel) {
@@ -4526,6 +4643,12 @@ Exported: ${new Date().toLocaleString()}
 window.addEventListener('load', () => {
   setTimeout(pollUnreadCount, 3000);
   setInterval(pollUnreadCount, 30000);
+});
+
+// Close mention picker on outside click
+document.addEventListener('mousedown', (e) => {
+  const list = _getMentionList();
+  if (list && !list.contains(e.target) && e.target !== _mentionInputEl) _closeMention();
 });
 </script>
 
