@@ -359,7 +359,7 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
 <script>
 const SUPA_URL   = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const RESEND_KEY = 're_hR35LhRB_FAhsnArv1k7g4RZHn9yWgxWh';
+// Email sending routed through Supabase Edge Function (send-welcome-email) — key is never in client
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
 
@@ -753,12 +753,11 @@ async function sendWelcomeEmail(name, email, pass, role) {
 </body></html>`;
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch(SUPA_URL + '/functions/v1/send-welcome-email', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'MedSync <insights@medsync.vet>',
-        to: [email],
+        to: email,
         subject: 'Welcome to MedSync — your login details',
         html
       })
