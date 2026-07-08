@@ -792,17 +792,45 @@ function matchProducts(vetcoveItems, msProducts) {
       let inferredUnits = null;
       let basisNote = null;
 
+      // ── Volumetric unit conversion (gallon/liter → mL) ───────
+      // When Vetcove sells by the gallon or liter and VetSpire tracks per mL,
+      // the ratio (~3785 or ~1000) exceeds the auto-detect cap of 1000.
+      // Detect from the product name or unit_meas field and convert explicitly.
+      const vcNameLower = (v.name || '').toLowerCase();
+      const vcUom       = (v.unit_meas || '').toLowerCase();
+      const VOL_CONVERSIONS = [
+        { keys: ['gallon', ' gal ', '(1 gallon)', '1 gal', '/gal'], mlPer: 3785.41, label: 'gal→mL' },
+        { keys: [' liter', '1 liter', '(1l)', '/liter', ' l '],      mlPer: 1000,    label: 'L→mL'   },
+        { keys: [' 500ml', '500 ml'],                                  mlPer: 500,     label: '500mL'  },
+        { keys: [' 250ml', '250 ml'],                                  mlPer: 250,     label: '250mL'  },
+      ];
+      if (!inferredUnits && vcPrice && msPrice) {
+        for (const conv of VOL_CONVERSIONS) {
+          const match = conv.keys.some(k => vcNameLower.includes(k) || vcUom.includes(k));
+          if (match) {
+            const converted = vcPrice / conv.mlPer;
+            // Only apply if it brings the price into a plausible range vs msPrice (within 10×)
+            if (Math.abs(converted - msPrice) / msPrice < 10) {
+              inferredUnits = conv.mlPer;
+              vcPrice = converted;
+              basisNote = conv.label;
+              break;
+            }
+          }
+        }
+      }
+
       // Use VetSpire buying quantity if available for precise per-unit normalization
       const knownBuyQty = vsId ? (_vsBuyQtyMap.get(vsId) || null) : null;
-      if (knownBuyQty != null && knownBuyQty > 1 && vcPrice && msPrice && vcPrice > msPrice * 1.5) {
+      if (!inferredUnits && knownBuyQty != null && knownBuyQty > 1 && vcPrice && msPrice && vcPrice > msPrice * 1.5) {
         inferredUnits = knownBuyQty;
         vcPrice = vcPrice / knownBuyQty;
         basisNote = `pkg÷${knownBuyQty}`;
-      } else if (vcPrice && msPrice && vcPrice > msPrice * 1.5) {
-        // Fallback: auto-detect ratio when VetSpire CSV not loaded
+      } else if (!inferredUnits && vcPrice && msPrice && vcPrice > msPrice * 1.5) {
+        // Fallback: auto-detect ratio when VetSpire CSV not loaded (cap raised to 5000 for large bottles)
         const ratio = vcPrice / msPrice;
         const rounded = Math.round(ratio);
-        if (rounded >= 2 && rounded <= 1000 && Math.abs(ratio - rounded) / rounded < 0.15) {
+        if (rounded >= 2 && rounded <= 5000 && Math.abs(ratio - rounded) / rounded < 0.15) {
           inferredUnits = rounded;
           vcPrice = vcPrice / rounded;
           basisNote = `pkg÷${rounded}`;
