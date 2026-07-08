@@ -30,6 +30,7 @@ function showScreen(name) {
   window.scrollTo(0,0);
   if (name === 'portfolio') {
     setTimeout(loadPortfolioHeroTiles, 100);
+    setTimeout(loadPriorityChips, 150);
     setTimeout(loadRecognition, 250);
     setTimeout(loadTeamSection, 400);
   }
@@ -732,6 +733,63 @@ async function loadPortfolioHeroTiles() {
   }
 }
 
+// ── Live priority chips ───────────────────────────────────────────────────────
+async function loadPriorityChips() {
+  const el = document.getElementById('priority-chips');
+  const sub = document.getElementById('brief-sub');
+  if (!el) return;
+  const _SUPA = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+  const _KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+  const _H    = { 'apikey': _KEY, 'Authorization': 'Bearer ' + _KEY };
+  const now   = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
+  const days30fwd = new Date(+now + 30*864e5).toISOString().split('T')[0];
+  async function sg(path) { try { const r = await fetch(_SUPA+path,{headers:_H}); const d=await r.json(); return Array.isArray(d)?d:[]; } catch(e){return[];} }
+
+  const chips = [];
+  try {
+    const [expLots, pendingOrders, locations] = await Promise.all([
+      sg(`/rest/v1/lots?select=id,expiration_date,locations(name)&expiration_date=gte.${today}&expiration_date=lte.${days30fwd}&qty_remaining=gt.0&status=neq.Disposed&limit=200`),
+      sg(`/rest/v1/po_items?select=id,location_id,week_start,locations(name)&status=eq.queued&week_start=eq.${today}&limit=50`),
+      sg(`/rest/v1/locations?select=id,name&is_active=eq.true&limit=20`),
+    ]);
+
+    // Expiring lots chip
+    if (expLots.length > 0) {
+      chips.push({ label: expLots.length + ' lot' + (expLots.length!==1?'s':'') + ' expiring within 30 days', color: '#E84545', shadow: 'rgba(232,69,69,0.4)', screen: 'lifecycle' });
+    }
+
+    // Pending orders
+    if (pendingOrders.length > 0) {
+      const locNames = [...new Set(pendingOrders.map(r => (r.locations&&r.locations.name)||'').filter(Boolean))];
+      chips.push({ label: (locNames[0]||'Location') + ' — order pending today', color: '#E8922A', shadow: 'rgba(232,146,42,0.4)', screen: 'order' });
+    }
+
+    // Update hero subtitle
+    const onTrack = Math.max(0, (locations.length||4) - chips.length);
+    const total = locations.length || 4;
+    if (sub) {
+      sub.innerHTML = chips.length === 0
+        ? `<span style="color:#6FE0A0;">All ${total} locations on track</span>`
+        : `${onTrack} of ${total} locations on track` + (pendingOrders.length ? ` · <span style="color:#E8C76A;">${pendingOrders.length} order${pendingOrders.length!==1?'s':''} pending today</span>` : '');
+    }
+
+    // Render chips
+    if (chips.length === 0) {
+      el.innerHTML = `<span style="display:flex;align-items:center;gap:6px;background:rgba(111,224,160,0.15);border:1px solid rgba(111,224,160,0.3);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:#6FE0A0;white-space:nowrap;">All clear — no urgent actions</span>`;
+      return;
+    }
+    el.innerHTML = chips.map(c => `
+      <button onclick="showScreen('${c.screen}')" style="display:flex;align-items:center;gap:6px;background:${c.color};border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px ${c.shadow};">
+        <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);display:inline-block;"></span>
+        ${c.label}
+      </button>`).join('');
+  } catch(e) {
+    // Leave chips empty rather than show stale data
+    if (sub) sub.textContent = 'Dashboard';
+  }
+}
+
 // Close hamburger when clicking anywhere outside the sidebar
 // window.blur fires when focus moves into an iframe — reliable cross-iframe close
 window.addEventListener('blur', function() {
@@ -754,6 +812,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (greetEl) greetEl.textContent = salutation + ' — portfolio is looking healthy.';
   })();
   setTimeout(loadPortfolioHeroTiles, 300);
+  setTimeout(loadPriorityChips, 350);
   document.getElementById('app-body').addEventListener('click', function() {
     var sb = document.getElementById('app-sidebar');
     if (sb && sb.style.display === 'block') { closeMobileMenu(); }
@@ -1692,24 +1751,7 @@ function deepDiveLoc(locCode) {
     <!-- ── PRIORITY ACTIONS ── -->
     <div style="background:#fff;border-bottom:1px solid #E4DAF2;padding:14px 28px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8A93A8;white-space:nowrap;">Today's priorities</span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button onclick="showScreen('order')" style="display:flex;align-items:center;gap:6px;background:#E8922A;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(232,146,42,0.4);">
-          <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);display:inline-block;"></span>
-          Old Orchard — order due in 58m
-        </button>
-        <button onclick="showScreen('lifecycle')" style="display:flex;align-items:center;gap:6px;background:#E84545;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(232,69,69,0.4);">
-          <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);display:inline-block;"></span>
-          4 lots expiring within 30 days
-        </button>
-        <button onclick="showScreen('cycle')" style="display:flex;align-items:center;gap:6px;background:#E84545;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(232,69,69,0.4);">
-          <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);display:inline-block;"></span>
-          Old Orchard — cycle count not done
-        </button>
-        <button onclick="dbNav('wg')" style="display:flex;align-items:center;gap:6px;background:#C8922A;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(200,146,42,0.4);">
-          <span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);display:inline-block;"></span>
-          White goods overuse · 2 locations
-        </button>
-      </div>
+      <div id="priority-chips" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
     </div>
 
     <div style="padding:20px 28px;display:flex;flex-direction:column;gap:24px;">
@@ -3543,24 +3585,64 @@ function hideToast() {
 }
 
 
-const allLogs = [
-  { ts:'May 28 · 10:47am', loc:'Lincoln Park', user:'Megan H.', role:'Admin / COD', type:'Export', tag:'log-exp', action:'Exported MedSync Analytics report — MTD · All locations · PDF + QuickBooks' },
-  { ts:'May 28 · 10:42am', loc:'Lincoln Park', user:'Sarah K.', role:'Hospital Receiver', type:'Inventory', tag:'log-inv', action:'Receiving session completed — MWI delivery · 3 items confirmed · 1 damaged (Carprofen 25mg) · 1 unmatched PO' },
-  { ts:'May 28 · 10:18am', loc:'Old Orchard', user:'Taryn S.', role:'Inventory Lead', type:'Procurement', tag:'log-proc', action:'Weekly order exported — $847.32 · 6 line items · PDF generated · 8 min before 1pm cutoff' },
-  { ts:'May 28 · 09:54am', loc:'West Loop', user:'Felicia G.', role:'Inventory Lead', type:'Inventory', tag:'log-inv', action:'Goods lost submitted — Gabapentin Solu 50mg/mL · Expired · 966mL · $319.00' },
-  { ts:'May 28 · 09:31am', loc:'Lincoln Park', user:'Megan H.', role:'Admin / COD', type:'System', tag:'log-sys', action:'White goods consumption rate updated — Gauze 4×4: Old Orchard rate adjusted from 1.8 to 2.1 per 100 appts' },
-  { ts:'May 28 · 09:14am', loc:'Wheaton', user:'Megan H.', role:'Inventory Lead', type:'Inventory', tag:'log-inv', action:'Cycle count completed — Cat A + B · 22 products verified · 0 discrepancies · 14 min' },
-  { ts:'May 27 · 4:52pm', loc:'Old Orchard', user:'Taryn S.', role:'Inventory Lead', type:'System', tag:'log-sys', action:'Min/Max updated — Maropitant Inj 10mg/mL: Max reduced from 8 to 5 vials per Admin recommendation' },
-  { ts:'May 27 · 2:08pm', loc:'West Loop', user:'Marcus T.', role:'Hospital Receiver', type:'User session', tag:'log-user', action:'Hospital Receiver session started — Goods lost selected · Carprofen 25mg · Damaged/Spilled · 2 bottles · $28.40' },
-  { ts:'May 27 · 1:58pm', loc:'Old Orchard', user:'Taryn S.', role:'Inventory Lead', type:'Procurement', tag:'log-proc', action:'⚠ Late submission — Vetcove order submitted at 1:58pm · 58 min past cutoff · Next-day delivery at risk' },
-  { ts:'May 27 · 11:30am', loc:'Lincoln Park', user:'Maria K.', role:'Inventory Lead', type:'Inventory', tag:'log-inv', action:'Receiving scan completed — PO #4421 · 5 of 7 items confirmed · 1 discrepancy flagged (Ondansetron 8mg vs 4mg ordered) · PO line open' },
-  { ts:'May 27 · 09:00am', loc:'All locations', user:'Megan H.', role:'Admin / COD', type:'System', tag:'log-sys', action:'COGs denominator changed — gross production → gross revenue · Historical COGs recalculated across all locations' },
-  { ts:'May 26 · 3:40pm', loc:'Lincoln Park', user:'Maria K.', role:'Inventory Lead', type:'Inventory', tag:'log-inv', action:'Goods lost submitted — Catalyst CHEM 10 clips · Diagnostic duplicate · Equipment flag triggered · 3 clips · $41.00' },
-];
+let _liveLogs = [];
+
+function _fmtLogTs(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  const day = d.getDate();
+  let h = d.getHours(), m = d.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return `${mon} ${day} · ${h}:${String(m).padStart(2,'0')}${ampm}`;
+}
+
+function _roleTagClass(role) {
+  if (!role) return 'log-user';
+  const r = role.toLowerCase();
+  if (r.includes('admin') || r.includes('superadmin')) return 'log-sys';
+  if (r.includes('receiver')) return 'log-inv';
+  if (r.includes('inventory') || r.includes('lead')) return 'log-inv';
+  if (r.includes('manager') || r.includes('director')) return 'log-proc';
+  return 'log-user';
+}
+
+async function loadLiveLog() {
+  const tbody = document.getElementById('log-tbody');
+  if (!tbody) return;
+  try {
+    const _skey = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session')||'{}').access_token || SUPA_KEY; } catch(e){ return SUPA_KEY; } })();
+    const _h = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _skey };
+    const res = await fetch(
+      SUPA_URL + '/rest/v1/activity_log?select=id,action,action_type,created_at,user_id,location_id,users(full_name,role),locations(name)&order=created_at.desc&limit=200',
+      { headers: _h }
+    );
+    const rows = res.ok ? await res.json() : [];
+    if (!Array.isArray(rows) || rows.length === 0) { renderLog([]); return; }
+    _liveLogs = rows.map(r => ({
+      ts:     _fmtLogTs(r.created_at),
+      loc:    (r.locations && r.locations.name) || 'All locations',
+      user:   (r.users && r.users.full_name) ? r.users.full_name.split(' ').map((p,i) => i === 0 ? p : p[0]+'.').join(' ') : '—',
+      role:   (r.users && r.users.role) ? r.users.role.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : '',
+      type:   r.action_type || 'System',
+      tag:    _roleTagClass((r.users && r.users.role) || ''),
+      action: r.action || '',
+    }));
+    renderLog(_liveLogs);
+  } catch(e) {
+    console.warn('Activity log load error:', e);
+    renderLog([]);
+  }
+}
 
 function renderLog(rows) {
   const tbody = document.getElementById('log-tbody');
   if (!tbody) return;
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:24px;text-align:center;color:#8899AA;">No activity recorded yet.</td></tr>';
+    return;
+  }
   tbody.innerHTML = rows.map(r => `
     <tr class="log-row">
       <td>${r.ts}</td>
@@ -3573,21 +3655,110 @@ function renderLog(rows) {
 }
 
 function logFilter() {
-  const loc = document.getElementById('log-loc').value;
+  const loc  = document.getElementById('log-loc').value;
   const role = document.getElementById('log-role').value;
   const type = document.getElementById('log-type').value;
-  const filtered = allLogs.filter(r =>
-    (loc === 'All locations' || r.loc === loc || r.loc === 'All locations') &&
-    (role === 'All roles' || r.role === role) &&
-    (type === 'All types' || r.type === type)
+  const src  = _liveLogs.length ? _liveLogs : [];
+  const filtered = src.filter(r =>
+    (loc  === 'All locations' || r.loc  === loc  || r.loc  === 'All locations') &&
+    (role === 'All roles'     || r.role.toLowerCase().includes(role.toLowerCase())) &&
+    (type === 'All types'     || r.type === type)
   );
   document.getElementById('log-nav-label').textContent =
     'Activity log · ' + loc + ' · ' + document.getElementById('log-date').value;
   renderLog(filtered);
 }
 
-renderLog(allLogs);
-renderGlTop5('Today', 'all');
+// ── Live goods-lost top-5 ───────────────────────────────────────────────────
+let _glLiveCache = {};
+
+function _dateRangeStart(range) {
+  const now = new Date();
+  if (range === 'Today') { const d = new Date(now); d.setHours(0,0,0,0); return d.toISOString(); }
+  if (range === 'WTD')   { const d = new Date(now); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d.toISOString(); }
+  if (range === 'MTD')   { return new Date(now.getFullYear(), now.getMonth(), 1).toISOString(); }
+  if (range === 'T-90')  { const d = new Date(now); d.setDate(d.getDate() - 90); return d.toISOString(); }
+  if (range === 'YTD')   { return new Date(now.getFullYear(), 0, 1).toISOString(); }
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+}
+
+async function loadGlTop5Live(range, locFilter) {
+  const cacheKey = range + '|' + (locFilter||'all');
+  if (_glLiveCache[cacheKey]) { _renderGlTop5Live(_glLiveCache[cacheKey], range); return; }
+  const _skey = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session')||'{}').access_token || _SUPA_KEY; } catch(e){ return _SUPA_KEY; } })();
+  const _h = { 'apikey': _SUPA_KEY, 'Authorization': 'Bearer ' + _skey };
+  try {
+    let url = SUPA_URL + `/rest/v1/goods_lost?select=product_name,category,value_lost,location_id,locations(name)&created_at=gte.${encodeURIComponent(_dateRangeStart(range))}&order=created_at.desc&limit=2000`;
+    const res = await fetch(url, { headers: _h });
+    const rows = res.ok ? await res.json() : [];
+    if (!Array.isArray(rows)) { _renderGlTop5Live([], range); return; }
+    // Filter by location if not 'all'
+    const filtered = locFilter && locFilter !== 'all'
+      ? rows.filter(r => (r.locations && r.locations.name && r.locations.name.toLowerCase().replace(/\s+/g,'').includes(locFilter)))
+      : rows;
+    // Aggregate by product_name
+    const agg = {};
+    filtered.forEach(r => {
+      const k = r.product_name || 'Unknown';
+      if (!agg[k]) agg[k] = { p: k, cat: r.category || '—', subs: 0, loss: 0, locs: new Set() };
+      agg[k].subs++;
+      agg[k].loss += parseFloat(r.value_lost) || 0;
+      if (r.locations && r.locations.name) agg[k].locs.add(r.locations.name.replace('Lincoln Park','LP').replace('Old Orchard','OO').replace('West Loop','WL').replace('Wheaton','WH'));
+    });
+    const top5 = Object.values(agg)
+      .sort((a,b) => b.loss - a.loss)
+      .slice(0,5)
+      .map(r => ({ ...r, locs: [...r.locs].join(', ') || '—', loss: '$' + r.loss.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','), insight: _glCatInsight(r.cat) }));
+    _glLiveCache[cacheKey] = top5;
+    _renderGlTop5Live(top5, range);
+  } catch(e) { _renderGlTop5Live([], range); }
+}
+
+function _glCatInsight(cat) {
+  if (!cat) return 'normal';
+  const c = cat.toLowerCase();
+  if (c.includes('expired')) return 'ordering';
+  if (c.includes('duplicate') || c.includes('diag')) return 'equipment';
+  if (c.includes('in-house') || c.includes('inhouse')) return 'revenue';
+  if (c.includes('damaged') || c.includes('spilled')) return 'storage';
+  if (c.includes('waste')) return 'normal';
+  if (c.includes('training')) return 'training';
+  return 'normal';
+}
+
+function _renderGlTop5Live(rows, range) {
+  const tbody = document.getElementById('gl-top5-tbody');
+  if (!tbody) return;
+  const period = periodShortLabel[range] || range;
+  const _glp = document.getElementById('gl-top5-period'); if (_glp) _glp.textContent = period;
+  const p2 = document.getElementById('gl-top5-period2'); if (p2) p2.textContent = period;
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#8899AA;">No goods lost recorded for this period.</td></tr>';
+    const t2 = document.getElementById('gl-top5-tbody2'); if (t2) t2.innerHTML = tbody.innerHTML;
+    return;
+  }
+  tbody.innerHTML = rows.map((r,i) => {
+    const tag = glInsightTag[r.insight] || glInsightTag.normal;
+    const catColor = glCatColor[r.tag] || '#B8B0D0';
+    return `<tr style="border-bottom:0.5px solid #f0f0ec;${i%2===1?'background:#fafcfb':''}">
+      <td style="padding:9px 10px;color:#4A5568;font-weight:500;">${i+1}</td>
+      <td style="padding:9px 10px;color:#1C2B4A;font-weight:500;">${r.p}</td>
+      <td style="padding:9px 10px;"><span style="display:inline-block;background:#2E4057;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;white-space:nowrap;">${r.cat}</span></td>
+      <td style="padding:9px 10px;text-align:center;font-weight:500;color:#1C2B4A;">${r.subs}</td>
+      <td style="padding:9px 10px;text-align:center;color:#4A5568;font-size:11px;">${r.locs}</td>
+      <td style="padding:9px 10px;text-align:right;font-weight:500;color:#a33030;">${r.loss}</td>
+      <td style="padding:9px 10px;text-align:center;"><span style="display:inline-block;background:${tag.bg};color:${tag.color};font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;white-space:nowrap;">${tag.label}</span></td>
+    </tr>`;
+  }).join('');
+  const t2 = document.getElementById('gl-top5-tbody2'); if (t2) t2.innerHTML = tbody.innerHTML;
+}
+
+function renderGlTop5(range, loc) {
+  loadGlTop5Live(range, loc);
+}
+
+loadLiveLog();
+loadGlTop5Live('Today', 'all');
 
 
 function fsSelect(n) {

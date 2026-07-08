@@ -426,7 +426,7 @@ async function loadCogsBudget() {
     const [mRes, wRes, poRes, pyRes, trendRes, settingsRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid + '&date=gte.' + month1 + '&date=lte.' + today, { headers: H }),
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + vid + '&date=gte.' + weekStart + '&date=lte.' + today, { headers: H }),
-      fetch(SUPA_URL + '/rest/v1/po_items?select=gpo_price,order_qty&location_id=eq.' + state.locationId + '&status=eq.received&week_start=gte.' + month1, { headers: H }),
+      fetch(SUPA_URL + '/rest/v1/po_items?select=gpo_price,qty_ordered&location_id=eq.' + state.locationId + '&status=eq.received&week_start=gte.' + month1, { headers: H }),
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue,date&location_id=eq.' + vid + '&date=gte.' + pyMonth1 + '&date=lte.' + pyMonth2, { headers: H }),
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue,date&location_id=eq.' + vid + '&date=gte.' + t8wStr + '&date=lte.' + today, { headers: H }),
       fetch(SUPA_URL + '/rest/v1/location_settings?select=cogs_pct&location_id=eq.' + state.locationId, { headers: H }),
@@ -445,7 +445,7 @@ async function loadCogsBudget() {
 
     if (Array.isArray(mRows))  state.mtdRevenue  = mRows.reduce((s,r)  => s + (parseFloat(r.revenue)||0), 0);
     if (Array.isArray(wRows))  state.weekRevenue = wRows.reduce((s,r)  => s + (parseFloat(r.revenue)||0), 0);
-    if (Array.isArray(poRows)) state.poSpend     = poRows.reduce((s,r) => s + (parseFloat(r.gpo_price)||0)*(parseInt(r.order_qty)||0), 0);
+    if (Array.isArray(poRows)) state.poSpend     = poRows.reduce((s,r) => s + (parseFloat(r.gpo_price)||0)*(parseInt(r.qty_ordered)||0), 0);
 
     // Seasonal estimate: prefer prior-year same month (same days MTD), fall back to 8-week trailing avg
     if (Array.isArray(pyRows) && pyRows.length >= 10) {
@@ -974,46 +974,25 @@ async function loadQueue() {
       packageSize:    p.package_size    || 1,
     })) : [];
 
-    // If po_items table doesn't exist yet, fall back to demo queue
-    if (existing.length === 0 && autoAdd.length === 0) {
-      loadDemoQueue();
-      return;
-    }
-
   } catch(e) {
-    loadDemoQueue();
+    console.error('loadQueue error:', e);
+    showEmptyQueueState('Unable to load order data — check your connection and try again.');
     return;
   }
 
   renderAll();
 }
 
-function loadDemoQueue() {
-  // Demo data for when the po_items table hasn't been created yet
-  state.queue = [
-    { id:'d1', productName:'Ketamine HCl 10mg/ml', vendor:'MWI Animal Health',    onHand:2,  orderQty:2, unitPrice:142,  gpoPrice:124.96, autoFlagged:true  },
-    { id:'d2', productName:'Propofol 10mg/ml',      vendor:'MWI Animal Health',    onHand:1,  orderQty:2, unitPrice:95,   gpoPrice:83.60,  autoFlagged:true  },
-    { id:'d3', productName:'Dexmedetomidine',        vendor:'MWI Animal Health',    onHand:1,  orderQty:3, unitPrice:124,  gpoPrice:109.12, autoFlagged:true  },
-    { id:'d4', productName:'Buprenorphine 0.3mg/ml', vendor:'MWI Animal Health',    onHand:3,  orderQty:2, unitPrice:188,  gpoPrice:165.44, autoFlagged:true  },
-    { id:'d5', productName:'Cerenia (Maropitant)',    vendor:'Covetrus',             onHand:2,  orderQty:2, unitPrice:84.20,gpoPrice:74.10,  autoFlagged:true  },
-    { id:'d6', productName:'Gabapentin 100mg',        vendor:'Covetrus',             onHand:30, orderQty:1, unitPrice:48.50,gpoPrice:42.68,  autoFlagged:true  },
-    { id:'d7', productName:'Carprofen 50mg Chewable', vendor:'Covetrus',             onHand:15, orderQty:1, unitPrice:118,  gpoPrice:103.84, autoFlagged:true  },
-    { id:'d8', productName:'Gauze 4×4 Sponges',       vendor:'Patterson Veterinary', onHand:2,  orderQty:4, unitPrice:18,   gpoPrice:15.84,  autoFlagged:true  },
-    { id:'d9', productName:'3cc Syringes (box/100)',   vendor:'Patterson Veterinary', onHand:1,  orderQty:3, unitPrice:45,   gpoPrice:39.60,  autoFlagged:true  },
-    { id:'d10',productName:'Exam Gloves Medium',       vendor:'Patterson Veterinary', onHand:2,  orderQty:2, unitPrice:52,   gpoPrice:45.76,  autoFlagged:true  },
-  ];
-  state.allProducts = [
-    { id:'p1',  name:'Ketamine HCl 10mg/ml',  vendor:'MWI Animal Health',    onHand:2  },
-    { id:'p2',  name:'Propofol 10mg/ml',       vendor:'MWI Animal Health',    onHand:1  },
-    { id:'p3',  name:'Ondansetron 2mg/ml',     vendor:'MWI Animal Health',    onHand:8  },
-    { id:'p4',  name:'LRS 1L bags',            vendor:'MWI Animal Health',    onHand:20 },
-    { id:'p5',  name:'Cerenia (Maropitant)',    vendor:'Covetrus',             onHand:2  },
-    { id:'p6',  name:'Meloxicam 1.5mg/ml',     vendor:'Covetrus',             onHand:4  },
-    { id:'p7',  name:'Feline FVRCP Vaccine',   vendor:'MWI Animal Health',    onHand:12 },
-    { id:'p8',  name:'Gauze 4×4 Sponges',      vendor:'Patterson Veterinary', onHand:2  },
-    { id:'p9',  name:'IV Catheter 22g',         vendor:'Patterson Veterinary', onHand:5  },
-    { id:'p10', name:'Alcohol Pads (box/200)',  vendor:'Patterson Veterinary', onHand:3  },
-  ];
+function showEmptyQueueState(msg) {
+  state.queue = [];
+  const container = document.getElementById('order-list');
+  if (container) {
+    container.innerHTML = `<div style="padding:48px 24px;text-align:center;color:#8899AA;">
+      <div style="font-size:32px;margin-bottom:12px;">📋</div>
+      <div style="font-size:15px;font-weight:600;color:#1C2B4A;margin-bottom:6px;">Queue is empty</div>
+      <div style="font-size:13px;">${msg || 'No items to order this week. Use + Add Product to build a manual order.'}</div>
+    </div>`;
+  }
   renderAll();
 }
 

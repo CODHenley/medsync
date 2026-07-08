@@ -519,11 +519,11 @@ async function loadHistory() {
   try {
     const glPctThresh = (function(){try{return parseFloat(JSON.parse(localStorage.getItem('medsync_settings')||'{}').gl_pct_thresh)||10;}catch(e){return 10;}})();
     const cogsRes = await fetch(
-      SUPA_URL + `/rest/v1/po_items?select=gpo_price,order_qty&location_id=eq.${state.locationId}&status=in.(received)&added_at=gte.${monthStart}`,
+      SUPA_URL + `/rest/v1/po_items?select=gpo_price,qty_ordered&location_id=eq.${state.locationId}&status=in.(received)&added_at=gte.${monthStart}`,
       { headers: H }
     );
     const cogsRows = await cogsRes.json();
-    const totalCOGS = Array.isArray(cogsRows) ? cogsRows.reduce((s,r) => s + (Number(r.gpo_price||0) * Number(r.order_qty||0)), 0) : 0;
+    const totalCOGS = Array.isArray(cogsRows) ? cogsRows.reduce((s,r) => s + (Number(r.gpo_price||0) * Number(r.qty_ordered||0)), 0) : 0;
     const glPct = totalCOGS > 0 ? (total / totalCOGS * 100) : 0;
     const banner = document.getElementById('gl-pct-banner');
     if (glPct > glPctThresh && total > 0) {

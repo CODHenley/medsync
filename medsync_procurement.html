@@ -786,9 +786,21 @@ function renderDailyTable() {
 }
 
 // ── Regional Cards ─────────────────────────────────────────────────
-function renderRegionalCards() {
+let _procLocations = [];
+
+async function ensureProcLocations() {
+  if (_procLocations.length) return;
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name,vetspire_location_id,regions(name)&order=name&limit=50', { headers: H });
+    const rows = res.ok ? await res.json() : [];
+    _procLocations = rows.map(r => ({ name: r.name, id: r.vetspire_location_id || r.id, region: (r.regions && r.regions.name) || '' }));
+  } catch(e) { _procLocations = []; }
+}
+
+async function renderRegionalCards() {
+  await ensureProcLocations();
   const grid = document.getElementById('region-grid');
-  const LOCATIONS = [
+  const LOCATIONS = _procLocations.length ? _procLocations : [
     { name: 'Wheaton',      id: '28253', region: 'Chicagoland West' },
     { name: 'Lincoln Park', id: '23083', region: 'Chicagoland' },
     { name: 'Old Orchard',  id: '27390', region: 'Chicagoland' },
