@@ -329,7 +329,7 @@ input[type="file"] { display: none; }
           </div>
           <div class="pf-field">
             <label for="pf-email">Email Address</label>
-            <input type="email" id="pf-email" readonly placeholder="your@email.com" title="Email changes require admin. Contact support@medsync.vet.">
+            <input type="email" id="pf-email" placeholder="your@email.com">
           </div>
           <div class="pf-field">
             <label for="pf-phone">Phone Number</label>
@@ -338,7 +338,14 @@ input[type="file"] { display: none; }
           <div class="pf-row">
             <div class="pf-field">
               <label>Role</label>
-              <div><span class="pf-role-badge" id="pf-role-badge">Staff</span></div>
+              <select id="pf-role-select" style="width:100%;padding:8px 10px;border:1px solid #DDD9EC;border-radius:8px;font-size:14px;color:#1C2B4A;background:#fff;">
+                <option value="medsync_superadmin">Superadmin</option>
+                <option value="admin">Admin</option>
+                <option value="manager">Hospital Director</option>
+                <option value="hospital_manager">Hospital Manager</option>
+                <option value="inventory_lead">Inventory Lead</option>
+                <option value="receiver">Receiver</option>
+              </select>
             </div>
             <div class="pf-field">
               <label>Location</label>
@@ -451,7 +458,7 @@ function handlePhotoUpload(input) {
 
 async function loadProfile() {
   const user = getUserInfo();
-  const userId = user.email || user.id || user.name || '';
+  const userId = user.id || user.email || user.name || '';
   const name = user.name || user.full_name || 'MedSync User';
   const role = user.role || 'staff';
   const locationName = user.locationName || user.location_name || user.location || '';
@@ -463,8 +470,15 @@ async function loadProfile() {
   document.getElementById('pf-email').value = user.email || '';
   document.getElementById('pf-location').value = locationName;
 
-  const roleBadge = document.getElementById('pf-role-badge');
-  roleBadge.textContent = role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const roleSelect = document.getElementById('pf-role-select');
+  if (roleSelect) roleSelect.value = role;
+  document.getElementById('pf-display-role').textContent =
+    role === 'medsync_superadmin' ? 'Superadmin' :
+    role === 'admin' ? 'Admin' :
+    role === 'manager' ? 'Hospital Director' :
+    role === 'hospital_manager' ? 'Hospital Manager' :
+    role === 'inventory_lead' ? 'Inventory Lead' :
+    role === 'receiver' ? 'Receiver' : role.replace(/_/g, ' ');
 
   // Show initials by default
   const parts = name.split(' ');
@@ -519,7 +533,7 @@ async function loadProfile() {
 
 async function saveProfile() {
   const user = getUserInfo();
-  const userId = user.email || user.id || user.name || '';
+  const userId = user.id || user.email || user.name || '';
   if (!userId) { showToast('Not logged in', 'error'); return; }
 
   const btn = document.querySelector('.pf-save-btn');
@@ -530,6 +544,8 @@ async function saveProfile() {
   const lastName = document.getElementById('pf-last-name').value.trim();
   const phone = document.getElementById('pf-phone').value.trim();
   const email = document.getElementById('pf-email').value.trim();
+  const roleSelect = document.getElementById('pf-role-select');
+  const role = roleSelect ? roleSelect.value : null;
 
   const payload = {
     user_id: userId,
@@ -539,6 +555,21 @@ async function saveProfile() {
     phone: phone,
     updated_at: new Date().toISOString(),
   };
+
+  // Also update the users table full_name + email (non-role fields the anon key can touch via RLS)
+  try {
+    const fullName = [firstName, lastName].filter(Boolean).join(' ');
+    if (fullName || email) {
+      const userPayload = {};
+      if (fullName) userPayload.full_name = fullName;
+      if (email) userPayload.email = email;
+      await fetch(`${SUPA_URL}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`, {
+        method: 'PATCH',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(userPayload),
+      });
+    }
+  } catch(e) { /* non-fatal */ }
 
   try {
     const res = await fetch(SUPA_URL + '/rest/v1/user_profiles', {
@@ -564,7 +595,7 @@ async function saveProfile() {
 
 async function saveBio() {
   const user = getUserInfo();
-  const userId = user.email || user.id || user.name || '';
+  const userId = user.id || user.email || user.name || '';
   if (!userId) { showToast('Not logged in', 'error'); return; }
 
   const btn = document.querySelector('.pf-save-bio-btn');

@@ -249,6 +249,7 @@ async function signIn() {
     // Flatten nested locations object so all pages read user.location_name correctly
     const u = users[0];
     const stored = {
+      id:              u.id              || '',
       full_name:       u.full_name       || '',
       role:            u.role            || '',
       email:           u.email           || email,
