@@ -708,11 +708,16 @@ async function loadQueue() {
     // Load products + on-hand from Vetspire inventory_snapshots (dispensing units)
     // Falls back to lots table if no snapshot data exists for this location
     const [prodsRes, snapRes, lotsRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year,vetspire_product_id,vetspire_product_name,supply_type&order=name', { headers: H }),
+      fetch(SUPA_URL + `/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year,vetspire_product_id,vetspire_product_name,supply_type,product_locations!inner(enabled)&product_locations.location_id=eq.${state.locationId}&product_locations.enabled=eq.true&order=name`, { headers: H }),
       fetch(SUPA_URL + `/rest/v1/inventory_snapshots?select=product_name,on_hand,snapshot_date&location_name=eq.${encodeURIComponent(state.locationName)}&order=snapshot_date.desc,product_name&limit=600`, { headers: H }),
       fetch(SUPA_URL + `/rest/v1/lots?select=product_id,qty_remaining&location_id=eq.${state.locationId}&status=neq.Disposed`, { headers: H })
     ]);
-    const products  = await prodsRes.json();
+    let products  = await prodsRes.json();
+    // Fallback: if product_locations join returned nothing, load all products unfiltered
+    if (!Array.isArray(products) || products.length === 0) {
+      const fallbackRes = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,vendor,category,qty_min,qty_max,dispensing_unit,package_size,purchase_unit,unit_price,price_year,vetspire_product_id,vetspire_product_name,supply_type&order=name', { headers: H });
+      products = await fallbackRes.json();
+    }
     const snapshots = await snapRes.json();
     const lots      = await lotsRes.json();
 

@@ -426,7 +426,7 @@ let state = {
 // ── Boot ──────────────────────────────────────────────────────
 async function boot() {
   await loadLocations();
-  await loadProducts();
+  await loadProducts(state.locationId);
 }
 
 async function loadLocations() {
@@ -461,17 +461,27 @@ async function loadLocations() {
   }
 }
 
-async function loadProducts() {
+async function loadProducts(locationId) {
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size,unit_price&order=name', { headers: H });
+    const locId = locationId || state.locationId;
+    let url;
+    if (locId) {
+      // Filter to products enabled at this location via product_locations join
+      url = SUPA_URL + `/rest/v1/products?select=id,name,category,dispensing_unit,package_size,unit_price,product_locations!inner(enabled)&product_locations.location_id=eq.${locId}&product_locations.enabled=eq.true&order=name`;
+    } else {
+      url = SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size,unit_price&order=name';
+    }
+    const res = await fetch(url, { headers: H });
     let prods = await res.json();
-    // Fallback if columns missing or auth error returns an object
-    if (!Array.isArray(prods)) {
-      const res2 = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category&order=name', { headers: H });
+    // Fallback if join fails or columns missing
+    if (!Array.isArray(prods) || (prods.length === 0 && locId)) {
+      const res2 = await fetch(SUPA_URL + '/rest/v1/products?select=id,name,category,dispensing_unit,package_size,unit_price&order=name', { headers: H });
       prods = await res2.json();
     }
     if (!Array.isArray(prods)) return;
     const sel = document.getElementById('product-select');
+    // Clear existing options (keep placeholder)
+    while (sel.options.length > 1) sel.remove(1);
     prods.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
@@ -555,6 +565,7 @@ function onLocChange() {
   state.locationName = opt.text;
   document.getElementById('tb-loc').textContent = 'Log goods lost · ' + opt.text;
   loadHistory();
+  loadProducts(state.locationId);
 }
 
 function onProductChange() {
