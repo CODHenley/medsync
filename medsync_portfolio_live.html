@@ -4264,16 +4264,18 @@ function toggleMessenger() {
   }
 }
 
-async function initMessenger() {
-  const me = _msgMe();
-  if (!me.id) return;
-  // Load all users for DM list and avatar lookup
+async function loadAllUsers() {
   try {
-    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role,location_name,user_profiles(avatar_b64)&limit=200`, { headers: _msgHeaders() });
+    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role,location_name,user_profiles(avatar_b64)&order=full_name.asc&limit=200`, { headers: _msgHeaders() });
     const rows = r.ok ? await r.json() : [];
     _allUsers = rows.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, location_name: u.location_name || null, avatar_b64: u.user_profiles?.avatar_b64 || null }));
   } catch(e) {}
-  // Load messages
+}
+
+async function initMessenger() {
+  const me = _msgMe();
+  if (!me.id) return;
+  await loadAllUsers();
   await loadStaffMessages();
   await loadDMList();
   subscribeRealtime();
@@ -4386,7 +4388,12 @@ function switchMsgTab(tab) {
   } else if (tab === 'people') {
     document.getElementById('msg-tab-people').classList.add('active');
     document.getElementById('msg-view-people').style.display = 'flex';
-    renderPeopleTab();
+    if (_allUsers.length) {
+      renderPeopleTab();
+    } else {
+      document.getElementById('msg-people-list').innerHTML = '<div class="msg-empty">Loading…</div>';
+      loadAllUsers().then(() => renderPeopleTab());
+    }
   } else {
     document.getElementById('msg-tab-dms').classList.add('active');
     document.getElementById('msg-view-dms').style.display = 'flex';
