@@ -530,7 +530,7 @@
                   <td style="padding:10px 14px;">Cycle Count</td>
                 </tr>
                 <tr style="background:var(--bg);border-bottom:1px solid var(--border);">
-                  <td style="padding:10px 14px;font-weight:600;">Manager</td>
+                  <td style="padding:10px 14px;font-weight:600;">Hospital Director<br><span style="font-size:11px;font-weight:400;color:var(--muted);">or Hospital Manager</span></td>
                   <td style="padding:10px 14px;color:var(--muted);">Weekly Order, Receiving, Cycle Count, Goods Lost, Vetcove Import, Invoice Reconciliation, Manage Users</td>
                   <td style="padding:10px 14px;">Weekly Order</td>
                 </tr>
@@ -675,19 +675,26 @@
             <div class="step-row">
               <div class="step-num">2</div>
               <div class="step-content">
-                <div class="step-title">Add or remove items</div>
-                <div class="step-desc">Tap <strong>+ Add Item</strong> to add anything not already on the suggested list. To remove an item, set its quantity to zero. Items with a quantity of zero are excluded from the order.</div>
+                <div class="step-title">Empty queue is normal — it means you're on par</div>
+                <div class="step-desc">If the screen shows <strong>"Queue is empty,"</strong> that means no items at your location are currently below par. This is expected and healthy. Do not assume the screen is broken. If you know an item is low, tap <strong>+ Add Item</strong> to add it manually.</div>
               </div>
             </div>
             <div class="step-row">
               <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Add or remove items — Vetspire-enabled products only</div>
+                <div class="step-desc">Tap <strong>+ Add Item</strong> to add anything not already on the suggested list. The product picker shows only items that are active and enabled in Vetspire for your location. If a product is not in the list, it may not yet be activated — ask your admin to enable it in the product catalog.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
               <div class="step-content">
                 <div class="step-title">Review the Vetcove Import tab (if applicable)</div>
                 <div class="step-desc">If your location uses Vetcove, the <strong>↑ Vetcove Import</strong> option in the sidebar lets you upload a Vetcove CSV directly. MedSync maps the items and quantities automatically. Use this to avoid retyping large orders.</div>
               </div>
             </div>
             <div class="step-row">
-              <div class="step-num">4</div>
+              <div class="step-num">5</div>
               <div class="step-content">
                 <div class="step-title">Submit the order</div>
                 <div class="step-desc">Tap <strong>Place Order</strong>. A purchase order is created and routed to your admin for approval. You'll receive a confirmation when the order is approved and sent to the supplier.</div>
@@ -706,7 +713,7 @@
               <div class="step-num">1</div>
               <div class="step-content">
                 <div class="step-title">Open Goods Lost from the sidebar</div>
-                <div class="step-desc">Select the item from the inventory list or search by name. Enter the quantity lost and the date the loss occurred (today, or backdate if discovered late).</div>
+                <div class="step-desc">Select the item from the product picker — it shows only Vetspire-enabled products for your location. Search by name to narrow the list. If a product doesn't appear, it may not be active in Vetspire; contact your admin. Enter the quantity lost and the date the loss occurred (today, or backdate if discovered late).</div>
               </div>
             </div>
             <div class="step-row">
@@ -831,6 +838,20 @@
             <div class="step-row">
               <div class="step-num">3</div>
               <div class="step-content">
+                <div class="step-title">Priority chips — today's action items</div>
+                <div class="step-desc">Below the overview cards, <strong>priority chips</strong> surface the most urgent items right now: lots expiring within 30 days and POs that are pending for today. Tap a chip to jump directly to that screen. If everything is clear, you'll see an "All clear" chip — no action needed.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Live activity feed</div>
+                <div class="step-desc">The portfolio's activity widget streams the last 20 actions taken across your organization in real time — cycle counts, receiving events, goods lost reports, and user changes. This is a <em>live snapshot</em>; for a filterable, exportable full audit trail, go to <strong>Activity Log</strong> in the sidebar instead.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">5</div>
+              <div class="step-content">
                 <div class="step-title">Recognition & compliance scores</div>
                 <div class="step-desc">The bottom of the portfolio shows staff recognition data and cycle count compliance rates by location. Locations with low compliance are highlighted so you can follow up with managers directly.</div>
               </div>
@@ -868,8 +889,15 @@
             <div class="step-row">
               <div class="step-num">4</div>
               <div class="step-content">
+                <div class="step-title">GPO Savings KPI — how it's calculated</div>
+                <div class="step-desc">The <strong>GPO Savings</strong> figure on the Portfolio and Analytics screens shows the actual dollar difference between the list price (<code>unit_price</code>) and the GPO contract price (<code>gpo_price</code>) across all submitted and received PO items in the period. It is <em>not</em> an estimate — it reflects the exact price captured on each purchase order. If GPO savings show $0, it means <code>gpo_price</code> has not yet been populated on your PO items; contact your admin or MedSync support to confirm contract pricing is being recorded.</div>
+              </div>
+            </div>
+            <div class="step-row">
+              <div class="step-num">5</div>
+              <div class="step-content">
                 <div class="step-title">Quarterly Report</div>
-                <div class="step-desc">Open <strong>Quarterly Report</strong> from the sidebar. Select the quarter and locations. The report includes: total inventory value, spend by category, goods lost totals, cycle count compliance, and month-over-month comparison. Tap <strong>Export PDF</strong> to download.</div>
+                <div class="step-desc">Open <strong>Quarterly Report</strong> from the sidebar. Select the quarter and locations. The report includes: total inventory value, spend by category, goods lost totals, cycle count compliance, GPO savings, and month-over-month comparison. Tap <strong>Export PDF</strong> to download.</div>
                 <div class="step-note">📥 PDF exports are formatted for printing — A4/letter size with MedSync branding</div>
               </div>
             </div>
@@ -1137,12 +1165,16 @@
         <div class="step-group" id="admin-settings">
           <div class="step-group-title">⚙️ Settings</div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Organization-wide preferences: notification thresholds, Vetspire API token management, cycle count frequency, and display preferences.</p>
+          <div class="callout callout-warn" style="margin-bottom:16px;">
+            <span class="callout-icon">⚠️</span>
+            <span class="callout-text"><strong>Settings sync instantly across all devices and users.</strong> When you save a threshold change, it takes effect organization-wide immediately — not just on your browser. There is no per-device or per-user threshold override.</span>
+          </div>
           <div class="step-list">
             <div class="step-row">
               <div class="step-num">1</div>
               <div class="step-content">
-                <div class="step-title">Notification settings</div>
-                <div class="step-desc">Set the thresholds that trigger admin email alerts: items below par (default: below 20% of par), expiring lots (default: within 45 days), cycle count overdue (default: 3 days past schedule), and goods lost above a dollar threshold.</div>
+                <div class="step-title">Notification thresholds — applied org-wide</div>
+                <div class="step-desc">Set the thresholds that trigger admin email alerts: items below par (default: below 20% of par), expiring lots (default: within 45 days), cycle count overdue (default: 3 days past schedule), and goods lost above a dollar threshold. Changes are saved to Supabase and apply to every admin and location immediately.</div>
               </div>
             </div>
             <div class="step-row">
@@ -1264,7 +1296,7 @@
               <div class="step-num">4</div>
               <div class="step-content">
                 <div class="step-title">Confirm and record</div>
-                <div class="step-desc">After provisioning, the organization appears in the org list. Verify the tier, location limit, and that the admin's role shows as <code>admin</code>. Log the provisioning event in the activity log.</div>
+                <div class="step-desc">After provisioning, the organization appears in the org list. Verify the tier, location limit, and that the admin's role is set correctly. MedSync uses six roles: <strong>medsync_superadmin</strong>, <strong>admin</strong>, <strong>Hospital Director</strong>, <strong>Hospital Manager</strong>, <strong>Inventory Lead</strong>, and <strong>Receiver</strong>. The initial org owner should be assigned <code>admin</code>. Log the provisioning event in the activity log.</div>
               </div>
             </div>
           </div>
@@ -1432,9 +1464,14 @@ const QUIZ_QUESTIONS = {
       correct: 2,
     },
     {
-      q: 'What is MedSync\'s cycle count accuracy goal?',
-      options: ['85%', '90%', '95%', '99%'],
-      correct: 3,
+      q: 'The Weekly Order screen shows "Queue is empty." What does this mean?',
+      options: [
+        'The system is broken and needs to be refreshed',
+        'All items at your location are at or above par — no reorder needed',
+        'Your order was already submitted by a manager',
+        'You need to contact your admin to load products',
+      ],
+      correct: 1,
     },
     {
       q: 'When receiving new stock, what must you always enter for each item?',
@@ -1447,14 +1484,14 @@ const QUIZ_QUESTIONS = {
       correct: 2,
     },
     {
-      q: 'If a shipment arrives damaged, what should you do in MedSync?',
+      q: 'You open Goods Lost but can\'t find a product in the picker. What is the most likely reason?',
       options: [
-        'Accept it and note it on paper',
-        'Refuse the delivery entirely',
-        'Use the Flag Issue button — your admin is notified immediately',
-        'Adjust the quantity and email your manager',
+        'The product was deleted from MedSync',
+        'The product is not enabled in Vetspire for your location',
+        'You don\'t have permission to report losses for that item',
+        'The system only shows items you\'ve ordered before',
       ],
-      correct: 2,
+      correct: 1,
     },
   ],
   admin: [
@@ -1470,38 +1507,38 @@ const QUIZ_QUESTIONS = {
     },
     {
       q: 'Which role can add new locations within the plan limit?',
-      options: ['Staff', 'Receiver', 'Manager', 'Inventory Lead'],
+      options: ['Staff', 'Receiver', 'Admin', 'Inventory Lead'],
       correct: 2,
     },
     {
-      q: 'Where do you go to see month-over-month drug and supply costs?',
+      q: 'What does the GPO Savings figure on the Portfolio represent?',
       options: [
-        'Quarterly Report',
-        'Activity Log',
-        'Analytics → Supplier Breakdown tab',
-        'Procurement screen',
-      ],
-      correct: 2,
-    },
-    {
-      q: 'What triggers the upgrade banner in the New Location screen?',
-      options: [
-        'When you reach your plan limit',
-        'When you have 2 remaining location slots',
-        'When a payment fails',
-        'Monthly, automatically',
+        'A fixed 12% estimated discount on total spend',
+        'The actual difference between list price and GPO contract price on PO items',
+        'The total amount paid to GPO vendors this period',
+        'An AI-generated spend forecast',
       ],
       correct: 1,
     },
     {
-      q: 'How do you deactivate a user in MedSync?',
+      q: 'You update a threshold in Settings and save. Who does this change affect?',
       options: [
-        'Delete their account from Supabase',
-        'Change their role to \'inactive\'',
-        'Click the user\'s name → Deactivate — session is immediately revoked',
-        'Contact MedSync support',
+        'Only your browser session until you log out',
+        'Only the location you are currently viewing',
+        'All users and all devices across the entire organization, immediately',
+        'Only admins — staff thresholds are set separately',
       ],
       correct: 2,
+    },
+    {
+      q: 'What is the difference between the Portfolio\'s live activity feed and the Activity Log screen?',
+      options: [
+        'They are the same — the portfolio just shows a smaller version',
+        'The portfolio shows a real-time snapshot of the last 20 actions; the Activity Log is a full filterable and exportable audit trail',
+        'The Activity Log only shows your location; the portfolio shows all locations',
+        'The portfolio feed updates hourly; the Activity Log updates in real time',
+      ],
+      correct: 1,
     },
   ],
   medsync: [
@@ -1537,16 +1574,16 @@ const QUIZ_QUESTIONS = {
     },
     {
       q: 'What role is required to access the Platform Admin portal?',
-      options: ['admin', 'manager', 'inventory_lead', 'medsync_superadmin'],
+      options: ['admin', 'hospital_manager', 'inventory_lead', 'medsync_superadmin'],
       correct: 3,
     },
     {
-      q: 'When should you enable a feature flag for a customer?',
+      q: 'When provisioning an initial org admin, which role should you assign them?',
       options: [
-        'As soon as it\'s built',
-        'Only when the feature is ready for their tier and technical setup, documented in Slack',
-        'Only for Enterprise customers',
-        'Never without a signed agreement',
+        'medsync_superadmin',
+        'admin',
+        'Hospital Director',
+        'Inventory Lead',
       ],
       correct: 1,
     },
