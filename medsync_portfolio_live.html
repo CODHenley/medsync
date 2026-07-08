@@ -4274,8 +4274,8 @@ function renderTrainingStaffCards(rows) {
 .dm-preview{font-size:11px;color:#8899AA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
 .dm-badge{background:#E05050;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
 /* Input */
-.msg-input-bar{padding:12px 14px;padding-bottom:max(12px,env(safe-area-inset-bottom,12px));border-top:1px solid #EEE;display:flex;gap:8px;align-items:flex-end;flex-shrink:0;background:#fff;}
-.msg-input{flex:1;padding:10px 14px;border:1px solid #DDD9EC;border-radius:22px;font-size:14px;font-family:"DM Sans",sans-serif;outline:none;resize:none;line-height:1.45;max-height:100px;overflow-y:auto;}
+.msg-input-bar{padding:12px 14px 16px;border-top:1px solid #EEE;display:flex;gap:8px;align-items:flex-end;flex-shrink:0;background:#fff;}
+.msg-input{flex:1;padding:10px 14px;border:1px solid #DDD9EC;border-radius:12px;font-size:14px;font-family:"DM Sans",sans-serif;outline:none;resize:none;line-height:1.45;min-height:44px;max-height:120px;overflow-y:auto;}
 .msg-input:focus{border-color:#1C2B4A;}
 .msg-send-btn{width:38px;height:38px;border-radius:50%;background:#1C2B4A;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .msg-send-btn:hover{background:#243459;}
@@ -4325,7 +4325,7 @@ function renderTrainingStaffCards(rows) {
     <div class="msg-input-bar">
       <div class="msg-input-wrap">
         <div id="msg-mention-list"></div>
-        <textarea class="msg-input" id="msg-input-staff" placeholder="Message all staff… (@name to mention)" rows="1"
+        <textarea class="msg-input" id="msg-input-staff" placeholder="Message all staff… (@name to mention)" rows="2"
           oninput="_mentionInput(this,'staff')"
           onkeydown="_mentionKeydown(event,'staff')"></textarea>
       </div>
@@ -4357,7 +4357,7 @@ function renderTrainingStaffCards(rows) {
     <div class="msg-body" id="msg-body-dm" style="flex:1;overflow-y:auto;"></div>
     <div class="msg-input-bar">
       <div class="msg-input-wrap">
-        <textarea class="msg-input" id="msg-input-dm" placeholder="Send a message… (@name to mention)" rows="1"
+        <textarea class="msg-input" id="msg-input-dm" placeholder="Send a message… (@name to mention)" rows="2"
           oninput="_mentionInput(this,'dm')"
           onkeydown="_mentionKeydown(event,'dm')"></textarea>
       </div>
