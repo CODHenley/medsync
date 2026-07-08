@@ -2854,8 +2854,9 @@ function setRole(r) {
   currentRole = r;
   document.getElementById('rt-admin').classList.toggle('active', r==='admin');
   document.getElementById('rt-mgr').classList.toggle('active',   r==='manager');
-  document.getElementById('nav-role-badge').textContent = r==='admin' ? 'Admin' : 'Hospital Director';
-  document.getElementById('sb-role-name').textContent   = r==='admin' ? 'Admin' : 'Hospital Director';
+  var _roleLabel = r==='admin' ? 'Admin' : 'Hospital Director';
+  var _rb = document.getElementById('ms-role'); if (_rb) _rb.textContent = _roleLabel;
+  document.getElementById('sb-role-name').textContent = _roleLabel;
   var _u = {}; try { _u = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) {}
   var _name = _u.full_name || (r==='admin' ? 'Admin' : 'Manager');
   var _loc  = _u.location_name || (r==='admin' ? 'Scout' : 'Old Orchard');
@@ -4001,7 +4002,8 @@ function renderTrainingStaffCards(rows) {
   }
   if (user.role) {
     var rb = document.getElementById('ms-role');
-    if (rb) rb.textContent = user.role === 'admin' ? 'Admin' :
+    if (rb) rb.textContent = user.role === 'medsync_superadmin' ? 'Superadmin' :
+    user.role === 'admin' ? 'Admin' :
     user.role === 'receiver' ? 'Receiver' :
     user.role === 'inventory_lead' ? 'Inv. Lead' : 'Hosp. Director';
   }
@@ -4111,6 +4113,14 @@ function renderTrainingStaffCards(rows) {
 .msg-dm-bar-name{font-size:13px;font-weight:600;color:#1C2B4A;flex:1;}
 .msg-dl-btn{background:none;border:0.5px solid #DDD9EC;border-radius:6px;padding:4px 10px;font-size:11px;color:#4A5568;cursor:pointer;font-family:"DM Sans",sans-serif;}
 .msg-dl-btn:hover{background:#EDE8F8;}
+/* People tab */
+.people-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:0.5px solid #F0EBF8;cursor:pointer;}
+.people-item:hover{background:#FAFAFA;}
+.people-info{flex:1;min-width:0;}
+.people-name{font-size:13px;font-weight:500;color:#1C2B4A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.people-role{font-size:11px;color:#8899AA;margin-top:1px;}
+.people-dm-btn{background:none;border:1px solid #DDD9EC;border-radius:6px;padding:3px 9px;font-size:11px;color:#1C2B4A;cursor:pointer;font-family:"DM Sans",sans-serif;white-space:nowrap;flex-shrink:0;}
+.people-dm-btn:hover{background:#EDE8F8;border-color:#9B8EC4;}
 /* @mention */
 .msg-input-wrap{position:relative;flex:1;}
 #msg-mention-list{position:absolute;bottom:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid #DDD9EC;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);overflow:hidden;z-index:400;max-height:200px;overflow-y:auto;display:none;}
@@ -4132,6 +4142,7 @@ function renderTrainingStaffCards(rows) {
   <div class="msg-tabs">
     <button class="msg-tab active" id="msg-tab-staff" onclick="switchMsgTab('staff')">Staff Channel <span id="msg-badge-staff" class="tab-badge" style="display:none;"></span></button>
     <button class="msg-tab" id="msg-tab-dms" onclick="switchMsgTab('dms')">Direct Messages <span id="msg-badge-dms" class="tab-badge" style="display:none;"></span></button>
+    <button class="msg-tab" id="msg-tab-people" onclick="switchMsgTab('people')">People</button>
   </div>
   <!-- Staff channel view -->
   <div id="msg-view-staff" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
@@ -4154,6 +4165,15 @@ function renderTrainingStaffCards(rows) {
   <!-- DM list view -->
   <div id="msg-view-dms" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
     <div class="msg-body" id="msg-dm-list" style="overflow-y:auto;flex:1;"><div class="msg-empty">No direct messages yet.</div></div>
+  </div>
+  <!-- People view -->
+  <div id="msg-view-people" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+    <div style="padding:10px 14px;border-bottom:0.5px solid #EEE;flex-shrink:0;">
+      <input id="msg-people-search" type="text" placeholder="Search teammates…"
+        oninput="filterPeople(this.value)"
+        style="width:100%;padding:7px 12px;border:1px solid #DDD9EC;border-radius:20px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;">
+    </div>
+    <div class="msg-body" id="msg-people-list" style="flex:1;overflow-y:auto;"></div>
   </div>
   <!-- DM conversation view -->
   <div id="msg-view-dm-convo" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
@@ -4249,9 +4269,9 @@ async function initMessenger() {
   if (!me.id) return;
   // Load all users for DM list and avatar lookup
   try {
-    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,user_profiles(avatar_b64)&limit=200`, { headers: _msgHeaders() });
+    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role,location_name,user_profiles(avatar_b64)&limit=200`, { headers: _msgHeaders() });
     const rows = r.ok ? await r.json() : [];
-    _allUsers = rows.map(u => ({ id: u.id, full_name: u.full_name, avatar_b64: u.user_profiles?.avatar_b64 || null }));
+    _allUsers = rows.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, location_name: u.location_name || null, avatar_b64: u.user_profiles?.avatar_b64 || null }));
   } catch(e) {}
   // Load messages
   await loadStaffMessages();
@@ -4357,17 +4377,62 @@ async function openDMConvo(channel, name) {
 function switchMsgTab(tab) {
   _msgTab = tab;
   document.querySelectorAll('.msg-tab').forEach(t => t.classList.remove('active'));
-  ['msg-view-staff','msg-view-dms','msg-view-dm-convo'].forEach(id => {
-    document.getElementById(id).style.display = 'none';
+  ['msg-view-staff','msg-view-dms','msg-view-dm-convo','msg-view-people'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
   if (tab === 'staff') {
     document.getElementById('msg-tab-staff').classList.add('active');
     document.getElementById('msg-view-staff').style.display = 'flex';
+  } else if (tab === 'people') {
+    document.getElementById('msg-tab-people').classList.add('active');
+    document.getElementById('msg-view-people').style.display = 'flex';
+    renderPeopleTab();
   } else {
     document.getElementById('msg-tab-dms').classList.add('active');
     document.getElementById('msg-view-dms').style.display = 'flex';
     loadDMList();
   }
+}
+
+function _roleLabel(role) {
+  const map = {
+    medsync_superadmin: 'Superadmin', admin: 'Admin',
+    manager: 'Hospital Director', hospital_manager: 'Hospital Director',
+    inventory_lead: 'Inventory Lead', receiver: 'Receiver',
+  };
+  return map[role] || (role ? role.replace(/_/g,' ') : '—');
+}
+
+function renderPeopleTab(filter) {
+  const me = _msgMe();
+  const list = document.getElementById('msg-people-list');
+  if (!list) return;
+  const q = (filter || '').toLowerCase();
+  const users = _allUsers.filter(u => !q || u.full_name.toLowerCase().includes(q));
+  if (!users.length) { list.innerHTML = '<div class="msg-empty">No teammates found.</div>'; return; }
+  // Sort: me first, then alphabetical
+  const sorted = [...users].sort((a, b) => {
+    if (a.id === me.id) return -1;
+    if (b.id === me.id) return 1;
+    return a.full_name.localeCompare(b.full_name);
+  });
+  list.innerHTML = sorted.map(u => {
+    const isMe = u.id === me.id;
+    const role = _roleLabel(u.role);
+    const dmBtn = isMe ? '' : `<button class="people-dm-btn" onclick="event.stopPropagation();openDMConvo('${_dmChannel(me.id, u.id)}','${u.full_name.replace(/'/g,"\\'")}');switchMsgTab('dms')">Message</button>`;
+    return `<div class="people-item">
+      ${_msgAvatar(u, 36)}
+      <div class="people-info">
+        <div class="people-name">${u.full_name}${isMe ? ' <span style="color:#9B8EC4;font-size:10px;font-weight:400;">(you)</span>' : ''}</div>
+        <div class="people-role">${role}${u.location_name ? ' · ' + u.location_name : ''}</div>
+      </div>
+      ${dmBtn}
+    </div>`;
+  }).join('');
+}
+
+function filterPeople(q) {
+  renderPeopleTab(q);
 }
 
 function renderMessages(channel, msgs, bodyId) {
