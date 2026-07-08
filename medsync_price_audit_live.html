@@ -732,7 +732,21 @@ function nameOverlap(a, b) {
   if (!ta.size || !tb.size) return 0;
   let inter = 0;
   ta.forEach(w => { if (tb.has(w)) inter++; });
-  return inter / Math.min(ta.size, tb.size);
+  const base = inter / Math.min(ta.size, tb.size);
+
+  // Penalize heavily if numeric tokens conflict (e.g. "12" vs "30", "500" vs "1000")
+  // This prevents size-variant products (12cm vs 30cm, 500mg vs 250mg) from matching.
+  const numsA = [...ta].filter(w => /^\d+$/.test(w));
+  const numsB = [...tb].filter(w => /^\d+$/.test(w));
+  if (numsA.length > 0 && numsB.length > 0) {
+    const setB = new Set(numsB);
+    const setA = new Set(numsA);
+    const conflictA = numsA.some(n => !setB.has(n));
+    const conflictB = numsB.some(n => !setA.has(n));
+    if (conflictA || conflictB) return base * 0.25; // drop well below 0.55 threshold
+  }
+
+  return base;
 }
 function normNDC(s) { return (s || '').replace(/[\-\s]/g, '').toLowerCase(); }
 
