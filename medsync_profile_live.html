@@ -364,12 +364,20 @@ input[type="file"] { display: none; }
   <div class="pf-card" style="max-width:900px;">
     <div class="pf-card-header">
       <h3>Password</h3>
-      <p>Account security settings</p>
+      <p>Change your account password</p>
     </div>
     <div class="pf-card-body">
-      <div class="pf-pw-note">
-        Password changes are managed by your MedSync administrator.
-        Contact <a href="mailto:support@medsync.vet">support@medsync.vet</a> to update your password.
+      <div style="display:grid;gap:14px;max-width:420px;">
+        <div class="pf-field">
+          <label class="pf-label" for="pw-new">New password</label>
+          <input class="pf-input" type="password" id="pw-new" placeholder="At least 8 characters" autocomplete="new-password">
+        </div>
+        <div class="pf-field">
+          <label class="pf-label" for="pw-confirm">Confirm new password</label>
+          <input class="pf-input" type="password" id="pw-confirm" placeholder="Re-enter new password" autocomplete="new-password">
+        </div>
+        <div id="pw-error" style="display:none;font-size:13px;color:#DC2626;padding:8px 12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;"></div>
+        <button class="pf-save-btn" style="max-width:160px;" onclick="changePassword()">Update password</button>
       </div>
     </div>
   </div>
@@ -454,6 +462,69 @@ function handlePhotoUpload(input) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+async function changePassword() {
+  const newPw  = document.getElementById('pw-new').value.trim();
+  const confPw = document.getElementById('pw-confirm').value.trim();
+  const errEl  = document.getElementById('pw-error');
+  errEl.style.display = 'none';
+
+  if (!newPw) { errEl.textContent = 'Please enter a new password.'; errEl.style.display = 'block'; return; }
+  if (newPw.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+  if (newPw !== confPw) { errEl.textContent = 'Passwords do not match.'; errEl.style.display = 'block'; return; }
+
+  // Get the user's access token from session storage
+  let accessToken = null;
+  for (const store of [localStorage, sessionStorage]) {
+    for (const key of ['medsync_session', 'medsync_user']) {
+      try {
+        const raw = store.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.access_token) { accessToken = parsed.access_token; break; }
+        }
+      } catch(e) {}
+    }
+    if (accessToken) break;
+  }
+
+  if (!accessToken) {
+    errEl.textContent = 'Session expired — please log out and log back in, then try again.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.querySelector('[onclick="changePassword()"]');
+  btn.disabled = true;
+  btn.textContent = 'Updating…';
+
+  try {
+    const res = await fetch(SUPA_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: newPw })
+    });
+    if (res.ok) {
+      document.getElementById('pw-new').value = '';
+      document.getElementById('pw-confirm').value = '';
+      showToast('✓ Password updated successfully', 'success');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      errEl.textContent = err.message || 'Password update failed. Please try again.';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error — please check your connection and try again.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update password';
+  }
 }
 
 async function loadProfile() {
