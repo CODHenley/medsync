@@ -158,6 +158,7 @@ tr:last-child td{border-bottom:none;}
           <option value="qtd">This quarter</option>
         </optgroup>
         <optgroup label="Lookback">
+          <option value="ytd">Year to date</option>
           <option value="30">Last 30 days</option>
           <option value="60">Last 60 days</option>
           <option value="90">Last 90 days</option>
@@ -167,6 +168,7 @@ tr:last-child td{border-bottom:none;}
       </select>
       <select id="sel-view" onchange="switchView(this.value)">
         <option value="product">By product</option>
+        <option value="purchases">Purchase History</option>
         <option value="daily">Daily COGS</option>
         <option value="regional">Regional roll-up</option>
         <option value="reorder">Reorder Suggestions</option>
@@ -318,6 +320,46 @@ tr:last-child td{border-bottom:none;}
       </div>
     </div>
 
+    <!-- PURCHASE HISTORY VIEW -->
+    <div id="view-purchases" style="display:none;">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Purchase History — Vetcove Orders</div>
+          <div class="sec-sub" id="purch-count">Loading…</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div style="font-size:11px;color:var(--mist);">Sort by:</div>
+          <div class="filter-tabs">
+            <div class="ftab active" id="psort-date" onclick="setPurchSort('week_start',this)">Date</div>
+            <div class="ftab" id="psort-spend" onclick="setPurchSort('total_price',this)">Spend</div>
+            <div class="ftab" id="psort-name" onclick="setPurchSort('product_name',this)">Product</div>
+            <div class="ftab" id="psort-vendor" onclick="setPurchSort('vendor',this)">Vendor</div>
+          </div>
+        </div>
+      </div>
+      <!-- YTD summary strip -->
+      <div id="purch-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="setPurchSortH('week_start')">Date ↕</th>
+              <th onclick="setPurchSortH('product_name')">Product ↕</th>
+              <th onclick="setPurchSortH('vendor')">Vendor ↕</th>
+              <th>Location</th>
+              <th onclick="setPurchSortH('qty_ordered')" style="text-align:right;">Qty ↕</th>
+              <th onclick="setPurchSortH('unit_price')" style="text-align:right;">Unit Cost ↕</th>
+              <th onclick="setPurchSortH('total_price')" style="text-align:right;">Total Spend ↕</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="purch-tbody">
+            <tr class="loading-row"><td colspan="8">Loading purchase history…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- REORDER SUGGESTIONS VIEW -->
     <div id="view-reorder" style="display:none;">
       <div class="sec-head">
@@ -383,12 +425,15 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
 
 // State
-let ALL_PRODUCTS = [];
-let ALL_DAILY    = [];
-let sortCol      = 'true_cogs';
-let sortDir      = -1;
-let pFilter      = 'all';
-let currentView  = 'product';
+let ALL_PRODUCTS  = [];
+let ALL_DAILY     = [];
+let ALL_PURCHASES = [];
+let sortCol       = 'true_cogs';
+let sortDir       = -1;
+let pFilter       = 'all';
+let purchSort     = 'week_start';
+let purchDir      = -1;
+let currentView   = 'product';
 
 // ── Date range helper ─────────────────────────────────────────────
 function getDateRange() {
@@ -400,7 +445,9 @@ function getDateRange() {
   const end = iso(now);
   let start;
 
-  if (sel === 'today') {
+  if (sel === 'ytd') {
+    start = `${y}-01-01`;
+  } else if (sel === 'today') {
     start = end;
   } else if (sel === 'wtd') {
     const day = now.getDay() || 7; // Mon=1
@@ -562,6 +609,7 @@ async function reload() {
     renderRegionalCards();
     loadHealthRiskBadge();
     loadCostDrift();
+    loadPurchaseHistory();
 
   } catch (err) {
     console.error(err);
@@ -849,11 +897,13 @@ async function renderRegionalCards() {
 // ── View switcher ─────────────────────────────────────────────────
 function switchView(view) {
   currentView = view;
-  document.getElementById('view-product').style.display  = view === 'product'  ? '' : 'none';
-  document.getElementById('view-daily').style.display    = view === 'daily'    ? '' : 'none';
-  document.getElementById('view-regional').style.display = view === 'regional' ? '' : 'none';
-  document.getElementById('view-reorder').style.display  = view === 'reorder'  ? '' : 'none';
+  document.getElementById('view-product').style.display   = view === 'product'   ? '' : 'none';
+  document.getElementById('view-purchases').style.display = view === 'purchases' ? '' : 'none';
+  document.getElementById('view-daily').style.display     = view === 'daily'     ? '' : 'none';
+  document.getElementById('view-regional').style.display  = view === 'regional'  ? '' : 'none';
+  document.getElementById('view-reorder').style.display   = view === 'reorder'   ? '' : 'none';
   if (view === 'reorder') renderReorderSuggestions();
+  if (view === 'purchases') renderPurchaseTable();
 }
 
 // ── Reorder Suggestions ───────────────────────────────────────────
@@ -1406,6 +1456,124 @@ async function loadCostDrift() {
 function toggleDriftPanel() {
   const panel = document.getElementById('cost-drift-panel');
   panel.style.display = panel.style.display === 'none' ? '' : 'none';
+}
+
+// ── Purchase History (Vetcove Orders) ─────────────────────────────
+const LOC_NAME = {
+  '11111111-0000-0000-0000-000000000001': 'Lincoln Park',
+  '11111111-0000-0000-0000-000000000002': 'Old Orchard',
+  '11111111-0000-0000-0000-000000000003': 'West Loop',
+  '11111111-0000-0000-0000-000000000004': 'Wheaton',
+};
+
+async function loadPurchaseHistory() {
+  const { start, end } = getDateRange();
+  const locVid  = document.getElementById('sel-location').value;
+  const locUuid = locVid ? LOC_UUID[locVid] : null;
+
+  let params = `select=product_name,vendor,sku,qty_ordered,unit_price,week_start,status,location_id` +
+               `&status=in.(received,cancelled,ordered)` +
+               `&week_start=gte.${start}&week_start=lte.${end}` +
+               `&unit_price=gt.0` +
+               `&order=week_start.desc&limit=5000`;
+  if (locUuid) params += `&location_id=eq.${locUuid}`;
+
+  try {
+    const rows = await query('po_items', params);
+    ALL_PURCHASES = rows.map(r => ({
+      ...r,
+      total_price: (parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0),
+    }));
+    renderPurchaseSummary();
+    renderPurchaseTable();
+  } catch(e) {
+    ALL_PURCHASES = [];
+    document.getElementById('purch-tbody').innerHTML =
+      `<tr class="loading-row"><td colspan="8">⚠ Could not load purchase history: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function renderPurchaseSummary() {
+  const rows = ALL_PURCHASES;
+  if (!rows.length) {
+    document.getElementById('purch-summary').innerHTML = '';
+    return;
+  }
+  const totalSpend  = rows.reduce((s,r) => s + r.total_price, 0);
+  const byVendor    = {};
+  const byLoc       = {};
+  for (const r of rows) {
+    byVendor[r.vendor || '—'] = (byVendor[r.vendor || '—'] || 0) + r.total_price;
+    const loc = LOC_NAME[r.location_id] || r.location_id || '—';
+    byLoc[loc] = (byLoc[loc] || 0) + r.total_price;
+  }
+  const topVendor = Object.entries(byVendor).sort((a,b)=>b[1]-a[1])[0];
+  const topLoc    = Object.entries(byLoc).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById('purch-summary').innerHTML = `
+    <div class="kpi"><div class="kpi-l">Total Purchased</div><div class="kpi-v cgold">$${fmt(totalSpend)}</div><div class="kpi-s cm">${rows.length} line items</div></div>
+    <div class="kpi"><div class="kpi-l">Unique Products</div><div class="kpi-v cp">${new Set(rows.map(r=>r.product_name)).size}</div><div class="kpi-s cm">distinct SKUs ordered</div></div>
+    <div class="kpi"><div class="kpi-l">Top Vendor</div><div class="kpi-v" style="font-size:14px;">${esc(topVendor?.[0]||'—')}</div><div class="kpi-s cm">${topVendor ? '$'+fmt(topVendor[1]) : ''}</div></div>
+    <div class="kpi"><div class="kpi-l">Top Location</div><div class="kpi-v" style="font-size:14px;">${esc(topLoc?.[0]||'—')}</div><div class="kpi-s cm">${topLoc ? '$'+fmt(topLoc[1]) : ''}</div></div>
+  `;
+}
+
+function setPurchSort(col, el) {
+  if (purchSort === col) { purchDir *= -1; }
+  else { purchSort = col; purchDir = -1; }
+  document.querySelectorAll('[id^="psort-"]').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderPurchaseTable();
+}
+
+function setPurchSortH(col) {
+  if (purchSort === col) { purchDir *= -1; }
+  else { purchSort = col; purchDir = -1; }
+  renderPurchaseTable();
+}
+
+function renderPurchaseTable() {
+  const tbody = document.getElementById('purch-tbody');
+  const countEl = document.getElementById('purch-count');
+  if (!tbody) return;
+
+  let data = [...ALL_PURCHASES];
+
+  data.sort((a,b) => {
+    let av = a[purchSort], bv = b[purchSort];
+    if (purchSort === 'total_price' || purchSort === 'qty_ordered' || purchSort === 'unit_price') {
+      av = parseFloat(av)||0; bv = parseFloat(bv)||0;
+      return (av - bv) * purchDir;
+    }
+    return String(av||'').localeCompare(String(bv||'')) * purchDir;
+  });
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">No purchase history for this period</div><div class="empty-sub">Select "Year to date" or import Vetcove order history via the SQL migration.</div></div></td></tr>`;
+    countEl.textContent = '0 orders';
+    return;
+  }
+
+  const totalSpend = data.reduce((s,r)=>s+r.total_price,0);
+  countEl.textContent = `${data.length} line items · $${fmt(totalSpend)} total spend`;
+
+  const statusColor = { received: 'b-active', cancelled: 'b-returned', ordered: 'b-partial' };
+
+  tbody.innerHTML = data.map(r => {
+    const locName = LOC_NAME[r.location_id] || '—';
+    const status  = (r.status||'').toLowerCase();
+    const badge   = statusColor[status] || 'b-returned';
+    return `<tr class="trow">
+      <td class="mono">${esc(r.week_start||'—')}</td>
+      <td><div class="prod-name">${esc(r.product_name||'—')}</div>${r.sku ? `<div class="prod-sub">SKU: ${esc(r.sku)}</div>` : ''}</td>
+      <td>${esc(r.vendor||'—')}</td>
+      <td>${esc(locName)}</td>
+      <td style="text-align:right;" class="mono">${fmtQty(r.qty_ordered)}</td>
+      <td style="text-align:right;" class="mono">$${fmt(r.unit_price)}</td>
+      <td style="text-align:right;font-weight:600;" class="mono">$${fmt(r.total_price)}</td>
+      <td><span class="badge ${badge}">${esc(r.status||'—')}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
