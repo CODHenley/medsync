@@ -4,11 +4,11 @@
 -- Run in Supabase SQL Editor
 -- ============================================================
 
--- STEP 1: Remove any Vetcove rows accidentally placed in po_items
+-- STEP 1: Remove ALL non-receiving-log rows from po_items
+-- (auto_flagged = false rows were the accidental CSV import — remove them all)
+-- Rows created by the reorder workflow have auto_flagged = true and are safe.
 DELETE FROM po_items
   WHERE auto_flagged = false
-  AND week_start >= '2026-01-01'
-  AND week_start <= '2026-07-08'
   AND status IN ('received', 'cancelled', 'ordered')
   AND vendor IS NOT NULL;
 
