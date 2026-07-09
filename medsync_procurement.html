@@ -664,6 +664,8 @@ async function updateKPIs() {
 
   let inventoryValue = null;
   let inventorySource = 'snapshot';
+
+  // 1st priority: inventory_snapshots (Vetspire sync — currently only Wheaton)
   try {
     const locId = _locVid || "28253";
     const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+locId+"&limit=500", {headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
@@ -672,7 +674,22 @@ async function updateKPIs() {
     if (iv > 0) inventoryValue = iv;
   } catch(e) {}
 
-  // Fallback: estimate remaining inventory from YTD Vetcove purchases minus period COGS
+  // 2nd priority: lots table × unit_cost (works for all locations without any SQL import)
+  if (inventoryValue === null && _locUuid) {
+    try {
+      const lotsRows = await query('lots',
+        `select=qty_remaining,products(unit_cost)&location_id=eq.${_locUuid}&qty_remaining=gt.0&limit=2000`
+      );
+      const iv = lotsRows.reduce((t, r) => {
+        const qty  = parseFloat(r.qty_remaining) || 0;
+        const cost = parseFloat(r.products?.unit_cost) || 0;
+        return t + qty * cost;
+      }, 0);
+      if (iv > 0) { inventoryValue = iv; inventorySource = 'lots'; }
+    } catch(e) {}
+  }
+
+  // 3rd priority: vetcove_orders YTD spend (requires running vetcove_ytd_import.sql)
   if (inventoryValue === null) {
     try {
       const locUuidFilter = _locUuid ? `&location_id=eq.${_locUuid}` : '';
@@ -680,14 +697,11 @@ async function updateKPIs() {
         `select=qty_ordered,unit_price&unit_price=gt.0&order_date=gte.2026-01-01&order_date=lte.${end}${locUuidFilter}&limit=5000`
       );
       const ytdSpend = vcRows.reduce((s, r) => s + (parseFloat(r.qty_ordered)||0) * (parseFloat(r.unit_price)||0), 0);
-      if (ytdSpend > 0) {
-        inventoryValue = ytdSpend;
-        inventorySource = 'ytd-purchases';
-      }
+      if (ytdSpend > 0) { inventoryValue = ytdSpend; inventorySource = 'ytd-purchases'; }
     } catch(e) {}
   }
 
-  // Subtract period COGS from snapshot/purchases so value decreases as items are dispensed
+  // Subtract period COGS from inventory basis so value decreases as items are dispensed
   const remaining = inventoryValue !== null ? Math.max(0, inventoryValue - totalCOGS) : null;
 
   // COGS % uses total practice revenue for P&L accuracy
@@ -707,6 +721,8 @@ async function updateKPIs() {
   if (remSubEl) {
     remSubEl.textContent = inventorySource === 'ytd-purchases'
       ? 'YTD purchases · minus COGS'
+      : inventorySource === 'lots'
+      ? 'active lots · minus COGS'
       : 'snapshot minus period COGS';
   }
 
