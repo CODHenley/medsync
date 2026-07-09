@@ -43,23 +43,23 @@ select:focus{border-color:var(--navy);}
 .kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .kpi-v{font-size:22px;font-weight:500;line-height:1;}
 .kpi-s{font-size:11px;margin-top:3px;}
-/* KPI hover tooltip */
+/* KPI hover tooltip — appears below each card */
 .kpi-tip{
-  display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  display:none;position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
   background:#3a3f4a;color:#f0f2f5;font-size:12px;line-height:1.5;
-  padding:10px 13px;border-radius:8px;width:220px;z-index:200;
-  box-shadow:0 4px 16px rgba(0,0,0,.18);pointer-events:none;
+  padding:10px 13px;border-radius:8px;width:220px;z-index:9999;
+  box-shadow:0 4px 16px rgba(0,0,0,.22);pointer-events:none;
 }
-.kpi-tip::after{
-  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:6px solid transparent;border-top-color:#3a3f4a;
+.kpi-tip::before{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:6px solid transparent;border-bottom-color:#3a3f4a;
 }
 .kpi:hover .kpi-tip{display:block;}
 /* First card anchors left, last card anchors right to avoid viewport clipping */
 .kpi:first-child .kpi-tip{left:0;transform:none;}
-.kpi:first-child .kpi-tip::after{left:20px;transform:none;}
+.kpi:first-child .kpi-tip::before{left:20px;transform:none;}
 .kpi:last-child .kpi-tip{left:auto;right:0;transform:none;}
-.kpi:last-child .kpi-tip::after{left:auto;right:20px;transform:none;}
+.kpi:last-child .kpi-tip::before{left:auto;right:20px;transform:none;}
 .cg{color:var(--green);}
 .ca{color:var(--amber);}
 .cr{color:var(--red);}
