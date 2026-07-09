@@ -1471,25 +1471,31 @@ async function loadPurchaseHistory() {
   const locVid  = document.getElementById('sel-location').value;
   const locUuid = locVid ? LOC_UUID[locVid] : null;
 
-  let params = `select=product_name,vendor,sku,qty_ordered,unit_price,week_start,status,location_id` +
-               `&status=in.(received,cancelled,ordered)` +
-               `&week_start=gte.${start}&week_start=lte.${end}` +
+  let params = `select=product_name,vendor,sku,qty_ordered,unit_price,order_date,status,location_id` +
                `&unit_price=gt.0` +
-               `&order=week_start.desc&limit=5000`;
+               `&order=order_date.desc&limit=5000`;
+  // Filter by date range using order_date
+  params += `&order_date=gte.${start}&order_date=lte.${end}`;
   if (locUuid) params += `&location_id=eq.${locUuid}`;
 
   try {
-    const rows = await query('po_items', params);
+    const rows = await query('vetcove_orders', params);
     ALL_PURCHASES = rows.map(r => ({
       ...r,
+      week_start: r.order_date, // alias for table rendering
       total_price: (parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0),
     }));
     renderPurchaseSummary();
     renderPurchaseTable();
   } catch(e) {
     ALL_PURCHASES = [];
+    const msg = e.message || '';
+    const hint = msg.includes('relation "vetcove_orders" does not exist')
+      ? 'Run <strong>vetcove_ytd_import.sql</strong> in Supabase SQL Editor first to create this table.'
+      : esc(msg);
     document.getElementById('purch-tbody').innerHTML =
-      `<tr class="loading-row"><td colspan="8">⚠ Could not load purchase history: ${esc(e.message)}</td></tr>`;
+      `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">Purchase history not yet imported</div><div class="empty-sub">${hint}</div></div></td></tr>`;
+    document.getElementById('purch-count').textContent = 'Run SQL import first';
   }
 }
 
