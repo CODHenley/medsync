@@ -752,33 +752,32 @@ async function updateKPIs() {
 
   document.getElementById('kv-cogspc').textContent    = cogsPC !== null ? cogsPC + '%' : '—';
   document.getElementById('ks-cogspc').textContent    = pharmacyRevenue > 0
-    ? 'vs $' + fmt(pharmacyRevenue) + ' pharmacy rev'
-    : totalPracticeRevenue !== null
-    ? 'vs $' + fmt(totalPracticeRevenue) + ' total rev'
-    : 'awaiting daily_revenue';
+    ? 'lower is better · industry avg 18–25%'
+    : 'awaiting pharmacy revenue';
 
   // Pharmacy Margin tile
   document.getElementById('kv-pharmamargin').textContent = pharmaMarginPct !== null ? pharmaMarginPct + '%' : '—';
   document.getElementById('ks-pharmamargin').textContent = pharmacyRevenue > 0
-    ? '$' + fmt(pharmacyRevenue) + ' pharmacy rev'
+    ? 'higher is better · industry avg 75–82%'
     : 'no pharmacy revenue';
 
   document.getElementById('kv-items').textContent     = totalItems.toLocaleString();
   document.getElementById('ks-items').textContent     = ALL_PRODUCTS.length + ' unique products';
 
-  // Color COGS % by health — pharmacy COGS as % of pharmacy revenue
-  // Healthy vet pharmacy: 20–35% COGS ratio; >45% is a margin problem
+  // Color COGS % — lower is better; industry avg 18–25%
+  // ≤25% = at/below industry avg (green), 26–30% = slightly elevated (amber), >30% = high (red)
   const cogsEl = document.getElementById('kv-cogspc');
   if (cogsPC !== null) {
     const pc = parseFloat(cogsPC);
-    cogsEl.style.color = pc > 45 ? 'var(--red)' : pc > 35 ? 'var(--amber)' : 'var(--green)';
+    cogsEl.style.color = pc > 30 ? 'var(--red)' : pc > 25 ? 'var(--amber)' : 'var(--green)';
   }
 
-  // Color Pharmacy Margin
+  // Color Pharmacy Margin — higher is better; industry avg 75–82%
+  // ≥75% = at/above industry avg (green), 70–74% = slightly below (amber), <70% = low (red)
   const pmEl = document.getElementById('kv-pharmamargin');
   if (pharmaMarginPct !== null) {
     const pm = parseFloat(pharmaMarginPct);
-    pmEl.style.color = pm < 20 ? 'var(--red)' : pm < 35 ? 'var(--amber)' : 'var(--green)';
+    pmEl.style.color = pm < 70 ? 'var(--red)' : pm < 75 ? 'var(--amber)' : 'var(--green)';
   }
 }
 
