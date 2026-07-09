@@ -632,12 +632,14 @@ async function updateKPIs() {
   const _locVid        = document.getElementById('sel-location').value;
   const _locUuid       = _locVid ? LOC_UUID[_locVid] : null;
 
-  // Purchase value from po_items (received orders in the period)
+  // Purchase value from po_items — only items received via the in-app receiving log
+  // (auto_flagged=true means items that went through the reorder → receive workflow)
   let purchaseValue = 0;
   try {
     const poItems = await query('po_items',
       `select=qty_ordered,unit_price` +
       `&status=eq.received` +
+      `&auto_flagged=eq.true` +
       `&week_start=gte.${start}&week_start=lte.${end}` +
       (_locUuid ? `&location_id=eq.${_locUuid}` : '') +
       `&limit=1000`
@@ -1368,6 +1370,7 @@ async function loadCostDrift() {
   try {
     let pq = `select=product_name,sku,unit_price,qty_ordered,received_at` +
              `&status=eq.received` +
+             `&auto_flagged=eq.true` +
              `&unit_price=gt.0` +
              `&received_at=gte.${start}` +
              `&order=received_at.desc&limit=500`;
