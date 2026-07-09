@@ -1,0 +1,56 @@
+name: Dispensed Items Backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Start date (YYYY-MM-DD)"
+        required: false
+        default: "2026-01-01"
+      end_date:
+        description: "End date (YYYY-MM-DD)"
+        required: false
+        default: "2026-04-30"
+      location:
+        description: "Single location to backfill (leave blank for all 4)"
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - "Lincoln Park"
+          - "Old Orchard"
+          - "West Loop"
+          - "Wheaton"
+      dry_run:
+        description: "Dry run — print counts without writing to Supabase"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run dispensed items backfill
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: |
+          ARGS="--start ${{ inputs.start_date }} --end ${{ inputs.end_date }}"
+          if [ -n "${{ inputs.location }}" ]; then
+            ARGS="$ARGS --location \"${{ inputs.location }}\""
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          echo "Running: python3 dispensed_items_backfill.py $ARGS"
+          eval python3 dispensed_items_backfill.py $ARGS
