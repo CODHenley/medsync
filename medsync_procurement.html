@@ -661,6 +661,7 @@ async function updateKPIs() {
   } catch(e) { console.warn('daily_revenue fetch failed:', e); }
 
   let inventoryValue = null;
+  let inventorySource = 'snapshot';
   try {
     const locId = _locVid || "28253";
     const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+locId+"&limit=500", {headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
@@ -669,7 +670,22 @@ async function updateKPIs() {
     if (iv > 0) inventoryValue = iv;
   } catch(e) {}
 
-  // Subtract period COGS from snapshot so value decreases as items are dispensed
+  // Fallback: estimate remaining inventory from YTD Vetcove purchases minus period COGS
+  if (inventoryValue === null) {
+    try {
+      const locUuidFilter = _locUuid ? `&location_id=eq.${_locUuid}` : '';
+      const vcRows = await query('vetcove_orders',
+        `select=qty_ordered,unit_price&unit_price=gt.0&order_date=gte.2026-01-01&order_date=lte.${end}${locUuidFilter}&limit=5000`
+      );
+      const ytdSpend = vcRows.reduce((s, r) => s + (parseFloat(r.qty_ordered)||0) * (parseFloat(r.unit_price)||0), 0);
+      if (ytdSpend > 0) {
+        inventoryValue = ytdSpend;
+        inventorySource = 'ytd-purchases';
+      }
+    } catch(e) {}
+  }
+
+  // Subtract period COGS from snapshot/purchases so value decreases as items are dispensed
   const remaining = inventoryValue !== null ? Math.max(0, inventoryValue - totalCOGS) : null;
 
   // COGS % uses total practice revenue for P&L accuracy
@@ -684,6 +700,13 @@ async function updateKPIs() {
   document.getElementById('kv-cogs').textContent       = '$' + fmt(totalCOGS);
   document.getElementById('ks-cogs').textContent       = totalItems + ' dispense events';
   document.getElementById('kv-remaining').textContent  = remaining !== null ? '$' + fmt(remaining) : '—';
+  // Subtitle clarifies data source
+  const remSubEl = document.getElementById('kv-remaining').closest('.kpi')?.querySelector('.kpi-s');
+  if (remSubEl) {
+    remSubEl.textContent = inventorySource === 'ytd-purchases'
+      ? 'YTD purchases · minus COGS'
+      : 'snapshot minus period COGS';
+  }
 
   // Total Revenue tile
   const _selLocEl   = document.getElementById('sel-location');
