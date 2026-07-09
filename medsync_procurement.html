@@ -500,7 +500,7 @@ async function reload() {
     const raw = await query('dispensed_items',
       `select=vetspire_product_id,product_name,sku,quantity,unit_price,unit_cost,returned,refunded,dispensed_at,location_id,location_name` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
-      `&returned=eq.false&refunded=eq.false&sku=not.is.null` +
+      `&returned=eq.false&refunded=eq.false` +
       locFilter +
       `&order=dispensed_at.desc&limit=5000`
     );
@@ -574,7 +574,7 @@ async function reload() {
     const dailyRaw = await query('dispensed_items',
       `select=dispensed_at,location_id,location_name,vetspire_product_id,product_name,quantity,unit_cost,unit_price` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
-      `&returned=eq.false&refunded=eq.false&sku=not.is.null` +
+      `&returned=eq.false&refunded=eq.false` +
       locFilter +
       `&order=dispensed_at.desc&limit=5000`
     );
@@ -1003,7 +1003,7 @@ async function renderReorderSuggestions() {
       `select=product_name,quantity` +
       `&location_id=eq.${locId}` +
       `&dispensed_at=gte.${fromStr}T00:00:00Z&dispensed_at=lte.${toStr}T23:59:59Z` +
-      `&returned=eq.false&refunded=eq.false&sku=not.is.null&limit=5000`
+      `&returned=eq.false&refunded=eq.false&limit=5000`
     );
     const usageMap = {};
     for (const row of usageRows) {
@@ -1297,7 +1297,7 @@ async function loadHealthRiskBadge() {
     const diRes = await fetch(
       SUPA_URL + '/rest/v1/dispensed_items?select=product_name,quantity,unit_cost' +
       '&dispensed_at=gte.' + from60 + 'T00:00:00Z' +
-      '&returned=eq.false&refunded=eq.false&sku=not.is.null' +
+      '&returned=eq.false&refunded=eq.false' +
       (locVid ? '&location_id=eq.' + locVid : '') +
       '&limit=5000',
       { headers: H }
