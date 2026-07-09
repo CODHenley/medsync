@@ -665,14 +665,16 @@ async function updateKPIs() {
   let inventoryValue = null;
   let inventorySource = 'snapshot';
 
-  // 1st priority: inventory_snapshots (Vetspire sync — currently only Wheaton)
-  try {
-    const locId = _locVid || "28253";
-    const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+locId+"&limit=500", {headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
-    const snapRows = await snapRes.json();
-    const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand)||0) * (parseFloat(r.unit_cost)||0)), 0);
-    if (iv > 0) inventoryValue = iv;
-  } catch(e) {}
+  // 1st priority: inventory_snapshots — only when a specific location is selected
+  // (avoids defaulting to Wheaton when "All locations" is chosen)
+  if (_locVid) {
+    try {
+      const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+_locVid+"&limit=500", {headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+      const snapRows = await snapRes.json();
+      const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand)||0) * (parseFloat(r.unit_cost)||0)), 0);
+      if (iv > 0) inventoryValue = iv;
+    } catch(e) {}
+  }
 
   // 2nd priority: lots table × unit_cost (works for all locations without any SQL import)
   if (inventoryValue === null && _locUuid) {
@@ -718,8 +720,10 @@ async function updateKPIs() {
   // Subtract period COGS from inventory basis so value decreases as items are dispensed
   const remaining = inventoryValue !== null ? Math.max(0, inventoryValue - totalCOGS) : null;
 
-  // COGS % uses total practice revenue for P&L accuracy
-  const cogsPC = totalPracticeRevenue > 0 ? ((totalCOGS / totalPracticeRevenue) * 100).toFixed(1) : null;
+  // COGS % uses pharmacy revenue (dispensed items) for an apples-to-apples margin
+  // Falls back to total practice revenue if pharmacy revenue is unavailable
+  const cogsBase = pharmacyRevenue > 0 ? pharmacyRevenue : totalPracticeRevenue;
+  const cogsPC = cogsBase > 0 ? ((totalCOGS / cogsBase) * 100).toFixed(1) : null;
 
   // Pharmacy margin = (pharmacy revenue − COGS) / pharmacy revenue
   const pharmaMarginPct = pharmacyRevenue > 0
@@ -747,7 +751,9 @@ async function updateKPIs() {
   document.getElementById('ks-totalrev').textContent  = totalPracticeRevenue !== null ? _selLocText : 'syncing hourly';
 
   document.getElementById('kv-cogspc').textContent    = cogsPC !== null ? cogsPC + '%' : '—';
-  document.getElementById('ks-cogspc').textContent    = totalPracticeRevenue !== null
+  document.getElementById('ks-cogspc').textContent    = pharmacyRevenue > 0
+    ? 'vs $' + fmt(pharmacyRevenue) + ' pharmacy rev'
+    : totalPracticeRevenue !== null
     ? 'vs $' + fmt(totalPracticeRevenue) + ' total rev'
     : 'awaiting daily_revenue';
 
@@ -760,11 +766,12 @@ async function updateKPIs() {
   document.getElementById('kv-items').textContent     = totalItems.toLocaleString();
   document.getElementById('ks-items').textContent     = ALL_PRODUCTS.length + ' unique products';
 
-  // Color COGS % by health (pharmacy cost should be 15–30% of total practice revenue)
+  // Color COGS % by health — pharmacy COGS as % of pharmacy revenue
+  // Healthy vet pharmacy: 20–35% COGS ratio; >45% is a margin problem
   const cogsEl = document.getElementById('kv-cogspc');
   if (cogsPC !== null) {
     const pc = parseFloat(cogsPC);
-    cogsEl.style.color = pc > 35 ? 'var(--red)' : pc > 25 ? 'var(--amber)' : 'var(--green)';
+    cogsEl.style.color = pc > 45 ? 'var(--red)' : pc > 35 ? 'var(--amber)' : 'var(--green)';
   }
 
   // Color Pharmacy Margin
