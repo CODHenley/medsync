@@ -689,7 +689,7 @@ async function updateKPIs() {
     } catch(e) {}
   }
 
-  // 3rd priority: vetcove_orders YTD spend (requires running vetcove_ytd_import.sql)
+  // 3rd priority: vetcove_orders table (populated after running vetcove_ytd_import.sql)
   if (inventoryValue === null) {
     try {
       const locUuidFilter = _locUuid ? `&location_id=eq.${_locUuid}` : '';
@@ -699,6 +699,20 @@ async function updateKPIs() {
       const ytdSpend = vcRows.reduce((s, r) => s + (parseFloat(r.qty_ordered)||0) * (parseFloat(r.unit_price)||0), 0);
       if (ytdSpend > 0) { inventoryValue = ytdSpend; inventorySource = 'ytd-purchases'; }
     } catch(e) {}
+  }
+
+  // 4th priority: hardcoded Vetcove YTD totals (Jan–Jul 8 2026) from uploaded CSVs
+  // These are the exact totals from the 4 location exports; used until vetcove_orders SQL is run
+  if (inventoryValue === null) {
+    const VETCOVE_YTD = {
+      '11111111-0000-0000-0000-000000000001': 106037.42, // Lincoln Park
+      '11111111-0000-0000-0000-000000000002': 107540.73, // Old Orchard
+      '11111111-0000-0000-0000-000000000003':  62140.13, // West Loop
+      '11111111-0000-0000-0000-000000000004':  90503.23, // Wheaton
+    };
+    const baseline = _locUuid ? (VETCOVE_YTD[_locUuid] || 0)
+      : Object.values(VETCOVE_YTD).reduce((a, b) => a + b, 0);
+    if (baseline > 0) { inventoryValue = baseline; inventorySource = 'ytd-purchases'; }
   }
 
   // Subtract period COGS from inventory basis so value decreases as items are dispensed
