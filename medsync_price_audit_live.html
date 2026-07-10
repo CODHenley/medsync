@@ -179,6 +179,8 @@ table.audit-tbl tr:hover td{background:#FAFAFE;}
 /* Checkbox col */
 table.audit-tbl th.cb-col,table.audit-tbl td.cb-col{width:36px;padding-left:14px;padding-right:4px;}
 input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--purple);}
+.upc-input{width:130px;padding:3px 6px;border-radius:4px;background:#1e2a3a;color:#fff;font-size:12px;font-family:monospace;caret-color:#fff;outline:none;}
+.upc-input:focus{background:#1e2a3a;color:#fff;}
 tr.selected td{background:#EEE9F8 !important;}
 
 /* Bulk confirm modal */
@@ -1247,7 +1249,8 @@ function renderUpcCell(d) {
   return `<div style="display:flex;flex-direction:column;gap:3px;">
     <input type="text" maxlength="13" placeholder="012345678905"
       value="${esc(current)}"
-      style="width:130px;padding:3px 6px;border:1px solid ${borderColor};border-radius:4px;background:rgba(255,255,255,.07);color:#fff;font-size:12px;font-family:monospace;"
+      class="upc-input"
+      style="border:1px solid ${borderColor};"
       oninput="upcInputChange(this)"
       data-pid="${esc(d.product_id)}" data-name="${esc(d.ms_name)}"
       onkeydown="if(event.key==='Enter'){saveUpcFromInput(this);}">
