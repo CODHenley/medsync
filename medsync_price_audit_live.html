@@ -292,7 +292,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <!-- Selection action bar -->
     <div id="cost-selection-bar" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:var(--navy);color:#fff;border-radius:6px;margin:8px 0;font-size:13px;">
       <span><strong id="cost-sel-count">0</strong> rows selected</span>
-      <button id="btn-save-sel-costs" onclick="saveSelected('costs')" style="margin-left:auto;background:var(--purple);color:#fff;border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save Costs</button>
+      <button id="btn-save-sel-costs" onclick="saveSelected('costs')" style="margin-left:auto;background:var(--purple);color:#fff;border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">→ Push to VetSpire</button>
       <button id="btn-save-sel-skus" onclick="saveSelected('skus')" style="background:#fff;color:var(--navy);border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save SKUs (Vetcove Catalog #)</button>
       <button onclick="clearSelection()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer;">✕ Clear</button>
     </div>
@@ -1266,13 +1266,13 @@ async function saveCostToVetspire(btn) {
         compRow.vs_pending = true; // keep row visible; allow retry
       }
     }
-    btn.textContent = json.vetspire_synced ? '✓ Saved to VetSpire' : '↻ Retry VetSpire Sync';
+    btn.textContent = json.vetspire_synced ? '✓ Pushed to VetSpire' : '↻ Retry VetSpire Sync';
     btn.dataset.cost = cost; // keep cost in case of retry
     if (json.vetspire_error) showToast('MedSync updated. VetSpire: ' + json.vetspire_error, 6000);
     else showToast(`Cost $${fmt2(cost)} saved for ${name}${json.vetspire_synced ? ' → VetSpire synced' : ''}`, 4000);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = `Save Cost ($${fmt2(cost)})`;
+    btn.textContent = `→ Push to VetSpire ($${fmt2(cost)})`;
     showToast('Failed to save cost: ' + err.message, 5000);
   }
 }
@@ -1470,7 +1470,7 @@ function renderComp() {
           style="margin-top:4px;display:block;font-size:11px;padding:3px 8px;width:100%;${d.vs_pending ? 'background:var(--amber);' : ''}"
           data-pid="${esc(d.product_id)}" data-vspid="${esc(d.vetspire_product_id || '')}"
           data-cost="${d.vc_latest}" data-name="${esc(d.ms_name)}"
-          onclick="saveCostToVetspire(this)">${d.vs_pending ? '↻ Retry VetSpire Sync' : 'Save Cost ($' + fmt2(d.vc_latest) + ')'}</button>` : ''}
+          onclick="saveCostToVetspire(this)">${d.vs_pending ? '↻ Retry VetSpire Sync' : '→ Push to VetSpire ($' + fmt2(d.vc_latest) + ')'}</button>` : ''}
       </td>
     </tr>`;
   }).join('');
