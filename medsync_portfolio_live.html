@@ -751,7 +751,7 @@ async function loadPriorityChips() {
   const chips = [];
   try {
     const [expLots, pendingOrders, locations] = await Promise.all([
-      sg(`/rest/v1/lots?select=id,expiration_date,locations(name)&expiration_date=gte.${today}&expiration_date=lte.${days30fwd}&qty_remaining=gt.0&status=neq.Disposed&limit=200`),
+      sg(`/rest/v1/lots?select=id,expiration_date,locations(name),products(name)&expiration_date=gte.${today}&expiration_date=lte.${days30fwd}&qty_remaining=gt.0&status=neq.Disposed&order=expiration_date.asc&limit=200`),
       sg(`/rest/v1/po_items?select=id,location_id,week_start,locations(name)&status=eq.queued&week_start=gte.${today}&limit=50`),
       sg(`/rest/v1/locations?select=id,name&is_active=eq.true&limit=20`),
     ]);
@@ -759,7 +759,11 @@ async function loadPriorityChips() {
     // Expiring lots chip
     const expLocIds = new Set(expLots.map(r => r.locations && r.locations.name).filter(Boolean));
     if (expLots.length > 0) {
-      chips.push({ label: expLots.length + ' lot' + (expLots.length!==1?'s':'') + ' expiring within 30 days', color: '#E84545', shadow: 'rgba(232,69,69,0.4)', screen: 'lifecycle' });
+      const firstProd = expLots[0].products && expLots[0].products.name;
+      const chipLabel = expLots.length === 1 && firstProd
+        ? firstProd + ' — expiring ' + expLots[0].expiration_date
+        : expLots.length + ' lots expiring within 30 days';
+      chips.push({ label: chipLabel, color: '#E84545', shadow: 'rgba(232,69,69,0.4)', screen: 'lifecycle' });
     }
 
     // Pending orders
