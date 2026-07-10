@@ -88,7 +88,7 @@ async function loadRecognition() {
     const _KEY2  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
     const _H2    = { 'apikey': _KEY2, 'Authorization': 'Bearer ' + _KEY2 };
     const [glRes, usersRes, poRes, whGlRes, whPoRes, managersRes, receiversRes, actLogRes, cycleRes] = await Promise.all([
-      fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&limit=2000', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&product_name=neq.Monthly Summary Import&limit=2000', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart + '&submitted_at=lte.' + today + '&limit=1000', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&limit=500', { headers: _H2 }),
@@ -423,7 +423,7 @@ async function loadWheatonInsights() {
   try {
     const [lotsRes, glRes, cogsRes, revRes] = await Promise.all([
       fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,qty_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&order=expiration_date.asc', { headers: _H }),
-      fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&limit=500', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&product_name=neq.Monthly Summary Import&limit=500', { headers: _H }),
       fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&returned=eq.false&refunded=eq.false&limit=5000', { headers: _H }),
       fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
     ]);
@@ -583,7 +583,7 @@ async function refreshAllInsights() {
 
   try {
     const [glRows, lots, diRows] = await Promise.all([
-      sg(`/rest/v1/goods_lost?select=location_id,value_lost,product_name&created_at=gte.${days30ago}&order=value_lost.desc&limit=200`),
+      sg(`/rest/v1/goods_lost?select=location_id,value_lost,product_name&created_at=gte.${days30ago}&product_name=neq.Monthly Summary Import&order=value_lost.desc&limit=200`),
       sg(`/rest/v1/lots?select=expiration_date,qty_remaining,location_id,products(name)&expiration_date=gte.${today}&expiration_date=lte.${days60fwd}&order=expiration_date.asc&limit=50`),
       sg(`/rest/v1/dispensed_items?select=product_name,location_name,unit_cost,quantity&dispensed_at=gte.${days30ago}&returned=eq.false&refunded=eq.false&limit=2000`),
     ]);
@@ -2140,8 +2140,10 @@ async function loadData() {
       `select=category,value_lost,location_id,product_name,notes&created_at=gte.${from}&created_at=lte.${to}${locFilter}`
     );
 
-    // Total goods lost
+    // Total goods lost (all rows, including snapshot imports)
     const totalGL = glRows.reduce((s, r) => s + (Number(r.value_lost) || 0), 0);
+    // Real incidents only — exclude monthly snapshot import rows from counts/categories
+    const realGLRows = glRows.filter(r => r.product_name !== 'Monthly Summary Import');
     const kgl = document.getElementById('k-gl');
     kgl.textContent = fmt$(totalGL);
     kgl.className = totalGL > 0 ? 'kpi-v ca' : 'kpi-v cm';
@@ -2149,11 +2151,11 @@ async function loadData() {
     const heroGlVal = document.getElementById('hero-gl-val');
     const heroGlSub = document.getElementById('hero-gl-sub');
     if (heroGlVal) { heroGlVal.textContent = fmt$(totalGL); heroGlVal.style.color = totalGL > 0 ? '#E8C76A' : 'var(--green)'; }
-    if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? glRows.length + ' incident' + (glRows.length !== 1 ? 's' : '') : 'No losses this period';
+    if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? realGLRows.length + ' incident' + (realGLRows.length !== 1 ? 's' : '') : 'No losses this period';
 
-    // Goods lost by category
+    // Goods lost by category (real incidents only — exclude snapshot imports)
     const byCategory = {};
-    glRows.forEach(r => {
+    realGLRows.forEach(r => {
       const cat = r.category || 'Other';
       byCategory[cat] = (byCategory[cat] || 0) + (Number(r.value_lost) || 0);
     });
@@ -3691,7 +3693,7 @@ async function loadGlTop5Live(range, locFilter) {
   const _skey = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session')||'{}').access_token || SUPA_KEY; } catch(e){ return SUPA_KEY; } })();
   const _h = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _skey };
   try {
-    let url = SUPA_URL + `/rest/v1/goods_lost?select=product_name,category,value_lost,location_id,locations(name)&created_at=gte.${encodeURIComponent(_dateRangeStart(range))}&order=created_at.desc&limit=2000`;
+    let url = SUPA_URL + `/rest/v1/goods_lost?select=product_name,category,value_lost,location_id,locations(name)&created_at=gte.${encodeURIComponent(_dateRangeStart(range))}&product_name=neq.Monthly Summary Import&order=created_at.desc&limit=2000`;
     const res = await fetch(url, { headers: _h });
     const rows = res.ok ? await res.json() : [];
     if (!Array.isArray(rows)) { _renderGlTop5Live([], range); return; }
