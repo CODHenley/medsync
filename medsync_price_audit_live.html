@@ -1242,17 +1242,22 @@ async function saveSupplierSKU(productId, msName, sku, btn) {
 
 function renderUpcCell(d) {
   const current = d.upc || '';
-  const isValid = /^\d{12}$/.test(current);
+  const isValid = current.length === 12;
+  const borderColor = isValid ? 'var(--green)' : 'rgba(255,255,255,.2)';
   return `<div style="display:flex;flex-direction:column;gap:3px;">
-    <input type="text" maxlength="13" placeholder="e.g. 012345678905"
+    <input type="text" maxlength="13" placeholder="012345678905"
       value="${esc(current)}"
-      style="width:130px;padding:3px 6px;border:1px solid ${isValid ? 'var(--green)' : 'rgba(255,255,255,.2)'};border-radius:4px;background:rgba(255,255,255,.07);color:#fff;font-size:12px;font-family:monospace;"
-      oninput="this.style.borderColor=(/^\\d{12}$/.test(this.value)?'var(--green)':'rgba(255,255,255,.2)')"
+      style="width:130px;padding:3px 6px;border:1px solid ${borderColor};border-radius:4px;background:rgba(255,255,255,.07);color:#fff;font-size:12px;font-family:monospace;"
+      oninput="upcInputChange(this)"
       data-pid="${esc(d.product_id)}" data-name="${esc(d.ms_name)}"
       onkeydown="if(event.key==='Enter'){saveUpcFromInput(this);}">
-    ${current ? `<button class="vs-sync-btn" style="font-size:10px;padding:2px 6px;" onclick="saveUpcFromInput(this.previousElementSibling)">Save UPC</button>` : `<button class="vs-sync-btn" style="font-size:10px;padding:2px 6px;" onclick="saveUpcFromInput(this.previousElementSibling)">Save UPC</button>`}
+    <button class="vs-sync-btn" style="font-size:10px;padding:2px 6px;" onclick="saveUpcFromInput(this.previousElementSibling)">Save UPC</button>
     <span class="btn-caption">Scan barcode to find<br>this product</span>
   </div>`;
+}
+
+function upcInputChange(input) {
+  input.style.borderColor = input.value.length === 12 ? 'var(--green)' : 'rgba(255,255,255,.2)';
 }
 
 async function saveUpcFromInput(input) {
