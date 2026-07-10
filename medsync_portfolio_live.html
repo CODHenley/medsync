@@ -76,6 +76,7 @@ function localIso(d) { const p = n => String(n).padStart(2,'0'); return `${d.get
 async function loadRecognition() {
   const now = new Date();
   const monthStart = localIso(new Date(now.getFullYear(), now.getMonth(), 1));
+  const today      = localIso(now);
   const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const locEl  = document.getElementById('rec-location');
   const leadEl = document.getElementById('rec-lead');
@@ -87,10 +88,10 @@ async function loadRecognition() {
     const _KEY2  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
     const _H2    = { 'apikey': _KEY2, 'Authorization': 'Bearer ' + _KEY2 };
     const [glRes, usersRes, poRes, whGlRes, whPoRes, managersRes, receiversRes, actLogRes, cycleRes] = await Promise.all([
-      fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/goods_lost?select=location_id,locations(name)&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&limit=2000', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.inventory_lead', { headers: _H2 }),
-      fetch(_SUPA2 + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart, { headers: _H2 }),
-      fetch(_SUPA2 + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/po_items?select=location_id&status=in.(submitted,received)&submitted_at=gte.' + monthStart + '&submitted_at=lte.' + today + '&limit=1000', { headers: _H2 }),
+      fetch(_SUPA2 + '/rest/v1/goods_lost?select=value_lost&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&limit=500', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/po_items?select=status,submitted_at&location_id=eq.' + WHEATON_UUID + '&order=submitted_at.desc&limit=1', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=in.(manager,hospital_manager)', { headers: _H2 }),
       fetch(_SUPA2 + '/rest/v1/users?select=id,full_name,location_id,locations(name)&role=eq.receiver', { headers: _H2 }),
@@ -422,8 +423,8 @@ async function loadWheatonInsights() {
   try {
     const [lotsRes, glRes, cogsRes, revRes] = await Promise.all([
       fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,qty_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&order=expiration_date.asc', { headers: _H }),
-      fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart, { headers: _H }),
-      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&sku=not.is.null', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&limit=500', { headers: _H }),
+      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&returned=eq.false&refunded=eq.false&limit=5000', { headers: _H }),
       fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
     ]);
 
@@ -584,7 +585,7 @@ async function refreshAllInsights() {
     const [glRows, lots, diRows] = await Promise.all([
       sg(`/rest/v1/goods_lost?select=location_id,value_lost,product_name&created_at=gte.${days30ago}&order=value_lost.desc&limit=200`),
       sg(`/rest/v1/lots?select=expiration_date,qty_remaining,location_id,products(name)&expiration_date=gte.${today}&expiration_date=lte.${days60fwd}&order=expiration_date.asc&limit=50`),
-      sg(`/rest/v1/dispensed_items?select=product_name,location_name,unit_cost,quantity&dispensed_at=gte.${days30ago}&sku=not.is.null&limit=2000`),
+      sg(`/rest/v1/dispensed_items?select=product_name,location_name,unit_cost,quantity&dispensed_at=gte.${days30ago}&returned=eq.false&refunded=eq.false&limit=2000`),
     ]);
 
     const cards = [];
@@ -707,8 +708,8 @@ async function loadPortfolioHeroTiles() {
 
   try {
     const [glRows, lots] = await Promise.all([
-      sg('/rest/v1/goods_lost?select=value_lost&created_at=gte.' + monthStart),
-      sg('/rest/v1/lots?select=expiration_date&expiration_date=gte.' + today + '&expiration_date=lte.' + days60fwd + '&qty_remaining=gt.0&limit=200'),
+      sg('/rest/v1/goods_lost?select=value_lost&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&limit=2000'),
+      sg('/rest/v1/lots?select=expiration_date&expiration_date=gte.' + today + '&expiration_date=lte.' + days60fwd + '&qty_remaining=gt.0&status=neq.Disposed&limit=500'),
     ]);
 
     // Goods lost MTD
@@ -721,12 +722,13 @@ async function loadPortfolioHeroTiles() {
     // Kick off live COGs load — monthStart/today are plain date strings
     loadLiveCOGs('all', monthStart, today);
 
-    // Expiring lots
+    // Expiring lots — show the 30-day count in the hero (label says "<30 days")
     const exp30 = lots.filter(function(l) { return new Date(l.expiration_date) <= new Date(+now + 30*864e5); }).length;
+    const exp60 = lots.length;
     const heroExpVal = document.getElementById('hero-exp-val');
     const heroExpSub = document.getElementById('hero-exp-sub');
-    if (heroExpVal) { heroExpVal.textContent = lots.length; heroExpVal.style.color = exp30 > 3 ? '#FF8A80' : lots.length > 0 ? '#E8C76A' : '#6FE0A0'; }
-    if (heroExpSub) heroExpSub.textContent = exp30 > 0 ? exp30 + ' within 30 days' : lots.length > 0 ? 'within 60 days' : 'All lots current';
+    if (heroExpVal) { heroExpVal.textContent = exp30; heroExpVal.style.color = exp30 > 3 ? '#FF8A80' : exp30 > 0 ? '#E8C76A' : '#6FE0A0'; }
+    if (heroExpSub) heroExpSub.textContent = exp30 > 0 ? (exp60 - exp30) + ' more within 60 days' : exp60 > 0 ? exp60 + ' expiring within 60 days' : 'All lots current';
 
   } catch(e) {
     console.error('loadPortfolioHeroTiles error:', e);
@@ -750,7 +752,7 @@ async function loadPriorityChips() {
   try {
     const [expLots, pendingOrders, locations] = await Promise.all([
       sg(`/rest/v1/lots?select=id,expiration_date,locations(name)&expiration_date=gte.${today}&expiration_date=lte.${days30fwd}&qty_remaining=gt.0&status=neq.Disposed&limit=200`),
-      sg(`/rest/v1/po_items?select=id,location_id,week_start,locations(name)&status=eq.queued&week_start=eq.${today}&limit=50`),
+      sg(`/rest/v1/po_items?select=id,location_id,week_start,locations(name)&status=eq.queued&week_start=gte.${today}&limit=50`),
       sg(`/rest/v1/locations?select=id,name&is_active=eq.true&limit=20`),
     ]);
 
@@ -3686,8 +3688,8 @@ function _dateRangeStart(range) {
 async function loadGlTop5Live(range, locFilter) {
   const cacheKey = range + '|' + (locFilter||'all');
   if (_glLiveCache[cacheKey]) { _renderGlTop5Live(_glLiveCache[cacheKey], range); return; }
-  const _skey = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session')||'{}').access_token || _SUPA_KEY; } catch(e){ return _SUPA_KEY; } })();
-  const _h = { 'apikey': _SUPA_KEY, 'Authorization': 'Bearer ' + _skey };
+  const _skey = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session')||'{}').access_token || SUPA_KEY; } catch(e){ return SUPA_KEY; } })();
+  const _h = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _skey };
   try {
     let url = SUPA_URL + `/rest/v1/goods_lost?select=product_name,category,value_lost,location_id,locations(name)&created_at=gte.${encodeURIComponent(_dateRangeStart(range))}&order=created_at.desc&limit=2000`;
     const res = await fetch(url, { headers: _h });
