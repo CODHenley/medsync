@@ -1247,7 +1247,7 @@ function pcSelectSuggestion(el) {
       if (!Array.isArray(snaps)) snaps = [];
     }
 
-    // 1b. If not found in snapshots, try products table (Vetcove SKUs saved via Price Audit)
+    // 1b. If not found in snapshots, try products table by SKU (Vetcove catalog numbers)
     if (!snaps.length) {
       for (var ci2 = 0; ci2 < candidates.length && !snaps.length; ci2++) {
         var cval2 = candidates[ci2];
@@ -1255,11 +1255,31 @@ function pcSelectSuggestion(el) {
         var prodRows = await prodRes.json();
         if (Array.isArray(prodRows) && prodRows.length) {
           var pr = prodRows[0];
-          // Now fetch on_hand from inventory_snapshots by product name
           var nameSnapRes = await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?select=on_hand&product_name=eq.' + encodeURIComponent(pr.name) + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1', { headers: H });
           var nameSnap = await nameSnapRes.json();
           var onHand = (Array.isArray(nameSnap) && nameSnap[0]) ? nameSnap[0].on_hand : 0;
           snaps = [{ product_name: pr.name, vetspire_product_id: pr.vetspire_product_id, on_hand: onHand, unit_cost: pr.unit_cost }];
+        }
+      }
+    }
+
+    // 1c. Try NDC lookup — drug UPCs encode the NDC in digits 2–11 (strip leading 0 + check digit)
+    // Normalise by removing hyphens; try the raw barcode, 10-digit strip, and 11-digit strip
+    if (!snaps.length) {
+      var ndcCandidates = [q];
+      if (q.startsWith('0') && q.length === 12) ndcCandidates.push(q.slice(1, 11)); // 10-digit NDC
+      if (q.startsWith('0') && q.length === 13) ndcCandidates.push(q.slice(1, 12)); // 11-digit NDC
+      for (var ci3 = 0; ci3 < ndcCandidates.length && !snaps.length; ci3++) {
+        var ndcVal = ndcCandidates[ci3];
+        // ilike match so hyphenated NDCs (e.g. 54771-5691-34) also resolve
+        var ndcRes = await fetch(SUPA_URL + '/rest/v1/products?select=name,vetspire_product_id,unit_cost,ndc&ndc=ilike.' + encodeURIComponent('%' + ndcVal + '%') + '&limit=1', { headers: H });
+        var ndcRows = await ndcRes.json();
+        if (Array.isArray(ndcRows) && ndcRows.length) {
+          var npr = ndcRows[0];
+          var ndcSnapRes = await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?select=on_hand&product_name=eq.' + encodeURIComponent(npr.name) + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1', { headers: H });
+          var ndcSnap = await ndcSnapRes.json();
+          var ndcOnHand = (Array.isArray(ndcSnap) && ndcSnap[0]) ? ndcSnap[0].on_hand : 0;
+          snaps = [{ product_name: npr.name, vetspire_product_id: npr.vetspire_product_id, on_hand: ndcOnHand, unit_cost: npr.unit_cost }];
         }
       }
     }
