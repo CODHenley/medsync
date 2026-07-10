@@ -1255,10 +1255,19 @@ async function saveCostToVetspire(btn) {
       const vsCostCell = row.querySelector('.vs-cost-cell');
       if (vsCostCell) vsCostCell.textContent = '$' + fmt2(cost);
     }
-    // Update _compRows
+    // Update _compRows — only update pricing state if VetSpire also synced.
+    // If VS sync failed, keep original drift visible so user can retry.
     const compRow = _compRows.find(r => r.ms_name === name);
-    if (compRow) { compRow.ms_price = cost; compRow.vetspire_cost = cost; }
-    btn.textContent = json.vetspire_synced ? '✓ Saved to VetSpire' : '✓ Saved (MedSync only)';
+    if (compRow) {
+      if (json.vetspire_synced) {
+        compRow.ms_price = cost; compRow.vetspire_cost = cost;
+        compRow.drift_pct = 0; compRow.vs_pending = false;
+      } else {
+        compRow.vs_pending = true; // keep row visible; allow retry
+      }
+    }
+    btn.textContent = json.vetspire_synced ? '✓ Saved to VetSpire' : '↻ Retry VetSpire Sync';
+    btn.dataset.cost = cost; // keep cost in case of retry
     if (json.vetspire_error) showToast('MedSync updated. VetSpire: ' + json.vetspire_error, 6000);
     else showToast(`Cost $${fmt2(cost)} saved for ${name}${json.vetspire_synced ? ' → VetSpire synced' : ''}`, 4000);
   } catch (err) {
@@ -1364,6 +1373,7 @@ function getCompFiltered() {
     if (_compHideMismatch && d.unit_mismatch) return false;
     if (_compFlaggedOnly && !_compFlagged.has(d.ms_name)) return false;
     if (q && !d.ms_name.toLowerCase().includes(q) && !d.vc_name.toLowerCase().includes(q)) return false;
+    if (d.vs_pending) return true; // always show items pending VetSpire retry
     const p = d.drift_pct;
     if (drift === 'over10'  && !(p >  10)) return false;
     if (drift === 'over20'  && !(p >  20)) return false;
@@ -1457,10 +1467,10 @@ function renderComp() {
           data-ms="${d.ms_price}" data-vc="${d.vc_latest}" data-drift="${d.drift_pct}"
           data-vspid="${d.vetspire_product_id || ''}" data-sku="${d.sku || ''}">${isFlagged ? '✓ Flagged' : 'Flag for Audit'}</button>
         ${d.vc_latest != null && d.product_id ? `<button class="btn-save-cost vs-sync-btn"
-          style="margin-top:4px;display:block;font-size:11px;padding:3px 8px;width:100%;"
+          style="margin-top:4px;display:block;font-size:11px;padding:3px 8px;width:100%;${d.vs_pending ? 'background:var(--amber);' : ''}"
           data-pid="${esc(d.product_id)}" data-vspid="${esc(d.vetspire_product_id || '')}"
           data-cost="${d.vc_latest}" data-name="${esc(d.ms_name)}"
-          onclick="saveCostToVetspire(this)">Save Cost ($${fmt2(d.vc_latest)})</button>` : ''}
+          onclick="saveCostToVetspire(this)">${d.vs_pending ? '↻ Retry VetSpire Sync' : 'Save Cost ($' + fmt2(d.vc_latest) + ')'}</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1657,7 +1667,7 @@ async function saveSelected(mode) {
           body: JSON.stringify({ product_id: d.product_id, vetspire_product_id: d.vetspire_product_id || undefined, unit_cost: d.vc_latest }),
         });
         const json = await res.json();
-        if (res.ok && json.ok) { done++; if (json.vetspire_synced) vsOk++; d.ms_price = d.vc_latest; d.vetspire_cost = d.vc_latest; }
+        if (res.ok && json.ok) { done++; if (json.vetspire_synced) { vsOk++; d.ms_price = d.vc_latest; d.vetspire_cost = d.vc_latest; d.drift_pct = 0; d.vs_pending = false; } else { d.vs_pending = true; } }
         else failed++;
       } else if (mode === 'skus' && d.supplier_sku && d.product_id) {
         const res = await edgeFetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
