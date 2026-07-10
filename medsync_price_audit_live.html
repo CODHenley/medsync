@@ -1298,6 +1298,7 @@ async function handleInvoiceUpload(input) {
     const vcItems = aggregateVetcove(vcRows);
     if (!vcItems.length) throw new Error(`CSV parsed ${vcRows.length} rows but found 0 products. Check that the file is a Vetcove line-item export with "Name" and price columns.`);
 
+    _msProducts = null; // force re-fetch so updated unit_costs are reflected
     const ms = await loadMSProducts();
     if (!ms.length) throw new Error('No products loaded from MedSync catalog. Check Supabase connection and RLS policies.');
 
