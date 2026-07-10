@@ -1232,11 +1232,13 @@ function pcSelectSuggestion(el) {
 
   var snaps = [];
 
-  // 1. If input looks like a barcode (all digits, 8+ chars), look up by sku in inventory_snapshots
+  // 1. If input looks like a barcode (all digits, 8+ chars), look up by sku
   if (/^\d{8,}$/.test(q)) {
     var candidates = [q];
     if (q.length === 12) candidates.push(q.slice(1, 11)); // UPC-A → 10-digit SKU
     if (q.length === 13) candidates.push(q.slice(1, 12)); // EAN-13 → 11-digit
+
+    // 1a. Try inventory_snapshots.sku first (populated when VetSpire has the SKU)
     for (var ci = 0; ci < candidates.length && !snaps.length; ci++) {
       var cval = candidates[ci];
       var skuSnapUrl = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand&sku=eq.' + encodeURIComponent(cval) + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1';
@@ -1244,9 +1246,26 @@ function pcSelectSuggestion(el) {
       snaps = await skuSnapRes.json();
       if (!Array.isArray(snaps)) snaps = [];
     }
+
+    // 1b. If not found in snapshots, try products table (Vetcove SKUs saved via Price Audit)
+    if (!snaps.length) {
+      for (var ci2 = 0; ci2 < candidates.length && !snaps.length; ci2++) {
+        var cval2 = candidates[ci2];
+        var prodRes = await fetch(SUPA_URL + '/rest/v1/products?select=name,vetspire_product_id,unit_cost&sku=eq.' + encodeURIComponent(cval2) + '&limit=1', { headers: H });
+        var prodRows = await prodRes.json();
+        if (Array.isArray(prodRows) && prodRows.length) {
+          var pr = prodRows[0];
+          // Now fetch on_hand from inventory_snapshots by product name
+          var nameSnapRes = await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?select=on_hand&product_name=eq.' + encodeURIComponent(pr.name) + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1', { headers: H });
+          var nameSnap = await nameSnapRes.json();
+          var onHand = (Array.isArray(nameSnap) && nameSnap[0]) ? nameSnap[0].on_hand : 0;
+          snaps = [{ product_name: pr.name, vetspire_product_id: pr.vetspire_product_id, on_hand: onHand, unit_cost: pr.unit_cost }];
+        }
+      }
+    }
   }
 
-  // 2. Fall back to product name search
+  // 2. Fall back to product name search in inventory_snapshots
   if (!snaps.length) {
     var url2 = SUPA_URL + '/rest/v1/inventory_snapshots?select=product_name,vetspire_product_id,on_hand&product_name=ilike.' + encodeURIComponent('%' + q + '%') + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1';
     var res2 = await fetch(url2, { headers: H });

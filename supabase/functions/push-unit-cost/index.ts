@@ -47,17 +47,28 @@ Deno.serve(async (req: Request) => {
 
     if (dbErr) throw new Error('Supabase update failed: ' + dbErr.message)
 
-    // 2. Push cost to VetSpire if we have a vetspire_product_id and a cost
+    // 2. Push cost and/or SKU to VetSpire if we have a vetspire_product_id
     let vetspireSynced = false
     let vetspireError: string | null = null
 
-    if (unit_cost != null && vetspire_product_id) {
-      const cost = update.unit_cost as number
+    const hasVetspireUpdate = vetspire_product_id && (unit_cost != null || sku != null)
+    if (hasVetspireUpdate) {
       const token = Deno.env.get('Medsync_API_Key')
       if (!token) {
         vetspireError = 'Medsync_API_Key secret not set'
       } else {
         try {
+          // Build VetSpire input — include whichever fields were provided
+          const vsInput: Record<string, unknown> = {}
+          if (unit_cost != null) {
+            const cost = update.unit_cost as number
+            vsInput.unitCost = cost
+            vsInput.realUnitCost = cost
+          }
+          if (sku != null) {
+            vsInput.sku = String(sku).trim() || null
+          }
+
           const vsRes = await fetch('https://api.vetspire.com/graphql', {
             method: 'POST',
             headers: {
@@ -66,12 +77,12 @@ Deno.serve(async (req: Request) => {
               'Origin': 'https://scoutcare.vetspire.com',
             },
             body: JSON.stringify({
-              query: `mutation UpdateProductCost($id: ID!, $input: ProductInput!) {
-                updateProduct(id: $id, input: $input) { id unitCost realUnitCost }
+              query: `mutation UpdateProduct($id: ID!, $input: ProductInput!) {
+                updateProduct(id: $id, input: $input) { id unitCost realUnitCost sku }
               }`,
               variables: {
                 id: String(vetspire_product_id),
-                input: { unitCost: cost, realUnitCost: cost },
+                input: vsInput,
               },
             }),
           })
