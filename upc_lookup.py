@@ -168,25 +168,49 @@ def fda_lookup_by_ndc(ndc):
     return None
 
 
-def fda_lookup_by_name(name):
-    """Fallback: search FDA by brand/generic name."""
-    # Strip dosage forms and concentrations for a cleaner search
-    clean = name.split("(")[0].split(":")[0].split(",")[0].strip()
-    # Take first two words max
-    words = clean.split()[:3]
-    q = " ".join(words)
-    url = f"{FDA_URL}?search=brand_name:{urllib.parse.quote(q)}&limit=3"
-    status, data = http_get(url)
-    time.sleep(RATE_LIMIT_DELAY)
-    if status == 200 and data.get("results"):
-        return data["results"][0]
-    # Try generic name
-    url2 = f"{FDA_URL}?search=generic_name:{urllib.parse.quote(q)}&limit=3"
-    status2, data2 = http_get(url2)
-    time.sleep(RATE_LIMIT_DELAY)
-    if status2 == 200 and data2.get("results"):
-        return data2["results"][0]
-    return None
+def name_matches_fda(product_name, fda_result):
+    """
+    Validate that an FDA result is actually the right drug.
+    Requires at least one meaningful word (4+ chars) from the product name
+    to appear in the FDA brand or generic name.
+    """
+    pname = product_name.lower()
+    brand   = (fda_result.get("brand_name") or "").lower()
+    generic = (fda_result.get("generic_name") or "").lower()
+    fda_text = brand + " " + generic
+
+    # Extract meaningful words from product name (skip dosage/units/noise)
+    skip = {"mg", "ml", "mcg", "each", "count", "tablet", "tablets", "capsule",
+            "capsules", "injection", "inj", "solution", "oral", "the", "and",
+            "for", "with", "size", "dose", "pack", "box", "case", "kit"}
+    words = [w.strip("()[],:") for w in pname.split() if len(w) >= 4 and w not in skip]
+
+    return any(w in fda_text for w in words[:5])
+
+
+def is_drug_product(name):
+    """
+    Heuristic: skip obvious non-drug products (equipment, food, supplies).
+    Only attempt FDA lookup for pharmaceutical products.
+    """
+    name_lower = name.lower()
+    skip_keywords = [
+        "cable", "ethernet", "printer", "syringe tip", "forceps", "clamp",
+        "scissors", "scalpel", "blade", "stapler", "catheter tip", "tube adapter",
+        "muzzle", "splint", "gag", "towel", "glove", "pouch", "label", "bag",
+        "bottle wash", "wash bottle", "pad", "underpad", "shoe cover", "sign",
+        "rod ", " rod", "stand ", "iv stand", "paper", "jar", "tray", "cup",
+        "hill's", "royal canin", "purina", "science diet", "hills ",
+        "diet, canine", "diet, feline", "diet feline", "diet canine",
+        "food ", " food", "chow", "treat ",
+        "ethernet", "canon", "printer", "assembly", "engager",
+        "patch cable", "foot cable", "shielded cable",
+        "autoclave pouch", "capillary tube", "centrifuge tube",
+        "biohazard label", "anesthesia label", "butorphanol label",
+        "specimen", "bibulous", "pipette tip", "sample cup",
+        "(external rx)", "(otc)",
+    ]
+    return not any(kw in name_lower for kw in skip_keywords)
 
 
 def extract_upc_from_fda_result(result):
@@ -258,26 +282,38 @@ def main():
         if ndc:
             print(f"  NDC: {ndc}")
 
+        # Skip obvious non-drug products
+        if not is_drug_product(name):
+            print(f"  → SKIP (non-drug product)")
+            skipped += 1
+            results.append({
+                "product_id": pid, "name": name, "original_ndc": ndc or "",
+                "found_upc": "", "found_ndc": "", "method": "skipped",
+                "fda_brand": "", "fda_generic": "", "status": "skipped",
+            })
+            continue
+
         fda_result = None
         method = ""
 
-        # 1. Try FDA lookup by NDC
+        # Only use NDC-based lookup — name fallback produces too many false matches
         if ndc:
             fda_result = fda_lookup_by_ndc(ndc)
             if fda_result:
-                method = "ndc"
+                # Validate the match makes sense for this product
+                if name_matches_fda(name, fda_result):
+                    method = "ndc"
+                else:
+                    brand   = fda_result.get("brand_name", "")
+                    generic = fda_result.get("generic_name", "")
+                    print(f"  → NDC matched FDA '{brand or generic}' but name doesn't match — skipping")
+                    fda_result = None
 
-        # 2. Fallback: FDA lookup by name
         if not fda_result:
-            fda_result = fda_lookup_by_name(name)
-            if fda_result:
-                method = "name"
-
-        if not fda_result:
-            print(f"  → NOT FOUND in FDA database (likely vet-only product)")
+            print(f"  → NOT FOUND in FDA database (vet-only or NDC mismatch)")
             not_found += 1
             results.append({
-                "product_id": pid, "name": name, "original_ndc": ndc,
+                "product_id": pid, "name": name, "original_ndc": ndc or "",
                 "found_upc": "", "found_ndc": "", "method": "not_found",
                 "fda_brand": "", "fda_generic": "", "status": "not_found",
             })
