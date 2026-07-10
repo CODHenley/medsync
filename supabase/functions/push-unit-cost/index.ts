@@ -10,13 +10,13 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { product_id, vetspire_product_id, unit_cost, sku } = await req.json()
+    const { product_id, vetspire_product_id, unit_cost, sku, upc } = await req.json()
 
     if (!product_id) {
       return new Response(JSON.stringify({ error: 'product_id is required' }), { status: 400, headers: CORS })
     }
-    if (unit_cost == null && sku == null) {
-      return new Response(JSON.stringify({ error: 'unit_cost or sku is required' }), { status: 400, headers: CORS })
+    if (unit_cost == null && sku == null && upc == null) {
+      return new Response(JSON.stringify({ error: 'unit_cost, sku, or upc is required' }), { status: 400, headers: CORS })
     }
 
     const supabase = createClient(
@@ -37,6 +37,10 @@ Deno.serve(async (req: Request) => {
 
     if (sku != null) {
       update.sku = String(sku).trim() || null
+    }
+
+    if (upc != null) {
+      update.upc = String(upc).trim() || null
     }
 
     // 1. Update products table in Supabase
@@ -107,6 +111,7 @@ Deno.serve(async (req: Request) => {
       vetspire_product_id: vetspire_product_id || null,
       unit_cost: update.unit_cost ?? null,
       sku: update.sku ?? null,
+      upc: update.upc ?? null,
       vetspire_synced: vetspireSynced,
       vetspire_error: vetspireError,
     }), { headers: CORS })

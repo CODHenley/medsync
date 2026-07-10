@@ -1238,6 +1238,19 @@ function pcSelectSuggestion(el) {
     if (q.length === 12) candidates.push(q.slice(1, 11)); // UPC-A → 10-digit SKU
     if (q.length === 13) candidates.push(q.slice(1, 12)); // EAN-13 → 11-digit
 
+    // 0. Try products.upc first — direct UPC-A barcode saved in MedSync
+    if (!snaps.length) {
+      var upcRes = await fetch(SUPA_URL + '/rest/v1/products?select=name,vetspire_product_id,unit_cost&upc=eq.' + encodeURIComponent(q) + '&limit=1', { headers: H });
+      var upcRows = await upcRes.json();
+      if (Array.isArray(upcRows) && upcRows.length) {
+        var upr = upcRows[0];
+        var upcSnapRes = await fetch(SUPA_URL + '/rest/v1/inventory_snapshots?select=on_hand&product_name=eq.' + encodeURIComponent(upr.name) + '&vetspire_location_id=eq.' + pcState.locationId + '&order=snapshot_date.desc&limit=1', { headers: H });
+        var upcSnap = await upcSnapRes.json();
+        var upcOnHand = (Array.isArray(upcSnap) && upcSnap[0]) ? upcSnap[0].on_hand : 0;
+        snaps = [{ product_name: upr.name, vetspire_product_id: upr.vetspire_product_id, on_hand: upcOnHand, unit_cost: upr.unit_cost }];
+      }
+    }
+
     // 1a. Try inventory_snapshots.sku first (populated when VetSpire has the SKU)
     for (var ci = 0; ci < candidates.length && !snaps.length; ci++) {
       var cval = candidates[ci];
