@@ -2326,8 +2326,12 @@ function renderVsTable() {
     }
 
     const canSync = r.vetspire_cost != null && r.diff != null && Math.abs(r.diff) > 0.5;
-    const syncBtn = canSync
-      ? `<button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)" title="Set MedSync unit_cost to VetSpire unit cost">← Sync to MedSync</button>`
+    const canPush = r.unit_cost != null && r.vetspire_product_id && Math.abs(r.diff ?? 100) > 0.5;
+    const syncBtn = canSync || canPush
+      ? `<div style="display:flex;flex-direction:column;gap:4px;">
+          ${canSync ? `<button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)" title="Set MedSync unit_cost to VetSpire unit cost">← Sync to MedSync</button>` : ''}
+          ${canPush ? `<button class="vs-sync-btn" style="background:var(--purple);" onclick="pushOneToVetspire('${r.product_id}','${r.vetspire_product_id}',${r.unit_cost},'${esc(r.name)}',this)" title="Push MedSync unit_cost to VetSpire">→ Push to VetSpire</button>` : ''}
+         </div>`
       : '<span style="color:var(--mist);font-size:12px;">In sync</span>';
 
     const pkgCell = r.buying_qty != null && r.buying_qty > 1
@@ -2380,6 +2384,36 @@ async function syncOneToMedSync(productId, vetspireProductId, vetspireCost, btn)
     btn.disabled = false;
     btn.textContent = '← Sync to MedSync';
     alert('Sync failed: ' + err.message);
+  }
+}
+
+async function pushOneToVetspire(productId, vetspireProductId, unitCost, name, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Pushing…';
+  try {
+    const res = await edgeFetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
+      method: 'POST',
+      body: JSON.stringify({ product_id: productId, vetspire_product_id: vetspireProductId, unit_cost: unitCost }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    if (json.vetspire_error) {
+      btn.disabled = false;
+      btn.textContent = '→ Push to VetSpire';
+      showToast('MedSync OK. VetSpire: ' + json.vetspire_error, 6000);
+    } else {
+      const row = _vsRows.find(r => r.product_id === productId);
+      if (row) { row.vetspire_cost = unitCost; row.diff = 0; }
+      _vsSyncedCount++;
+      btn.textContent = '✓ Pushed';
+      btn.style.background = 'var(--green)';
+      renderVsTable();
+      showToast(`✓ $${unitCost.toFixed(2)} pushed to VetSpire for ${name}`);
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = '→ Push to VetSpire';
+    showToast('Push failed: ' + err.message, 5000);
   }
 }
 
