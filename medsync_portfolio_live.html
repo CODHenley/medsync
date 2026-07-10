@@ -757,23 +757,28 @@ async function loadPriorityChips() {
     ]);
 
     // Expiring lots chip
+    const expLocIds = new Set(expLots.map(r => r.locations && r.locations.name).filter(Boolean));
     if (expLots.length > 0) {
       chips.push({ label: expLots.length + ' lot' + (expLots.length!==1?'s':'') + ' expiring within 30 days', color: '#E84545', shadow: 'rgba(232,69,69,0.4)', screen: 'lifecycle' });
     }
 
     // Pending orders
+    const pendingLocIds = new Set(pendingOrders.map(r => r.location_id).filter(Boolean));
     if (pendingOrders.length > 0) {
       const locNames = [...new Set(pendingOrders.map(r => (r.locations&&r.locations.name)||'').filter(Boolean))];
       chips.push({ label: (locNames[0]||'Location') + ' — order pending today', color: '#E8922A', shadow: 'rgba(232,146,42,0.4)', screen: 'order' });
     }
 
-    // Update hero subtitle
-    const onTrack = Math.max(0, (locations.length||4) - chips.length);
+    // Count distinct locations with an actual issue (pending order only — expiring lots are portfolio-wide)
+    const offTrackCount = pendingLocIds.size;
     const total = locations.length || 4;
+    const onTrack = Math.max(0, total - offTrackCount);
     if (sub) {
       sub.innerHTML = chips.length === 0
         ? `<span style="color:#6FE0A0;">All ${total} locations on track</span>`
-        : `${onTrack} of ${total} locations on track` + (pendingOrders.length ? ` · <span style="color:#E8C76A;">${pendingOrders.length} order${pendingOrders.length!==1?'s':''} pending today</span>` : '');
+        : onTrack === total
+          ? `<span style="color:#6FE0A0;">All ${total} locations on track</span>` + (chips.length ? ` · <span style="color:#E84545;">${expLots.length} lot${expLots.length!==1?'s':''} expiring</span>` : '')
+          : `${onTrack} of ${total} locations on track` + (pendingOrders.length ? ` · <span style="color:#E8C76A;">${pendingOrders.length} order${pendingOrders.length!==1?'s':''} pending today</span>` : '');
     }
 
     // Render chips
@@ -1717,7 +1722,7 @@ function deepDiveLoc(locCode) {
         <div>
           <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:6px;" id="brief-date"></div>
           <div style="font-size:22px;font-weight:700;color:#fff;line-height:1.25;margin-bottom:6px;" id="brief-greeting"></div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5;" id="brief-sub">3 of 4 locations on track · <span style="color:#E8C76A;">Old Orchard order pending — 58m to cutoff</span></div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5;" id="brief-sub">Loading…</div>
         </div>
         <!-- Region filter -->
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
