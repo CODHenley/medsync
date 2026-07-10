@@ -2328,9 +2328,15 @@ function renderVsTable() {
     const canSync = r.vetspire_cost != null && r.diff != null && Math.abs(r.diff) > 0.5;
     const canPush = r.unit_cost != null && r.vetspire_product_id && Math.abs(r.diff ?? 100) > 0.5;
     const syncBtn = canSync || canPush
-      ? `<div style="display:flex;flex-direction:column;gap:4px;">
-          ${canSync ? `<button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)" title="Set MedSync unit_cost to VetSpire unit cost">← Sync to MedSync</button>` : ''}
-          ${canPush ? `<button class="vs-sync-btn" style="background:var(--purple);" onclick="pushOneToVetspire('${r.product_id}','${r.vetspire_product_id}',${r.unit_cost},'${esc(r.name)}',this)" title="Push MedSync unit_cost to VetSpire">→ Push to VetSpire</button>` : ''}
+      ? `<div style="display:flex;flex-direction:column;gap:6px;">
+          ${canSync ? `<div>
+            <button class="vs-sync-btn" onclick="syncOneToMedSync('${r.product_id}','${r.vetspire_product_id}',${r.vetspire_cost},this)">← Sync to MedSync</button>
+            <div style="font-size:10px;color:var(--mist);margin-top:2px;line-height:1.3;">Overwrite MedSync cost<br>with VetSpire's $${r.vetspire_cost.toFixed(2)}</div>
+          </div>` : ''}
+          ${canPush ? `<div>
+            <button class="vs-sync-btn" style="background:var(--purple);" onclick="pushOneToVetspire('${r.product_id}','${r.vetspire_product_id}',${r.unit_cost},'${esc(r.name)}',this)">→ Push to VetSpire</button>
+            <div style="font-size:10px;color:var(--mist);margin-top:2px;line-height:1.3;">Overwrite VetSpire cost<br>with MedSync's $${r.unit_cost.toFixed(2)}</div>
+          </div>` : ''}
          </div>`
       : '<span style="color:var(--mist);font-size:12px;">In sync</span>';
 
