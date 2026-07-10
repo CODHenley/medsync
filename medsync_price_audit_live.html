@@ -1229,10 +1229,21 @@ async function saveSupplierSKU(productId, msName, sku, btn) {
     btn.textContent = '✓ Saved';
     btn.style.background = 'var(--green)';
     showToast(`SKU saved for ${msName}`);
+    triggerIntradaySync();
   } catch (err) {
     btn.disabled = false;
     btn.textContent = 'Save SKU';
     showToast('Failed to save SKU: ' + err.message, 5000);
+  }
+}
+
+async function triggerIntradaySync() {
+  try {
+    const res = await edgeFetch(`${SUPA_URL}/functions/v1/trigger-intraday-sync`, { method: 'POST' });
+    const json = await res.json().catch(() => ({}));
+    if (json.triggered) showToast('↻ Intraday sync triggered — VetSpire data will refresh shortly', 4000);
+  } catch (_) {
+    // silent — sync trigger is best-effort
   }
 }
 
@@ -1698,7 +1709,7 @@ async function saveSelected(mode) {
   clearSelection();
   renderComp();
   if (mode === 'costs') showToast(`✓ ${done} costs saved (${vsOk} synced to VetSpire)${failed ? ` · ${failed} failed` : ''}`, 5000);
-  else showToast(`✓ ${done} supplier catalog numbers saved${failed ? ` · ${failed} failed` : ''}`, 5000);
+  else { showToast(`✓ ${done} supplier catalog numbers saved${failed ? ` · ${failed} failed` : ''}`, 5000); if (done) triggerIntradaySync(); }
 }
 
 // ═══════════════════════════════════════════════════════
