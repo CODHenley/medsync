@@ -3217,24 +3217,24 @@ var _origLoadRecognition = typeof loadRecognition !== 'undefined' ? loadRecognit
 // ── Source screen JS ──────────────────────────────────────────
 
 const rangeLabels = {
-  'Today':     'MedSync Analytics · Today — May 28, 2026',
-  'WTD':       'MedSync Analytics · Week to date — May 26–28, 2026',
-  'Prev week': 'MedSync Analytics · Previous week — May 19–25, 2026',
-  'T-7':       'MedSync Analytics · Trailing 7 days — May 21–28, 2026',
-  'MTD':       'MedSync Analytics · Month to date — May 2026',
-  'T-30':      'MedSync Analytics · Trailing 30 days — Apr 28–May 28, 2026',
-  'T-90':      'MedSync Analytics · Trailing 90 days — Feb 27–May 28, 2026',
-  'This Qtr':  'MedSync Analytics · This quarter — Q2 2026 (Apr–Jun)',
-  'Last Qtr':  'MedSync Analytics · Last quarter — Q1 2026 (Jan–Mar)',
-  'YTD':       'MedSync Analytics · Year to date — Jan 1–May 28, 2026',
+  'Today':     'MedSync Analytics · Today — Jul 10, 2026',
+  'WTD':       'MedSync Analytics · Week to date — Jul 6–10, 2026',
+  'Prev week': 'MedSync Analytics · Previous week — Jun 29–Jul 5, 2026',
+  'T-7':       'MedSync Analytics · Trailing 7 days — Jul 4–10, 2026',
+  'MTD':       'MedSync Analytics · Month to date — July 2026',
+  'T-30':      'MedSync Analytics · Trailing 30 days — Jun 11–Jul 10, 2026',
+  'T-90':      'MedSync Analytics · Trailing 90 days — Apr 12–Jul 10, 2026',
+  'This Qtr':  'MedSync Analytics · This quarter — Q3 2026 (Jul–Sep)',
+  'Last Qtr':  'MedSync Analytics · Last quarter — Q2 2026 (Apr–Jun)',
+  'YTD':       'MedSync Analytics · Year to date — Jan 1–Jul 10, 2026',
   'Prev year': 'MedSync Analytics · Previous year — Jan 1–Dec 31, 2025',
 };
 const cogsTitle = {
   'Today':'Drug COGs by location — today','WTD':'Drug COGs by location — week to date',
   'Prev week':'Drug COGs by location — prev week','T-7':'Drug COGs by location — trailing 7 days',
-  'MTD':'Drug COGs by location — May 2026','T-30':'Drug COGs by location — trailing 30 days',
-  'T-90':'Drug COGs by location — trailing 90 days','This Qtr':'Drug COGs by location — Q2 2026',
-  'Last Qtr':'Drug COGs by location — Q1 2026','YTD':'Drug COGs by location — YTD 2026',
+  'MTD':'Drug COGs by location — July 2026','T-30':'Drug COGs by location — trailing 30 days',
+  'T-90':'Drug COGs by location — trailing 90 days','This Qtr':'Drug COGs by location — Q3 2026',
+  'Last Qtr':'Drug COGs by location — Q2 2026','YTD':'Drug COGs by location — YTD 2026',
   'Prev year':'Drug COGs by location — full year 2025',
 };
 const kpiSavings = {
@@ -3249,16 +3249,16 @@ const kpiSavingsSub = {
   'YTD':'on pace for $44K yr','Prev year':'full year · closed'
 };
 const kpiLost = {
-  'Today':'$214','WTD':'$680','Prev week':'$910','T-7':'$1,050',
-  'MTD':'$2,847','T-30':'$3,140','T-90':'$7,920','This Qtr':'$6,110',
-  'Last Qtr':'$8,440','YTD':'$14,550','Prev year':'$31,280'
+  'Today':'$0','WTD':'$22','Prev week':'$0','T-7':'$22',
+  'MTD':'$22','T-30':'$614','T-90':'$2,278','This Qtr':'$22',
+  'Last Qtr':'$2,521','YTD':'$7,071','Prev year':'$31,280'
 };
 const periodShortLabel = {
-  'Today':'Today — May 28, 2026','WTD':'Week to date — May 26–28, 2026',
-  'Prev week':'Previous week — May 19–25, 2026','T-7':'Trailing 7 days — May 21–28, 2026',
-  'MTD':'Month to date — May 2026','T-30':'Trailing 30 days — Apr 28–May 28, 2026',
-  'T-90':'Trailing 90 days — Feb 27–May 28, 2026','This Qtr':'Q2 2026 (Apr–Jun)',
-  'Last Qtr':'Q1 2026 (Jan–Mar)','YTD':'Year to date — Jan 1–May 28, 2026',
+  'Today':'Today — Jul 10, 2026','WTD':'Week to date — Jul 6–10, 2026',
+  'Prev week':'Previous week — Jun 29–Jul 5, 2026','T-7':'Trailing 7 days — Jul 4–10, 2026',
+  'MTD':'Month to date — July 2026','T-30':'Trailing 30 days — Jun 11–Jul 10, 2026',
+  'T-90':'Trailing 90 days — Apr 12–Jul 10, 2026','This Qtr':'Q3 2026 (Jul–Sep)',
+  'Last Qtr':'Q2 2026 (Apr–Jun)','YTD':'Year to date — Jan 1–Jul 10, 2026',
   'Prev year':'Full year 2025 (Jan 1–Dec 31)'
 };
 
@@ -3373,22 +3373,22 @@ const locations = {
       { label:'Wheaton',      pct:87, color:'#1C2B4A', val:'8.7%', cls:'good' },
     ]
   },
-  lp: { name: 'Lincoln Park', badge: 'Lincoln Park', cogs: '8.1%', cogsColor: 'good', cogsTrend: '↓ 0.5%', savings: '$4,810', savingsSub: 'YTD · on pace', lost: '$580', compliance: '100%', compSub: 'All orders on time',
+  lp: { name: 'Lincoln Park', badge: 'Lincoln Park', cogs: '8.1%', cogsColor: 'good', cogsTrend: '↓ 0.5%', savings: '$4,810', savingsSub: 'YTD · on pace', lost: '$1,238', compliance: '100%', compSub: 'All orders on time',
     cogsChart: [
       { label:'Lincoln Park', pct:81, color:'#1C2B4A', val:'8.1%', cls:'good' },
     ]
   },
-  oo: { name: 'Old Orchard', badge: 'Old Orchard', cogs: '9.8%', cogsColor: 'warn-t', cogsTrend: '↑ 0.6% — review', savings: '$3,120', savingsSub: 'YTD · below pace', lost: '$1,340', compliance: '73%', compSub: '8 of 11 on time',
+  oo: { name: 'Old Orchard', badge: 'Old Orchard', cogs: '9.8%', cogsColor: 'warn-t', cogsTrend: '↑ 0.6% — review', savings: '$3,120', savingsSub: 'YTD · below pace', lost: '$3,861', compliance: '73%', compSub: '8 of 11 on time',
     cogsChart: [
       { label:'Old Orchard', pct:98, color:'#c8902a', val:'9.8%', cls:'warn-t' },
     ]
   },
-  wl: { name: 'West Loop', badge: 'West Loop', cogs: '7.9%', cogsColor: 'good', cogsTrend: '↓ 0.7%', savings: '$5,940', savingsSub: 'YTD · above pace', lost: '$490', compliance: '100%', compSub: 'All orders on time',
+  wl: { name: 'West Loop', badge: 'West Loop', cogs: '7.9%', cogsColor: 'good', cogsTrend: '↓ 0.7%', savings: '$5,940', savingsSub: 'YTD · above pace', lost: '$1,841', compliance: '100%', compSub: 'All orders on time',
     cogsChart: [
       { label:'West Loop', pct:79, color:'#1C2B4A', val:'7.9%', cls:'good' },
     ]
   },
-  wh: { name: 'Wheaton', badge: 'Wheaton', cogs: '8.7%', cogsColor: 'good', cogsTrend: '↓ 0.1%', savings: '$4,550', savingsSub: 'YTD · on pace', lost: '$437', compliance: '91%', compSub: '10 of 11 on time',
+  wh: { name: 'Wheaton', badge: 'Wheaton', cogs: '8.7%', cogsColor: 'good', cogsTrend: '↓ 0.1%', savings: '$4,550', savingsSub: 'YTD · on pace', lost: '$131', compliance: '91%', compSub: '10 of 11 on time',
     cogsChart: [
       { label:'Wheaton', pct:87, color:'#1C2B4A', val:'8.7%', cls:'good' },
     ]
@@ -3500,13 +3500,13 @@ function downloadCSV() {
   const rows = [
     ['MedSync Analytics Report — Scout Veterinary Urgent Care'],
     ['Period', period],
-    ['Generated', 'May 28, 2026'],
+    ['Generated', 'Jul 10, 2026'],
     [],
     ['KPI Summary'],
     ['Metric','Value','Note'],
     ['Portfolio COGs','8.4%','↓ 0.3% vs prior period'],
     ['Procurement Savings', kpiSavings[currentRange], kpiSavingsSub[currentRange]],
-    ['Goods Lost', kpiLost[currentRange],'↑ $340 vs prior period'],
+    ['Goods Lost', kpiLost[currentRange],'YTD total $7,071 · 64% expired product'],
     ['Order Compliance','91%','10 of 11 on time'],
     [],
     ['COGs by Location'],
@@ -3516,18 +3516,25 @@ function downloadCSV() {
     ['West Loop','7.9%','-1.1%','On target'],
     ['Wheaton','8.7%','-0.3%','On target'],
     [],
-    ['Goods Lost by Category'],
+    ['Goods Lost by Category — YTD 2026'],
     ['Category','Amount','% of Total'],
-    ['Diagnostic duplicates','$1,024','36%'],
-    ['Expired product','$786','28%'],
-    ['Medical waste','$431','15%'],
-    ['In-house use','$312','11%'],
-    ['Damaged','$294','10%'],
+    ['Expired product','$4,518','63.9%'],
+    ['Diagnostic duplicates','$1,901','26.9%'],
+    ['In-house use','$260','3.7%'],
+    ['Medication waste','$228','3.2%'],
+    ['Damaged/Spilled','$163','2.3%'],
+    [],
+    ['Goods Lost by Location — YTD 2026'],
+    ['Location','Amount'],
+    ['Old Orchard','$3,861'],
+    ['West Loop','$1,841'],
+    ['Lincoln Park','$1,238'],
+    ['Wheaton','$131'],
     [],
     ['Platform Insights'],
     ['Rank','Description','Dollar Impact'],
-    ['1','Equipment — Catalyst · Lincoln Park: $1,024 in diagnostic duplicates. Analyzer malfunction suspected.','$1,024'],
-    ['2','Ordering — Maropitant · Old Orchard: Over-ordered vs. usage velocity. Review Max setting.','$567'],
+    ['1','Expired product — Old Orchard: $2,454 YTD in expired product write-offs. Review ordering Max settings and rotation protocol.','$2,454'],
+    ['2','Expired product — West Loop: $1,326 YTD. High volume relative to location size; review stock levels.','$1,326'],
     [],
     ['Powered by MedSync · Inventory intelligence for veterinary practices'],
     ['Confidential · Scout Veterinary Urgent Care · Thurlow Veterinary Services Inc.'],
