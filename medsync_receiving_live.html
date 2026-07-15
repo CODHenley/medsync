@@ -386,6 +386,19 @@ select.nav-sel option{background:var(--navy);}
       </div>
       <div id="lem-flag-sent" style="display:none;font-size:11px;color:#2a6e2a;margin-top:6px;font-weight:600;">✓ Sent to Price Audit queue</div>
     </div>
+    <!-- Save SKU / UPC-A section -->
+    <div id="lem-sku-upc" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Save to MedSync (optional)</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <input id="lem-sku-input" type="text" placeholder="Vetcove SKU / Catalog #" autocomplete="off"
+          style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        <button id="lem-save-sku-btn" onclick="lemSaveSku()" style="padding:8px 12px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">Save SKU</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span id="lem-upc-status" style="flex:1;font-size:12px;font-family:monospace;color:var(--mist);">No UPC saved</span>
+        <button onclick="lemOpenUpcScanner()" style="padding:8px 12px;background:#EDE8F8;border:1.5px solid var(--border);color:var(--navy);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">📷 Scan UPC</button>
+      </div>
+    </div>
     <div style="display:flex;gap:8px;">
       <button onclick="cancelLotEntry()" style="flex:1;padding:10px;border:0.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;">Cancel</button>
       <button onclick="confirmLotEntry()" style="flex:2;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;">Confirm item ✓</button>
@@ -672,14 +685,14 @@ async function selectPOGroup(idx) {
   if (productIds.length) {
     try {
       const pcRes = await fetch(
-        SUPA_URL + '/rest/v1/products?select=id,unit_cost&id=in.(' + productIds.map(id => encodeURIComponent(id)).join(',') + ')',
+        SUPA_URL + '/rest/v1/products?select=id,unit_cost,sku,upc&id=in.(' + productIds.map(id => encodeURIComponent(id)).join(',') + ')',
         { headers: H }
       );
       if (pcRes.ok) {
         const pcRows = await pcRes.json();
-        const costMap = {};
-        (Array.isArray(pcRows) ? pcRows : []).forEach(r => { costMap[r.id] = parseFloat(r.unit_cost) || 0; });
-        state.lines.forEach(l => { if (l.productId && costMap[l.productId]) l.unitCost = costMap[l.productId]; });
+        const metaMap = {};
+        (Array.isArray(pcRows) ? pcRows : []).forEach(r => { metaMap[r.id] = r; });
+        state.lines.forEach(l => { if (l.productId && metaMap[l.productId]) { l.unitCost = parseFloat(metaMap[l.productId].unit_cost) || 0; l.sku = metaMap[l.productId].sku || null; l.upc = metaMap[l.productId].upc || null; } });
       }
     } catch(e) { /* non-fatal — price flag just won't show */ }
   }
@@ -1178,6 +1191,20 @@ function openLotEntryModal(lineIdx) {
     }
   }
 
+  // Populate SKU/UPC section
+  const lemSkuUpc = document.getElementById('lem-sku-upc');
+  if (line.productId) {
+    lemSkuUpc.style.display = '';
+    document.getElementById('lem-sku-input').value = line.sku || '';
+    const upcStatus = document.getElementById('lem-upc-status');
+    upcStatus.textContent = line.upc ? ('✓ ' + line.upc) : 'No UPC saved';
+    upcStatus.style.color = line.upc ? 'var(--green)' : 'var(--mist)';
+    const saveBtn = document.getElementById('lem-save-sku-btn');
+    saveBtn.textContent = 'Save SKU'; saveBtn.disabled = false;
+  } else {
+    lemSkuUpc.style.display = 'none';
+  }
+
   const modal = document.getElementById('lot-entry-modal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('lem-lot').focus(), 80);
@@ -1226,6 +1253,53 @@ async function flagPriceReview() {
 function cancelLotEntry() {
   document.getElementById('lot-entry-modal').style.display = 'none';
   _pendingLotLineIdx = null;
+}
+
+async function lemSaveSku() {
+  if (_pendingLotLineIdx == null) return;
+  const line = state.lines[_pendingLotLineIdx];
+  if (!line || !line.productId) return;
+  const sku = document.getElementById('lem-sku-input').value.trim();
+  if (!sku) return;
+  const btn = document.getElementById('lem-save-sku-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/push-unit-cost', {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: line.productId, vetspire_product_id: line.vetspireProductId || undefined, sku })
+    });
+    const json = await res.json();
+    if (res.ok && json.ok) { line.sku = sku; btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = 'Save SKU'; btn.disabled = false; }, 2000); }
+    else { btn.textContent = 'Error'; btn.disabled = false; }
+  } catch(e) { btn.textContent = 'Error'; btn.disabled = false; }
+}
+
+function lemOpenUpcScanner() {
+  if (_pendingLotLineIdx == null) return;
+  const line = state.lines[_pendingLotLineIdx];
+  if (!line || !line.productId) return;
+  _lemUpcScanMode = true;
+  openCameraScanner();
+}
+
+async function lemSaveUpcFromScan(upc) {
+  if (_pendingLotLineIdx == null) return;
+  const line = state.lines[_pendingLotLineIdx];
+  if (!line || !line.productId) return;
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/push-unit-cost', {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: line.productId, upc })
+    });
+    const json = await res.json();
+    if (res.ok && json.ok) {
+      line.upc = upc;
+      const upcStatus = document.getElementById('lem-upc-status');
+      if (upcStatus) { upcStatus.textContent = '✓ ' + upc; upcStatus.style.color = 'var(--green)'; }
+    }
+  } catch(e) { console.warn('lemSaveUpcFromScan:', e); }
 }
 
 function confirmLotEntry() {
@@ -1582,6 +1656,7 @@ boot();
 // ── CAMERA BARCODE SCANNER (ZXing) ───────────────────────────
 let _camStream = null;
 let _camReader = null;
+let _lemUpcScanMode = false;
 
 async function openCameraScanner() {
   const overlay = document.getElementById('cam-overlay');
@@ -1608,8 +1683,13 @@ async function openCameraScanner() {
         status.className = 'cam-status found';
         setTimeout(() => {
           closeCameraScanner();
-          document.getElementById('scan-input').value = raw;
-          processScan();
+          if (_lemUpcScanMode) {
+            _lemUpcScanMode = false;
+            lemSaveUpcFromScan(raw);
+          } else {
+            document.getElementById('scan-input').value = raw;
+            processScan();
+          }
         }, 400);
       }
     });
@@ -1620,6 +1700,7 @@ async function openCameraScanner() {
 }
 
 function closeCameraScanner() {
+  _lemUpcScanMode = false;
   if (_camReader) { try { _camReader.reset(); } catch(_) {} _camReader = null; }
   if (_camStream) { _camStream.getTracks().forEach(t => t.stop()); _camStream = null; }
   const video = document.getElementById('cam-video');

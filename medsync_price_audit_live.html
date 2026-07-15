@@ -298,7 +298,6 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
       <span><strong id="cost-sel-count">0</strong> rows selected</span>
       <button id="btn-save-sel-costs" onclick="saveSelected('costs')" style="margin-left:auto;background:var(--purple);color:#fff;border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">→ Push to VetSpire</button>
       <button id="btn-save-sel-skus" onclick="saveSelected('skus')" style="background:#fff;color:var(--navy);border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save SKUs (Vetcove Catalog #)</button>
-      <button id="btn-save-sel-upcs" onclick="saveSelected('upcs')" style="background:#fff;color:var(--navy);border:none;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Save UPC-A Barcodes</button>
       <button onclick="clearSelection()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer;">✕ Clear</button>
     </div>
 
@@ -1245,19 +1244,14 @@ async function saveSupplierSKU(productId, msName, sku, btn) {
 
 function renderUpcCell(d) {
   const current = d.upc || '';
-  const isValid = current.length === 12;
-  const borderColor = isValid ? 'var(--green)' : 'rgba(255,255,255,.2)';
-  return `<div style="display:flex;flex-direction:column;gap:3px;">
-    <input type="text" maxlength="13"
-      value="${esc(current)}"
-      placeholder="Enter UPC-A here"
-      class="upc-input" autocomplete="off"
-      style="border:1px solid ${borderColor};"
-      oninput="upcInputChange(this)"
-      data-pid="${esc(d.product_id)}" data-name="${esc(d.ms_name)}"
-      onkeydown="if(event.key==='Enter'){saveUpcFromInput(this);}">
-    <button class="vs-sync-btn" style="font-size:10px;padding:2px 6px;" onclick="saveUpcFromInput(this.previousElementSibling)">Save UPC</button>
-    <span class="btn-caption">Scan barcode to find<br>this product</span>
+  const isSet = /^\d{12,13}$/.test(current);
+  return `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
+    ${isSet
+      ? `<span style="font-size:11px;font-family:monospace;color:var(--green);display:flex;align-items:center;gap:4px;">✓ ${esc(current)}</span>`
+      : `<span style="font-size:10px;color:rgba(255,255,255,.45);">No UPC saved</span>`}
+    <button class="btn-cam-upc" onclick="openUpcScanner('${esc(d.product_id)}','${esc(d.ms_name)}')" title="Scan barcode">
+      📷 ${isSet ? 'Re-scan' : 'Scan'}
+    </button>
   </div>`;
 }
 
@@ -1734,7 +1728,7 @@ function clearSelection() {
 async function saveSelected(mode) {
   const rows = getCompFiltered().filter(d => _selectedRows.has(d.ms_name));
   if (!rows.length) return;
-  const btnId = mode === 'costs' ? 'btn-save-sel-costs' : (mode === 'skus' ? 'btn-save-sel-skus' : 'btn-save-sel-upcs');
+  const btnId = mode === 'costs' ? 'btn-save-sel-costs' : 'btn-save-sel-skus';
   const btn = document.getElementById(btnId);
   btn.disabled = true;
   let done = 0, failed = 0, vsOk = 0;
@@ -1758,32 +1752,17 @@ async function saveSelected(mode) {
         const json = await res.json();
         if (res.ok && json.ok) { done++; d.sku = d.supplier_sku; }
         else failed++;
-      } else if (mode === 'upcs' && d.product_id) {
-        // Read the typed UPC from the DOM input for this row
-        const input = document.querySelector(`input[data-pid="${d.product_id}"]`);
-        const upc = input ? input.value.trim() : (d.upc || '');
-        if (!/^\d{12,13}$/.test(upc)) { failed++; }
-        else {
-          const res = await edgeFetch(`${SUPA_URL}/functions/v1/push-unit-cost`, {
-            method: 'POST',
-            body: JSON.stringify({ product_id: d.product_id, upc }),
-          });
-          const json = await res.json();
-          if (res.ok && json.ok) { done++; d.upc = upc; if (input) input.style.borderColor = 'var(--green)'; }
-          else failed++;
-        }
       } else { failed++; }
     } catch { failed++; }
     btn.textContent = `Saving ${done + failed}/${rows.length}…`;
   }
 
   btn.disabled = false;
-  btn.textContent = mode === 'costs' ? 'Save Costs' : (mode === 'skus' ? 'Save SKUs (Vetcove Catalog #)' : 'Save UPC-A Barcodes');
+  btn.textContent = mode === 'costs' ? 'Save Costs' : 'Save SKUs (Vetcove Catalog #)';
   clearSelection();
   renderComp();
   if (mode === 'costs') showToast(`✓ ${done} costs saved (${vsOk} synced to VetSpire)${failed ? ` · ${failed} failed` : ''}`, 5000);
   else if (mode === 'skus') { showToast(`✓ ${done} supplier catalog numbers saved${failed ? ` · ${failed} failed` : ''}`, 5000); if (done) triggerIntradaySync(); }
-  else showToast(`✓ ${done} UPC barcodes saved${failed ? ` · ${failed} invalid/failed` : ''}`, 5000);
 }
 
 // ═══════════════════════════════════════════════════════

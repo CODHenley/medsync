@@ -359,12 +359,13 @@ html, body { margin: 0 !important; padding: 0 !important; }
 
 var _currentLocFilter = '';  // set by loadData, consumed by loadPI/loadExpiry
 
-async function loadPI() {
+async function loadPI(fromISO, toISO) {
   try {
-    var ms=new Date(); ms.setDate(1); ms.setHours(0,0,0,0);
-    var r1=await fetch(SUPA_URL+'/rest/v1/po_items?select=qty_ordered,product_name&status=in.(submitted,received)'+_currentLocFilter,{headers:HEADERS});
+    if (!fromISO) { var ms=new Date(); ms.setDate(1); ms.setHours(0,0,0,0); fromISO=ms.toISOString(); }
+    if (!toISO) { toISO=new Date().toISOString(); }
+    var r1=await fetch(SUPA_URL+'/rest/v1/po_items?select=qty_ordered,product_name&status=in.(submitted,received)&created_at=gte.'+fromISO+'&created_at=lte.'+toISO+_currentLocFilter,{headers:HEADERS});
     var ol=await r1.json();
-    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,product_name,notes&created_at=gte.'+ms.toISOString()+_currentLocFilter,{headers:HEADERS});
+    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,product_name,notes&created_at=gte.'+fromISO+'&created_at=lte.'+toISO+_currentLocFilter,{headers:HEADERS});
     var gl=await r2.json();
     var bought={},lostQ={},lostV={};
     if(Array.isArray(ol))ol.forEach(function(x){var n=x.product_name;if(!n)return;bought[n]=(bought[n]||0)+(x.qty_ordered||0);});
@@ -376,7 +377,7 @@ async function loadPI() {
       lostV[raw]=(lostV[raw]||0)+parseFloat(x.value_lost||0);
     });
     var prods=Array.from(new Set([].concat(Object.keys(bought),Object.keys(lostQ))));
-    if(!prods.length){prods=['Procyte Dx Reagent Kit','Cytopoint 40 mg (1 ml vial)','Convenia (Cefovecin Sodium) Inj 80 mg/ml','Solensia','Cytopoint 30 mg (1 ml vial)','Entyce 30 mg/ml (15 ml)','Buprenorphine  Inj 0.3 mg/ml','Methadone Inj 10 mg/ml'];[48,18,24,14,16,22,30,12].forEach(function(v,i){bought[prods[i]]=v;});[1,1,1,1,1,1,1,1].forEach(function(v,i){lostQ[prods[i]]=v;lostV[prods[i]]=[605.95,49.30,45.74,43.68,45.50,37.88,18.38,34.95][i];});}
+    if(!prods.length){document.getElementById('pi-pvl').innerHTML='<div style="color:var(--mist);font-size:12px;">No purchase or goods-lost data for this period.</div>';document.getElementById('pi-waste').innerHTML='<div style="color:var(--green);font-size:12px;">No goods lost this period.</div>';return;}
     prods.sort(function(a,b){return(bought[b]||0)-(bought[a]||0);});prods=prods.slice(0,8);
     var mx=Math.max.apply(null,prods.map(function(p){return Math.max(bought[p]||0,lostQ[p]||0);}));if(!mx)mx=1;
     document.getElementById('pi-pvl').innerHTML=prods.map(function(p){var b=bought[p]||0,l=lostQ[p]||0,r=b>0?Math.round(l/b*100):0,sh=p.length>22?p.slice(0,20)+'…':p;
@@ -899,6 +900,7 @@ async function loadData() {
     return;
   }
   _currentLocFilter = locFilter;
+  loadPI(from, to);
 
   try {
     // ── 1. Goods lost totals ─────────────────────────────────
