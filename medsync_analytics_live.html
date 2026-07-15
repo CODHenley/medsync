@@ -855,6 +855,7 @@ async function loadData() {
     );
 
     // Total goods lost (exclude bulk import artifact rows)
+    console.log('[MedSync GL] raw goods_lost rows:', JSON.stringify(glRows));
     const _SKIP_NAMES = ['Monthly Summary Import', 'Summary Import'];
     const realGLRows = glRows.filter(r => {
       const cat = (r.category || '').trim();
