@@ -854,8 +854,14 @@ async function loadData() {
       `select=category,value_lost,location_id,product_name,notes&created_at=gte.${from}&created_at=lte.${to}${locFilter}`
     );
 
-    // Total goods lost
-    const totalGL = glRows.reduce((s, r) => s + (Number(r.value_lost) || 0), 0);
+    // Total goods lost (exclude bulk import artifact rows)
+    const _SKIP_NAMES = ['Monthly Summary Import', 'Summary Import'];
+    const realGLRows = glRows.filter(r => {
+      const cat = (r.category || '').trim();
+      const prod = (r.product_name || '').trim();
+      return !_SKIP_NAMES.includes(cat) && !_SKIP_NAMES.includes(prod);
+    });
+    const totalGL = realGLRows.reduce((s, r) => s + (Number(r.value_lost) || 0), 0);
     const kgl = document.getElementById('k-gl');
     kgl.textContent = fmt$(totalGL);
     kgl.className = totalGL > 0 ? 'kpi-v ca' : 'kpi-v cm';
@@ -863,12 +869,11 @@ async function loadData() {
     // Goods lost by category + product
     const byCategory = {};
     const byProduct = {};
-    const _SKIP_NAMES = ['Monthly Summary Import', 'Summary Import'];
-    glRows.forEach(r => {
+    realGLRows.forEach(r => {
       const cat = r.category || 'Other';
       byCategory[cat] = (byCategory[cat] || 0) + (Number(r.value_lost) || 0);
       const prod = (r.product_name || '').trim();
-      if (prod && !_SKIP_NAMES.includes(prod)) {
+      if (prod) {
         if (!byProduct[prod]) byProduct[prod] = { v: 0, n: 0 };
         byProduct[prod].v += Number(r.value_lost) || 0;
         byProduct[prod].n += 1;
