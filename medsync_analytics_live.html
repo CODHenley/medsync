@@ -529,9 +529,12 @@ if (window.self !== window.top) {
 
         <!-- Goods Lost -->
         <div class="card">
-          <div class="card-head">
-            <div class="card-title" id="gl-title">Goods lost — Month to date</div>
-            <div class="card-sub" id="gl-sub-main">Top products &amp; top 3 reasons for loss</div>
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <div class="card-title" id="gl-title">Goods lost — Month to date</div>
+              <div class="card-sub" id="gl-sub-main">Top products &amp; top 3 reasons for loss</div>
+            </div>
+            <button onclick="glOpenImport()" style="flex-shrink:0;margin-left:12px;padding:5px 11px;font-size:11px;font-weight:600;border:1px solid var(--navy);border-radius:6px;background:transparent;color:var(--navy);cursor:pointer;white-space:nowrap;">⬆ Import CSV</button>
           </div>
           <div id="gl-bars">
             <div class="gl-r"><div class="gl-dot" style="background:var(--gold);"></div><div class="gl-name">Diagnostic duplicate</div><div class="gl-bar"><div class="gl-bfill" style="width:73%;background:var(--gold);"></div></div><div class="gl-amt">$1,248</div><div class="gl-pct">44%</div></div>
@@ -540,20 +543,6 @@ if (window.self !== window.top) {
             <div class="gl-r"><div class="gl-dot" style="background:var(--purple);"></div><div class="gl-name">Medication waste</div><div class="gl-bar"><div class="gl-bfill" style="width:17%;background:var(--purple);"></div></div><div class="gl-amt">$294</div><div class="gl-pct">10%</div></div>
             <div class="gl-r"><div class="gl-dot" style="background:var(--mist);"></div><div class="gl-name">Damaged / Spilled</div><div class="gl-bar"><div class="gl-bfill" style="width:7%;background:var(--mist);"></div></div><div class="gl-amt">$100</div><div class="gl-pct">4%</div></div>
           </div>
-        </div>
-
-        <!-- Procurement savings -->
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title" id="sav-title">Procurement savings</div>
-            <div class="card-sub">vs. list price · (list_price − unit_price) × qty</div>
-          </div>
-          <table>
-            <thead><tr><th>Savings driver</th><th>Amount</th><th>Share</th><th>Status</th></tr></thead>
-            <tbody id="sav-tbody">
-              <tr><td colspan="4" style="color:var(--mist);font-size:12px;text-align:center;padding:16px;">Loading…</td></tr>
-            </tbody>
-          </table>
         </div>
 
         <!-- Order compliance -->
@@ -607,7 +596,6 @@ if (window.self !== window.top) {
           <div class="mrow"><span class="mk">Target range</span><span class="mv">6.5–7.1%</span></div>
           <div class="mrow"><span class="mk">Total revenue</span><span class="mv" id="ov-revenue">…</span></div>
           <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">…</span></div>
-          <div class="mrow"><span class="mk">Procurement savings</span><span class="mv cg" id="ov-sav">…</span></div>
           <div class="mrow"><span class="mk">Goods lost</span><span class="mv ca" id="ov-gl">…</span></div>
           <div class="mrow"><span class="mk">Cycle count compliance</span><span class="mv" id="ov-cc">…</span></div>
           <div class="mrow"><span class="mk">Order compliance</span><span class="mv" id="ov-comp">…</span></div>
@@ -887,20 +875,13 @@ async function loadData() {
       `select=qty_ordered,unit_price,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}`
     );
 
-    // Savings: actual gpo_price vs unit_price difference per line item
+    // Sidebar widgets (proc + white goods)
     const poFull = await query('po_items',
       `select=product_name,vendor,qty_ordered,unit_price,gpo_price&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}&limit=5000`
     );
     renderProcSidebar(poFull, from, to);
     renderWgSidebar(poFull);
-    // Category breakdown requires list_price/savings_category columns not yet in schema
-    const savByCategory = {};
-    const totalSav = poFull.reduce((s,r) => {
-      const qty = Number(r.qty_ordered)||1;
-      const saved = Math.max(0,(Number(r.unit_price)||0)-(Number(r.gpo_price)||Number(r.unit_price)||0));
-      return s + saved * qty;
-    }, 0);
-    renderSavingsTable(savByCategory, totalSav, from, to);
+    const totalSav = 0;
 
     var _el;
 
@@ -986,7 +967,6 @@ async function loadData() {
     const compRate  = allOrders.length > 0 ? Math.round(onTimeAll / allOrders.length * 100) : 100;
 
     document.getElementById('ov-gl').textContent = fmt$(totalGL);
-    document.getElementById('ov-sav').textContent = totalSav > 0 ? '+' + fmt$(totalSav) : '—';
     document.getElementById('ov-comp').textContent = compRate + '%';
     document.getElementById('ov-lots').textContent = expiring.length + ' flagged';
 
@@ -1385,65 +1365,6 @@ function renderWgSidebar(poItems) {
     <div class="ins-t">${topVendors[0]?topVendors[0][0]+' accounts for '+Math.round(topVendors[0][1]/totalSpend*100)+'% of supply spend this period.':'Track supply spend across vendors here.'}</div></div>`;
 }
 
-// ── Render procurement savings table ─────────────────────────
-function renderSavingsTable(savByCategory, totalSav, from, to) {
-  const tbody = document.getElementById('sav-tbody');
-  const titleEl = document.getElementById('sav-title');
-  if (!tbody) return;
-
-  // Update card title with period
-  if (titleEl) {
-    const fromLabel = from ? new Date(from + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
-    const toLabel   = to   ? new Date(to   + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
-    titleEl.textContent = 'Procurement savings' + (fromLabel ? ' — ' + fromLabel + (toLabel !== fromLabel ? ' – ' + toLabel : '') : '');
-  }
-
-  const SAV_ORDER = ['GPO','Vetcove','SKU','Consolidation'];
-  const SAV_LABELS = {
-    'GPO':          'GPO discount capture',
-    'Vetcove':      'Vetcove best-price routing',
-    'SKU':          'SKU optimization',
-    'Consolidation':'Order consolidation'
-  };
-
-  // Merge any unexpected categories
-  const allCats = [...new Set([...SAV_ORDER, ...Object.keys(savByCategory)])];
-  const rows = allCats.filter(cat => (savByCategory[cat] || 0) > 0 || SAV_ORDER.includes(cat));
-
-  if (totalSav === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--mist);font-size:12px;text-align:center;padding:16px;">
-      No savings data yet — set <code>list_price</code> and <code>savings_category</code> on PO items to track savings.
-    </td></tr>`;
-    return;
-  }
-
-  // Annual pace estimate (scale current period to 12 months)
-  let periodDays = 30;
-  try { periodDays = Math.max(1, (new Date(to) - new Date(from)) / 864e5 + 1); } catch(e) {}
-  const pace = totalSav / periodDays * 365;
-
-  tbody.innerHTML = rows.map(cat => {
-    const amt = savByCategory[cat] || 0;
-    const share = totalSav > 0 ? Math.round((amt / totalSav) * 100) : 0;
-    const badge = amt > 0 ? '<span class="badge b-ok">On track</span>' : '<span class="badge" style="background:#eee;color:#999;">No data</span>';
-    const color = amt > 0 ? 'font-weight:500;color:var(--green);' : 'color:var(--mist);';
-    const label = SAV_LABELS[cat] || cat;
-    return `<tr>
-      <td>${label}</td>
-      <td style="${color}">${amt > 0 ? fmt$(amt) : '—'}</td>
-      <td>${amt > 0 ? share + '%' : '—'}</td>
-      <td>${badge}</td>
-    </tr>`;
-  }).join('') + `<tr style="background:#F8F7FB;">
-    <td style="font-weight:600;">Total</td>
-    <td style="font-weight:700;color:var(--green);">${fmt$(totalSav)}</td>
-    <td style="color:var(--mist);">${pace >= 1000 ? '$' + (pace/1000).toFixed(0) + 'K' : fmt$(pace)} pace/yr</td>
-    <td><span class="badge b-ok">↑ live</span></td>
-  </tr>`;
-
-  // Update export cache
-  if (window._analyticsCache) window._analyticsCache.totalSav = totalSav;
-}
 
 // ── COGs trend (last 6 months, Wheaton live data) ────────────
 async function loadCOGSTrend() {
@@ -1777,5 +1698,283 @@ window.addEventListener('message', function(e) {
 })();
 </script>
 <script src="medsync_export.js"></script>
+
+<!-- ── Goods Lost CSV Import Modal ──────────────────────────── -->
+<div id="gl-import-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:28px 32px;width:520px;max-width:94vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.22);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#1A1D2E;">Import Goods Lost from CSV / Excel</div>
+        <div style="font-size:12px;color:#888;margin-top:3px;">Rows are upserted — duplicates won't stack.</div>
+      </div>
+      <button onclick="glCloseImport()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button>
+    </div>
+
+    <!-- Expected columns reference -->
+    <div style="background:#F5F4FB;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:11px;color:#555;line-height:1.7;">
+      <strong style="color:#1A1D2E;">Expected columns</strong> (header row required, order doesn't matter):<br>
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">date</code> &nbsp;
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">product_name</code> &nbsp;
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">category</code> &nbsp;
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">value_lost</code> &nbsp;
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">location</code> &nbsp;
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">notes</code> (optional)<br>
+      <span style="color:#aaa;">• date format: MM/DD/YYYY or YYYY-MM-DD &nbsp;•&nbsp; value_lost: dollar amount, no $ sign &nbsp;•&nbsp; Excel files (.xlsx) are supported</span>
+    </div>
+
+    <!-- Drop zone / file picker -->
+    <div id="gl-drop-zone" onclick="document.getElementById('gl-file-input').click()"
+      style="border:2px dashed #c5bfe8;border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;color:#888;transition:border-color .2s;"
+      ondragover="event.preventDefault();this.style.borderColor='#7B4FBE';"
+      ondragleave="this.style.borderColor='#c5bfe8';"
+      ondrop="event.preventDefault();this.style.borderColor='#c5bfe8';glHandleFile(event.dataTransfer.files[0]);">
+      <div style="font-size:28px;margin-bottom:6px;">📂</div>
+      <div style="font-size:13px;font-weight:600;color:#444;">Drop CSV or Excel file here</div>
+      <div style="font-size:11px;margin-top:4px;">or click to browse</div>
+    </div>
+    <input type="file" id="gl-file-input" accept=".csv,.xlsx,.xls" style="display:none;" onchange="glHandleFile(this.files[0]);this.value='';">
+
+    <!-- Preview table -->
+    <div id="gl-import-preview" style="display:none;margin-top:16px;">
+      <div id="gl-import-preview-label" style="font-size:12px;font-weight:600;color:#444;margin-bottom:8px;"></div>
+      <div style="overflow-x:auto;max-height:200px;overflow-y:auto;border:1px solid #e8e5f5;border-radius:8px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead id="gl-preview-head" style="position:sticky;top:0;background:#F5F4FB;"></thead>
+          <tbody id="gl-preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Error/status banner -->
+    <div id="gl-import-status" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:12px;"></div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+      <button onclick="glCloseImport()" style="padding:8px 18px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;">Cancel</button>
+      <button id="gl-import-submit" onclick="glSubmitImport()" disabled style="padding:8px 20px;border:none;border-radius:8px;background:#7B4FBE;color:#fff;font-size:13px;font-weight:600;cursor:pointer;opacity:.45;">Import rows</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Goods Lost CSV/Excel Import ──────────────────────────────
+(function() {
+  // Location name → UUID map (matches existing location_settings seed)
+  const LOC_MAP = {
+    'lincoln park':  '11111111-0000-0000-0000-000000000003',
+    'old orchard':   '11111111-0000-0000-0000-000000000002',
+    'west loop':     '11111111-0000-0000-0000-000000000001',
+    'wheaton':       '11111111-0000-0000-0000-000000000004',
+    'lp': '11111111-0000-0000-0000-000000000003',
+    'oo': '11111111-0000-0000-0000-000000000002',
+    'wl': '11111111-0000-0000-0000-000000000001',
+    'wh': '11111111-0000-0000-0000-000000000004',
+  };
+
+  let _parsedRows = [];
+
+  window.glOpenImport = function() {
+    _parsedRows = [];
+    document.getElementById('gl-import-preview').style.display = 'none';
+    document.getElementById('gl-import-status').style.display = 'none';
+    document.getElementById('gl-import-submit').disabled = true;
+    document.getElementById('gl-import-submit').style.opacity = '.45';
+    document.getElementById('gl-import-modal').style.display = 'flex';
+  };
+
+  window.glCloseImport = function() {
+    document.getElementById('gl-import-modal').style.display = 'none';
+  };
+
+  window.glHandleFile = function(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'csv') {
+      const reader = new FileReader();
+      reader.onload = e => glParseCSV(e.target.result);
+      reader.readAsText(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      glShowStatus('Excel detected — converting via SheetJS…', '#555', '#F5F4FB');
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          // SheetJS loaded inline
+          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const csv = XLSX.utils.sheet_to_csv(ws);
+          glParseCSV(csv);
+        } catch(err) {
+          glShowStatus('Could not read Excel file: ' + err.message, '#C0392B', '#fdf0ef');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      glShowStatus('Unsupported file type. Please upload a .csv, .xlsx, or .xls file.', '#C0392B', '#fdf0ef');
+    }
+  };
+
+  function glParseCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) { glShowStatus('File is empty or has no data rows.', '#C0392B', '#fdf0ef'); return; }
+
+    // Parse header (handle quoted headers)
+    const headers = glSplitCSVRow(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g,'_'));
+    const need = ['date','product_name','category','value_lost'];
+    const missing = need.filter(n => !headers.includes(n));
+    if (missing.length) {
+      glShowStatus('Missing required columns: ' + missing.join(', '), '#C0392B', '#fdf0ef');
+      return;
+    }
+
+    const rows = [];
+    const errors = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const cols = glSplitCSVRow(line);
+      const obj = {};
+      headers.forEach((h, idx) => { obj[h] = (cols[idx] || '').trim(); });
+
+      // Parse date
+      const rawDate = obj.date || '';
+      let isoDate = null;
+      if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+        isoDate = rawDate.slice(0,10);
+      } else if (/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(rawDate)) {
+        const [m,d,y] = rawDate.split('/');
+        const year = y.length === 2 ? '20' + y : y;
+        isoDate = year + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+      }
+      if (!isoDate) { errors.push('Row ' + (i+1) + ': invalid date "' + rawDate + '"'); continue; }
+
+      // Parse value
+      const val = parseFloat((obj.value_lost || '').replace(/[$,]/g, ''));
+      if (isNaN(val)) { errors.push('Row ' + (i+1) + ': invalid value_lost "' + obj.value_lost + '"'); continue; }
+
+      // Resolve location
+      const locRaw = (obj.location || '').toLowerCase().trim();
+      const locId = LOC_MAP[locRaw] || null;
+
+      rows.push({
+        created_at: isoDate + 'T12:00:00',
+        product_name: obj.product_name || 'Unknown',
+        category: obj.category || 'Other',
+        value_lost: val,
+        location_id: locId,
+        notes: obj.notes || null,
+      });
+    }
+
+    if (rows.length === 0) {
+      glShowStatus('No valid rows found.' + (errors.length ? ' Errors: ' + errors.slice(0,3).join('; ') : ''), '#C0392B', '#fdf0ef');
+      return;
+    }
+
+    _parsedRows = rows;
+    glShowPreview(rows, headers);
+    const warn = errors.length ? ' (' + errors.length + ' rows skipped)' : '';
+    glShowStatus('✓ ' + rows.length + ' rows ready to import' + warn, '#2E7D32', '#f0faf2');
+    document.getElementById('gl-import-submit').disabled = false;
+    document.getElementById('gl-import-submit').style.opacity = '1';
+  }
+
+  function glShowPreview(rows, headers) {
+    const dispCols = ['created_at','product_name','category','value_lost','location_id','notes'];
+    const head = document.getElementById('gl-preview-head');
+    const body = document.getElementById('gl-preview-body');
+    const label = document.getElementById('gl-import-preview-label');
+    label.textContent = 'Preview — first ' + Math.min(rows.length, 5) + ' of ' + rows.length + ' rows';
+    head.innerHTML = '<tr>' + dispCols.map(c => `<th style="padding:5px 8px;text-align:left;color:#888;font-weight:600;">${c}</th>`).join('') + '</tr>';
+    body.innerHTML = rows.slice(0, 5).map(r =>
+      '<tr style="border-top:1px solid #eee;">' + dispCols.map(c => `<td style="padding:5px 8px;color:#333;">${r[c] ?? ''}</td>`).join('') + '</tr>'
+    ).join('');
+    document.getElementById('gl-import-preview').style.display = 'block';
+  }
+
+  function glShowStatus(msg, color, bg) {
+    const el = document.getElementById('gl-import-status');
+    el.style.display = 'block';
+    el.style.color = color;
+    el.style.background = bg;
+    el.style.border = '1px solid ' + color + '33';
+    el.textContent = msg;
+  }
+
+  window.glSubmitImport = async function() {
+    if (!_parsedRows.length) return;
+    const btn = document.getElementById('gl-import-submit');
+    btn.disabled = true; btn.textContent = 'Importing…';
+
+    const BATCH = 50;
+    let inserted = 0, failed = 0;
+    for (let i = 0; i < _parsedRows.length; i += BATCH) {
+      const chunk = _parsedRows.slice(i, i + BATCH);
+      try {
+        const res = await fetch(window.SUPA_URL + '/rest/v1/goods_lost', {
+          method: 'POST',
+          headers: { ...window.HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(chunk),
+        });
+        if (res.ok) { inserted += chunk.length; }
+        else {
+          const err = await res.text();
+          console.error('GL import chunk failed:', err);
+          failed += chunk.length;
+        }
+      } catch(e) {
+        failed += chunk.length;
+      }
+    }
+
+    if (failed === 0) {
+      glShowStatus('✓ ' + inserted + ' rows imported successfully. Refreshing analytics…', '#2E7D32', '#f0faf2');
+      btn.textContent = 'Done ✓';
+      setTimeout(() => { glCloseImport(); if (typeof loadData === 'function') loadData(); }, 1500);
+    } else {
+      glShowStatus(inserted + ' rows imported, ' + failed + ' failed. Check console for details.', '#C0392B', '#fdf0ef');
+      btn.disabled = false; btn.textContent = 'Retry';
+    }
+  };
+
+  function glSplitCSVRow(row) {
+    const result = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (c === '"') {
+        if (inQ && row[i+1] === '"') { cur += '"'; i++; }
+        else { inQ = !inQ; }
+      } else if (c === ',' && !inQ) {
+        result.push(cur); cur = '';
+      } else { cur += c; }
+    }
+    result.push(cur);
+    return result;
+  }
+})();
+</script>
+
+<!-- SheetJS for Excel support (loaded on demand) -->
+<script>
+(function(){
+  // Lazy-load SheetJS only when needed (Excel file dropped)
+  const _origHandle = window.glHandleFile;
+  window.glHandleFile = function(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if ((ext === 'xlsx' || ext === 'xls') && typeof XLSX === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = () => _origHandle(file);
+      s.onerror = () => {
+        glShowStatus && glShowStatus('Could not load Excel library. Please convert to CSV first.', '#C0392B', '#fdf0ef');
+      };
+      document.head.appendChild(s);
+    } else {
+      _origHandle(file);
+    }
+  };
+})();
+</script>
 </body>
 </html>
