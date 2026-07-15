@@ -533,6 +533,7 @@ if (window.self !== window.top) {
             <div class="card-title" id="gl-title">Goods lost — Month to date</div>
             <div class="card-sub" id="gl-sub-main">Top products &amp; top 3 reasons for loss</div>
           </div>
+          <div id="gl-debug" style="font-size:10px;color:#f90;padding:4px 8px;font-family:monospace;word-break:break-all;"></div>
           <div id="gl-bars">
             <div class="gl-r"><div class="gl-dot" style="background:var(--gold);"></div><div class="gl-name">Diagnostic duplicate</div><div class="gl-bar"><div class="gl-bfill" style="width:73%;background:var(--gold);"></div></div><div class="gl-amt">$1,248</div><div class="gl-pct">44%</div></div>
             <div class="gl-r"><div class="gl-dot" style="background:var(--red);"></div><div class="gl-name">Expired product</div><div class="gl-bar"><div class="gl-bfill" style="width:42%;background:var(--red);"></div></div><div class="gl-amt">$724</div><div class="gl-pct">25%</div></div>
@@ -855,6 +856,7 @@ async function loadData() {
     );
 
     // Total goods lost (exclude bulk import artifact rows)
+    console.log('[MedSync GL] raw goods_lost rows:', JSON.stringify(glRows));
     const _SKIP_NAMES = ['Monthly Summary Import', 'Summary Import'];
     const realGLRows = glRows.filter(r => {
       const cat = (r.category || '').trim();
@@ -879,6 +881,10 @@ async function loadData() {
         byProduct[prod].n += 1;
       }
     });
+    console.log('[MedSync GL] raw rows:', glRows.length, 'real rows after filter:', realGLRows.length, 'sample:', JSON.stringify(glRows.slice(0,3)));
+    // Temporary debug: show row counts on the card
+    const _dbgEl = document.getElementById('gl-debug');
+    if (_dbgEl) _dbgEl.textContent = `[debug] raw=${glRows.length} real=${realGLRows.length} total=$${totalGL.toFixed(2)} cats=${JSON.stringify(Object.keys(byCategory))} prods=${JSON.stringify(Object.keys(byProduct).slice(0,3))}`;
     renderGLBars(byCategory, byProduct, totalGL);
 
     // ── 2. PO Items — procurement savings + compliance ───────
