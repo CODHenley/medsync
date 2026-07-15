@@ -357,80 +357,8 @@ html, body { margin: 0 !important; padding: 0 !important; }
 <script src="medsync_locations.js"></script>
 <script>
 
-var _currentLocFilter = '';  // set by loadData, consumed by loadPI/loadExpiry
+var _currentLocFilter = '';  // set by loadData, consumed by loadExpiry
 
-async function loadPI(fromISO, toISO) {
-  try {
-    if (!fromISO) { var ms=new Date(); ms.setDate(1); ms.setHours(0,0,0,0); fromISO=ms.toISOString(); }
-    if (!toISO) { toISO=new Date().toISOString(); }
-    var r2=await fetch(SUPA_URL+'/rest/v1/goods_lost?select=qty_lost,value_lost,product_name,category,notes&created_at=gte.'+fromISO+'&created_at=lte.'+toISO+_currentLocFilter,{headers:HEADERS});
-    var gl=await r2.json();
-    var lostQ={},lostV={},catV={},catN={};
-    var _CATS=['Diagnostic duplicate','Expired product','Damaged / Spilled','Medication waste','In-house use','Other','Inhalants / Anesthesia Drugs','Controlled Substances (DEA)'];
-    if(Array.isArray(gl))gl.forEach(function(x){
-      // product rollup
-      var prod=(x.product_name||(x.notes||'').split(' · ')[0]).trim();
-      if(prod&&_CATS.indexOf(prod)<0){
-        lostQ[prod]=(lostQ[prod]||0)+(x.qty_lost||1);
-        lostV[prod]=(lostV[prod]||0)+parseFloat(x.value_lost||0);
-      }
-      // category rollup
-      var cat=x.category||'Other';
-      catV[cat]=(catV[cat]||0)+parseFloat(x.value_lost||0);
-      catN[cat]=(catN[cat]||0)+1;
-    });
-
-    // ── Card 1: Top products by value lost ───────────────────
-    var topProds=Object.keys(lostV).filter(function(p){return lostV[p]>0;}).sort(function(a,b){return lostV[b]-lostV[a];}).slice(0,8);
-    var pvlEl=document.getElementById('pi-pvl');
-    if(!topProds.length){pvlEl.innerHTML='<div style="color:var(--green);font-size:12px;">No goods lost this period.</div>';}
-    else{
-      var mxV=lostV[topProds[0]]||1;
-      pvlEl.innerHTML=topProds.map(function(p){
-        var v=lostV[p],q=lostQ[p]||0,sh=p.length>26?p.slice(0,24)+'…':p;
-        var pct=Math.round(v/mxV*100);
-        return '<div class="pi-row" style="margin-bottom:9px;">'+
-          '<div class="pi-lbl"><span style="font-size:12px;">'+sh+'</span><span class="pi-lbl-s" style="color:var(--red);font-variant-numeric:tabular-nums;">$'+v.toFixed(2)+'</span></div>'+
-          '<div style="display:flex;align-items:center;gap:6px;">'+
-            '<div class="pi-trk" style="flex:1;height:8px;"><div class="pi-lost" style="width:'+pct+'%;height:100%;border-radius:3px;"></div></div>'+
-            '<span style="font-size:11px;color:var(--mist);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">'+q+' unit'+(q!==1?'s':'')+'</span>'+
-          '</div>'+
-        '</div>';
-      }).join('');
-    }
-
-    // ── Card 2: Top 3 reasons ────────────────────────────────
-    var wasteEl=document.getElementById('pi-waste');
-    var topCats=Object.keys(catV).sort(function(a,b){return catV[b]-catV[a];}).slice(0,3);
-    var totalCatV=Object.values(catV).reduce(function(s,v){return s+v;},0)||1;
-    // color map for known categories
-    var _CCLR={'Expired product':'#C0392B','Damaged / Spilled':'#C8922A','Medication waste':'#7B4FBE','In-house use':'#1C6FAD','Controlled Substances (DEA)':'#2E7D32','Inhalants / Anesthesia Drugs':'#00695C','Diagnostic duplicate':'#E65100','Other':'#546E7A'};
-    if(!topCats.length){wasteEl.innerHTML='<div style="color:var(--green);font-size:12px;">No goods lost this period.</div>';}
-    else{
-      // stacked total bar
-      var stackSegs=topCats.map(function(c){return '<div style="width:'+Math.round(catV[c]/totalCatV*100)+'%;height:100%;background:'+(_CCLR[c]||'#546E7A')+';"></div>';}).join('');
-      var otherPct=Math.round((1-topCats.reduce(function(s,c){return s+catV[c];},0)/totalCatV)*100);
-      if(otherPct>0)stackSegs+='<div style="flex:1;height:100%;background:#ccc;opacity:.4;"></div>';
-      wasteEl.innerHTML=
-        '<div style="height:8px;display:flex;border-radius:4px;overflow:hidden;margin-bottom:14px;">'+stackSegs+'</div>'+
-        topCats.map(function(c,i){
-          var v=catV[c],n=catN[c],sh=c.length>30?c.slice(0,28)+'…':c;
-          var clr=_CCLR[c]||'#546E7A';
-          var pctOfTotal=Math.round(v/totalCatV*100);
-          return '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">'+
-            '<div style="width:3px;min-width:3px;height:36px;border-radius:2px;background:'+clr+';margin-top:2px;"></div>'+
-            '<div style="flex:1;">'+
-              '<div style="display:flex;justify-content:space-between;align-items:baseline;">'+
-                '<span style="font-size:12px;font-weight:600;color:var(--navy);">'+sh+'</span>'+
-                '<span style="font-size:12px;font-weight:700;color:'+clr+';font-variant-numeric:tabular-nums;">$'+v.toFixed(2)+'</span>'+
-              '</div>'+
-              '<div style="font-size:11px;color:var(--mist);margin-top:1px;">'+n+' incident'+(n!==1?'s':'')+' · '+pctOfTotal+'% of loss value</div>'+
-            '</div>'+
-          '</div>';
-        }).join('');
-    }
-  }catch(e){console.error('loadPI:',e);}
-}
 async function loadExpiry(){
   try{
     var now=new Date(),d90=new Date(now.getTime()+90*864e5).toISOString().split('T')[0],today=now.toISOString().split('T')[0],d30=new Date(now.getTime()+30*864e5).toISOString().split('T')[0],d60=new Date(now.getTime()+60*864e5).toISOString().split('T')[0];
@@ -452,7 +380,6 @@ async function loadExpiry(){
 // Hide nav and internal sidebar when running inside an iframe
 if (window.self !== window.top) {
   document.addEventListener('DOMContentLoaded', function() {
-  loadPI();
   loadExpiry();
     if (window.innerWidth <= 768) {
       var nav = document.querySelector('nav');
@@ -646,24 +573,6 @@ if (window.self !== window.top) {
           </table>
         </div>
 
-
-        <!-- Goods Lost Intelligence -->
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title">Top products by goods lost</div>
-            <div class="card-sub">Ranked by value lost · period to date</div>
-          </div>
-          <div style="padding:14px 16px;">
-            <div id="pi-pvl"><div style="color:var(--mist);font-size:12px;">Loading…</div></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title">Top 3 reasons for loss</div>
-            <div class="card-sub">By category · value &amp; incident count</div>
-          </div>
-          <div style="padding:14px 16px;"><div id="pi-waste"><div style="color:var(--mist);font-size:12px;">Loading…</div></div></div>
-        </div>
         <div class="card">
           <div class="card-head">
             <div class="card-title">Lot expiry risk — next 90 days</div>
@@ -938,7 +847,6 @@ async function loadData() {
     return;
   }
   _currentLocFilter = locFilter;
-  loadPI(from, to);
 
   try {
     // ── 1. Goods lost totals ─────────────────────────────────
