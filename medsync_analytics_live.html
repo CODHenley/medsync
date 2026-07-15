@@ -530,10 +530,10 @@ if (window.self !== window.top) {
         <!-- Goods Lost -->
         <div class="card">
           <div class="card-head">
-            <div class="card-title" id="gl-title">Goods lost by category — May 2026</div>
-            <div class="card-sub">All locations · 47 submissions</div>
+            <div class="card-title" id="gl-title">Goods lost — Month to date</div>
+            <div class="card-sub" id="gl-sub-main">Top products &amp; top 3 reasons for loss</div>
           </div>
-          <div class="gl-rows" id="gl-bars">
+          <div id="gl-bars">
             <div class="gl-r"><div class="gl-dot" style="background:var(--gold);"></div><div class="gl-name">Diagnostic duplicate</div><div class="gl-bar"><div class="gl-bfill" style="width:73%;background:var(--gold);"></div></div><div class="gl-amt">$1,248</div><div class="gl-pct">44%</div></div>
             <div class="gl-r"><div class="gl-dot" style="background:var(--red);"></div><div class="gl-name">Expired product</div><div class="gl-bar"><div class="gl-bfill" style="width:42%;background:var(--red);"></div></div><div class="gl-amt">$724</div><div class="gl-pct">25%</div></div>
             <div class="gl-r"><div class="gl-dot" style="background:var(--green);"></div><div class="gl-name">In-house use</div><div class="gl-bar"><div class="gl-bfill" style="width:28%;background:var(--green);"></div></div><div class="gl-amt">$481</div><div class="gl-pct">17%</div></div>
@@ -821,7 +821,7 @@ async function loadData() {
   setLoading(['k-cogs','k-sav','k-gl','k-wg']);
   document.getElementById('period-label').textContent = label + ' · ' + locLabel;
   document.getElementById('cogs-title').textContent = 'COGs by location — ' + label;
-  document.getElementById('gl-title').textContent = 'Goods lost by category — ' + label;
+  document.getElementById('gl-title').textContent = 'Goods lost — ' + label;
 
   // Build location filter — respect region selection
   const _region = (document.getElementById('region-filter')||{}).value || 'all';
@@ -860,13 +860,21 @@ async function loadData() {
     kgl.textContent = fmt$(totalGL);
     kgl.className = totalGL > 0 ? 'kpi-v ca' : 'kpi-v cm';
 
-    // Goods lost by category
+    // Goods lost by category + product
     const byCategory = {};
+    const byProduct = {};
+    const _SKIP_NAMES = ['Monthly Summary Import', 'Summary Import'];
     glRows.forEach(r => {
       const cat = r.category || 'Other';
       byCategory[cat] = (byCategory[cat] || 0) + (Number(r.value_lost) || 0);
+      const prod = (r.product_name || '').trim();
+      if (prod && !_SKIP_NAMES.includes(prod)) {
+        if (!byProduct[prod]) byProduct[prod] = { v: 0, n: 0 };
+        byProduct[prod].v += Number(r.value_lost) || 0;
+        byProduct[prod].n += 1;
+      }
     });
-    renderGLBars(byCategory, totalGL);
+    renderGLBars(byCategory, byProduct, totalGL);
 
     // ── 2. PO Items — procurement savings + compliance ───────
     const poItems = await query('po_items',
@@ -1024,29 +1032,72 @@ async function loadData() {
   }
 }
 
-// ── Render goods lost bars ───────────────────────────────────
-function renderGLBars(byCategory, total) {
+// ── Render goods lost: top products + top 3 reasons ─────────
+function renderGLBars(byCategory, byProduct, total) {
   const container = document.getElementById('gl-bars');
   if (!container) return;
-  const sorted = Object.entries(byCategory).sort((a,b) => b[1]-a[1]);
-  const max = sorted[0] ? sorted[0][1] : 1;
-  container.innerHTML = sorted.map(([cat, amt]) => {
-    const pct = total > 0 ? Math.round((amt/total)*100) : 0;
-    const barW = Math.round((amt/max)*100);
-    const color = GL_COLORS[cat] || 'var(--slate)';
-    return `<div class="gl-r">
-      <div class="gl-dot" style="background:${color};"></div>
-      <div class="gl-name">${cat}</div>
-      <div class="gl-bar"><div class="gl-bfill" style="width:${barW}%;background:${color};"></div></div>
-      <div class="gl-amt">${fmt$(amt)}</div>
-      <div class="gl-pct">${pct}%</div>
+
+  const noData = '<div style="color:var(--mist);font-size:11px;padding:8px 0;">No goods lost entries for this period.</div>';
+  if (!total) { container.innerHTML = noData; return; }
+
+  // Top products by value
+  const topProds = Object.entries(byProduct).sort((a,b) => b[1].v - a[1].v).slice(0, 6);
+  const maxProd = topProds[0] ? topProds[0][1].v : 1;
+
+  // Top 3 categories by value
+  const topCats = Object.entries(byCategory).sort((a,b) => b[1]-a[1]).slice(0, 3);
+  const _CCLR = {'Expired product':'#C0392B','Damaged / Spilled':'#C8922A','Medication waste':'#7B4FBE','In-house use':'#1C6FAD','Controlled Substances (DEA)':'#2E7D32','Inhalants / Anesthesia Drugs':'#00695C','Diagnostic duplicate':'#E65100','Other':'#546E7A','Summary Import':'#546E7A'};
+
+  const prodHTML = topProds.length ? topProds.map(([prod, d]) => {
+    const sh = prod.length > 28 ? prod.slice(0, 26) + '…' : prod;
+    const barW = Math.round(d.v / maxProd * 100);
+    return `<div class="gl-r" style="margin-bottom:5px;">
+      <div class="gl-name" style="font-size:11px;flex:1;">${sh}</div>
+      <div class="gl-bar" style="max-width:90px;"><div class="gl-bfill" style="width:${barW}%;background:#C0392B;"></div></div>
+      <div class="gl-amt" style="font-size:11px;">${fmt$(d.v)}</div>
     </div>`;
-  }).join('') || '<div style="color:var(--mist);font-size:11px;padding:8px 0;">No goods lost entries for this period.</div>';
+  }).join('') : noData;
+
+  // Stacked proportion bar for top 3 categories
+  const stackSegs = topCats.map(([cat, v]) =>
+    `<div style="width:${Math.round(v/total*100)}%;height:100%;background:${_CCLR[cat]||'#546E7A'};"></div>`
+  ).join('') + `<div style="flex:1;height:100%;background:#e0dcea;"></div>`;
+
+  const catsHTML = topCats.map(([cat, v]) => {
+    const pct = Math.round(v / total * 100);
+    const clr = _CCLR[cat] || '#546E7A';
+    const sh = cat.length > 26 ? cat.slice(0, 24) + '…' : cat;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <div style="width:3px;min-width:3px;height:28px;border-radius:2px;background:${clr};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <span style="font-size:11px;font-weight:600;color:var(--navy);">${sh}</span>
+          <span style="font-size:11px;font-weight:700;color:${clr};font-variant-numeric:tabular-nums;">${fmt$(v)}</span>
+        </div>
+        <div style="font-size:10px;color:var(--mist);">${pct}% of total loss</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;padding:12px 16px;">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mist);margin-bottom:8px;">Top products</div>
+        ${prodHTML}
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mist);margin-bottom:8px;">Top 3 reasons</div>
+        <div style="height:6px;display:flex;border-radius:3px;overflow:hidden;margin-bottom:10px;">${stackSegs}</div>
+        ${catsHTML}
+      </div>
+    </div>`;
+
+  // Keep sidebar deep-dive in sync
   var totalEl=document.getElementById('gl-total'); if(totalEl) totalEl.textContent=fmt$(total);
   var catRows=document.getElementById('gl-cat-rows');
-  if(catRows) catRows.innerHTML=sorted.slice(0,6).map(function(e){
-    var pct=total>0?Math.round((e[1]/total)*100):0;
-    return '<div class="mrow"><span class="mk">'+e[0]+'</span><span class="mv">'+fmt$(e[1])+' · '+pct+'%</span></div>';
+  if(catRows) catRows.innerHTML=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([cat,v])=>{
+    const pct=total>0?Math.round((v/total)*100):0;
+    return `<div class="mrow"><span class="mk">${cat}</span><span class="mv">${fmt$(v)} · ${pct}%</span></div>`;
   }).join('');
 }
 
