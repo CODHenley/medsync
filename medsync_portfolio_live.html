@@ -2504,7 +2504,9 @@ async function loadLots() {
       SUPA_URL + '/rest/v1/lots?select=*,products(*),locations(name),users(full_name)&order=expiration_date.asc',
       { headers: H }
     );
+    if (!res.ok) { setTableLoading(false); return; }
     const rows = await res.json();
+    if (!Array.isArray(rows)) { setTableLoading(false); return; }
 
     // Flatten joined data into a clean lot object
     ALL_LOTS = rows.map(r => ({
@@ -2705,13 +2707,14 @@ async function openLot(dbId) {
       SUPA_URL + `/rest/v1/activity_log?select=description,metadata,created_at,users(full_name)&reference_id=eq.${lot.id}&order=created_at.asc`,
       { headers: H }
     );
-    const logs = await logRes.json();
+    const logs = logRes.ok ? await logRes.json() : [];
+    const safeL = Array.isArray(logs) ? logs : [];
 
     // Always show received event first
     const events = [
       { action: 'Lot received', meta: formatDate(lot.received) + ' · ' + lot.recvBy,
         note: lot.po + ' · ' + lot.vendor + ' · ' + lot.qtyIn + ' units', dot: 'var(--green)' },
-      ...logs.map(l => ({
+      ...safeL.map(l => ({
         action: l.description,
         meta: formatDateTime(l.created_at) + (l.users?.full_name ? ' · ' + l.users.full_name : ''),
         note: l.metadata ? Object.entries(l.metadata).map(([k,v])=>`${k}: ${v}`).join(' · ') : '',
@@ -2865,7 +2868,9 @@ async function loadEvents() {
       SUPA_URL + '/rest/v1/activity_log?select=*,users(full_name,role),locations(name)&order=created_at.desc&limit=200',
       { headers: H }
     );
+    if (!res.ok) { setLoading(false); return; }
     const rows = await res.json();
+    if (!Array.isArray(rows)) { setLoading(false); return; }
 
     ALL_EVENTS = rows.map((r, i) => ({
       id:      'EVT-' + String(1000 + rows.length - i).padStart(4,'0'),
@@ -3121,7 +3126,7 @@ window._userProfiles = {};
 async function loadUserProfiles() {
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/user_profiles?select=user_id,first_name,last_name,avatar_b64,bio',
+      SUPA_URL + '/rest/v1/user_profiles?select=user_id,first_name,last_name',
       { headers: H }
     );
     const rows = await res.json();
@@ -3184,7 +3189,7 @@ async function loadUserProfiles() {
 async function loadTeamSection() {
   try {
     var res = await fetch(
-      SUPA_URL + '/rest/v1/users?select=full_name,role,user_profiles(avatar_b64,bio)',
+      SUPA_URL + '/rest/v1/users?select=full_name,role',
       { headers: H }
     );
     var users = await res.json();
@@ -4458,9 +4463,9 @@ function toggleMessenger() {
 
 async function loadAllUsers() {
   try {
-    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role,location_name,user_profiles(avatar_b64)&order=full_name.asc&limit=200`, { headers: _msgHeaders() });
+    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role,location_name&order=full_name.asc&limit=200`, { headers: _msgHeaders() });
     const rows = r.ok ? await r.json() : [];
-    _allUsers = rows.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, location_name: u.location_name || null, avatar_b64: u.user_profiles?.avatar_b64 || null }));
+    _allUsers = Array.isArray(rows) ? rows.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, location_name: u.location_name || null, avatar_b64: null })) : [];
   } catch(e) {}
 }
 

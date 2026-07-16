@@ -123,6 +123,8 @@ td{padding:10px 12px;border-bottom:0.5px solid #EDE8F8;vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 .lot-row{cursor:pointer;transition:background .08s;}
 .lot-row:hover td{background:#F0EBF8;}
+.lot-row .lot-row-hint{opacity:0;transition:opacity .12s;font-size:10px;color:var(--purple);font-weight:600;white-space:nowrap;}
+.lot-row:hover .lot-row-hint{opacity:1;}
 .lot-num{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--navy);}
 .prod-name{font-weight:500;}
 .prod-mfr{font-size:10px;color:var(--mist);margin-top:1px;}
@@ -921,7 +923,7 @@ function filterTable() {
         </div>
       </td></tr>`;
     }
-    return `<tr class="lot-row" onclick="openLot('${lot.dbId}')">
+    return `<tr class="lot-row" onclick="openLot('${lot.dbId}')" title="Click to view details &amp; edit">
       <td><span class="lot-num">${lot.id}</span></td>
       <td><div class="prod-name">${lot.name}</div><div class="prod-mfr">${lot.mfr}</div></td>
       <td>${dea}</td>
@@ -929,7 +931,7 @@ function filterTable() {
       <td><span class="qty">${lot.qtyRem} / ${lot.qtyIn}</span></td>
       <td><span class="exp-date ${expClass}">${formatDate(lot.exp)}</span></td>
       <td><span class="days-col ${dayCls}">${daysTxt}</span></td>
-      <td><span class="badge ${statusClass(lot.status)}">${lot.status}</span></td>
+      <td style="display:flex;align-items:center;gap:8px;"><span class="badge ${statusClass(lot.status)}">${lot.status}</span><span class="lot-row-hint">View / Edit →</span></td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">No lots match your filters.</td></tr>';
 

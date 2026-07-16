@@ -547,10 +547,12 @@ async function loadEvents() {
   setLoading(true);
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/activity_log?select=*,users(full_name,role,user_profiles(avatar_b64)),locations(name)&order=created_at.desc&limit=200',
+      SUPA_URL + '/rest/v1/activity_log?select=*,users(full_name,role),locations(name)&order=created_at.desc&limit=200',
       { headers: H }
     );
+    if (!res.ok) { setLoading(false); showToast('⚠ Could not load activity log'); return; }
     const rows = await res.json();
+    if (!Array.isArray(rows)) { setLoading(false); showToast('⚠ Could not load activity log'); return; }
 
     ALL_EVENTS = rows.map((r, i) => ({
       id:      'EVT-' + String(1000 + rows.length - i).padStart(4,'0'),
@@ -559,7 +561,7 @@ async function loadEvents() {
       desc:    r.description,
       detail:  r.reference_id || '',
       user:    r.users?.full_name || 'System',
-      avatar:  r.users?.user_profiles?.avatar_b64 || null,
+      avatar:  null,
       role:    r.users?.role || 'System',
       loc:     r.locations?.name || (r.location_id ? '—' : 'All locations'),
       ts:      r.created_at,
