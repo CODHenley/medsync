@@ -1654,36 +1654,48 @@ function deepDiveLoc(locCode) {
     <div style="font-size:10px;color:#4A5568;margin-top:1px;" id="sb-role-loc">Megan Henley · Scout</div>
   </div>
 
-  <!-- Portfolio — admin/IL only -->
+  <!-- Home -->
   <div class="asb-item" id="asb-portfolio" onclick="closeMobileMenu();showScreen('portfolio')" style="font-weight:600;">🏠 Portfolio</div>
 
-  <!-- Daily Work — all roles -->
+  <!-- Ordering -->
   <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
-  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Daily Work</div>
-  <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Ordering</div>
   <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
-  <div class="asb-item" id="asb-cycle" onclick="closeMobileMenu();showScreen('cycle')">🔄 Cycle Count</div>
-  <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
   <div class="asb-item" id="asb-vcimport" onclick="closeMobileMenu();showScreen('vcimport')">↑ Vetcove Import</div>
 
-  <!-- Reports & Analytics — Inventory Lead + admin only -->
-  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;" id="asb-hr-insights">
-  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;" id="asb-sec-insights">Reports &amp; Analytics</div>
-  <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 Analytics &amp; Reports</div>
+  <!-- Receiving -->
+  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Receiving</div>
+  <div class="asb-item" id="asb-receiving" onclick="closeMobileMenu();showScreen('receiving')">📦 Receiving</div>
+
+  <!-- Inventory -->
+  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Inventory</div>
+  <div class="asb-item" id="asb-cycle" onclick="closeMobileMenu();showScreen('cycle')">🔄 Cycle Count</div>
   <div class="asb-item" id="asb-lifecycle" onclick="closeMobileMenu();showScreen('lifecycle')">🔬 Lot Lifecycle</div>
+  <div class="asb-item" id="asb-priceaudit" onclick="closeMobileMenu();showScreen('priceaudit')">🏷️ Price Audit</div>
+
+  <!-- Loss & Compliance -->
+  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Loss &amp; Compliance</div>
+  <div class="asb-item" id="asb-goods" onclick="closeMobileMenu();showScreen('goods')">⚠️ Goods Lost</div>
+
+  <!-- Insights -->
+  <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;" id="asb-hr-insights">
+  <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;" id="asb-sec-insights">Insights</div>
+  <div class="asb-item" id="asb-analytics" onclick="closeMobileMenu();showScreen('analytics')">📊 Analytics &amp; Reports</div>
   <div class="asb-item" id="asb-procurement" onclick="closeMobileMenu();showScreen('procurement')">🛍️ Procurement &amp; COGS</div>
   <div class="asb-item" id="asb-actlog" onclick="closeMobileMenu();showScreen('actlog')">🕐 Activity Log</div>
 
-  <!-- Admin — admin/superadmin only -->
+  <!-- Admin -->
   <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;" id="asb-hr-admin">
   <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;" id="asb-sec-admin">Admin</div>
   <div class="asb-item" id="asb-users" onclick="closeMobileMenu();showScreen('users')">👥 Manage Users</div>
   <div class="asb-item" id="asb-newlocation" onclick="closeMobileMenu();showScreen('newlocation')">🏗️ New Location Setup</div>
   <div class="asb-item" id="asb-regions" onclick="closeMobileMenu();showScreen('regions')">🗺️ Manage Regions</div>
   <div class="asb-item" id="asb-settings" onclick="closeMobileMenu();showScreen('settings')">⚙️ Settings</div>
-  <div class="asb-item" id="asb-priceaudit" onclick="closeMobileMenu();showScreen('priceaudit')">🏷️ Price Audit</div>
 
-  <!-- Help & Training — all roles -->
+  <!-- Help & Training -->
   <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
   <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Help &amp; Training</div>
   <div class="asb-item" onclick="closeMobileMenu();window.location.href='medsync_userguide_live.html'">📖 User Guide</div>
