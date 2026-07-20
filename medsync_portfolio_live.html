@@ -4063,7 +4063,9 @@ function getTrainingUser() {
 
 function loadTrainingData() {
   var u = getTrainingUser();
-  var isAdmin = (u.role === 'admin' || u.role === 'medsync_superadmin');
+  var isAdmin = (u.role === 'admin' || u.role === 'medsync_superadmin' ||
+                 u.role === 'hospital_director' || u.role === 'clinical_operations_director' ||
+                 u.role === 'inventory_lead');
 
   var loadingEl = document.getElementById('training-loading');
   var adminView = document.getElementById('training-admin-view');
@@ -4082,7 +4084,9 @@ function loadTrainingData() {
   }
 
   var url = TRAINING_SUPA_URL + '/rest/v1/quiz_completions?select=*&order=created_at.desc';
-  if (!isAdmin && u.id) {
+  if (isAdmin && u.org_id) {
+    url += '&org_id=eq.' + u.org_id;
+  } else if (!isAdmin && u.id) {
     url += '&user_id=eq.' + u.id;
   }
 
