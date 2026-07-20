@@ -1393,7 +1393,7 @@
 
         <div class="callout callout-success" style="margin-top:8px;">
           <span class="callout-icon">📞</span>
-          <span class="callout-text"><strong>Escalation path:</strong> Platform issues → <a href="mailto:admin@medsync.vet" style="color:var(--navy);">admin@medsync.vet</a> → Megan Henley. For Stripe billing disputes, all MedSync team members can access the Stripe dashboard directly.</span>
+          <span class="callout-text"><strong>Escalation path:</strong> Platform issues → <a href="mailto:admin@medsync.vet" style="color:var(--navy);">admin@medsync.vet</a> → MedSync Super Admin. For Stripe billing disputes, all MedSync team members can access the Stripe dashboard directly.</span>
         </div>
 
       </div>
@@ -1598,10 +1598,11 @@ const SECTION_LABELS = {
 
 // ── Session & state ────────────────────────────────────────────────
 const ROLE_SECTIONS = {
-  staff:             ['toc-staff-section'],
-  manager:           ['toc-staff-section', 'toc-admin-section'],
-  admin:             ['toc-staff-section', 'toc-admin-section'],
-  medsync_superadmin:['toc-staff-section', 'toc-admin-section', 'toc-medsync-section'],
+  receiver:                     ['toc-staff-section'],
+  inventory_lead:               ['toc-staff-section', 'toc-admin-section'],
+  hospital_director:            ['toc-staff-section', 'toc-admin-section'],
+  clinical_operations_director: ['toc-staff-section', 'toc-admin-section'],
+  medsync_superadmin:           ['toc-staff-section', 'toc-admin-section', 'toc-medsync-section'],
 };
 
 let _session = null;
@@ -1628,7 +1629,7 @@ function getUserInfo() {
     email: sessionUser?.email || profileUser?.email || '',
     name: profileUser?.full_name || profileUser?.name || sessionUser?.full_name || sessionUser?.name || sessionUser?.email || 'User',
     org_id: profileUser?.org_id || profileUser?.organization_id || sessionUser?.org_id || null,
-    role: profileUser?.role || sessionUser?.role || 'staff',
+    role: profileUser?.role || sessionUser?.role || 'receiver',
     created_at: profileUser?.created_at || sessionUser?.created_at || null,
     access_token: s?.access_token || null,
   };
@@ -1651,7 +1652,7 @@ async function saveCompletion(section, score) {
   const headers = {
     'Content-Type': 'application/json',
     'apikey': SUPA_KEY,
-    'Prefer': 'return=representation',
+    'Prefer': 'resolution=merge-duplicates,return=representation',
   };
   if (u.access_token) headers['Authorization'] = 'Bearer ' + u.access_token;
   try {
@@ -1940,13 +1941,16 @@ function init() {
 
   // Show role badge
   const labels = {
-    staff: 'Staff', manager: 'Manager', admin: 'Admin',
+    receiver: 'Receiver',
+    inventory_lead: 'Inventory Lead',
+    hospital_director: 'Hospital Director',
+    clinical_operations_director: 'Clinical Operations Director',
     medsync_superadmin: 'MedSync Admin',
   };
   document.getElementById('ug-role-badge').textContent = labels[role] || 'Staff';
 
   // Hide TOC sections above role
-  const allowed = ROLE_SECTIONS[role] || ROLE_SECTIONS['staff'];
+  const allowed = ROLE_SECTIONS[role] || ROLE_SECTIONS['receiver'];
   document.querySelectorAll('.guide-toc .toc-section').forEach(s => {
     s.style.display = allowed.includes(s.id) ? '' : 'none';
   });
@@ -1955,12 +1959,12 @@ function init() {
   if (role !== 'medsync_superadmin') {
     document.getElementById('ms-overview')?.closest('.sop-card')?.style.setProperty('display','none');
   }
-  if (role === 'staff') {
+  if (role === 'receiver') {
     document.getElementById('admin-overview')?.closest('.sop-card')?.style.setProperty('display','none');
   }
 
   // Hide quiz footers for sections the user can't see
-  if (role === 'staff') {
+  if (role === 'receiver') {
     document.getElementById('quiz-footer-admin')?.style.setProperty('display','none');
     document.getElementById('quiz-footer-medsync')?.style.setProperty('display','none');
   } else if (role !== 'medsync_superadmin') {
