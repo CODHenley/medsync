@@ -40,7 +40,7 @@ nav {
 }
 .nav-left { display: flex; align-items: center; gap: 16px; }
 .nav-wordmark {
-  font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.3px;
+  font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px;
   text-decoration: none;
 }
 .nav-tag {
@@ -69,9 +69,9 @@ nav {
   min-height: 100vh;
   background: var(--green);
   display: grid;
-  grid-template-columns: 1fr 420px;
-  align-items: center;
-  padding: 80px 0 60px 56px;
+  grid-template-columns: 1fr 520px;
+  align-items: stretch;
+  padding: 80px 0 0 56px;
   gap: 0;
   position: relative;
   overflow: hidden;
@@ -91,8 +91,7 @@ nav {
   position: relative; z-index: 1;
   display: flex; flex-direction: column; justify-content: center;
   min-height: calc(100vh - 80px);
-  padding: 60px 48px 60px 0;
-  max-width: 680px;
+  padding: 60px 56px 60px 0;
 }
 .hero-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
@@ -437,7 +436,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       Every Scout location,<br><span class="accent">one inventory.</span>
     </h1>
     <p class="hero-sub">
-      MedSync is Scout's platform for tracking what's on the shelf, logging what's lost, and keeping procurement honest across every Chicagoland location.
+      <strong style="color:#fff;font-weight:800;">MedSync</strong> is Scout's platform for tracking what's on the shelf, logging what's lost, and keeping procurement honest across every Chicagoland location.
     </p>
     <div class="hero-actions">
       <a class="btn-hero btn-hero-primary" href="medsync_login.html">Open MedSync →</a>
