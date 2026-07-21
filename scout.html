@@ -194,7 +194,7 @@ nav {
   .roles-grid { grid-template-columns: 1fr; }
 }
 .roles-grid--leadership {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
 }
 @media (max-width: 600px) {
   .roles-grid--leadership { grid-template-columns: 1fr; }
@@ -494,7 +494,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
             <path d="M36 14 L39.5 26.5 L52.5 26.5 L42 34.5 L45.5 47 L36 39.5 L26.5 47 L30 34.5 L19.5 26.5 L32.5 26.5 Z" fill="white"/>
           </svg>
         </div>
-        <div class="role-title">Regional / Admin</div>
+        <div class="role-title">Super Admin</div>
         <div class="role-desc">You see all four locations in one view. MedSync gives you the cross-location visibility to catch patterns that wouldn't show up at the hospital level — an outlier COGs%, a location that keeps running out of the same product, or a procurement gap that's been flying under the radar.</div>
         <ul class="role-tasks">
           <li>Compare COGs % across all Scout locations side by side</li>
@@ -524,6 +524,27 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         </ul>
       </div>
 
+      <div class="role-card role-card--leadership">
+        <div class="role-illo">
+          <svg width="64" height="72" viewBox="0 0 64 72" fill="none">
+            <rect x="10" y="8" width="44" height="56" rx="6" fill="#0E5B52" stroke="#0E5B52" stroke-width="2"/>
+            <rect x="18" y="20" width="28" height="3" rx="1.5" fill="white" opacity="0.9"/>
+            <rect x="18" y="28" width="20" height="3" rx="1.5" fill="white" opacity="0.6"/>
+            <rect x="18" y="36" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
+            <rect x="18" y="44" width="16" height="3" rx="1.5" fill="white" opacity="0.4"/>
+          </svg>
+        </div>
+        <div class="role-title">Clinical Operations Director</div>
+        <div class="role-desc">You keep the clinical side running efficiently across locations. MedSync gives you visibility into inventory compliance, goods lost patterns, and lot integrity so you can identify process gaps and hold locations accountable to consistent standards.</div>
+        <ul class="role-tasks">
+          <li>Monitor cycle count compliance across all locations</li>
+          <li>Review goods lost by category to surface clinical waste trends</li>
+          <li>Ensure lot tracking and expiry protocols are followed</li>
+          <li>Access the admin SOP and training certifications</li>
+          <li>Run cross-location reports for operational reviews</li>
+        </ul>
+      </div>
+
     </div>
 
     <!-- Staff tier -->
@@ -547,23 +568,9 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
 
       <div class="role-card">
         <div class="role-illo">
-          <img src="Scout art 1.png" alt="Veterinarian / Tech" style="height:72px;width:auto;">
+          <img src="Scout Art 4.png" alt="Receiver" style="height:72px;width:auto;">
         </div>
-        <div class="role-title">Veterinarian / Tech</div>
-        <div class="role-desc">You use MedSync at the moment something needs to be documented — when a diagnostic test gets duplicated, when a medication is wasted mid-treatment, or when you pull a lot and want to verify expiry before dispensing. It takes 60 seconds and keeps the record clean.</div>
-        <ul class="role-tasks">
-          <li>Log a diagnostic duplicate before it becomes a write-off</li>
-          <li>Check lot expiry before dispensing a controlled or cold-chain drug</li>
-          <li>Flag a goods lost event on the spot — waste, spill, or expired</li>
-          <li>Verify on-hand quantity before ordering a restock</li>
-        </ul>
-      </div>
-
-      <div class="role-card">
-        <div class="role-illo">
-          <img src="Scout Art 4.png" alt="Hospital Receiver" style="height:72px;width:auto;">
-        </div>
-        <div class="role-title">Hospital Receiver</div>
+        <div class="role-title">Receiver</div>
         <div class="role-desc">You close the loop between what was ordered and what actually arrived. When a Vetcove delivery comes in, you match it against the open PO, log lot numbers and expiry dates, and flag anything that's short or substituted. That data feeds directly into the cycle count and expiry tracking system.</div>
         <ul class="role-tasks">
           <li>Receive shipments line by line against open purchase orders</li>
