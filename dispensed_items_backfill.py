@@ -105,18 +105,14 @@ def supa_upsert(records):
         return e.code
 
 
-def month_chunks(start: date, end: date):
-    """Yield (chunk_start, chunk_end) pairs broken at month boundaries."""
+def week_chunks(start: date, end: date):
+    """Yield (chunk_start, chunk_end) pairs in 7-day increments.
+    Smaller batches avoid HTTP 500 duplicate-key conflicts on upsert."""
     cursor = start
     while cursor <= end:
-        y, m = cursor.year, cursor.month
-        if m == 12:
-            next_month_start = date(y + 1, 1, 1)
-        else:
-            next_month_start = date(y, m + 1, 1)
-        chunk_end = min(next_month_start - timedelta(days=1), end)
+        chunk_end = min(cursor + timedelta(days=6), end)
         yield cursor, chunk_end
-        cursor = next_month_start
+        cursor = chunk_end + timedelta(days=1)
 
 
 def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: bool):
@@ -126,7 +122,7 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
     total_upserted = 0
     total_skipped  = 0
 
-    for chunk_start, chunk_end in month_chunks(start, end):
+    for chunk_start, chunk_end in week_chunks(start, end):
         s = chunk_start.isoformat()
         e = chunk_end.isoformat()
         print(f"   Pulling {s} → {e} ...", end=" ", flush=True)
