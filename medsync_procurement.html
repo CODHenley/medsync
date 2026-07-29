@@ -197,6 +197,7 @@ tr:last-child td{border-bottom:none;}
         <option value="daily">Daily COGS</option>
         <option value="regional">Regional roll-up</option>
         <option value="reorder">Reorder Suggestions</option>
+        <option value="pricechanges">Price Changes</option>
       </select>
     </div>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -434,6 +435,43 @@ tr:last-child td{border-bottom:none;}
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div id="view-pricechanges" style="display:none;">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Price Change Report</div>
+          <div class="sec-sub" id="pc-subtitle">Detects unit cost changes from dispensed transaction history</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="pc-filter" onchange="renderPriceChanges()" style="padding:5px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);height:30px;">
+            <option value="all">All changes</option>
+            <option value="increase">Price increases only</option>
+            <option value="decrease">Price decreases only</option>
+          </select>
+          <button onclick="exportPriceChangesCSV()" style="padding:5px 14px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;background:var(--surface);color:var(--navy);cursor:pointer;height:30px;">↓ CSV</button>
+        </div>
+      </div>
+      <div id="pc-loading" style="padding:40px;text-align:center;color:var(--mist);font-size:13px;">Loading price history…</div>
+      <div id="pc-summary-bar" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;background:var(--surface-alt,#F7F6FB);border:0.5px solid var(--border);font-size:12px;display:flex;gap:24px;flex-wrap:wrap;"></div>
+      <div class="table-wrap" id="pc-table-wrap" style="display:none;">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="pcSort('name')" style="cursor:pointer;">Product ↕</th>
+              <th onclick="pcSort('change_date')" style="cursor:pointer;white-space:nowrap;">Change Date ↕</th>
+              <th style="text-align:right;">Old Cost</th>
+              <th style="text-align:right;">New Cost</th>
+              <th onclick="pcSort('pct')" style="text-align:right;cursor:pointer;">Change % ↕</th>
+              <th style="text-align:right;white-space:nowrap;">Units @ Old Price</th>
+              <th onclick="pcSort('impact')" style="text-align:right;cursor:pointer;">Est. Impact ↕</th>
+              <th style="text-align:right;white-space:nowrap;">Days at Old Price</th>
+            </tr>
+          </thead>
+          <tbody id="pc-tbody"></tbody>
+        </table>
+      </div>
+      <div id="pc-empty" style="display:none;padding:40px;text-align:center;color:var(--mist);font-size:13px;">No price changes detected in this period.</div>
     </div>
 
   </div>
@@ -1034,13 +1072,15 @@ async function renderRegionalCards() {
 // ── View switcher ─────────────────────────────────────────────────
 function switchView(view) {
   currentView = view;
-  document.getElementById('view-product').style.display   = view === 'product'   ? '' : 'none';
-  document.getElementById('view-purchases').style.display = view === 'purchases' ? '' : 'none';
-  document.getElementById('view-daily').style.display     = view === 'daily'     ? '' : 'none';
-  document.getElementById('view-regional').style.display  = view === 'regional'  ? '' : 'none';
-  document.getElementById('view-reorder').style.display   = view === 'reorder'   ? '' : 'none';
+  document.getElementById('view-product').style.display      = view === 'product'      ? '' : 'none';
+  document.getElementById('view-purchases').style.display    = view === 'purchases'    ? '' : 'none';
+  document.getElementById('view-daily').style.display        = view === 'daily'        ? '' : 'none';
+  document.getElementById('view-regional').style.display     = view === 'regional'     ? '' : 'none';
+  document.getElementById('view-reorder').style.display      = view === 'reorder'      ? '' : 'none';
+  document.getElementById('view-pricechanges').style.display = view === 'pricechanges' ? '' : 'none';
   if (view === 'reorder') renderReorderSuggestions();
   if (view === 'purchases') renderPurchaseTable();
+  if (view === 'pricechanges') loadPriceChanges();
 }
 
 // ── Reorder Suggestions ───────────────────────────────────────────
@@ -1734,6 +1774,186 @@ function showToast(msg) {
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.style.opacity = '0', 3000);
 }
+
+// ── Price Change Report ───────────────────────────────────────────
+let _pcData = [];
+let _pcSortKey = 'impact';
+let _pcSortDir = -1; // -1 = desc
+
+async function loadPriceChanges() {
+  document.getElementById('pc-loading').style.display = '';
+  document.getElementById('pc-table-wrap').style.display = 'none';
+  document.getElementById('pc-empty').style.display = 'none';
+  document.getElementById('pc-summary-bar').style.display = 'none';
+
+  try {
+    const locFilter = getLocationFilter();
+
+    // Fetch all dispensed transactions with cost, sorted by product + date
+    // We look back further than the selected range to capture "before" prices
+    const { start, end } = getDateRange();
+    // Pull 1 year of history to catch prior prices, but cap results
+    const lookbackStart = (() => {
+      const d = new Date(start); d.setFullYear(d.getFullYear() - 1); return iso(d);
+    })();
+
+    const rows = await query('dispensed_items',
+      `select=vetspire_product_id,product_name,sku,unit_cost,dispensed_at,location_id` +
+      `&unit_cost=gt.0` +
+      `&dispensed_at=gte.${lookbackStart}T00:00:00Z` +
+      `&dispensed_at=lte.${end}T23:59:59Z` +
+      `${locFilter}` +
+      `&order=product_name.asc,dispensed_at.asc` +
+      `&limit=10000`
+    );
+
+    // Group by product, walk timeline, detect cost changes
+    const byProduct = {};
+    for (const r of rows) {
+      const key = r.vetspire_product_id || r.product_name;
+      if (!byProduct[key]) byProduct[key] = { name: r.product_name, sku: r.sku, txns: [] };
+      byProduct[key].txns.push({ cost: parseFloat(r.unit_cost), date: r.dispensed_at.slice(0,10), locId: r.location_id });
+    }
+
+    const changes = [];
+    for (const [, prod] of Object.entries(byProduct)) {
+      const txns = prod.txns; // already sorted by date asc
+      let prevCost = null;
+      let prevDate = null;
+      let unitsAtOldPrice = 0;
+
+      for (let i = 0; i < txns.length; i++) {
+        const { cost, date } = txns[i];
+        if (prevCost === null) { prevCost = cost; prevDate = date; unitsAtOldPrice = 1; continue; }
+
+        if (Math.abs(cost - prevCost) > 0.001) {
+          // Price changed — only record if the change date falls within [start, end]
+          if (date >= start && date <= end) {
+            const pct = ((cost - prevCost) / prevCost) * 100;
+            const daysAtOld = Math.round((new Date(date) - new Date(prevDate)) / 864e5);
+            // Count units dispensed at old price since prevDate up to this change
+            const unitsOld = txns.slice(0, i).filter(t => t.cost === prevCost && t.date >= start).length;
+            const impact = unitsOld * (cost - prevCost); // how much more/less we'd have paid
+
+            changes.push({
+              name:        prod.name,
+              sku:         prod.sku || '—',
+              change_date: date,
+              old_cost:    prevCost,
+              new_cost:    cost,
+              pct:         pct,
+              units_old:   unitsAtOldPrice,
+              impact:      Math.abs(impact),
+              impact_sign: impact, // positive = cost went up (we now pay more)
+              days_old:    daysAtOld,
+            });
+          }
+          prevCost = cost;
+          prevDate = date;
+          unitsAtOldPrice = 1;
+        } else {
+          unitsAtOldPrice++;
+        }
+      }
+    }
+
+    _pcData = changes;
+    renderPriceChanges();
+  } catch(err) {
+    document.getElementById('pc-loading').style.display = 'none';
+    document.getElementById('pc-subtitle').textContent = 'Error: ' + err.message;
+  }
+}
+
+function renderPriceChanges() {
+  const filter = document.getElementById('pc-filter')?.value || 'all';
+  let data = _pcData.filter(r =>
+    filter === 'all' ? true :
+    filter === 'increase' ? r.pct > 0 :
+    r.pct < 0
+  );
+
+  // Sort
+  data.sort((a, b) => _pcSortDir * (
+    typeof a[_pcSortKey] === 'string'
+      ? a[_pcSortKey].localeCompare(b[_pcSortKey])
+      : (a[_pcSortKey] - b[_pcSortKey])
+  ));
+
+  document.getElementById('pc-loading').style.display = 'none';
+
+  if (!data.length) {
+    document.getElementById('pc-empty').style.display = '';
+    document.getElementById('pc-table-wrap').style.display = 'none';
+    document.getElementById('pc-summary-bar').style.display = 'none';
+    return;
+  }
+
+  // Summary bar
+  const increases = data.filter(r => r.pct > 0);
+  const decreases = data.filter(r => r.pct < 0);
+  const totalImpact = data.reduce((s, r) => s + r.impact_sign, 0);
+  const bar = document.getElementById('pc-summary-bar');
+  bar.style.display = 'flex';
+  bar.innerHTML = `
+    <span><strong>${data.length}</strong> price changes detected</span>
+    <span style="color:#C0392B;">▲ ${increases.length} increases</span>
+    <span style="color:#2E7D32;">▼ ${decreases.length} decreases</span>
+    <span>Net cost impact: <strong style="color:${totalImpact > 0 ? '#C0392B' : '#2E7D32'};">${totalImpact > 0 ? '+' : ''}${fmt(totalImpact)}</strong></span>
+  `;
+  document.getElementById('pc-subtitle').textContent = `${data.length} changes · sorted by ${_pcSortKey}`;
+
+  const tbody = document.getElementById('pc-tbody');
+  tbody.innerHTML = data.map(r => {
+    const up = r.pct > 0;
+    const pctColor = up ? '#C0392B' : '#2E7D32';
+    const arrow = up ? '▲' : '▼';
+    return `<tr>
+      <td>
+        <div style="font-weight:500;">${r.name}</div>
+        <div style="font-size:10px;color:var(--mist);">SKU: ${r.sku}</div>
+      </td>
+      <td style="white-space:nowrap;">${r.change_date}</td>
+      <td style="text-align:right;">${fmt(r.old_cost)}</td>
+      <td style="text-align:right;">${fmt(r.new_cost)}</td>
+      <td style="text-align:right;color:${pctColor};font-weight:600;">${arrow} ${Math.abs(r.pct).toFixed(1)}%</td>
+      <td style="text-align:right;">${r.units_old}</td>
+      <td style="text-align:right;color:${pctColor};">${r.impact_sign > 0 ? '+' : ''}${fmt(r.impact_sign)}</td>
+      <td style="text-align:right;">${r.days_old}d</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pc-table-wrap').style.display = '';
+  document.getElementById('pc-empty').style.display = 'none';
+}
+
+function pcSort(key) {
+  if (_pcSortKey === key) _pcSortDir *= -1;
+  else { _pcSortKey = key; _pcSortDir = key === 'name' ? 1 : -1; }
+  renderPriceChanges();
+}
+
+function exportPriceChangesCSV() {
+  if (!_pcData.length) return;
+  const filter = document.getElementById('pc-filter')?.value || 'all';
+  const data = _pcData.filter(r =>
+    filter === 'all' ? true : filter === 'increase' ? r.pct > 0 : r.pct < 0
+  );
+  const cols = ['Product','SKU','Change Date','Old Cost','New Cost','Change %','Units at Old Price','Est. Impact','Days at Old Price'];
+  const rows = data.map(r => [
+    `"${r.name.replace(/"/g,'""')}"`, r.sku, r.change_date,
+    r.old_cost.toFixed(4), r.new_cost.toFixed(4),
+    r.pct.toFixed(2) + '%', r.units_old,
+    r.impact_sign.toFixed(2), r.days_old
+  ]);
+  const csv = [cols.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'price_changes.csv';
+  a.click();
+}
+
+function fmt(n) { return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 // ── Boot ──────────────────────────────────────────────────────────
 // If today is the 1st of a month/quarter, MTD/QTD have no data yet — default to last 30 days
