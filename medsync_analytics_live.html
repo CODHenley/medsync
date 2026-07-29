@@ -1775,7 +1775,15 @@ window.addEventListener('message', function(e) {
 
   let _parsedRows = [];
 
+  // Session token — incremented on every open/close so stale async callbacks are ignored
+  let _importSession = 0;
+
+  function glModalIsOpen() {
+    return document.getElementById('gl-import-modal').style.display !== 'none';
+  }
+
   window.glOpenImport = function() {
+    _importSession++;
     _parsedRows = [];
     const preview = document.getElementById('gl-import-preview');
     const status  = document.getElementById('gl-import-status');
@@ -1789,6 +1797,7 @@ window.addEventListener('message', function(e) {
   };
 
   window.glCloseImport = function() {
+    _importSession++;
     _parsedRows = [];
     const preview = document.getElementById('gl-import-preview');
     const status  = document.getElementById('gl-import-status');
@@ -1804,14 +1813,16 @@ window.addEventListener('message', function(e) {
   window.glHandleFile = function(file) {
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
+    const sessionAtStart = _importSession;
     if (ext === 'csv') {
       const reader = new FileReader();
-      reader.onload = e => glParseCSV(e.target.result);
+      reader.onload = e => { if (_importSession !== sessionAtStart) return; glParseCSV(e.target.result, sessionAtStart); };
       reader.readAsText(file);
     } else if (ext === 'xlsx' || ext === 'xls') {
       glShowStatus('Excel detected — reading…', '#555', '#F5F4FB');
       const reader = new FileReader();
       reader.onload = e => {
+        if (_importSession !== sessionAtStart) return;
         try {
           const wb = XLSX.read(e.target.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
@@ -1825,7 +1836,7 @@ window.addEventListener('message', function(e) {
             headers.forEach((h, i) => { obj[h] = String(row[i] == null ? '' : row[i]).trim(); });
             return obj;
           });
-          glParseObjects(headers, dataRows);
+          glParseObjects(headers, dataRows, sessionAtStart);
         } catch(err) {
           glShowStatus('Could not read Excel file: ' + err.message, '#C0392B', '#fdf0ef');
         }
@@ -1849,7 +1860,7 @@ window.addEventListener('message', function(e) {
     return h.replace(/\s+/g,'_');
   }
 
-  function glParseCSV(text) {
+  function glParseCSV(text, session) {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) { glShowStatus('File is empty or has no data rows.', '#C0392B', '#fdf0ef'); return; }
     const rawHeaders = glSplitCSVRow(lines[0]);
@@ -1860,11 +1871,12 @@ window.addEventListener('message', function(e) {
       headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
       return obj;
     });
-    glParseObjects(headers, dataRows);
+    glParseObjects(headers, dataRows, sessionAtStart);
   }
 
   // Shared row processor used by both CSV and Excel paths
-  function glParseObjects(headers, dataRows) {
+  function glParseObjects(headers, dataRows, session) {
+    if (session !== undefined && session !== _importSession) return;
     // Require date, product_name, category — value_lost is optional (defaults to 0)
     const need = ['date','product_name','category'];
     const missing = need.filter(n => !headers.includes(n));
