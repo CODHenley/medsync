@@ -6,9 +6,9 @@ on:
       start_date:
         description: "Start date (YYYY-MM-DD)"
         required: false
-        default: "2026-01-01"
+        default: "2026-05-01"
       end_date:
-        description: "End date (YYYY-MM-DD)"
+        description: "End date (2026-07-28)"
         required: false
         default: "2026-04-30"
       location:
