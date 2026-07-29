@@ -181,6 +181,13 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
                 "pulled_at":              datetime.now(timezone.utc).isoformat(),
             })
 
+        # Deduplicate within the batch — same conflict key causes HTTP 500
+        seen = {}
+        for r in records:
+            key = (r["vetspire_product_id"], r["dispensed_at"], r["location_id"])
+            seen[key] = r  # last one wins
+        records = list(seen.values())
+
         if dry_run:
             print(f"→ [DRY RUN] would upsert {len(records)}")
             total_upserted += len(records)
