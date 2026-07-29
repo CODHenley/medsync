@@ -1712,14 +1712,16 @@ window.addEventListener('message', function(e) {
 
     <!-- Expected columns reference -->
     <div style="background:#F5F4FB;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:11px;color:#555;line-height:1.7;">
-      <strong style="color:#1A1D2E;">Expected columns</strong> (header row required, order doesn't matter):<br>
-      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">date</code> &nbsp;
-      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">product_name</code> &nbsp;
-      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">category</code> &nbsp;
-      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">value_lost</code> &nbsp;
-      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">location</code> &nbsp;
-      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">notes</code> (optional)<br>
-      <span style="color:#aaa;">• date format: MM/DD/YYYY or YYYY-MM-DD &nbsp;•&nbsp; value_lost: dollar amount, no $ sign &nbsp;•&nbsp; Excel files (.xlsx) are supported</span>
+      <strong style="color:#1A1D2E;">Accepted formats:</strong><br>
+      • <strong>Microsoft Forms export</strong> — upload directly from your Forms response spreadsheet. Columns are auto-detected.<br>
+      • <strong>Custom CSV/XLSX</strong> — include columns:
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">date</code>
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">product_name</code>
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">category</code>
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">value_lost</code> (optional)
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">location</code>
+      <code style="background:#ede9f7;padding:1px 4px;border-radius:3px;">notes</code><br>
+      <span style="color:#aaa;">• value_lost defaults to $0 if blank &nbsp;•&nbsp; Excel files (.xlsx) are supported</span>
     </div>
 
     <!-- Drop zone / file picker -->
@@ -1826,13 +1828,29 @@ window.addEventListener('message', function(e) {
     }
   };
 
+  // Normalize a Microsoft Forms long header to a short key
+  function glNormHeader(h) {
+    h = h.trim().toLowerCase();
+    if (/completion.time/.test(h)) return 'date';
+    if (/location.of.goods.lost/.test(h)) return 'location';
+    if (/type.of.loss/.test(h)) return 'category';
+    if (/name.of.product.lost/.test(h)) return 'product_name';
+    if (/how.much.product.has.been.lost/.test(h)) return 'qty';
+    if (/unit.price/.test(h)) return 'unit_price';
+    if (/total.loss/.test(h)) return 'value_lost';
+    return h.replace(/\s+/g,'_');
+  }
+
   function glParseCSV(text) {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) { glShowStatus('File is empty or has no data rows.', '#C0392B', '#fdf0ef'); return; }
 
     // Parse header (handle quoted headers)
-    const headers = glSplitCSVRow(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g,'_'));
-    const need = ['date','product_name','category','value_lost'];
+    const rawHeaders = glSplitCSVRow(lines[0]);
+    const headers = rawHeaders.map(h => glNormHeader(h));
+
+    // Require date, product_name, category — value_lost is optional (defaults to 0)
+    const need = ['date','product_name','category'];
     const missing = need.filter(n => !headers.includes(n));
     if (missing.length) {
       glShowStatus('Missing required columns: ' + missing.join(', '), '#C0392B', '#fdf0ef');
@@ -1848,7 +1866,10 @@ window.addEventListener('message', function(e) {
       const obj = {};
       headers.forEach((h, idx) => { obj[h] = (cols[idx] || '').trim(); });
 
-      // Parse date
+      // Skip Microsoft Forms metadata rows (start time row, summary rows)
+      if (!obj.product_name && !obj.category) continue;
+
+      // Parse date — also handle ISO datetime strings (e.g. "2026-01-06 12:59:30")
       const rawDate = obj.date || '';
       let isoDate = null;
       if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
@@ -1860,13 +1881,16 @@ window.addEventListener('message', function(e) {
       }
       if (!isoDate) { errors.push('Row ' + (i+1) + ': invalid date "' + rawDate + '"'); continue; }
 
-      // Parse value
-      const val = parseFloat((obj.value_lost || '').replace(/[$,]/g, ''));
+      // Parse value — if blank or missing, default to 0
+      const rawVal = (obj.value_lost || '').replace(/[$,]/g, '').trim();
+      const val = rawVal === '' ? 0 : parseFloat(rawVal);
       if (isNaN(val)) { errors.push('Row ' + (i+1) + ': invalid value_lost "' + obj.value_lost + '"'); continue; }
 
-      // Resolve location
-      const locRaw = (obj.location || '').toLowerCase().trim();
-      const locId = LOC_MAP[locRaw] || null;
+      // Resolve location — check both 'location' and 'location_id' columns
+      const locRaw = (obj.location || obj.location_id || '').toLowerCase().trim();
+      // Strip "Scout Veterinary Care – " prefix if present (Forms sometimes includes full name)
+      const locShort = locRaw.replace(/scout\s+veterinary\s+care\s*[–-]\s*/i, '').trim();
+      const locId = LOC_MAP[locShort] || LOC_MAP[locRaw] || null;
 
       rows.push({
         created_at: isoDate + 'T12:00:00',
