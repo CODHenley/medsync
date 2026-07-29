@@ -167,7 +167,7 @@ tr:last-child td{border-bottom:none;}
         <option value="24356">West Loop</option>
         <option value="28253" selected>Wheaton</option>
       </select>
-      <select id="sel-period" onchange="reload()">
+      <select id="sel-period" onchange="onPeriodChange()">
         <optgroup label="Current">
           <option value="today">Today</option>
           <option value="wtd">This week</option>
@@ -182,7 +182,15 @@ tr:last-child td{border-bottom:none;}
           <option value="lq">Last quarter</option>
           <option value="ly">Last year</option>
         </optgroup>
+        <optgroup label="Custom">
+          <option value="custom">Custom range…</option>
+        </optgroup>
       </select>
+      <span id="custom-range-wrap" style="display:none;align-items:center;gap:4px;">
+        <input type="date" id="custom-from" style="padding:5px 8px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);height:30px;outline:none;" onchange="onCustomDateChange()">
+        <span style="color:var(--mist);font-size:12px;">→</span>
+        <input type="date" id="custom-to" style="padding:5px 8px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);height:30px;outline:none;" onchange="onCustomDateChange()">
+      </span>
       <select id="sel-view" onchange="switchView(this.value)">
         <option value="product">By product</option>
         <option value="purchases">Purchase History</option>
@@ -475,6 +483,31 @@ let purchDir      = -1;
 let currentView   = 'product';
 
 // ── Date range helper ─────────────────────────────────────────────
+function onPeriodChange() {
+  const sel = document.getElementById('sel-period').value;
+  const wrap = document.getElementById('custom-range-wrap');
+  if (sel === 'custom') {
+    wrap.style.display = 'flex';
+    // Default custom range to current month if not already set
+    const now = new Date();
+    const fromEl = document.getElementById('custom-from');
+    const toEl   = document.getElementById('custom-to');
+    if (!fromEl.value) fromEl.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`;
+    if (!toEl.value)   toEl.value   = iso(now);
+    // Only reload if both dates are set
+    if (fromEl.value && toEl.value) reload();
+  } else {
+    wrap.style.display = 'none';
+    reload();
+  }
+}
+
+function onCustomDateChange() {
+  const from = document.getElementById('custom-from').value;
+  const to   = document.getElementById('custom-to').value;
+  if (from && to && from <= to) reload();
+}
+
 function getDateRange() {
   const sel = document.getElementById('sel-period').value;
   const now = new Date();
@@ -484,7 +517,11 @@ function getDateRange() {
   const end = iso(now);
   let start;
 
-  if (sel === 'ytd') {
+  if (sel === 'custom') {
+    const from = document.getElementById('custom-from').value;
+    const to   = document.getElementById('custom-to').value;
+    return { start: from || iso(now), end: to || iso(now) };
+  } else if (sel === 'ytd') {
     start = `${y}-01-01`;
   } else if (sel === 'today') {
     start = end;
