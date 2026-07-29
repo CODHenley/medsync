@@ -1287,15 +1287,42 @@ function setLoading(on) {
 // ── CSV Export ────────────────────────────────────────────────────
 function exportCSV() {
   if (!ALL_PRODUCTS.length) { showToast('No data to export'); return; }
+
+  // Consolidate rows by product name across all locations
+  const byProduct = {};
+  ALL_PRODUCTS.forEach(p => {
+    const key = p.product_name;
+    if (!byProduct[key]) {
+      byProduct[key] = { product_name: p.product_name, qty: 0, cogs: 0, revenue: 0, unit_cost: p.unit_cost, last_dispensed: p.last_dispensed_at };
+    }
+    const g = byProduct[key];
+    g.qty     += p.total_qty_dispensed;
+    g.cogs    += p.true_cogs;
+    g.revenue += p.total_revenue;
+    if (p.last_dispensed_at && (!g.last_dispensed || p.last_dispensed_at > g.last_dispensed))
+      g.last_dispensed = p.last_dispensed_at;
+  });
+
+  const consolidated = Object.values(byProduct).sort((a, b) => b.cogs - a.cogs);
+  const totalQty  = consolidated.reduce((s, p) => s + p.qty, 0);
+  const totalCOGS = consolidated.reduce((s, p) => s + p.cogs, 0);
+  const totalRev  = consolidated.reduce((s, p) => s + p.revenue, 0);
+  const totalMargin = totalRev > 0 ? ((1 - totalCOGS / totalRev) * 100).toFixed(1) + '%' : '';
+
   const rows = [
-    ['Product', 'Location', 'Qty Dispensed', 'Unit Cost', 'True COGS', 'Revenue', 'Margin %', 'Last Dispensed'],
-    ...ALL_PRODUCTS.map(p => [
-      p.product_name, p.location_name, p.total_qty_dispensed.toFixed(2),
-      p.unit_cost ? p.unit_cost.toFixed(4) : '',
-      p.true_cogs.toFixed(2), p.total_revenue.toFixed(2),
-      p.pct !== null ? p.pct + '%' : '',
-      p.last_dispensed_at ? p.last_dispensed_at.slice(0,10) : ''
-    ])
+    ['Product', 'Qty Dispensed', 'Unit Cost', 'True COGS', 'Total Revenue', 'Margin %', 'Last Dispensed'],
+    ...consolidated.map(p => {
+      const margin = p.revenue > 0 ? ((1 - p.cogs / p.revenue) * 100).toFixed(1) + '%' : '';
+      return [
+        p.product_name, p.qty.toFixed(2),
+        p.unit_cost ? p.unit_cost.toFixed(4) : '',
+        p.cogs.toFixed(2), p.revenue.toFixed(2),
+        margin,
+        p.last_dispensed ? p.last_dispensed.slice(0,10) : ''
+      ];
+    }),
+    [],
+    ['TOTALS', totalQty.toFixed(2), '', totalCOGS.toFixed(2), totalRev.toFixed(2), totalMargin, '']
   ];
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
