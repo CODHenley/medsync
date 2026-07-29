@@ -1809,15 +1809,23 @@ window.addEventListener('message', function(e) {
       reader.onload = e => glParseCSV(e.target.result);
       reader.readAsText(file);
     } else if (ext === 'xlsx' || ext === 'xls') {
-      glShowStatus('Excel detected — converting via SheetJS…', '#555', '#F5F4FB');
+      glShowStatus('Excel detected — reading…', '#555', '#F5F4FB');
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          // SheetJS loaded inline
           const wb = XLSX.read(e.target.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const csv = XLSX.utils.sheet_to_csv(ws);
-          glParseCSV(csv);
+          // Use sheet_to_json to avoid CSV newline-in-header issues with Forms exports
+          const jsonRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          if (!jsonRows.length) { glShowStatus('File is empty.', '#C0392B', '#fdf0ef'); return; }
+          const rawHeaders = jsonRows[0].map(h => String(h == null ? '' : h));
+          const headers = rawHeaders.map(h => glNormHeader(h));
+          const dataRows = jsonRows.slice(1).map(row => {
+            const obj = {};
+            headers.forEach((h, i) => { obj[h] = String(row[i] == null ? '' : row[i]).trim(); });
+            return obj;
+          });
+          glParseObjects(headers, dataRows);
         } catch(err) {
           glShowStatus('Could not read Excel file: ' + err.message, '#C0392B', '#fdf0ef');
         }
@@ -1844,11 +1852,19 @@ window.addEventListener('message', function(e) {
   function glParseCSV(text) {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) { glShowStatus('File is empty or has no data rows.', '#C0392B', '#fdf0ef'); return; }
-
-    // Parse header (handle quoted headers)
     const rawHeaders = glSplitCSVRow(lines[0]);
     const headers = rawHeaders.map(h => glNormHeader(h));
+    const dataRows = lines.slice(1).filter(l => l.trim()).map(line => {
+      const cols = glSplitCSVRow(line);
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
+      return obj;
+    });
+    glParseObjects(headers, dataRows);
+  }
 
+  // Shared row processor used by both CSV and Excel paths
+  function glParseObjects(headers, dataRows) {
     // Require date, product_name, category — value_lost is optional (defaults to 0)
     const need = ['date','product_name','category'];
     const missing = need.filter(n => !headers.includes(n));
@@ -1859,36 +1875,34 @@ window.addEventListener('message', function(e) {
 
     const rows = [];
     const errors = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      const cols = glSplitCSVRow(line);
-      const obj = {};
-      headers.forEach((h, idx) => { obj[h] = (cols[idx] || '').trim(); });
-
+    dataRows.forEach((obj, idx) => {
       // Skip Microsoft Forms metadata rows (start time row, summary rows)
-      if (!obj.product_name && !obj.category) continue;
+      if (!obj.product_name && !obj.category) return;
 
-      // Parse date — also handle ISO datetime strings (e.g. "2026-01-06 12:59:30")
-      const rawDate = obj.date || '';
+      // Parse date — handles ISO datetime (e.g. "2026-01-06 12:59:30"), Excel serial numbers, MM/DD/YYYY
+      let rawDate = obj.date || '';
       let isoDate = null;
-      if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
-        isoDate = rawDate.slice(0,10);
+      // Excel date serial number (SheetJS may return a number as string like "46027")
+      if (/^\d{5}$/.test(rawDate.trim())) {
+        const serial = parseInt(rawDate);
+        const d = new Date(Date.UTC(1899, 11, 30) + serial * 864e5);
+        isoDate = d.toISOString().slice(0, 10);
+      } else if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+        isoDate = rawDate.slice(0, 10);
       } else if (/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(rawDate)) {
-        const [m,d,y] = rawDate.split('/');
+        const [m, d, y] = rawDate.split('/');
         const year = y.length === 2 ? '20' + y : y;
         isoDate = year + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
       }
-      if (!isoDate) { errors.push('Row ' + (i+1) + ': invalid date "' + rawDate + '"'); continue; }
+      if (!isoDate) { errors.push('Row ' + (idx+2) + ': invalid date "' + rawDate + '"'); return; }
 
       // Parse value — if blank or missing, default to 0
       const rawVal = (obj.value_lost || '').replace(/[$,]/g, '').trim();
       const val = rawVal === '' ? 0 : parseFloat(rawVal);
-      if (isNaN(val)) { errors.push('Row ' + (i+1) + ': invalid value_lost "' + obj.value_lost + '"'); continue; }
+      if (isNaN(val)) { errors.push('Row ' + (idx+2) + ': invalid value_lost "' + obj.value_lost + '"'); return; }
 
-      // Resolve location — check both 'location' and 'location_id' columns
+      // Resolve location
       const locRaw = (obj.location || obj.location_id || '').toLowerCase().trim();
-      // Strip "Scout Veterinary Care – " prefix if present (Forms sometimes includes full name)
       const locShort = locRaw.replace(/scout\s+veterinary\s+care\s*[–-]\s*/i, '').trim();
       const locId = LOC_MAP[locShort] || LOC_MAP[locRaw] || null;
 
@@ -1900,7 +1914,7 @@ window.addEventListener('message', function(e) {
         location_id: locId,
         notes: obj.notes || null,
       });
-    }
+    });
 
     if (rows.length === 0) {
       glShowStatus('No valid rows found.' + (errors.length ? ' Errors: ' + errors.slice(0,3).join('; ') : ''), '#C0392B', '#fdf0ef');
