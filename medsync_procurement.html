@@ -602,6 +602,19 @@ async function query(table, params) {
   return res.json();
 }
 
+// Paginated fetch — loops until all rows are returned
+async function queryAll(table, baseParams, pageSize = 5000) {
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const page = await query(table, `${baseParams}&limit=${pageSize}&offset=${offset}`);
+    all.push(...page);
+    if (page.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
 // ── Reload all data ───────────────────────────────────────────────
 async function reload() {
   const { start, end } = getDateRange();
@@ -610,13 +623,13 @@ async function reload() {
   setLoading(true);
 
   try {
-    // Load dispensed_items aggregated by product
-    const raw = await query('dispensed_items',
+    // Load dispensed_items aggregated by product (paginated — no row cap)
+    const raw = await queryAll('dispensed_items',
       `select=vetspire_product_id,product_name,sku,quantity,unit_price,unit_cost,returned,refunded,dispensed_at,location_id,location_name` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
       `&returned=eq.false&refunded=eq.false` +
       locFilter +
-      `&order=dispensed_at.desc&limit=5000`
+      `&order=dispensed_at.desc`
     );
 
     // Aggregate by product + location
@@ -684,13 +697,13 @@ async function reload() {
       }
     } catch(e) { /* lots not available */ }
 
-    // Load daily COGS via view
-    const dailyRaw = await query('dispensed_items',
+    // Load daily COGS (paginated — no row cap)
+    const dailyRaw = await queryAll('dispensed_items',
       `select=dispensed_at,location_id,location_name,vetspire_product_id,product_name,quantity,unit_cost,unit_price` +
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
       `&returned=eq.false&refunded=eq.false` +
       locFilter +
-      `&order=dispensed_at.desc&limit=5000`
+      `&order=dispensed_at.desc`
     );
 
     // Aggregate by day + location
