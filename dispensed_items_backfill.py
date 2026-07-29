@@ -37,6 +37,7 @@ USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     usageReport(locationIds:$lids, startDate:$s, endDate:$e) {
         orderItems {
+            id
             productId
             product { id name sku unitCost }
             quantity
@@ -85,9 +86,12 @@ def gql(token, query, variables=None):
 def supa_upsert(records):
     if not records:
         return 201
+    # Use order_item_id+location_id as conflict key when all records have it, else fall back
+    has_ids = all(r.get("order_item_id") for r in records)
+    conflict = "order_item_id,location_id" if has_ids else "vetspire_product_id,dispensed_at,location_id"
     body = json.dumps(records).encode()
     req = urllib.request.Request(
-        SUPA_URL + "/rest/v1/dispensed_items?on_conflict=vetspire_product_id,dispensed_at,location_id",
+        SUPA_URL + f"/rest/v1/dispensed_items?on_conflict={conflict}",
         data=body,
         headers={
             "Content-Type":  "application/json",
@@ -159,7 +163,10 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
             except (ValueError, TypeError):
                 pass
 
+            order_item_id = item.get("id")
+
             records.append({
+                "order_item_id":          str(order_item_id) if order_item_id else None,
                 "vetspire_product_id":    str(pid),
                 "product_name":           prod.get("name") or "",
                 "sku":                    prod.get("sku") or None,

@@ -35,6 +35,7 @@ USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     usageReport(locationIds:$lids, startDate:$s, endDate:$e) {
         orderItems {
+            id
             productId
             product { id name sku unitCost }
             quantity
@@ -69,9 +70,11 @@ def gql(token, query, variables=None):
 def supa_upsert(records):
     if not records:
         return 0
+    has_ids = all(r.get("order_item_id") for r in records)
+    conflict = "order_item_id,location_id" if has_ids else "vetspire_product_id,dispensed_at,location_id"
     payload = json.dumps(records).encode()
     req = urllib.request.Request(
-        SUPA_URL + "/rest/v1/dispensed_items",
+        SUPA_URL + f"/rest/v1/dispensed_items?on_conflict={conflict}",
         data=payload,
         headers={
             "Content-Type":  "application/json",
@@ -152,7 +155,9 @@ def main():
 
             unit_cost = prod.get("unitCost")
 
+            order_item_id = item.get("id")
             records.append({
+                "order_item_id":          str(order_item_id) if order_item_id else None,
                 "vetspire_product_id":    pid,
                 "product_name":           prod.get("name"),
                 "sku":                    sku,
