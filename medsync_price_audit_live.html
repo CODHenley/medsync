@@ -247,7 +247,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
     <div id="csv-drop-zone" class="drop-zone" onclick="document.getElementById('csv-upload').click()">
       <div class="drop-zone-icon">📂</div>
       <h3>Drop your Vetcove CSV here</h3>
-      <p>Export your order history from Vetcove as a CSV. MedSync will match each item, show price drift, and let you save Supplier SKUs.</p>
+      <p>Upload a <strong>line-item CSV</strong> from Vetcove — one row per product with columns like <em>Product Name</em>, <em>Unit Price</em>, and <em>Qty</em>. <strong>Not</strong> the order summary export (which shows one row per order). In Vetcove: open an order → expand line items → Export CSV, or use Reports → Products Ordered.</p>
       <div class="drop-zone-or">or</div>
       <label class="upload-btn" for="csv-upload" style="display:inline-flex;" onclick="event.stopPropagation()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -1396,6 +1396,10 @@ async function handleInvoiceUpload(input) {
 
     if (!_compRows.length) {
       const sampleName = vcItems[0]?.name || '?';
+      const isOrderSummary = /^(hospital|vetcove.?id|order.?#|purchaser|supplier|subtotal|receipt)/i.test(sampleName) || vcItems.length <= 5;
+      if (isOrderSummary) {
+        throw new Error(`This looks like a Vetcove order summary (one row per order). Price Audit needs a line-item export — one row per product. In Vetcove: open an order → expand items → Export CSV.`);
+      }
       throw new Error(`Loaded ${ms.length} catalog products and ${vcItems.length} invoice items but 0 matched. Sample Vetcove name: "${sampleName}" — product names may not overlap with MedSync catalog.`);
     }
 
