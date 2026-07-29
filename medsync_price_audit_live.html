@@ -648,31 +648,48 @@ function aggregateVetcove(rows) {
   // Auto-detect columns when none of our known aliases match —
   // find whichever column has the most text content (name) and
   // whichever has dollar-style numbers (price).
-  const knownNameAliases = ['Name','name','Product Name','product_name','Item Name','item_name','Description','description','Product','product','Item Description','item_description','Product Description','product_description'];
-  const knownPriceAliases = ['Unit Price','unit_price','Price','price','Cost','cost','Cost per Dose','cost_per_dose','List Price','list_price','Extended Price','extended_price','Price Per Unit','price_per_unit','Unit Cost','unit_cost'];
+  // All known name/price column aliases (Vetcove invoice + order history formats)
+  const knownNameAliases = ['Name','name','Product Name','product_name','Item Name','item_name',
+    'Description','description','Product','product','Item','item',
+    'Item Description','item_description','Product Description','product_description',
+    'Product Title','product_title','Brand Name','brand_name'];
+  const knownPriceAliases = ['Unit Price','unit_price','Price','price','Cost','cost',
+    'Cost per Dose','cost_per_dose','List Price','list_price','Extended Price','extended_price',
+    'Price Per Unit','price_per_unit','Unit Cost','unit_cost','Price/Unit','price/unit'];
+  // Columns that are never product names — skip in auto-detect
+  const neverNameCols = /^(location|facility|ship.to|vendor|supplier|distributor|order.?(number|#|date|id)|date|status|address|city|state|zip|account|invoice|region|notes?|comment)/i;
+
   let autoNameCol = null, autoPriceCol = null;
   if (rows.length > 1 && !detectedHeaders.some(h => knownNameAliases.includes(h))) {
     // Score each column: text length sum → name; numeric hit rate → price
-    const scores = detectedHeaders.map(h => {
-      let textLen = 0, numHits = 0;
-      rows.slice(0, 20).forEach(r => {
-        const v = (r[h] || '').trim();
-        textLen += v.replace(/[$\d.,]/g,'').length;
-        if (/^\$?[\d,]+\.\d{2}$/.test(v)) numHits++;
+    const scores = detectedHeaders
+      .filter(h => !neverNameCols.test(h))
+      .map(h => {
+        let textLen = 0, numHits = 0;
+        rows.slice(0, 20).forEach(r => {
+          const v = (r[h] || '').trim();
+          textLen += v.replace(/[$\d.,]/g,'').length;
+          if (/^\$?[\d,]+\.\d{2}$/.test(v)) numHits++;
+        });
+        return { h, textLen, numHits };
       });
-      return { h, textLen, numHits };
-    });
-    const nameCol = scores.sort((a,b) => b.textLen - a.textLen)[0];
-    const priceCol = scores.sort((a,b) => b.numHits - a.numHits)[0];
-    if (nameCol && nameCol.textLen > 0) autoNameCol = nameCol.h;
+    const nameCol  = [...scores].sort((a,b) => b.textLen - a.textLen)[0];
+    const priceCol = [...scores].sort((a,b) => b.numHits - a.numHits)[0];
+    if (nameCol  && nameCol.textLen  > 0) autoNameCol  = nameCol.h;
     if (priceCol && priceCol.numHits > 0 && priceCol.h !== autoNameCol) autoPriceCol = priceCol.h;
     if (autoNameCol) console.log('[MedSync] Auto-detected name col:', autoNameCol, '| price col:', autoPriceCol);
   }
 
   const map = new Map();
   rows.forEach(r => {
-    const name    = col(r, 'Name', 'name', 'Product Name', 'product_name', 'Item Name', 'item_name', 'Description', 'description', 'Product', 'product', 'Item Description', 'item_description', 'Product Description', 'product_description') || (autoNameCol ? (r[autoNameCol]||'').trim() : '');
-    const mfrNum  = col(r, 'Manufacturer Number', 'manufacturer_number', 'Manufacturer Item #', 'Mfr #', 'mfr_number', 'NDC', 'ndc', 'Item #', 'Item Number', 'Catalog #', 'catalog_number', 'SKU', 'sku');
+    const name    = col(r, 'Name','name','Product Name','product_name','Item Name','item_name',
+                        'Description','description','Product','product','Item','item',
+                        'Item Description','item_description','Product Description','product_description',
+                        'Product Title','product_title','Brand Name','brand_name')
+                    || (autoNameCol ? (r[autoNameCol]||'').trim() : '');
+    const mfrNum  = col(r, 'Manufacturer Number','manufacturer_number','Manufacturer Item #',
+                        'Mfr #','mfr_number','NDC','ndc','Item #','Item Number',
+                        'Catalog #','catalog_number','SKU','sku','Supplier Item #','Supplier SKU');
     const key     = (mfrNum || name).toLowerCase();
     if (!key) return; // skip blank rows
 
