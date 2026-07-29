@@ -909,6 +909,26 @@ function sortBy(col) {
   renderProductTable();
 }
 
+function consolidateByProduct(rows) {
+  const map = {};
+  rows.forEach(p => {
+    const key = p.product_name;
+    if (!map[key]) {
+      map[key] = { ...p, _locs: new Set([p.location_name]) };
+    } else {
+      const g = map[key];
+      g._locs.add(p.location_name);
+      g.total_qty_dispensed += p.total_qty_dispensed;
+      g.true_cogs           += p.true_cogs;
+      g.total_revenue       += p.total_revenue;
+      g.pct = g.total_revenue > 0 ? Math.round((1 - g.true_cogs / g.total_revenue) * 100) : null;
+      if (p.last_dispensed_at && (!g.last_dispensed_at || p.last_dispensed_at > g.last_dispensed_at))
+        g.last_dispensed_at = p.last_dispensed_at;
+    }
+  });
+  return Object.values(map).map(p => ({ ...p, location_name: [...p._locs].join(', ') }));
+}
+
 function renderProductTable() {
   let data = [...ALL_PRODUCTS];
 
@@ -920,6 +940,9 @@ function renderProductTable() {
   } else if (pFilter === 'cost') {
     data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
   }
+
+  // Consolidate across locations
+  data = consolidateByProduct(data);
 
   // Sort
   data.sort((a, b) => {
