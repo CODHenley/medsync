@@ -1787,6 +1787,15 @@ window.addEventListener('message', function(e) {
   };
 
   window.glCloseImport = function() {
+    _parsedRows = [];
+    const preview = document.getElementById('gl-import-preview');
+    const status  = document.getElementById('gl-import-status');
+    const submit  = document.getElementById('gl-import-submit');
+    const fileIn  = document.getElementById('gl-file-input');
+    if (preview) preview.style.display = 'none';
+    if (status)  { status.style.display = 'none'; status.textContent = ''; }
+    if (submit)  { submit.disabled = true; submit.style.opacity = '.45'; }
+    if (fileIn)  fileIn.value = '';
     document.getElementById('gl-import-modal').style.display = 'none';
   };
 
