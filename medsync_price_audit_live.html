@@ -648,8 +648,8 @@ function aggregateVetcove(rows) {
   // Auto-detect columns when none of our known aliases match —
   // find whichever column has the most text content (name) and
   // whichever has dollar-style numbers (price).
-  const knownNameAliases = ['Name','name','Product Name','product_name','Item Name','item_name','Description','description','Product','product'];
-  const knownPriceAliases = ['Unit Price','unit_price','Price','price','Cost','cost','Cost per Dose','cost_per_dose','List Price','list_price','Extended Price','extended_price'];
+  const knownNameAliases = ['Name','name','Product Name','product_name','Item Name','item_name','Description','description','Product','product','Item Description','item_description','Product Description','product_description'];
+  const knownPriceAliases = ['Unit Price','unit_price','Price','price','Cost','cost','Cost per Dose','cost_per_dose','List Price','list_price','Extended Price','extended_price','Price Per Unit','price_per_unit','Unit Cost','unit_cost'];
   let autoNameCol = null, autoPriceCol = null;
   if (rows.length > 1 && !detectedHeaders.some(h => knownNameAliases.includes(h))) {
     // Score each column: text length sum → name; numeric hit rate → price
@@ -671,14 +671,14 @@ function aggregateVetcove(rows) {
 
   const map = new Map();
   rows.forEach(r => {
-    const name    = col(r, 'Name', 'name', 'Product Name', 'product_name', 'Item Name', 'item_name', 'Description', 'description', 'Product', 'product') || (autoNameCol ? (r[autoNameCol]||'').trim() : '');
-    const mfrNum  = col(r, 'Manufacturer Number', 'manufacturer_number', 'Mfr #', 'mfr_number', 'NDC', 'ndc', 'Item #', 'Item Number', 'SKU', 'sku');
+    const name    = col(r, 'Name', 'name', 'Product Name', 'product_name', 'Item Name', 'item_name', 'Description', 'description', 'Product', 'product', 'Item Description', 'item_description', 'Product Description', 'product_description') || (autoNameCol ? (r[autoNameCol]||'').trim() : '');
+    const mfrNum  = col(r, 'Manufacturer Number', 'manufacturer_number', 'Manufacturer Item #', 'Mfr #', 'mfr_number', 'NDC', 'ndc', 'Item #', 'Item Number', 'Catalog #', 'catalog_number', 'SKU', 'sku');
     const key     = (mfrNum || name).toLowerCase();
     if (!key) return; // skip blank rows
 
-    const pkgPrice    = parseFloat((col(r, 'Unit Price', 'unit_price', 'Price', 'price', 'Cost', 'cost', 'Extended Price', 'extended_price', 'List Price', 'list_price') || (autoPriceCol ? r[autoPriceCol] : '') || '').replace(/[$,]/g,'')) || 0;
+    const pkgPrice    = parseFloat((col(r, 'Unit Price', 'unit_price', 'Price', 'price', 'Cost', 'cost', 'Extended Price', 'extended_price', 'List Price', 'list_price', 'Price Per Unit', 'price_per_unit', 'Total Price', 'total_price') || (autoPriceCol ? r[autoPriceCol] : '') || '').replace(/[$,]/g,'')) || 0;
     const costPerDose = parseFloat(col(r, 'Cost per Dose', 'cost_per_dose', 'Cost Per Dose', 'Unit Cost', 'unit_cost').replace(/[$,]/g,'')) || 0;
-    const units       = parseFloat(col(r, 'Units', 'units', 'Qty', 'qty', 'Quantity', 'quantity', 'Count', 'count').replace(/,/g,'')) || 0;
+    const units       = parseFloat(col(r, 'Units', 'units', 'Qty', 'qty', 'Qty Ordered', 'qty_ordered', 'Quantity', 'quantity', 'Quantity Ordered', 'Count', 'count').replace(/,/g,'')) || 0;
     const unitMeas    = col(r, 'Unit Measurement', 'unit_measurement', 'UOM', 'uom', 'Unit', 'unit').trim();
 
     // Per-dose price: prefer explicit Cost per Dose; fall back to pkg ÷ units
@@ -1359,7 +1359,10 @@ async function handleInvoiceUpload(input) {
     if (!vcRows.length) throw new Error('File appears empty or no recognizable data found');
 
     const vcItems = aggregateVetcove(vcRows);
-    if (!vcItems.length) throw new Error(`CSV parsed ${vcRows.length} rows but found 0 products. Check that the file is a Vetcove line-item export with "Name" and price columns.`);
+    if (!vcItems.length) {
+      const cols = vcRows.length ? Object.keys(vcRows[0]).join(', ') : 'none';
+      throw new Error(`CSV parsed ${vcRows.length} rows but found 0 products. Columns found: [${cols}]`);
+    }
 
     _msProducts = null; // force re-fetch so updated unit_costs are reflected
     const ms = await loadMSProducts();
@@ -1375,7 +1378,8 @@ async function handleInvoiceUpload(input) {
     document.getElementById('comp-notice-mismatch').style.display = unknowable > 0 ? '' : 'none';
 
     if (!_compRows.length) {
-      throw new Error(`Loaded ${ms.length} catalog products and ${vcItems.length} invoice items but 0 matched. Names may not overlap — try a different Vetcove export.`);
+      const sampleName = vcItems[0]?.name || '?';
+      throw new Error(`Loaded ${ms.length} catalog products and ${vcItems.length} invoice items but 0 matched. Sample Vetcove name: "${sampleName}" — product names may not overlap with MedSync catalog.`);
     }
 
     document.getElementById('comp-content').style.display = '';
