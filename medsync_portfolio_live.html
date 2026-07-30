@@ -4437,14 +4437,19 @@ let _readSet        = new Set();   // message IDs this user has read
 let _staffMessages  = [];
 let _dmMessages     = {};          // channel → messages[]
 
-function _msgMe() {
+function _msgSession() {
   try { return JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; }
+}
+function _msgMe() {
+  const s = _msgSession();
+  // Supabase session stores user under .user; fall back to top-level for legacy shape
+  return s.user || s;
 }
 function _msgMeUser() {
   try { return JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) { return {}; }
 }
 function _msgHeaders() {
-  const tok = _msgMe().access_token || _MSG_KEY;
+  const tok = _msgSession().access_token || _MSG_KEY;
   return { 'apikey': _MSG_KEY, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' };
 }
 function _msgInitials(name) {
