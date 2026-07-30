@@ -2268,7 +2268,8 @@ async function loadLiveCOGs(loc, from, to) {
   const vidFilter  = targetVids.map(v  => `location_id.eq.${v}`).join(',');
   const uuidFilter = targetUUIDs.map(u => `location_id.eq.${u}`).join(',');
   const _s = (function(){ try { return JSON.parse(localStorage.getItem('medsync_settings') || '{}'); } catch(e) { return {}; } })();
-  const COGS_MAX = parseFloat(_s.cogs_max) || 7.0;
+  const COGS_MAX = parseFloat(_s.cogs_max) || 10.0;
+  const COGS_MIN = parseFloat(_s.cogs_min) || 8.0;
   const H2 = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
   // Ensure plain date strings (YYYY-MM-DD) for DATE column comparisons
   const fromD = from.split('T')[0];
@@ -2300,7 +2301,7 @@ async function loadLiveCOGs(loc, from, to) {
       totalRev      += rev;
       totalSpend    += spend;
       const pct   = rev > 0 ? (spend / rev) * 100 : 0;
-      const color = pct === 0 ? '#aaa' : pct <= COGS_MAX ? 'var(--green)' : pct <= COGS_MAX + 3 ? 'var(--amber)' : 'var(--red)';
+      const color = pct === 0 ? '#aaa' : pct > COGS_MAX ? 'var(--red)' : pct >= COGS_MIN ? 'var(--amber)' : 'var(--green)';
       const w     = pct > 0 ? Math.min(Math.round((pct / 15) * 100), 100) : 0;
       const label = pct > 0 ? pct.toFixed(1) + '%' : 'No data';
       const revLabel = rev > 0 ? ' · $' + (rev/1000).toFixed(0) + 'K total rev' : '';
@@ -2342,8 +2343,9 @@ function updateHeroCOGs(portCogs, totalRev, totalSpend) {
   if (portCogs === null) { valEl.textContent = '—'; if (subEl) subEl.textContent = 'No data'; return; }
   valEl.textContent = portCogs.toFixed(1) + '%';
   const _cs = (function(){ try { return JSON.parse(localStorage.getItem('medsync_settings') || '{}'); } catch(e) { return {}; } })();
-  const _cogsMax = parseFloat(_cs.cogs_max) || 7.0;
-  const color = portCogs <= _cogsMax ? '#6FE0A0' : portCogs <= _cogsMax + 2 ? '#E8C76A' : '#FF8A80';
+  const _cogsMax = parseFloat(_cs.cogs_max) || 10.0;
+  const _cogsMin2 = parseFloat(_cs.cogs_min) || 8.0;
+  const color = portCogs > _cogsMax ? '#FF8A80' : portCogs >= _cogsMin2 ? '#E8C76A' : '#6FE0A0';
   valEl.style.color = color;
   if (subEl) {
     const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);

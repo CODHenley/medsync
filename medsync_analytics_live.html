@@ -1186,7 +1186,10 @@ async function renderCOGSBars(glRows, loc, _unused) {
     const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
     const kcogsEl  = document.getElementById('k-cogs');
     const ovCogsEl = document.getElementById('ov-cogs');
-    const cogsColor = portCogs === null ? 'cm' : portCogs > 9 ? 'cr' : portCogs > 7 ? 'ca' : 'cg';
+    const _cogsSt = (function(){ try { return JSON.parse(localStorage.getItem('medsync_settings') || '{}'); } catch(e) { return {}; } })();
+    const _cogsMax = parseFloat(_cogsSt.cogs_max) || 10.0;
+    const _cogsMin = parseFloat(_cogsSt.cogs_min) || 8.0;
+    const cogsColor = portCogs === null ? 'cm' : portCogs > _cogsMax ? 'cr' : portCogs >= _cogsMin ? 'ca' : 'cg';
     const cogsText  = portCogs !== null ? portCogs.toFixed(1) + '%' : '—';
     if (kcogsEl)  { kcogsEl.textContent  = cogsText; kcogsEl.className  = 'kpi-v ' + cogsColor; }
     if (ovCogsEl) { ovCogsEl.textContent = cogsText; ovCogsEl.className = 'mv ' + cogsColor; }
