@@ -603,7 +603,7 @@ async function query(table, params) {
 }
 
 // Paginated fetch — loops until all rows are returned
-async function queryAll(table, baseParams, pageSize = 5000) {
+async function queryAll(table, baseParams, pageSize = 1000) {
   const all = [];
   let offset = 0;
   while (true) {
