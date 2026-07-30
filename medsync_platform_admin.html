@@ -1337,8 +1337,6 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 let H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
-const RESEND_KEY = ''; // KEY REMOVED — use Supabase Edge Function instead;
-
 async function sendProvisioningEmail(adminName, adminEmail, adminPass, orgName) {
   const loginUrl = 'https://medsync.vet/medsync_login_v2.html';
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -1376,10 +1374,10 @@ async function sendProvisioningEmail(adminName, adminEmail, adminPass, orgName) 
 </table>
 </body></html>`;
   try {
-    const r = await fetch('https://api.resend.com/emails', {
+    const r = await fetch(SUPA_URL + '/functions/v1/send-email', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'MedSync <insights@medsync.vet>', to: [adminEmail], subject: 'Welcome to MedSync — Your login credentials', html })
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: adminEmail, subject: 'Welcome to MedSync — Your login credentials', html })
     });
     return r.ok;
   } catch(e) { return false; }
