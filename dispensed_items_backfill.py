@@ -107,12 +107,20 @@ def supa_upsert(records):
         return e.code
 
 
-def day_range(start: date, end: date):
-    """Yield each date from start to end inclusive."""
-    cursor = start
+def month_chunks(start: date, end: date):
+    """Yield (month_start, month_end) pairs covering start→end, clamped to [start, end]."""
+    import calendar
+    cursor = date(start.year, start.month, 1)
     while cursor <= end:
-        yield cursor
-        cursor += timedelta(days=1)
+        last_day = calendar.monthrange(cursor.year, cursor.month)[1]
+        chunk_start = max(cursor, start)
+        chunk_end   = min(date(cursor.year, cursor.month, last_day), end)
+        yield chunk_start, chunk_end
+        # advance to first day of next month
+        if cursor.month == 12:
+            cursor = date(cursor.year + 1, 1, 1)
+        else:
+            cursor = date(cursor.year, cursor.month + 1, 1)
 
 
 def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: bool):
@@ -122,11 +130,16 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
     total_upserted = 0
     total_skipped  = 0
 
-    for day in day_range(start, end):
-        s = day.isoformat()
-        print(f"   Pulling {s} ...", end=" ", flush=True)
+    for chunk_start, chunk_end in month_chunks(start, end):
+        s = chunk_start.isoformat()
+        e = chunk_end.isoformat()
+        # Store all items in this chunk keyed to the first day of the month.
+        # Using full-month ranges matches Vetspire's own report boundaries (CDT),
+        # eliminating the UTC/CDT midnight drift that daily queries introduce.
+        month_key = date(chunk_start.year, chunk_start.month, 1).isoformat() + "T00:00:00Z"
+        print(f"   Pulling {s} → {e} ...", end=" ", flush=True)
 
-        result = gql(token, USAGE_QUERY, {"lids": [loc_id], "s": s, "e": s})
+        result = gql(token, USAGE_QUERY, {"lids": [loc_id], "s": s, "e": e})
 
         if "errors" in result:
             print(f"ERROR: {result['errors'][0]['message'][:100]}")
@@ -139,10 +152,8 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
         )
         print(f"{len(order_items)} items", end=" ")
 
-        # Aggregate all items for this single day into one row per (product, location).
-        # dispensed_at = this day. Daily granularity matches the intraday sync's key
-        # scheme so backfill upserts correctly overwrite stale intraday rows instead
-        # of creating parallel weekly rows that stack on top of them.
+        # Aggregate all items for this month into one row per (product, location).
+        # dispensed_at = month start (e.g. 2026-07-01T00:00:00Z).
         agg = {}  # key -> aggregated record
         for item in order_items:
             prod = item.get("product") or {}
@@ -151,7 +162,7 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
                 total_skipped += 1
                 continue
 
-            dispensed_at = day.isoformat() + "T00:00:00Z"
+            dispensed_at = month_key
 
             unit_cost  = prod.get("unitCost")
             unit_price = 0.0
@@ -208,6 +219,7 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
             print("→ 0 items")
 
     print(f"   Total for {loc_name}: {total_upserted} upserted, {total_skipped} skipped (no productId)")
+    print(f"   NOTE: rows keyed to month-start (YYYY-MM-01). Run SQL cleanup before re-running to avoid stale daily rows.")
     return total_upserted
 
 
