@@ -4811,7 +4811,7 @@ async function sendMessage(channel) {
   input.value = '';
   const avatar = (() => { try { return JSON.parse(localStorage.getItem('medsync_user')||'{}').avatar_b64 || null; } catch(e){return null;} })();
   try {
-    await fetch(`${_MSG_SUPA}/rest/v1/messages`, {
+    const res = await fetch(`${_MSG_SUPA}/rest/v1/messages`, {
       method: 'POST',
       headers: { ..._msgHeaders(), 'Prefer': 'return=minimal' },
       body: JSON.stringify({
@@ -4822,6 +4822,21 @@ async function sendMessage(channel) {
         content,
       }),
     });
+    // Send email notification for DMs (channel format is uid:uid)
+    if (res.ok && channel.includes(':')) {
+      const recipientId = channel.split(':').find(id => id !== me.id);
+      if (recipientId) {
+        fetch(`${_MSG_SUPA}/functions/v1/notify-dm`, {
+          method: 'POST',
+          headers: { ..._msgHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipient_id: recipientId,
+            sender_name:  meUser.full_name || 'A teammate',
+            preview:      content,
+          }),
+        }).catch(() => {}); // fire-and-forget — don't block UI
+      }
+    }
   } catch(e) {
     input.value = content;
   }
