@@ -4490,9 +4490,9 @@ function toggleMessenger() {
 
 async function loadAllUsers() {
   try {
-    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role,location_name&order=full_name.asc&limit=200`, { headers: _msgHeaders() });
+    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role&order=full_name.asc&limit=200`, { headers: _msgHeaders() });
     const rows = r.ok ? await r.json() : [];
-    _allUsers = Array.isArray(rows) ? rows.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, location_name: u.location_name || null, avatar_b64: null })) : [];
+    _allUsers = Array.isArray(rows) ? rows.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, location_name: null, avatar_b64: null })) : [];
   } catch(e) {}
 }
 
