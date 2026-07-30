@@ -948,8 +948,8 @@ function renderProductTable() {
     data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
   }
 
-  // Exclude services
-  data = data.filter(p => _inferCategory(p.product_name) !== 'service');
+  // Exclude items without a SKU (services, external Rx, OTC recommendations, procedures)
+  data = data.filter(p => p.sku && p.sku.trim() !== '');
 
   // Search filter
   const searchQ = (document.getElementById('product-search')?.value || '').trim().toLowerCase();
