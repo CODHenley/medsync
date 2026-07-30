@@ -301,11 +301,18 @@ tr:last-child td{border-bottom:none;}
           <div class="sec-title">Lot Lifecycle — by Product</div>
           <div class="sec-sub" id="tbl-count">Loading…</div>
         </div>
-        <div class="filter-tabs">
-          <div class="ftab active" onclick="setPFilter('all',this)">All</div>
-          <div class="ftab" onclick="setPFilter('active',this)">Active lots</div>
-          <div class="ftab" onclick="setPFilter('full',this)">Fully consumed</div>
-          <div class="ftab" onclick="setPFilter('cost',this)">Has unit cost</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div style="position:relative;display:flex;align-items:center;">
+            <svg style="position:absolute;left:8px;pointer-events:none;opacity:0.4;" width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="product-search" type="text" placeholder="Search products…" oninput="renderProductTable()"
+              style="padding:4px 10px 4px 26px;border:0.5px solid var(--border);border-radius:20px;font-size:11px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);height:28px;outline:none;width:170px;">
+          </div>
+          <div class="filter-tabs">
+            <div class="ftab active" onclick="setPFilter('all',this)">All</div>
+            <div class="ftab" onclick="setPFilter('active',this)">Active lots</div>
+            <div class="ftab" onclick="setPFilter('full',this)">Fully consumed</div>
+            <div class="ftab" onclick="setPFilter('cost',this)">Has unit cost</div>
+          </div>
         </div>
       </div>
       <div class="table-wrap">
@@ -953,6 +960,10 @@ function renderProductTable() {
   } else if (pFilter === 'cost') {
     data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
   }
+
+  // Search filter
+  const searchQ = (document.getElementById('product-search')?.value || '').trim().toLowerCase();
+  if (searchQ) data = data.filter(p => p.product_name.toLowerCase().includes(searchQ));
 
   // Consolidate across locations
   data = consolidateByProduct(data);
