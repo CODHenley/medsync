@@ -1583,12 +1583,18 @@ function deepDiveLoc(locCode) {
 </div>
 <script>
 (function(){
+  var s=document.getElementById('welcome-splash');
+  // Only show on fresh login, not on browser refresh
+  if(sessionStorage.getItem('medsync_splash_shown')){
+    if(s) s.style.display='none';
+    return;
+  }
+  sessionStorage.setItem('medsync_splash_shown','1');
   var mu={}; try{mu=JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');}catch(e){}
   var fn=mu.full_name?mu.full_name.split(' ')[0]:'';
   var el=document.getElementById('splash-name');
   if(el&&fn) el.textContent='Welcome back, '+fn+'!';
   setTimeout(function(){
-    var s=document.getElementById('welcome-splash');
     if(s){s.style.opacity='0';setTimeout(function(){s.style.display='none';},700);}
   },1800);
 })();
