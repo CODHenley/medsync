@@ -28,6 +28,7 @@ function showScreen(name) {
   var sb = document.getElementById('asb-' + name);
   if (sb) sb.classList.add('active');
   window.scrollTo(0,0);
+  history.replaceState(null, '', '#' + name);
   if (name === 'portfolio') {
     setTimeout(loadPortfolioHeroTiles, 100);
     setTimeout(loadPriorityChips, 150);
@@ -4266,7 +4267,9 @@ function renderTrainingStaffCards(rows) {
     showScreen('order');
   } else {
     // admin / medsync_superadmin: full access
-    showScreen('portfolio');
+    var _hashScreen = (location.hash || '').replace('#', '').trim();
+    var _validScreens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','goods','invoices','cycle','vcimport','priceaudit','training','users','settings','newlocation','regions'];
+    showScreen((_hashScreen && _validScreens.indexOf(_hashScreen) !== -1) ? _hashScreen : 'portfolio');
     loadRegionFilter();
     setTimeout(loadRecognition, 400);
     setTimeout(loadTeamSection, 600);
