@@ -70,8 +70,7 @@ def gql(token, query, variables=None):
 def supa_upsert(records):
     if not records:
         return 0
-    has_ids = all(r.get("order_item_id") for r in records)
-    conflict = "order_item_id,location_id" if has_ids else "vetspire_product_id,dispensed_at,location_id"
+    conflict = "vetspire_product_id,dispensed_at,location_id"
     payload = json.dumps(records).encode()
     req = urllib.request.Request(
         SUPA_URL + f"/rest/v1/dispensed_items?on_conflict={conflict}",
@@ -136,7 +135,10 @@ def main():
             order_items = []
         print(f"  {len(order_items)} order items")
 
-        records = []
+        # Aggregate by (product, date, location) — multiple same-day dispensings
+        # of the same product share the same updatedAt timestamp from Vetspire.
+        # We sum quantities here so the unique constraint stores the daily total.
+        agg = {}
         for item in order_items:
             prod = item.get("product") or {}
             pid  = item.get("productId") or prod.get("id")
@@ -144,9 +146,8 @@ def main():
             if not pid or not sku:
                 continue  # skip services / non-inventory items
 
-            updated_at = item.get("updatedAt") or now_utc
-            if "+" not in updated_at and "Z" not in updated_at:
-                updated_at += "Z"
+            raw_ts = item.get("updatedAt") or today
+            dispensed_at = str(raw_ts)[:10] + "T00:00:00Z"
 
             try:
                 unit_price = float(item.get("unitPrice") or 0)
@@ -154,26 +155,37 @@ def main():
                 unit_price = 0.0
 
             unit_cost = prod.get("unitCost")
-
-            order_item_id = item.get("id")
-            records.append({
-                "order_item_id":          str(order_item_id) if order_item_id else None,
-                "vetspire_product_id":    pid,
-                "product_name":           prod.get("name"),
-                "sku":                    sku,
-                "quantity":               float(item.get("quantity") or 0),
-                "quantity_remaining":     float(item.get("quantityRemaining") or 0),
-                "unit_price":             unit_price,
-                "unit_cost":              float(unit_cost) if unit_cost is not None else None,
-                "subtotal_cents":         int(item.get("subtotalCents") or 0),
-                "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
-                "returned":               bool(item.get("returned", False)),
-                "refunded":               bool(item.get("refunded", False)),
-                "dispensed_at":           updated_at,
-                "location_id":            loc["id"],
-                "location_name":          loc["name"],
-                "pulled_at":              now_utc,
-            })
+            key = (str(pid), dispensed_at, loc["id"])
+            if key in agg:
+                r = agg[key]
+                r["quantity"]               += float(item.get("quantity") or 0)
+                r["quantity_remaining"]     += float(item.get("quantityRemaining") or 0)
+                r["subtotal_cents"]         += int(item.get("subtotalCents") or 0)
+                r["total_before_tax_cents"] += int(item.get("totalBeforeTaxCents") or 0)
+                if bool(item.get("returned", False)):
+                    r["returned"] = True
+                if bool(item.get("refunded", False)):
+                    r["refunded"] = True
+            else:
+                agg[key] = {
+                    "order_item_id":          None,
+                    "vetspire_product_id":    str(pid),
+                    "product_name":           prod.get("name"),
+                    "sku":                    sku,
+                    "quantity":               float(item.get("quantity") or 0),
+                    "quantity_remaining":     float(item.get("quantityRemaining") or 0),
+                    "unit_price":             unit_price,
+                    "unit_cost":              float(unit_cost) if unit_cost is not None else None,
+                    "subtotal_cents":         int(item.get("subtotalCents") or 0),
+                    "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
+                    "returned":               bool(item.get("returned", False)),
+                    "refunded":               bool(item.get("refunded", False)),
+                    "dispensed_at":           dispensed_at,
+                    "location_id":            loc["id"],
+                    "location_name":          loc["name"],
+                    "pulled_at":              now_utc,
+                }
+        records = list(agg.values())
 
         if records:
             status = supa_upsert(records)

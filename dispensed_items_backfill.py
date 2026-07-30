@@ -86,9 +86,7 @@ def gql(token, query, variables=None):
 def supa_upsert(records):
     if not records:
         return 201
-    # Use order_item_id+location_id as conflict key when all records have it, else fall back
-    has_ids = all(r.get("order_item_id") for r in records)
-    conflict = "order_item_id,location_id" if has_ids else "vetspire_product_id,dispensed_at,location_id"
+    conflict = "vetspire_product_id,dispensed_at,location_id"
     body = json.dumps(records).encode()
     req = urllib.request.Request(
         SUPA_URL + f"/rest/v1/dispensed_items?on_conflict={conflict}",
@@ -144,7 +142,12 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
         )
         print(f"{len(order_items)} items", end=" ")
 
-        records = []
+        # Aggregate by (product, date, location) — multiple same-day dispensings
+        # of the same product share the same updatedAt, so we sum quantities here
+        # rather than letting the DB conflict collapse them to the last one seen.
+        # dispensed_at is stored as date-midnight (YYYY-MM-DDT00:00:00Z) so the
+        # unique constraint correctly groups by calendar day.
+        agg = {}  # key -> aggregated record
         for item in order_items:
             prod = item.get("product") or {}
             pid  = item.get("productId") or prod.get("id")
@@ -152,9 +155,10 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
                 total_skipped += 1
                 continue
 
-            updated_at = item.get("updatedAt") or datetime.now(timezone.utc).isoformat()
-            if "+" not in updated_at and updated_at[-1] != "Z":
-                updated_at += "Z"
+            raw_ts = item.get("updatedAt") or chunk_start.isoformat()
+            # Normalize to date-only midnight UTC so same-day items share one key
+            date_part = str(raw_ts)[:10]  # "YYYY-MM-DD"
+            dispensed_at = date_part + "T00:00:00Z"
 
             unit_cost  = prod.get("unitCost")
             unit_price = 0.0
@@ -163,33 +167,37 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
             except (ValueError, TypeError):
                 pass
 
-            order_item_id = item.get("id")
-
-            records.append({
-                "order_item_id":          str(order_item_id) if order_item_id else None,
-                "vetspire_product_id":    str(pid),
-                "product_name":           prod.get("name") or "",
-                "sku":                    prod.get("sku") or None,
-                "quantity":               float(item.get("quantity") or 0),
-                "quantity_remaining":     float(item.get("quantityRemaining") or 0),
-                "unit_price":             unit_price,
-                "unit_cost":              float(unit_cost) if unit_cost is not None else None,
-                "subtotal_cents":         int(item.get("subtotalCents") or 0),
-                "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
-                "returned":               bool(item.get("returned", False)),
-                "refunded":               bool(item.get("refunded", False)),
-                "dispensed_at":           updated_at,
-                "location_id":            loc_id,
-                "location_name":          loc_name,
-                "pulled_at":              datetime.now(timezone.utc).isoformat(),
-            })
-
-        # Deduplicate within the batch — same conflict key causes HTTP 500
-        seen = {}
-        for r in records:
-            key = (r["vetspire_product_id"], r["dispensed_at"], r["location_id"])
-            seen[key] = r  # last one wins
-        records = list(seen.values())
+            key = (str(pid), dispensed_at, loc_id)
+            if key in agg:
+                r = agg[key]
+                r["quantity"]               += float(item.get("quantity") or 0)
+                r["quantity_remaining"]     += float(item.get("quantityRemaining") or 0)
+                r["subtotal_cents"]         += int(item.get("subtotalCents") or 0)
+                r["total_before_tax_cents"] += int(item.get("totalBeforeTaxCents") or 0)
+                if bool(item.get("returned", False)):
+                    r["returned"] = True
+                if bool(item.get("refunded", False)):
+                    r["refunded"] = True
+            else:
+                agg[key] = {
+                    "order_item_id":          None,
+                    "vetspire_product_id":    str(pid),
+                    "product_name":           prod.get("name") or "",
+                    "sku":                    prod.get("sku") or None,
+                    "quantity":               float(item.get("quantity") or 0),
+                    "quantity_remaining":     float(item.get("quantityRemaining") or 0),
+                    "unit_price":             unit_price,
+                    "unit_cost":              float(unit_cost) if unit_cost is not None else None,
+                    "subtotal_cents":         int(item.get("subtotalCents") or 0),
+                    "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
+                    "returned":               bool(item.get("returned", False)),
+                    "refunded":               bool(item.get("refunded", False)),
+                    "dispensed_at":           dispensed_at,
+                    "location_id":            loc_id,
+                    "location_name":          loc_name,
+                    "pulled_at":              datetime.now(timezone.utc).isoformat(),
+                }
+        records = list(agg.values())
 
         if dry_run:
             print(f"→ [DRY RUN] would upsert {len(records)}")
