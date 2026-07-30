@@ -107,14 +107,12 @@ def supa_upsert(records):
         return e.code
 
 
-def week_chunks(start: date, end: date):
-    """Yield (chunk_start, chunk_end) pairs in 7-day increments.
-    Smaller batches avoid HTTP 500 duplicate-key conflicts on upsert."""
+def day_range(start: date, end: date):
+    """Yield each date from start to end inclusive."""
     cursor = start
     while cursor <= end:
-        chunk_end = min(cursor + timedelta(days=6), end)
-        yield cursor, chunk_end
-        cursor = chunk_end + timedelta(days=1)
+        yield cursor
+        cursor += timedelta(days=1)
 
 
 def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: bool):
@@ -124,12 +122,11 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
     total_upserted = 0
     total_skipped  = 0
 
-    for chunk_start, chunk_end in week_chunks(start, end):
-        s = chunk_start.isoformat()
-        e = chunk_end.isoformat()
-        print(f"   Pulling {s} → {e} ...", end=" ", flush=True)
+    for day in day_range(start, end):
+        s = day.isoformat()
+        print(f"   Pulling {s} ...", end=" ", flush=True)
 
-        result = gql(token, USAGE_QUERY, {"lids": [loc_id], "s": s, "e": e})
+        result = gql(token, USAGE_QUERY, {"lids": [loc_id], "s": s, "e": s})
 
         if "errors" in result:
             print(f"ERROR: {result['errors'][0]['message'][:100]}")
@@ -142,11 +139,10 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
         )
         print(f"{len(order_items)} items", end=" ")
 
-        # Aggregate all items in this chunk into one row per (product, location).
-        # dispensed_at = chunk_start (week anchor). Vetspire's updatedAt reflects
-        # when the query runs, not the original order date, so it can't be used as
-        # a per-transaction timestamp. chunk_start ensures each weekly chunk writes
-        # to a distinct, stable key and all rows fall within the queried date range.
+        # Aggregate all items for this single day into one row per (product, location).
+        # dispensed_at = this day. Daily granularity matches the intraday sync's key
+        # scheme so backfill upserts correctly overwrite stale intraday rows instead
+        # of creating parallel weekly rows that stack on top of them.
         agg = {}  # key -> aggregated record
         for item in order_items:
             prod = item.get("product") or {}
@@ -155,11 +151,7 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
                 total_skipped += 1
                 continue
 
-            # Use chunk_start as the date anchor. Vetspire's orderItems.updatedAt
-            # reflects when the API queried, not the original order date, so it
-            # can't be used reliably. chunk_start is within the queried date range
-            # and gives one stable row per (product, week, location).
-            dispensed_at = chunk_start.isoformat() + "T00:00:00Z"
+            dispensed_at = day.isoformat() + "T00:00:00Z"
 
             unit_cost  = prod.get("unitCost")
             unit_price = 0.0
@@ -213,7 +205,7 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
             else:
                 print(f"→ ✗ failed (HTTP {status})")
         else:
-            print("→ 0 records")
+            print("→ 0 items")
 
     print(f"   Total for {loc_name}: {total_upserted} upserted, {total_skipped} skipped (no productId)")
     return total_upserted
