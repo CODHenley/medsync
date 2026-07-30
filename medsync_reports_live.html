@@ -11,12 +11,12 @@
 :root{
   --purple:#6B57C2;
   --purple-lt:#EEF0FF;
-  --bg:#F5F3FA;
+  --bg:#ffffff;
   --card:#FFFFFF;
   --border:#E2DEEF;
   --text:#1A1730;
   --muted:#7B6F9A;
-  --gold:#E8B84B;
+  --gold:#E86535;
   --red:#C94040;
   --red-lt:#FEF0F0;
   --green:#1A9E6A;
@@ -81,7 +81,7 @@ tbody tr:hover td{background:#FAFAFE;}
 .b-purple{background:var(--purple-lt);color:var(--purple);}
 
 /* ── Period tabs ── */
-.period-tabs{display:flex;gap:2px;background:#F0EEF8;border-radius:7px;padding:2px;}
+.period-tabs{display:flex;gap:2px;background:#F4F4F4;border-radius:7px;padding:2px;}
 .ptab{padding:5px 12px;border-radius:5px;border:none;background:none;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .12s;}
 .ptab.active{background:#fff;color:var(--purple);box-shadow:0 1px 3px rgba(0,0,0,.1);}
 
@@ -371,7 +371,7 @@ function renderSpending(pos, ph, quarters, months, year) {
   const mBars = mData.map(m => `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
       <span style="font-size:11px;color:var(--muted);width:28px;flex-shrink:0;">${m.label}</span>
-      <div style="flex:1;background:#F0EEF8;border-radius:3px;height:16px;position:relative;">
+      <div style="flex:1;background:#F4F4F4;border-radius:3px;height:16px;position:relative;">
         <div style="width:${m.spend/maxSpend*100}%;background:var(--purple);border-radius:3px;height:100%;"></div>
       </div>
       <span style="font-size:11px;color:var(--text);width:64px;text-align:right;flex-shrink:0;">${fmt$(m.spend)}</span>

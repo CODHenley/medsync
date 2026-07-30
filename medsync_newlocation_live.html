@@ -7,9 +7,9 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;
-  --green-bg:#E8F5EE;--amber-bg:#FEF3E2;--red-bg:#FDECEA;--purple-bg:#E4DAF2;
-  --mist:#8A93A8;--border:#B8B0D0;--surface:#FFFFFF;--bg:#EDE8F8;
+  --navy:#1C2B4A;--gold:#C83803;--green:#2E8B57;--red:#C0392B;
+  --green-bg:#E8F5EE;--amber-bg:#FEF3E2;--red-bg:#FDECEA;--purple-bg:#F4F4F4;
+  --mist:#8A93A8;--border:#B8B0D0;--surface:#FFFFFF;--bg:#F4F4F4;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
@@ -42,7 +42,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .tile-pulse{animation:tlPulse .7s ease 3;}
 .tile{border:1.5px solid var(--border);border-radius:12px;padding:18px 16px;cursor:pointer;transition:all .15s;background:#fff;text-align:left;}
 .tile:hover{border-color:#9B8EC4;background:#FAFAF8;}
-.tile.selected{border-color:var(--navy);background:#E8E2F6;}
+.tile.selected{border-color:var(--navy);background:#F4F4F4;}
 .tile-icon{font-size:28px;margin-bottom:8px;}
 .tile-name{font-size:13px;font-weight:600;margin-bottom:3px;}
 .tile-desc{font-size:11px;color:var(--mist);line-height:1.4;}
@@ -52,12 +52,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .pims-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
 .pims-tile{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;background:#fff;display:flex;align-items:center;gap:12px;}
 .pims-tile:hover{border-color:#9B8EC4;}
-.pims-tile.selected{border-color:var(--navy);background:#E8E2F6;}
+.pims-tile.selected{border-color:var(--navy);background:#F4F4F4;}
 .pims-tile.disabled{opacity:.5;cursor:not-allowed;}
 .pims-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
 .pims-name{font-size:13px;font-weight:600;}
 .pims-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;background:#E8F5EE;color:var(--green);margin-top:2px;display:inline-block;}
-.pims-badge.soon{background:#E8E2F6;color:var(--mist);}
+.pims-badge.soon{background:#F4F4F4;color:var(--mist);}
 
 /* Form fields */
 .field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
@@ -68,14 +68,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* Order preview table */
 .order-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;}
-.order-table th{text-align:left;padding:6px 10px;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);background:#F0EBF8;}
-.order-table td{padding:8px 10px;border-bottom:0.5px solid #EDE8F8;vertical-align:top;}
+.order-table th{text-align:left;padding:6px 10px;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--border);background:#F4F4F4;}
+.order-table td{padding:8px 10px;border-bottom:0.5px solid #F4F4F4;vertical-align:top;}
 .order-table tr:last-child td{border-bottom:none;}
 .cat-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;background:#D8D0EC;color:var(--navy);}
 .qty-input{width:60px;padding:4px 6px;border:0.5px solid var(--border);border-radius:6px;font-size:12px;text-align:center;font-family:'DM Sans',sans-serif;}
 .vetcove-price{color:#1C6FAD;font-weight:500;}
 .tbd-price{color:var(--mist);font-style:italic;font-size:11px;}
-.filter-bar{display:flex;gap:8px;align-items:center;padding:10px 16px;background:#F0EBF8;border-bottom:0.5px solid var(--border);flex-wrap:wrap;}
+.filter-bar{display:flex;gap:8px;align-items:center;padding:10px 16px;background:#F4F4F4;border-bottom:0.5px solid var(--border);flex-wrap:wrap;}
 .filter-bar input{flex:1;min-width:160px;padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;}
 .filter-bar select{padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
 .filter-count{font-size:11px;color:var(--mist);white-space:nowrap;}
@@ -756,8 +756,8 @@ const PRACTICE_TYPES = [
 
 const CAT_COLORS = {
   'Medical Equipment':'#1C2B4A','Diagnostics':'#2E8B57','Controlled Substances':'#C0392B',
-  'Injectables':'#1C6FAD','Antibiotics':'#C8922A','Analgesia':'#5B3FA8',
-  'Preventatives':'#2E8B57','GI / Gastrointestinal':'#C8922A',
+  'Injectables':'#1C6FAD','Antibiotics':'#C83803','Analgesia':'#5B3FA8',
+  'Preventatives':'#2E8B57','GI / Gastrointestinal':'#C83803',
   'Prescription Diets':'#8A93A8','Dermatology':'#A06020',
 };
 
@@ -954,7 +954,7 @@ function renderOrderScreen() {
       <div class="sum-item"><div class="sum-val">${items.length}</div><div class="sum-lbl">Line items</div></div>
       <div class="sum-item"><div class="sum-val">${totalItems}</div><div class="sum-lbl">Total units</div></div>
       <div class="sum-item"><div class="sum-val">${cats.length}</div><div class="sum-lbl">Categories</div></div>
-      <div class="sum-item"><div class="sum-val" style="color:#E8B84B;">TBD</div><div class="sum-lbl">Est. cost (Vetcove)</div></div>
+      <div class="sum-item"><div class="sum-val" style="color:#E86535;">TBD</div><div class="sum-lbl">Est. cost (Vetcove)</div></div>
     </div>
     <div class="alert">⚡ Unit pricing shown is GPO-estimated. Adjust quantities, then export a PDF to place with Vetcove or your distributor rep.</div>
     <div class="card" style="padding:0;overflow:hidden;">
@@ -1127,7 +1127,7 @@ function renderExistingScreen() {
           </div>
         </div>
         <div class="pims-tile disabled" title="Coming soon">
-          <div class="pims-logo" style="background:#C8922A;">AV</div>
+          <div class="pims-logo" style="background:#C83803;">AV</div>
           <div>
             <div class="pims-name">AVImark</div>
             <span class="pims-badge soon">Coming soon</span>
@@ -1261,12 +1261,12 @@ function addressAutocomplete(val) {
       var html = '<div id="addr-drop" style="position:absolute;left:0;right:0;top:100%;background:#fff;border:0.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);overflow:hidden;margin-top:2px;z-index:999;">';
       results.forEach(function(r) {
         var safe = r.display_name.replace(/"/g, '&quot;');
-        html += '<div class="addr-opt" data-addr="' + safe + '" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #EDE8F8;">' + r.display_name + '</div>';
+        html += '<div class="addr-opt" data-addr="' + safe + '" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #F4F4F4;">' + r.display_name + '</div>';
       });
       html += '</div>';
       box.innerHTML = html;
       box.querySelectorAll('.addr-opt').forEach(function(el) {
-        el.addEventListener('mouseenter', function(){ this.style.background='#E8E2F6'; });
+        el.addEventListener('mouseenter', function(){ this.style.background='#F4F4F4'; });
         el.addEventListener('mouseleave', function(){ this.style.background=''; });
         el.addEventListener('click', function(){ selectAddress(this.dataset.addr); });
       });
@@ -1354,7 +1354,7 @@ async function showPlanModal() {
       +'<span>'+planInfo.count+' used</span><span>'+planInfo.limit+' total</span></div>';
 
     function row(label, val) {
-      return '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:9px 0;border-bottom:0.5px solid #EDE8F8;">'
+      return '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:9px 0;border-bottom:0.5px solid #F4F4F4;">'
         +'<div style="font-size:10px;font-weight:600;color:#8A93A8;text-transform:uppercase;letter-spacing:.04em;padding-top:1px;">'+label+'</div>'
         +'<div style="font-size:13px;color:#1C2B4A;">'+val+'</div></div>';
     }
@@ -1507,7 +1507,7 @@ async function checkLocationLimit() {
     const topbarSub = document.querySelector('.tb-sub');
     if (topbarSub) {
       const pct = limit === 999 ? 0 : Math.min((count / limit) * 100, 100);
-      topbarSub.innerHTML = `${TIER_LABELS[org.tier]||org.tier} plan &nbsp;·&nbsp; <span style="color:${pct>=100?'#f0a0a0':pct>=80?'#E8B84B':'rgba(255,255,255,.5)'}">${count} / ${limit===999?'∞':limit} locations used</span>`;
+      topbarSub.innerHTML = `${TIER_LABELS[org.tier]||org.tier} plan &nbsp;·&nbsp; <span style="color:${pct>=100?'#f0a0a0':pct>=80?'#E86535':'rgba(255,255,255,.5)'}">${count} / ${limit===999?'∞':limit} locations used</span>`;
     }
 
     // Check for post-payment return
@@ -1586,7 +1586,7 @@ function openUpgradeModal(currentTier, orgId) {
   const currentDef = { solo:{limit:1,monthly:149}, small_group:{limit:3,monthly:249}, mid_group:{limit:6,monthly:349}, large_group:{limit:12,monthly:449}, enterprise:{limit:999,monthly:499} }[currentTier] || {limit:0,monthly:0};
 
   const tiersHtml = `
-    <div style="background:#F0EBF8;border-radius:10px;padding:14px 16px;margin-bottom:4px;border:2px solid #B8B0D0;opacity:.7;">
+    <div style="background:#F4F4F4;border-radius:10px;padding:14px 16px;margin-bottom:4px;border:2px solid #B8B0D0;opacity:.7;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <span style="font-size:11px;font-weight:700;background:#1C2B4A;color:#fff;padding:2px 8px;border-radius:10px;margin-right:8px;">CURRENT</span>
@@ -1631,7 +1631,7 @@ function selectUpgradeTier(key) {
     el.style.background = '#fff';
   });
   const sel = document.getElementById('upgrade-opt-' + key);
-  if (sel) { sel.style.borderColor = '#1C2B4A'; sel.style.background = '#E8E2F6'; }
+  if (sel) { sel.style.borderColor = '#1C2B4A'; sel.style.background = '#F4F4F4'; }
   const tier = UPGRADE_TIERS.find(t => t.key === key);
   const btn = document.getElementById('upgrade-cta');
   btn.disabled = false;
