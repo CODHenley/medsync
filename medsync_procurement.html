@@ -39,8 +39,8 @@ select:focus{border-color:var(--navy);}
 
 /* KPI ROW */
 .kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;}
-.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;position:relative;}
-.kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;position:relative;display:flex;flex-direction:column;}
+.kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;min-height:28px;display:flex;align-items:flex-end;padding-bottom:4px;}
 .kpi-v{font-size:22px;font-weight:500;line-height:1;}
 .kpi-s{font-size:11px;margin-top:3px;}
 /* KPI hover tooltip — appears below each card */
