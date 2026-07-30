@@ -135,9 +135,10 @@ def main():
             order_items = []
         print(f"  {len(order_items)} order items")
 
-        # Aggregate by (product, date, location) — multiple same-day dispensings
-        # of the same product share the same updatedAt timestamp from Vetspire.
-        # We sum quantities here so the unique constraint stores the daily total.
+        # Aggregate today's items into one row per (product, location).
+        # dispensed_at = today. Vetspire's updatedAt is not a reliable per-transaction
+        # timestamp; using today ensures the intraday sync always writes to a stable,
+        # current key and the procurement "Today" view is accurate.
         agg = {}
         for item in order_items:
             prod = item.get("product") or {}
@@ -146,8 +147,7 @@ def main():
             if not pid or not sku:
                 continue  # skip services / non-inventory items
 
-            raw_ts = item.get("updatedAt") or today
-            dispensed_at = str(raw_ts)[:10] + "T00:00:00Z"
+            dispensed_at = today + "T00:00:00Z"
 
             try:
                 unit_price = float(item.get("unitPrice") or 0)

@@ -142,11 +142,11 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
         )
         print(f"{len(order_items)} items", end=" ")
 
-        # Aggregate by (product, date, location) — multiple same-day dispensings
-        # of the same product share the same updatedAt, so we sum quantities here
-        # rather than letting the DB conflict collapse them to the last one seen.
-        # dispensed_at is stored as date-midnight (YYYY-MM-DDT00:00:00Z) so the
-        # unique constraint correctly groups by calendar day.
+        # Aggregate all items in this chunk into one row per (product, location).
+        # dispensed_at = chunk_start (week anchor). Vetspire's updatedAt reflects
+        # when the query runs, not the original order date, so it can't be used as
+        # a per-transaction timestamp. chunk_start ensures each weekly chunk writes
+        # to a distinct, stable key and all rows fall within the queried date range.
         agg = {}  # key -> aggregated record
         for item in order_items:
             prod = item.get("product") or {}
@@ -155,10 +155,11 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
                 total_skipped += 1
                 continue
 
-            raw_ts = item.get("updatedAt") or chunk_start.isoformat()
-            # Normalize to date-only midnight UTC so same-day items share one key
-            date_part = str(raw_ts)[:10]  # "YYYY-MM-DD"
-            dispensed_at = date_part + "T00:00:00Z"
+            # Use chunk_start as the date anchor. Vetspire's orderItems.updatedAt
+            # reflects when the API queried, not the original order date, so it
+            # can't be used reliably. chunk_start is within the queried date range
+            # and gives one stable row per (product, week, location).
+            dispensed_at = chunk_start.isoformat() + "T00:00:00Z"
 
             unit_cost  = prod.get("unitCost")
             unit_price = 0.0
