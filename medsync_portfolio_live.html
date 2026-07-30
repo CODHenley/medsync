@@ -4843,19 +4843,36 @@ async function sendMessage(channel) {
         renderMessages(_currentDMChannel, msgs2, 'msg-body-dm');
       }
     }
-    // Send email notification for DMs (channel format is uid:uid)
-    if (res.ok && channel.includes(':')) {
-      const recipientId = channel.split(':').find(id => id !== me.id);
-      if (recipientId) {
-        fetch(`${_MSG_SUPA}/functions/v1/notify-dm`, {
-          method: 'POST',
-          headers: { ..._msgHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipient_id: recipientId,
-            sender_name:  meUser.full_name || 'A teammate',
-            preview:      content,
-          }),
-        }).catch(() => {}); // fire-and-forget — don't block UI
+    // Send email notifications
+    if (res.ok) {
+      const senderName = meUser.full_name || 'A teammate';
+      // DM: notify the other person
+      if (channel.includes(':')) {
+        const recipientId = channel.split(':').find(id => id !== me.id);
+        if (recipientId) {
+          fetch(`${_MSG_SUPA}/functions/v1/notify-dm`, {
+            method: 'POST',
+            headers: { ..._msgHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipient_id: recipientId, sender_name: senderName, preview: content }),
+          }).catch(() => {});
+        }
+      }
+      // Staff channel or DM: notify any @mentioned users
+      const mentionRegex = /@([^@\s][^@]*?)(?=\s|$|@)/g;
+      let match;
+      while ((match = mentionRegex.exec(content)) !== null) {
+        const mentionedName = match[1].trim();
+        const mentionedUser = _allUsers.find(u => u.full_name && u.full_name.toLowerCase() === mentionedName.toLowerCase());
+        if (mentionedUser && mentionedUser.id !== me.id) {
+          // Don't double-notify the DM recipient who already got one above
+          if (!channel.includes(':') || channel.split(':').find(id => id !== me.id) !== mentionedUser.id) {
+            fetch(`${_MSG_SUPA}/functions/v1/notify-dm`, {
+              method: 'POST',
+              headers: { ..._msgHeaders(), 'Content-Type': 'application/json' },
+              body: JSON.stringify({ recipient_id: mentionedUser.id, sender_name: senderName, preview: content }),
+            }).catch(() => {});
+          }
+        }
       }
     }
   } catch(e) {
