@@ -1337,7 +1337,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 let H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
-const RESEND_KEY = 're_hR35LhRB_FAhsnArv1k7g4RZHn9yWgxWh';
+const RESEND_KEY = ''; // KEY REMOVED — use Supabase Edge Function instead;
 
 async function sendProvisioningEmail(adminName, adminEmail, adminPass, orgName) {
   const loginUrl = 'https://medsync.vet/medsync_login_v2.html';
