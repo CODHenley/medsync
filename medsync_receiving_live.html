@@ -8,9 +8,9 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --navy:#1C2B4A;--gold:#C8922A;--gold-light:#E8B84B;
+  --navy:#1C2B4A;--gold:#C83803;--gold-light:#E86535;
   --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
-  --bg:#EDE8F8;--surface:#fff;
+  --bg:#F4F4F4;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;
   --amber:#B86D00;--amber-bg:#FFF3CC;--amber-border:#F5A000;
   --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
@@ -36,7 +36,7 @@ select.nav-sel option{background:var(--navy);}
 .card-title{font-size:12px;font-weight:600;margin-bottom:10px;}
 .po-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
 .po-card{padding:10px 12px;border:0.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .1s;}
-.po-card.active{border-color:var(--navy);background:#E8E2F6;}
+.po-card.active{border-color:var(--navy);background:#F4F4F4;}
 .po-card:hover:not(.active){background:#FAFAF8;}
 .po-ref{font-size:12px;font-weight:500;font-family:'DM Mono',monospace;}
 .po-meta{font-size:10px;color:var(--mist);margin-top:2px;}
@@ -45,13 +45,13 @@ select.nav-sel option{background:var(--navy);}
 .scan-area{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
 .scan-head{padding:10px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .scan-status{font-size:11px;}
-.scan-last{background:#E8E2F6;padding:8px 16px;font-size:11px;color:var(--slate);border-bottom:0.5px solid var(--border);}
+.scan-last{background:#F4F4F4;padding:8px 16px;font-size:11px;color:var(--slate);border-bottom:0.5px solid var(--border);}
 .scan-last.ok{background:var(--green-bg);color:var(--green);}
 .scan-last.warn{background:var(--amber-bg);color:var(--amber);}
 
 /* Items table */
-.items-head{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr;padding:7px 16px;background:#F0EBF8;border-bottom:0.5px solid var(--border);font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;font-weight:500;}
-.item-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr;padding:10px 16px;border-bottom:0.5px solid #EDE8F8;align-items:center;}
+.items-head{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr;padding:7px 16px;background:#F4F4F4;border-bottom:0.5px solid var(--border);font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;font-weight:500;}
+.item-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr;padding:10px 16px;border-bottom:0.5px solid #F4F4F4;align-items:center;}
 .item-row:last-child{border-bottom:none;}
 .item-row.confirmed{background:#FAFFFE;}
 .item-row.discrepancy{background:#FFF9F9;}
@@ -60,7 +60,7 @@ select.nav-sel option{background:var(--navy);}
 .item-ndc{font-size:10px;color:var(--mist);font-family:'DM Mono',monospace;margin-top:1px;}
 .badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;display:inline-block;}
 .b-confirmed{background:var(--green-bg);color:var(--green);}
-.b-pending{background:#E8E2F6;color:var(--mist);}
+.b-pending{background:#F4F4F4;color:var(--mist);}
 .b-disc{background:var(--red-bg);color:var(--red);}
 .b-awaiting{background:var(--amber-bg);color:var(--amber);}
 
@@ -68,13 +68,13 @@ select.nav-sel option{background:var(--navy);}
 .disc-banner{background:var(--amber-bg);border-top:0.5px solid var(--amber-border);padding:10px 16px;font-size:11px;color:var(--amber);display:flex;align-items:flex-start;gap:8px;}
 
 /* Simulate scan input */
-.sim-bar{background:#F0EBF8;border-top:0.5px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;}
+.sim-bar{background:#F4F4F4;border-top:0.5px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;}
 .sim-input{flex:1;padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none;}
 .sim-input:focus{border-color:var(--navy);}
 .btn-sim{padding:7px 12px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.btn-sim:hover{background:#E8E2F6;}
+.btn-sim:hover{background:#F4F4F4;}
 .btn-auto{padding:7px 12px;background:var(--surface);color:var(--mist);border:0.5px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.btn-auto:hover{background:#E8E2F6;}
+.btn-auto:hover{background:#F4F4F4;}
 .btn-cam-primary{display:flex;align-items:center;gap:7px;padding:8px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
 .btn-cam-primary:hover{background:#243459;}
 
@@ -91,14 +91,14 @@ select.nav-sel option{background:var(--navy);}
 
 /* PO status footer */
 .po-footer{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
-.loss-btn{background:none;border:0.5px solid #C8922A;color:#C8922A;padding:3px 7px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:6px;white-space:nowrap;}
+.loss-btn{background:none;border:0.5px solid #C83803;color:#C83803;padding:3px 7px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:6px;white-space:nowrap;}
 .loss-expand{padding:10px 16px 12px;background:#FEF8F0;border-top:0.5px solid #F0DDB0;display:flex;flex-direction:column;gap:8px;}
 .loss-note{font-size:13px;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;width:100%;box-sizing:border-box;font-family:'DM Sans',sans-serif;}
 .loss-btns{display:flex;gap:6px;}
 .loss-opt{flex:1;padding:7px 4px;border-radius:8px;border:0.5px solid;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .loss-opt-exp{background:#FEF0F0;border-color:#E0AAAA;color:#C0392B;}
 .loss-opt-dmg{background:#FEF3E2;border-color:#E0C080;color:#A06020;}
-.loss-opt-cancel{background:#EDE8F8;border-color:var(--border);color:var(--mist);}
+.loss-opt-cancel{background:#F4F4F4;border-color:var(--border);color:var(--mist);}
 .item-row.lost{background:#FEF8F0;}
 .pf-status{font-size:12px;color:var(--slate);}
 .pf-status strong{color:var(--navy);}
@@ -144,12 +144,12 @@ select.nav-sel option{background:var(--navy);}
 .ndc-fda-banner{background:#EAF4FF;border:0.5px solid #B8D8F8;border-radius:8px;padding:10px 12px;font-size:12px;color:#1C2B4A;display:flex;align-items:flex-start;gap:8px;}
 .ndc-fda-icon{font-size:16px;flex-shrink:0;}
 .ndc-line-btn{width:100%;text-align:left;padding:11px 14px;border:0.5px solid var(--border);border-radius:9px;background:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .12s;}
-.ndc-line-btn:hover{background:#EDE8F8;border-color:var(--navy);}
+.ndc-line-btn:hover{background:#F4F4F4;border-color:var(--navy);}
 .ndc-line-name{font-size:13px;font-weight:500;color:var(--navy);}
 .ndc-line-meta{font-size:11px;color:var(--mist);margin-top:2px;}
 .ndc-not-on-po{width:100%;padding:10px;border:0.5px solid var(--red-border);border-radius:9px;background:var(--red-bg);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:6px;}
 .ndc-report-admin{width:100%;padding:10px;border:0.5px solid var(--border);border-radius:9px;background:#fff;color:var(--navy);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:6px;}
-.ndc-report-admin:hover{background:#F0EBF8;}
+.ndc-report-admin:hover{background:#F4F4F4;}
 .ndc-save-row{display:flex;align-items:center;gap:8px;padding-top:4px;border-top:0.5px solid var(--border);}
 .ndc-save-label{font-size:11px;color:var(--mist);flex:1;}
 
@@ -173,7 +173,7 @@ select.nav-sel option{background:var(--navy);}
 .pill-btn-primary{background:var(--navy);color:#fff;}
 .pill-btn-primary:hover{background:#243459;}
 .pill-btn-primary:disabled{opacity:.4;cursor:not-allowed;}
-.pill-btn-secondary{background:#EDE8F8;color:var(--navy);border:0.5px solid var(--border);}
+.pill-btn-secondary{background:#F4F4F4;color:var(--navy);border:0.5px solid var(--border);}
 .pill-btn-secondary:hover{background:#E0D8F0;}
 .pill-spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -365,7 +365,7 @@ select.nav-sel option{background:var(--navy);}
     <div style="margin-bottom:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
         <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;">Qty received <span style="color:var(--red);">*</span></div>
-        <button onclick="openPillCount()" style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:#EDE8F8;border:0.5px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;color:var(--navy);cursor:pointer;font-family:'DM Sans',sans-serif;">
+        <button onclick="openPillCount()" style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:#F4F4F4;border:0.5px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;color:var(--navy);cursor:pointer;font-family:'DM Sans',sans-serif;">
           <span>💊</span> Count pills
         </button>
       </div>
@@ -396,7 +396,7 @@ select.nav-sel option{background:var(--navy);}
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <span id="lem-upc-status" style="flex:1;font-size:12px;font-family:monospace;color:var(--mist);">No UPC saved</span>
-        <button onclick="lemOpenUpcScanner()" style="padding:8px 12px;background:#EDE8F8;border:1.5px solid var(--border);color:var(--navy);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">📷 Scan UPC</button>
+        <button onclick="lemOpenUpcScanner()" style="padding:8px 12px;background:#F4F4F4;border:1.5px solid var(--border);color:var(--navy);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">📷 Scan UPC</button>
       </div>
     </div>
     <div style="display:flex;gap:8px;">
@@ -492,7 +492,7 @@ select.nav-sel option{background:var(--navy);}
         </div>
       </div>
       <div id="pill-stage-counting" style="display:none;text-align:center;padding:20px 0;">
-        <div class="pill-spinner" style="width:28px;height:28px;border:3px solid #EDE8F8;border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;"></div>
+        <div class="pill-spinner" style="width:28px;height:28px;border:3px solid #F4F4F4;border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;"></div>
         <div style="font-size:13px;color:var(--mist);margin-top:12px;">Counting pills…</div>
       </div>
       <div id="pill-stage-result" style="display:none;">
@@ -725,7 +725,7 @@ function renderItems() {
       ? '<span class="badge b-awaiting">⏳ Pending</span>'
       : '<span class="badge b-pending">Awaiting scan</span>';
     const lossExpanded = state.activeGoodsLine === i;
-    return `<div style="border-bottom:0.5px solid #EDE8F8;">
+    return `<div style="border-bottom:0.5px solid #F4F4F4;">
       <div class="item-row ${l.status === 'lost' ? 'lost' : l.status}" id="item-row-${i}" style="border-bottom:none;">
         <div><div class="item-name" style="${l.status==='lost'?'text-decoration:line-through;color:var(--mist);':''}">${l.name}</div><div class="item-ndc">${l.ndc}</div></div>
         <div style="font-size:12px;">${l.qtyOrdered}</div>
@@ -764,7 +764,7 @@ function renderItems() {
             <button class="loss-opt loss-opt-dmg"  onclick="logReceivingLoss(${i},'Damaged / Spilled')">Damaged</button>
             <button class="loss-opt" style="background:#FEF0F8;border-color:#E0A0C0;color:#8B1A4A;" onclick="logReceivingLoss(${i},'Vendor return / credit')">Vendor return</button>
             <button class="loss-opt" style="background:#FEF0F8;border-color:#E0A0C0;color:#8B1A4A;flex:0;padding:7px 10px;" title="Print return document" onclick="printReceivingReturn(${i})">🖨</button>
-            <button class="loss-opt" style="background:#E8E2F6;border-color:#C8AAEA;color:#5B3FA8;" onclick="logReceivingLoss(${i},'Medication waste')">Med waste</button>
+            <button class="loss-opt" style="background:#F4F4F4;border-color:#C8AAEA;color:#5B3FA8;" onclick="logReceivingLoss(${i},'Medication waste')">Med waste</button>
             <button class="loss-opt loss-opt-cancel" onclick="state.activeGoodsLine=null;renderItems()">Cancel</button>
           </div>
         </div>
@@ -812,7 +812,7 @@ function printReceivingReturn(idx) {
     h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#4A5568;margin:20px 0 6px;}
     table{width:100%;border-collapse:collapse;margin:4px 0 12px;}
     td{padding:6px 8px;border:0.5px solid #B8B0D0;font-size:11px;}
-    td:first-child{font-weight:600;width:38%;background:#F0EBF8;}
+    td:first-child{font-weight:600;width:38%;background:#F4F4F4;}
     .contact-box{background:#E1F5EE;border:0.5px solid #A0D4C0;border-radius:6px;padding:10px 14px;margin:6px 0 12px;}
     ul{margin:4px 0 12px;padding-left:18px;}li{font-size:11px;margin-bottom:4px;}
     .sig{margin-top:40px;display:flex;gap:40px;}
@@ -1546,7 +1546,7 @@ async function runPillCount() {
     const confEl = document.getElementById('pill-count-conf');
     const conf = data.confidence || 'medium';
     confEl.textContent = conf.charAt(0).toUpperCase() + conf.slice(1) + ' confidence';
-    confEl.style.background = conf === 'high' ? 'var(--green-bg)' : conf === 'low' ? 'var(--amber-bg)' : '#EDE8F8';
+    confEl.style.background = conf === 'high' ? 'var(--green-bg)' : conf === 'low' ? 'var(--amber-bg)' : '#F4F4F4';
     confEl.style.color = conf === 'high' ? 'var(--green)' : conf === 'low' ? 'var(--amber)' : 'var(--slate)';
     document.getElementById('pill-count-notes').textContent = data.notes || '';
     pillStage('result');

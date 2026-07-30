@@ -8,9 +8,9 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --navy:#1C2B4A;--gold:#C8922A;--gold-light:#E8B84B;
+  --navy:#1C2B4A;--gold:#C83803;--gold-light:#E86535;
   --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
-  --bg:#F5F3FA;--surface:#fff;
+  --bg:#ffffff;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;
   --amber:#B86D00;--amber-bg:#FFF3CC;--amber-border:#F5A000;
   --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
@@ -66,7 +66,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 /* ── ORG TABLE ── */
 .org-table{width:100%;border-collapse:collapse;font-size:12px;}
 .org-table th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:8px 16px;text-align:left;background:#F8F7FC;border-bottom:0.5px solid var(--border);font-weight:500;}
-.org-table td{padding:10px 16px;border-bottom:0.5px solid #F5F3FA;vertical-align:middle;}
+.org-table td{padding:10px 16px;border-bottom:0.5px solid #ffffff;vertical-align:middle;}
 .org-table tr:last-child td{border-bottom:none;}
 .org-table tr:hover td{background:#FAFAF8;cursor:pointer;}
 .org-name{font-weight:500;}
@@ -95,11 +95,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .modal-head{padding:18px 22px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;}
 .modal-title{font-size:15px;font-weight:600;}
 .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--mist);padding:2px 6px;border-radius:6px;}
-.modal-close:hover{background:#F0EEF8;color:var(--navy);}
+.modal-close:hover{background:#F4F4F4;color:var(--navy);}
 .modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px;}
 .modal-actions{padding:14px 22px 18px;border-top:0.5px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
 .btn{padding:9px 20px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.btn:hover{background:#F0EEF8;}
+.btn:hover{background:#F4F4F4;}
 .btn-save{background:var(--navy);color:#fff;border:none;}
 .btn-save:hover{background:#243459;}
 .btn-save:disabled{opacity:.5;cursor:not-allowed;}
@@ -107,14 +107,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 /* tier select cards */
 .tier-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
 .tier-opt{padding:12px 14px;border:0.5px solid var(--border);border-radius:9px;cursor:pointer;transition:all .1s;}
-.tier-opt.selected{border-color:var(--navy);background:#F0EEF8;}
+.tier-opt.selected{border-color:var(--navy);background:#F4F4F4;}
 .tier-opt:hover:not(.selected){background:#FAFAF8;}
 .tier-opt-name{font-size:12px;font-weight:600;}
 .tier-opt-locs{font-size:10px;color:var(--mist);margin-top:2px;}
 .tier-opt-price{font-size:11px;color:var(--green);font-weight:500;margin-top:4px;}
 
 /* creds box */
-.creds-box{background:#F0EEF8;border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;}
+.creds-box{background:#F4F4F4;border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;}
 .creds-title{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;}
 .creds-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(28,43,74,.08);font-size:12px;}
 .creds-row:last-child{border-bottom:none;}
@@ -131,7 +131,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .dg-v{font-size:12px;font-weight:500;}
 .sub-table{width:100%;border-collapse:collapse;font-size:12px;}
 .sub-table th{font-size:10px;color:var(--mist);text-transform:uppercase;padding:7px 14px;text-align:left;background:#F8F7FC;border-bottom:0.5px solid var(--border);}
-.sub-table td{padding:9px 14px;border-bottom:0.5px solid #F5F3FA;}
+.sub-table td{padding:9px 14px;border-bottom:0.5px solid #ffffff;}
 .sub-table tr:last-child td{border-bottom:none;}
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
@@ -148,7 +148,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .bill-stat-sub{font-size:11px;color:var(--mist);margin-top:2px;}
 .bill-table{width:100%;border-collapse:collapse;font-size:12px;}
 .bill-table th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:9px 16px;text-align:left;background:#F8F7FC;border-bottom:0.5px solid var(--border);font-weight:500;}
-.bill-table td{padding:11px 16px;border-bottom:0.5px solid #F5F3FA;vertical-align:middle;}
+.bill-table td{padding:11px 16px;border-bottom:0.5px solid #ffffff;vertical-align:middle;}
 .bill-table tr:last-child td{border-bottom:none;}
 .pay-badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
 .pay-current{background:#E1F5EE;color:#0F6E56;}
@@ -165,7 +165,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .ob-col{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
 .ob-col-head{padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .ob-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
-.ob-col-count{font-size:10px;color:var(--mist);background:#F5F3FA;padding:2px 8px;border-radius:10px;font-weight:600;}
+.ob-col-count{font-size:10px;color:var(--mist);background:#ffffff;padding:2px 8px;border-radius:10px;font-weight:600;}
 .ob-col-body{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:80px;}
 .ob-card{background:#F8F7FC;border:0.5px solid var(--border);border-radius:9px;padding:10px 12px;cursor:pointer;transition:box-shadow .15s;}
 .ob-card:hover{box-shadow:0 2px 10px rgba(28,43,74,.1);}
@@ -184,7 +184,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .ob-phase-tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600;}
 .ob-phase-panel{display:none;padding:18px;}.ob-phase-panel.active{display:block;}
 /* Checklist */
-.ob-check-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:0.5px solid #F5F3FA;}
+.ob-check-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:0.5px solid #ffffff;}
 .ob-check-item:last-child{border-bottom:none;}
 .ob-check-cb{width:16px;height:16px;accent-color:var(--navy);cursor:pointer;margin-top:1px;flex-shrink:0;}
 .ob-check-label{font-size:12px;flex:1;}
@@ -194,11 +194,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .ob-meeting-date{font-size:10px;font-weight:700;color:var(--navy);margin-bottom:3px;}
 .ob-meeting-note{font-size:12px;color:var(--slate);}
 /* Support tickets */
-.ob-ticket{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:0.5px solid #F5F3FA;font-size:12px;}
+.ob-ticket{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:0.5px solid #ffffff;font-size:12px;}
 .ob-ticket:last-child{border-bottom:none;}
 .ob-ticket-status{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .status-open{background:#E74C3C;}
-.status-in_progress{background:#C8922A;}
+.status-in_progress{background:#C83803;}
 .status-resolved{background:#2E8B57;}
 .email-header{background:#1C2B4A;padding:24px 32px;text-align:center;}
 .email-body{padding:32px;}
@@ -275,7 +275,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     <div class="tab-item" id="tab-billing" onclick="switchTab('billing')">Billing <span id="billing-badge" style="display:none;background:#E74C3C;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle;">0</span></div>
     <div class="tab-item" id="tab-admins" onclick="switchTab('admins')">Super Admins</div>
     <div class="tab-item" id="tab-growth" onclick="switchTab('growth')">Growth</div>
-    <div class="tab-item" id="tab-onboarding" onclick="switchTab('onboarding')">Onboarding <span id="onboarding-badge" style="display:none;background:#C8922A;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle;">0</span></div>
+    <div class="tab-item" id="tab-onboarding" onclick="switchTab('onboarding')">Onboarding <span id="onboarding-badge" style="display:none;background:#C83803;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle;">0</span></div>
   </div>
 
   <!-- ── ORGS TAB ── -->
@@ -577,10 +577,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
             <div style="font-size:12px;font-weight:700;color:#2E8B57;">$349/mo</div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:8px;">
-            <div style="width:10px;height:10px;border-radius:50%;background:#C8922A;flex-shrink:0;"></div>
+            <div style="width:10px;height:10px;border-radius:50%;background:#C83803;flex-shrink:0;"></div>
             <div style="flex:1;font-size:12px;font-weight:500;">Large Group</div>
             <div style="font-size:11px;color:var(--mist);">Up to 12</div>
-            <div style="font-size:12px;font-weight:700;color:#C8922A;">$449/mo</div>
+            <div style="font-size:12px;font-weight:700;color:#C83803;">$449/mo</div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:8px;background:#F8F7FC;">
             <div style="width:10px;height:10px;border-radius:50%;background:#1C2B4A;flex-shrink:0;"></div>
@@ -678,7 +678,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         <div class="ob-col-body" id="ob-col-setup"></div>
       </div>
       <div class="ob-col">
-        <div class="ob-col-head"><span class="ob-col-title" style="color:#C8922A;">Go-Live (2 wks)</span><span class="ob-col-count" id="ob-count-golive">0</span></div>
+        <div class="ob-col-head"><span class="ob-col-title" style="color:#C83803;">Go-Live (2 wks)</span><span class="ob-col-count" id="ob-count-golive">0</span></div>
         <div class="ob-col-body" id="ob-col-golive"></div>
       </div>
       <div class="ob-col">
@@ -859,10 +859,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div class="section" style="margin-bottom:14px;">
         <div class="section-head" style="background:#FFF7ED;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:28px;height:28px;border-radius:50%;background:#C8922A;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
-            <div style="font-size:13px;font-weight:700;color:#C8922A;">Go-Live Phase — Weeks 1–2</div>
+            <div style="width:28px;height:28px;border-radius:50%;background:#C83803;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
+            <div style="font-size:13px;font-weight:700;color:#C83803;">Go-Live Phase — Weeks 1–2</div>
           </div>
-          <div style="font-size:11px;color:#C8922A;font-weight:500;">Physical count → staff trained → first cycle count complete</div>
+          <div style="font-size:11px;color:#C83803;font-weight:500;">Physical count → staff trained → first cycle count complete</div>
         </div>
         <div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px;font-size:12px;line-height:1.7;color:var(--slate);">
           <p><strong>Goal:</strong> Customer's inventory is live in MedSync and their Inventory Lead can independently run a cycle count by end of Week 2.</p>
@@ -940,7 +940,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
       <!-- Phase 4 -->
       <div class="section" style="margin-bottom:14px;">
-        <div class="section-head" style="background:#F0EEF8;">
+        <div class="section-head" style="background:#F4F4F4;">
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">4</div>
             <div style="font-size:13px;font-weight:700;color:var(--navy);">Active + Support — Day 61+</div>
@@ -986,10 +986,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
               <th style="padding:8px 12px;text-align:left;font-size:10px;color:var(--mist);text-transform:uppercase;">Escalate to</th>
             </tr></thead>
             <tbody>
-              <tr style="border-bottom:0.5px solid #F5F3FA;"><td style="padding:9px 12px;">Customer pulse Neutral/Concerned 2+ weeks</td><td style="padding:9px 12px;">Schedule leadership call within 5 days</td><td style="padding:9px 12px;font-weight:500;">Megan Henley</td></tr>
-              <tr style="background:#F8F7FC;border-bottom:0.5px solid #F5F3FA;"><td style="padding:9px 12px;">Customer threatens to cancel in trial</td><td style="padding:9px 12px;">Do not negotiate — escalate same day</td><td style="padding:9px 12px;font-weight:500;">Megan Henley</td></tr>
-              <tr style="border-bottom:0.5px solid #F5F3FA;"><td style="padding:9px 12px;">Technical bug or data import failure</td><td style="padding:9px 12px;">Document in ticket, attempt workaround, escalate if blocking go-live</td><td style="padding:9px 12px;font-weight:500;">Dev team</td></tr>
-              <tr style="background:#F8F7FC;border-bottom:0.5px solid #F5F3FA;"><td style="padding:9px 12px;">Billing dispute</td><td style="padding:9px 12px;">Do not discuss refunds — escalate immediately</td><td style="padding:9px 12px;font-weight:500;">Megan Henley</td></tr>
+              <tr style="border-bottom:0.5px solid #ffffff;"><td style="padding:9px 12px;">Customer pulse Neutral/Concerned 2+ weeks</td><td style="padding:9px 12px;">Schedule leadership call within 5 days</td><td style="padding:9px 12px;font-weight:500;">Megan Henley</td></tr>
+              <tr style="background:#F8F7FC;border-bottom:0.5px solid #ffffff;"><td style="padding:9px 12px;">Customer threatens to cancel in trial</td><td style="padding:9px 12px;">Do not negotiate — escalate same day</td><td style="padding:9px 12px;font-weight:500;">Megan Henley</td></tr>
+              <tr style="border-bottom:0.5px solid #ffffff;"><td style="padding:9px 12px;">Technical bug or data import failure</td><td style="padding:9px 12px;">Document in ticket, attempt workaround, escalate if blocking go-live</td><td style="padding:9px 12px;font-weight:500;">Dev team</td></tr>
+              <tr style="background:#F8F7FC;border-bottom:0.5px solid #ffffff;"><td style="padding:9px 12px;">Billing dispute</td><td style="padding:9px 12px;">Do not discuss refunds — escalate immediately</td><td style="padding:9px 12px;font-weight:500;">Megan Henley</td></tr>
               <tr><td style="padding:9px 12px;">Customer requests feature not in MedSync</td><td style="padding:9px 12px;">Log as feedback, share roadmap, do not promise delivery dates</td><td style="padding:9px 12px;font-weight:500;">Product backlog</td></tr>
             </tbody>
           </table>
@@ -1117,15 +1117,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div style="margin-top:20px;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;">
         <div style="padding:12px 16px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:700;color:var(--navy);">Common objections &amp; responses</div>
         <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:11px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:10px;border-bottom:0.5px solid #F5F3FA;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:10px;border-bottom:0.5px solid #ffffff;">
             <div style="color:#a33030;font-weight:600;">"We already use spreadsheets and it works fine."</div>
             <div style="color:var(--slate);">"Spreadsheets tell you what you counted. MedSync tells you what you should have, flags the difference, and tells you what to order next. It's not a replacement — it's an upgrade from reactive to proactive."</div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:10px;border-bottom:0.5px solid #F5F3FA;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:10px;border-bottom:0.5px solid #ffffff;">
             <div style="color:#a33030;font-weight:600;">"Our PIMS already does inventory."</div>
             <div style="color:var(--slate);">"PIMS tracks what was dispensed — MedSync tracks what's physically on the shelf and reconciles the two. They work together. We integrate with Vetspire."</div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:10px;border-bottom:0.5px solid #F5F3FA;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:10px;border-bottom:0.5px solid #ffffff;">
             <div style="color:#a33030;font-weight:600;">"$500 setup fee feels steep."</div>
             <div style="color:var(--slate);">"The setup fee covers an on-site physical count and two weeks of hands-on training. Most practices find one prevented expiration or one caught billing error more than covers it."</div>
           </div>
@@ -1537,7 +1537,7 @@ function openOrgDetail(orgId) {
     ? locs.map(l => `<tr><td>${l.name}</td><td style="color:var(--mist);font-size:11px;">${l.created_at ? new Date(l.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td></tr>`).join('')
     : '<tr><td colspan="2" style="color:var(--mist);">No locations yet</td></tr>';
   document.getElementById('detail-users').innerHTML = users.length
-    ? users.map(u => `<tr><td>${u.full_name||'—'}</td><td style="font-size:11px;color:var(--mist);">${u.email||'—'}</td><td><span style="font-size:10px;background:#F0EEF8;padding:2px 7px;border-radius:10px;">${u.role||'—'}</span></td></tr>`).join('')
+    ? users.map(u => `<tr><td>${u.full_name||'—'}</td><td style="font-size:11px;color:var(--mist);">${u.email||'—'}</td><td><span style="font-size:10px;background:#F4F4F4;padding:2px 7px;border-radius:10px;">${u.role||'—'}</span></td></tr>`).join('')
     : '<tr><td colspan="3" style="color:var(--mist);">No users yet</td></tr>';
 
   document.getElementById('detail-section').style.display = 'block';
@@ -1582,7 +1582,7 @@ function renderPaymentHistory(orgId) {
   if (!tbody) return;
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--mist);">No payment history</td></tr>'; return; }
   tbody.innerHTML = rows.map(r => {
-    const sc = r.status === 'paid' ? '#2E8B57' : r.status === 'failed' ? '#C0392B' : '#C8922A';
+    const sc = r.status === 'paid' ? '#2E8B57' : r.status === 'failed' ? '#C0392B' : '#C83803';
     const badge = `<span style="background:${sc};color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">${r.status.toUpperCase()}</span>`;
     return `<tr>
       <td style="font-size:11px;">${r.date}</td>
@@ -1626,10 +1626,10 @@ async function renderOrgBillingChanges(orgId) {
 // ── Flags (stored in localStorage per org for demo; real impl = DB table) ──
 const FLAG_LABELS = {
   payment_failed: { label:'Payment Failed',   color:'#C0392B', icon:'💳' },
-  ach_missing:    { label:'ACH Not on File',  color:'#C8922A', icon:'🏦' },
+  ach_missing:    { label:'ACH Not on File',  color:'#C83803', icon:'🏦' },
   overdue:        { label:'Overdue Balance',  color:'#C0392B', icon:'⚠️' },
   dispute:        { label:'Payment Dispute',  color:'#8B2FC9', icon:'⚖️' },
-  trial_expiring: { label:'Trial Expiring',   color:'#C8922A', icon:'⏳' },
+  trial_expiring: { label:'Trial Expiring',   color:'#C83803', icon:'⏳' },
   manual:         { label:'Manual Note',      color:'#1C2B4A', icon:'📌' },
 };
 function getFlagsKey(orgId) { return 'medsync_flags_' + orgId; }
@@ -2227,7 +2227,7 @@ function openRunBilling() {
           </tr></thead>
           <tbody id="run-rows">
             ${MOCK_BILLING.filter(o=>o.status!=='trial').map((o,i) => `
-              <tr id="run-row-${i}" style="border-bottom:0.5px solid #F5F3FA;">
+              <tr id="run-row-${i}" style="border-bottom:0.5px solid #ffffff;">
                 <td style="padding:10px 12px;">${o.name}</td>
                 <td style="padding:10px 12px;font-weight:600;">$${o.monthly}.00</td>
                 <td style="padding:10px 12px;color:var(--mist);">Stripe ACH</td>
@@ -2788,7 +2788,7 @@ function obSelectPulse(label) {
     const lbl = document.getElementById('ob-pulse-lbl-' + l);
     if (!lbl) return;
     if (l === label) {
-      lbl.style.background = '#F0EEF8'; lbl.style.borderColor = 'var(--navy)'; lbl.style.color = 'var(--navy)';
+      lbl.style.background = '#F4F4F4'; lbl.style.borderColor = 'var(--navy)'; lbl.style.color = 'var(--navy)';
     } else {
       lbl.style.background = ''; lbl.style.borderColor = 'var(--border)'; lbl.style.color = 'var(--mist)';
     }

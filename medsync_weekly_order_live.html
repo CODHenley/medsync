@@ -10,14 +10,14 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --navy:#1C2B4A;--navy-mid:#243459;
-  --gold:#C8922A;--gold-light:#E8B84B;--gold-pale:#FDF8EE;
+  --gold:#C83803;--gold-light:#E86535;--gold-pale:#FEF0EB;
   --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
   --bg:#F7F8FC;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;--green-border:#A8D8C8;
   --teal:#0891B2;--teal-bg:#E0F7FC;
   --amber:#B86D00;--amber-bg:#FFF3CC;--amber-border:#F5A000;
   --red:#a33030;--red-bg:#FFF0F0;
-  --purple:#534AB7;--purple-bg:#E4DAF2;
+  --purple:#534AB7;--purple-bg:#F4F4F4;
 }
 html,body{height:100%;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
@@ -55,7 +55,7 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 .tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--mist);cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px;transition:color .12s;}
 .tab:hover:not(.active){color:var(--slate);}
 .tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600;}
-.tab-badge{font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700;background:#E8E2F6;color:var(--slate);}
+.tab-badge{font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700;background:#F4F4F4;color:var(--slate);}
 .tab.active .tab-badge{background:var(--navy);color:#fff;}
 
 /* ── SCROLL AREA ────────────────────────────────────────────── */
@@ -74,14 +74,14 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 /* ── SECTION LABEL ──────────────────────────────────────────── */
 .sec-label{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .sec-text{font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.07em;}
-.sec-count{font-size:10px;background:#E8E2F6;color:var(--slate);padding:1px 7px;border-radius:10px;font-weight:600;}
+.sec-count{font-size:10px;background:#F4F4F4;color:var(--slate);padding:1px 7px;border-radius:10px;font-weight:600;}
 
 /* ── QUEUE TABLE ────────────────────────────────────────────── */
 .q-table{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
 .q-col-hdr{display:grid;grid-template-columns:1fr 100px 120px 90px 36px;padding:8px 14px;background:#F7F6FC;border-bottom:0.5px solid var(--border);}
 .q-col-hdr span{font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
 .q-col-hdr span:nth-child(2),.q-col-hdr span:nth-child(3),.q-col-hdr span:nth-child(4){text-align:center;}
-.q-row{display:grid;grid-template-columns:1fr 100px 120px 90px 36px;padding:10px 14px;border-bottom:0.5px solid #E8E2F6;align-items:center;transition:background .1s;}
+.q-row{display:grid;grid-template-columns:1fr 100px 120px 90px 36px;padding:10px 14px;border-bottom:0.5px solid #F4F4F4;align-items:center;transition:background .1s;}
 .q-row:last-child{border-bottom:none;}
 .q-row:hover{background:#FAFAFE;}
 .q-name-cell{cursor:pointer;display:flex;align-items:flex-start;gap:6px;}
@@ -94,7 +94,7 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 .q-onhand.low{color:var(--red);}
 .qty-ctrl{display:flex;align-items:center;gap:5px;justify-content:center;}
 .qty-btn{width:22px;height:22px;border-radius:50%;border:0.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;font-weight:400;color:var(--navy);transition:background .1s;line-height:1;}
-.qty-btn:hover{background:#E8E2F6;}
+.qty-btn:hover{background:#F4F4F4;}
 .qty-num{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;min-width:24px;text-align:center;color:var(--navy);}
 .q-price{font-family:'DM Mono',monospace;font-size:12px;text-align:center;color:var(--slate);}
 .qty-unit{font-size:10px;color:var(--mist);margin-left:2px;white-space:nowrap;}
@@ -127,7 +127,7 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 .v-item-hdr{display:grid;grid-template-columns:1fr 70px 80px 80px;padding:7px 16px;background:#F7F6FC;border-bottom:0.5px solid var(--border);}
 .v-item-hdr span{font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;}
 .v-item-hdr span:not(:first-child){text-align:right;}
-.v-item-row{display:grid;grid-template-columns:1fr 70px 80px 80px;padding:9px 16px;border-bottom:0.5px solid #E8E2F6;align-items:center;}
+.v-item-row{display:grid;grid-template-columns:1fr 70px 80px 80px;padding:9px 16px;border-bottom:0.5px solid #F4F4F4;align-items:center;}
 .v-item-row:last-child{border-bottom:none;}
 .vi-name{font-size:12px;font-weight:500;color:var(--navy);}
 .vi-qty{font-family:'DM Mono',monospace;font-size:12px;text-align:right;color:var(--slate);}
@@ -148,7 +148,7 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 .footer-info strong{color:var(--navy);}
 .footer-btns{display:flex;gap:8px;}
 .btn{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;height:32px;display:flex;align-items:center;gap:6px;transition:all .12s;}
-.btn:hover{background:#E8E2F6;}
+.btn:hover{background:#F4F4F4;}
 .btn-primary{background:var(--navy);color:#fff;border-color:var(--navy);}
 .btn-primary:hover{background:var(--navy-mid);}
 .btn-primary:disabled{background:var(--mist);border-color:var(--mist);cursor:not-allowed;opacity:.65;}
@@ -161,10 +161,10 @@ select.loc-sel option{background:var(--navy);color:#fff;}
 .modal-search{width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;color:var(--navy);margin-bottom:10px;flex-shrink:0;}
 .modal-search:focus{border-color:var(--navy);}
 .prod-list{flex:1;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;margin-bottom:14px;min-height:120px;max-height:240px;}
-.prod-opt{padding:10px 12px;border-bottom:0.5px solid #E8E2F6;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .1s;}
+.prod-opt{padding:10px 12px;border-bottom:0.5px solid #F4F4F4;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .1s;}
 .prod-opt:last-child{border-bottom:none;}
 .prod-opt:hover{background:#FAFAFE;}
-.prod-opt.sel{background:#E8E2F6;}
+.prod-opt.sel{background:#F4F4F4;}
 .po-name{font-size:12px;font-weight:500;color:var(--navy);}
 .po-meta{font-size:10px;color:var(--mist);margin-top:2px;}
 .po-oh{font-size:11px;font-family:'DM Mono',monospace;color:var(--slate);flex-shrink:0;}
@@ -536,10 +536,10 @@ async function saveExternalSpend() {
 
 // ── Vendor config ────────────────────────────────────────────────────────────
 const VENDORS = {
-  'MWI Animal Health':    { color:'#C8922A', bg:'#FDF8EE', border:'#F0D896', threshold:500, place:'mwiah.com or your MWI rep' },
+  'MWI Animal Health':    { color:'#C83803', bg:'#FEF0EB', border:'#F0D896', threshold:500, place:'mwiah.com or your MWI rep' },
   'Covetrus':             { color:'#0891B2', bg:'#E0F7FC', border:'#A0D8EC', threshold:350, place:'covetrus.com or your Covetrus rep' },
-  'Patterson Veterinary': { color:'#534AB7', bg:'#E4DAF2', border:'#C4C0F0', threshold:400, place:'pattersonvet.com or your Patterson rep' },
-  'Midwest Veterinary Supply': { color:'#4A5568', bg:'#E8E2F6', border:'#B8B0D0', threshold:300, place:'midwestvet.net or your rep' },
+  'Patterson Veterinary': { color:'#534AB7', bg:'#F4F4F4', border:'#C4C0F0', threshold:400, place:'pattersonvet.com or your Patterson rep' },
+  'Midwest Veterinary Supply': { color:'#4A5568', bg:'#F4F4F4', border:'#B8B0D0', threshold:300, place:'midwestvet.net or your rep' },
 };
 
 function inferVendor(name) {
@@ -547,7 +547,7 @@ function inferVendor(name) {
 }
 
 function vendorBadge(vendor) {
-  const v = VENDORS[vendor] || { color:'#4A5568', bg:'#E8E2F6' };
+  const v = VENDORS[vendor] || { color:'#4A5568', bg:'#F4F4F4' };
   return `<span class="vendor-badge" style="background:${v.bg};color:${v.color};">${vendor}</span>`;
 }
 
@@ -1182,7 +1182,7 @@ function renderBuildView() {
   } else {
     vKeys.forEach(vendor => {
       const items     = vendors[vendor];
-      const vc        = VENDORS[vendor] || { color:'#4A5568', bg:'#E8E2F6', border:'#B8B0D0', threshold:500, place:'your rep' };
+      const vc        = VENDORS[vendor] || { color:'#4A5568', bg:'#F4F4F4', border:'#B8B0D0', threshold:500, place:'your rep' };
       const subtotal  = items.reduce((s,i) => s + i.gpoPrice * i.orderQty, 0);
       const isDone    = state.submitted.has(vendor);
       const remaining = vc.threshold - subtotal;
@@ -1318,7 +1318,7 @@ function printVendorPO(vendor) {
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${ref}</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"DM Sans",sans-serif;color:#1C2B4A;font-size:13px;padding:32px 40px;}
-    .logo{font-size:22px;font-weight:700;letter-spacing:-.5px;}.logo span{color:#C8922A;}
+    .logo{font-size:22px;font-weight:700;letter-spacing:-.5px;}.logo span{color:#C83803;}
     .vendor-tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;margin-top:6px;}
     .meta{font-size:11px;color:#8A93A8;margin-top:4px;}.ref{font-size:14px;font-weight:600;margin-top:8px;}
     hr{border:none;border-top:2px solid #1C2B4A;margin:14px 0;}
@@ -1414,7 +1414,7 @@ function printAllPOs() {
 
     allSections += `
       <div style="${vi > 0 ? 'page-break-before:always;padding-top:20px;' : ''}">
-        <div style="font-size:22px;font-weight:700;letter-spacing:-.5px;">Med<span style="color:#C8922A;">Sync</span></div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-.5px;">Med<span style="color:#C83803;">Sync</span></div>
         <div style="margin-top:6px;display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;background:${vc.color};">${vendor}</div>
         <div style="font-size:11px;color:#8A93A8;margin-top:4px;">Scout Veterinary Urgent Care &nbsp;·&nbsp; ${state.locationName||'Scout'} &nbsp;·&nbsp; ${dateStr}</div>
         <div style="font-size:14px;font-weight:600;margin-top:8px;">${ref}${isLate?' <span style="color:#C0392B;font-weight:600;">⚠ Outside window</span>':''}</div>

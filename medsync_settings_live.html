@@ -6,7 +6,7 @@
 <title>MedSync · Admin Settings</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1C2B4A;--gold:#C8922A;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#B8B0D0;--bg:#EDE8F8;--amber:#C8922A;}
+:root{--navy:#1C2B4A;--gold:#C83803;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#B8B0D0;--bg:#F4F4F4;--amber:#C83803;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -35,13 +35,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .status-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;}
 .pill-ok{background:#E8F5EE;color:var(--green);}
 .pill-pending{background:#FEF3E2;color:var(--amber);}
-.pill-soon{background:#E8E2F6;color:var(--mist);}
+.pill-soon{background:#F4F4F4;color:var(--mist);}
 .int-api{position:relative;}
-.int-api input{width:100%;padding:8px 70px 8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;background:#F0EBF8;color:var(--navy);}
+.int-api input{width:100%;padding:8px 70px 8px 10px;border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;background:#F4F4F4;color:var(--navy);}
 .int-api button{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:4px 10px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
 /* Threshold rows */
-.thresh-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #EDE8F8;}
+.thresh-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid #F4F4F4;}
 .thresh-row:last-child{border-bottom:none;}
 .thresh-label{font-size:13px;font-weight:500;}
 .thresh-sub{font-size:11px;color:var(--mist);margin-top:2px;}
@@ -52,7 +52,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 /* Quick links */
 .ql-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
 .ql-tile{border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;background:#fff;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;}
-.ql-tile:hover{border-color:#9B8EC4;background:#F0EBF8;}
+.ql-tile:hover{border-color:#9B8EC4;background:#F4F4F4;}
 .ql-icon{font-size:20px;}
 .ql-name{font-size:12px;font-weight:600;}
 .ql-desc{font-size:10px;color:var(--mist);margin-top:1px;}
@@ -106,7 +106,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="field"><label>Contact email</label><input type="email" value="mhenley@scoutcare.com"></div>
         </div>
         <div class="profile-row">
-          <div class="field"><label>Platform URL</label><input type="text" value="medsync.vet" readonly style="background:#F0EBF8;color:var(--mist);"></div>
+          <div class="field"><label>Platform URL</label><input type="text" value="medsync.vet" readonly style="background:#F4F4F4;color:var(--mist);"></div>
           <div class="field"><label>Timezone</label><select><option>America/Chicago (CT)</option><option>America/New_York (ET)</option><option>America/Denver (MT)</option><option>America/Los_Angeles (PT)</option></select></div>
         </div>
       </div>
@@ -146,7 +146,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="field"><label>Billing phone</label><input id="bb-billing-phone" type="tel" placeholder="e.g. (312) 555-0100"></div>
           <div class="field">
             <label>Payment terms</label>
-            <div style="padding:10px 14px;background:#F0EBF8;border:0.5px solid var(--border);border-radius:9px;font-size:12px;color:var(--navy);line-height:1.6;">
+            <div style="padding:10px 14px;background:#F4F4F4;border:0.5px solid var(--border);border-radius:9px;font-size:12px;color:var(--navy);line-height:1.6;">
               Billed monthly on the <strong>1st of each month</strong>. Plans starting mid-month are prorated based on days remaining in that month.
             </div>
           </div>
@@ -183,7 +183,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
         <!-- Credit card (backup) -->
         <div style="margin-top:20px;padding-top:16px;border-top:0.5px solid var(--border);">
-          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">Credit Card <span style="background:#C8922A;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:6px;">BACKUP · REQUIRED</span></div>
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">Credit Card <span style="background:#C83803;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:6px;">BACKUP · REQUIRED</span></div>
           <div style="font-size:11px;color:var(--mist);margin-bottom:14px;">Required as a backup payment method. If an ACH payment fails or is returned, your card will be automatically charged within 24 hours. If both payment methods fail, a <strong style="color:#C0392B;">$35 late fee</strong> will be added to the following month's invoice. Visa, Mastercard, and Amex accepted.</div>
           <div class="profile-row">
             <div class="field"><label>Cardholder name</label><input id="bb-cc-holder" type="text" placeholder="Name on card"></div>
@@ -208,7 +208,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="profile-row">
             <div class="field" style="grid-column:span 2;">
               <label>Current plan</label>
-              <div id="bb-plan-display" style="padding:12px 16px;background:#F0EBF8;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);line-height:1.7;">Loading…</div>
+              <div id="bb-plan-display" style="padding:12px 16px;background:#F4F4F4;border:0.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--navy);line-height:1.7;">Loading…</div>
               <div style="margin-top:8px;padding:12px 16px;background:#E8F4EE;border:0.5px solid #b0ddd0;border-radius:9px;font-size:12px;color:#1a5c3a;line-height:1.7;">
                 <strong>Enrollment fee:</strong> $500 one-time (non-refundable). Covers on-site physical count and 30-day supported launch.<br>
                 <strong>90-day money-back guarantee:</strong> Cancel within 90 days of your start date for a full refund, returned within 60 days of your cancellation date.
@@ -276,7 +276,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <!-- Cornerstone -->
       <div class="int-tile" style="opacity:.6;">
         <div class="int-head">
-          <div class="int-logo" style="background:#C8922A;">CS</div>
+          <div class="int-logo" style="background:#C83803;">CS</div>
           <div>
             <div class="int-name">Cornerstone</div>
             <span class="status-pill pill-soon">Coming soon</span>
@@ -334,28 +334,28 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         <div>
           <div style="font-size:12px;font-weight:600;color:#1C2B4A;margin-bottom:10px;">Connection details</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="background:#ffffff;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
               <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Server</div>
               <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
                 <span id="pbi-host">db.aemkdummdrmxtwrkggjw.supabase.co</span>
                 <button onclick="copyPBI('pbi-host')" style="background:none;border:none;cursor:pointer;color:var(--mist);font-size:11px;padding:0;flex-shrink:0;" title="Copy">⎘</button>
               </div>
             </div>
-            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="background:#ffffff;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
               <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Port</div>
               <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
                 <span id="pbi-port">5432</span>
                 <button onclick="copyPBI('pbi-port')" style="background:none;border:none;cursor:pointer;color:var(--mist);font-size:11px;padding:0;flex-shrink:0;" title="Copy">⎘</button>
               </div>
             </div>
-            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="background:#ffffff;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
               <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Database</div>
               <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
                 <span id="pbi-db">postgres</span>
                 <button onclick="copyPBI('pbi-db')" style="background:none;border:none;cursor:pointer;color:var(--mist);font-size:11px;padding:0;flex-shrink:0;" title="Copy">⎘</button>
               </div>
             </div>
-            <div style="background:#F5F3FA;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="background:#ffffff;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;">
               <div style="font-size:10px;color:var(--mist);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Username</div>
               <div style="font-size:12px;font-family:monospace;color:#1C2B4A;display:flex;align-items:center;justify-content:space-between;gap:6px;">
                 <span id="pbi-user">postgres</span>
@@ -382,27 +382,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         <div>
           <div style="font-size:12px;font-weight:600;color:#1C2B4A;margin-bottom:8px;">Recommended tables</div>
           <div style="display:flex;flex-direction:column;gap:4px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:7px;">
               <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">daily_revenue</span>
               <span style="font-size:11px;color:var(--mist);">Revenue by location and date</span>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:7px;">
               <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">purchase_history</span>
               <span style="font-size:11px;color:var(--mist);">Drug spend and Vetcove order history</span>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:7px;">
               <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">goods_lost</span>
               <span style="font-size:11px;color:var(--mist);">Write-offs, expirations, and waste</span>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:7px;">
               <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">dispensed_items</span>
               <span style="font-size:11px;color:var(--mist);">Product-level dispensing and drug cost</span>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:7px;">
               <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">lots</span>
               <span style="font-size:11px;color:var(--mist);">Lot tracking, quantities, and expiration dates</span>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#F5F3FA;border-radius:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#ffffff;border-radius:7px;">
               <span style="font-size:12px;font-family:monospace;color:#1C2B4A;font-weight:500;">po_items</span>
               <span style="font-size:11px;color:var(--mist);">Purchase order line items and procurement history</span>
             </div>
@@ -419,11 +419,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
             </div>
             <div style="display:flex;gap:12px;align-items:flex-start;">
               <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</div>
-              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Enter <strong>Server:</strong> <code style="background:#F0EEF8;padding:1px 5px;border-radius:4px;">db.aemkdummdrmxtwrkggjw.supabase.co:5432</code> and <strong>Database:</strong> <code style="background:#F0EEF8;padding:1px 5px;border-radius:4px;">postgres</code></div>
+              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Enter <strong>Server:</strong> <code style="background:#F4F4F4;padding:1px 5px;border-radius:4px;">db.aemkdummdrmxtwrkggjw.supabase.co:5432</code> and <strong>Database:</strong> <code style="background:#F4F4F4;padding:1px 5px;border-radius:4px;">postgres</code></div>
             </div>
             <div style="display:flex;gap:12px;align-items:flex-start;">
               <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">3</div>
-              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Select <strong>Database</strong> authentication → Username: <code style="background:#F0EEF8;padding:1px 5px;border-radius:4px;">postgres</code> → paste your database password</div>
+              <div style="font-size:12px;color:#1C2B4A;line-height:1.5;">Select <strong>Database</strong> authentication → Username: <code style="background:#F4F4F4;padding:1px 5px;border-radius:4px;">postgres</code> → paste your database password</div>
             </div>
             <div style="display:flex;gap:12px;align-items:flex-start;">
               <div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">4</div>
