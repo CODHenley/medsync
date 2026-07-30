@@ -808,9 +808,9 @@ function renderTypeScreen() {
           var unlimited = planInfo.limit === 999;
           var remaining = unlimited ? null : planInfo.limit - planInfo.count;
           var pct = unlimited ? 0 : planInfo.count / planInfo.limit;
-          var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
-          var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
-          var bdr   = unlimited ? '#b0ddd0' : pct >= 1 ? '#f0a0a0' : pct >= 0.8 ? '#f0d070' : '#b0ddd0';
+          var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#B86D00' : '#0F6E56';
+          var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#FFF3CC' : '#E1F5EE';
+          var bdr   = unlimited ? '#b0ddd0' : pct >= 1 ? '#f0a0a0' : pct >= 0.8 ? '#F5A000' : '#b0ddd0';
           var usageText = unlimited ? 'Unlimited locations' : remaining + ' of ' + planInfo.limit + ' slots remaining';
           var warn = (!unlimited && remaining === 0) ? '<div style="font-size:10px;margin-top:6px;color:'+color+';font-weight:600;">No slots available — contact Scout to upgrade</div>' :
                      (!unlimited && remaining === 1) ? '<div style="font-size:10px;margin-top:6px;color:'+color+';font-weight:600;">⚠ Last available slot</div>' : '';
@@ -834,7 +834,7 @@ function renderTypeScreen() {
           return `<div onclick="selectPracticeType('${t}')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid ${sel?'#1C2B4A':'#B8B0D0'};border-radius:9px;cursor:pointer;font-size:12px;font-weight:${sel?700:500};background:${sel?'#E8F0FE':'#fff'};color:${sel?'#1C2B4A':'#4A5568'};transition:all .15s;">${labels[t]}</div>`;
         }).join('')}
       </div>
-      ${!state.practiceType ? '<div style="font-size:10px;color:#a0700a;margin-top:6px;">Select a practice type to continue</div>' : ''}
+      ${!state.practiceType ? '<div style="font-size:10px;color:#B86D00;margin-top:6px;">Select a practice type to continue</div>' : ''}
     </div>
     <div class="btn-row">
       <button class="btn-primary" onclick="nextFromType()" ${(!state.locationType||!state.practiceType)?'disabled':''}>Continue →</button>
@@ -1344,8 +1344,8 @@ async function showPlanModal() {
     var unlimited = planInfo.limit === 999;
     var remaining = unlimited ? null : planInfo.limit - planInfo.count;
     var pct = unlimited ? 0 : planInfo.count / planInfo.limit;
-    var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#a0700a' : '#0F6E56';
-    var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#fdefc7' : '#E1F5EE';
+    var color = unlimited ? '#0F6E56' : pct >= 1 ? '#a33030' : pct >= 0.8 ? '#B86D00' : '#0F6E56';
+    var bg    = unlimited ? '#E1F5EE' : pct >= 1 ? '#fde0d0' : pct >= 0.8 ? '#FFF3CC' : '#E1F5EE';
 
     var barPct = unlimited ? 0 : Math.min((planInfo.count/planInfo.limit)*100,100);
     var bar = unlimited ? '' :
@@ -1372,7 +1372,7 @@ async function showPlanModal() {
       + (orgData&&orgData.notes ? row('Notes', orgData.notes) : '');
 
     var upgradeNote = (!unlimited && remaining !== null && remaining <= 0)
-      ? '<div style="margin-top:14px;padding:11px 14px;background:#FFF3CD;border:0.5px solid #f0d070;border-radius:9px;font-size:11px;color:#856404;line-height:1.6;">You have used all your location slots. Contact MedSync to upgrade.<br><strong>hello@medsync.vet</strong></div>' : '';
+      ? '<div style="margin-top:14px;padding:11px 14px;background:#FFF3CC;border:0.5px solid #F5A000;border-radius:9px;font-size:11px;color:#856404;line-height:1.6;">You have used all your location slots. Contact MedSync to upgrade.<br><strong>hello@medsync.vet</strong></div>' : '';
 
     // CTA: use a slot if slots remain, otherwise just "Got it"
     var canAdd = unlimited || (remaining !== null && remaining > 0);
