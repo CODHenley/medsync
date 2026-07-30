@@ -948,6 +948,9 @@ function renderProductTable() {
     data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
   }
 
+  // Exclude services
+  data = data.filter(p => _inferCategory(p.product_name) !== 'service');
+
   // Search filter
   const searchQ = (document.getElementById('product-search')?.value || '').trim().toLowerCase();
   if (searchQ) data = data.filter(p => p.product_name.toLowerCase().includes(searchQ));
@@ -1555,6 +1558,7 @@ function _loadMarginTargets() {
 // Infer product category from name (simple heuristic until Vetspire returns category)
 function _inferCategory(name) {
   const n = (name || '').toLowerCase();
+  if (/cytolog|consult|exam|recheck|surgery|surgic|anesthes|ultrasound|radiograph|x-ray|xray|hospitali|boarding|groom|culture|fecal|urinalysis|biopsy|necropsy|euthanas|office visit|physical|dental clean|prophy|titer|recheck|follow.?up|visit|wellness|nail trim|anal gland|ear clean|renal diet counsel|behavior|training|blood draw|sample collect|processing fee|handling fee|sedation|block|nerve block|monitor|ecg|ekg|blood pressure|intraocular|ophthalmolog|dermatolog|cardio|oncolog|orthoped|spec|panel.*with culture|realpcr|pcr.*panel|culture.*panel/.test(n)) return 'service';
   if (/reagent|catalyst|procyte|snap|idexx|abaxis|test kit|lyte|analyzer/.test(n)) return 'diag';
   if (/shampoo|spray|flea|tick|worm|supplement|otics|collar|leash|cone|bandage|gauze|suture|syringe|glove|mask|gown|drape|wrap|tape/.test(n)) return 'supplies';
   return 'pharma'; // default: pharmaceuticals
