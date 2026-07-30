@@ -4438,10 +4438,10 @@ let _staffMessages  = [];
 let _dmMessages     = {};          // channel → messages[]
 
 function _msgMe() {
-  try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; }
+  try { return JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; }
 }
 function _msgMeUser() {
-  try { return JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e) { return {}; }
+  try { return JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) { return {}; }
 }
 function _msgHeaders() {
   const tok = _msgMe().access_token || _MSG_KEY;
