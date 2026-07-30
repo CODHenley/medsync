@@ -12,7 +12,7 @@
   --slate:#4A5568;--mist:#8899AA;--border:#DDD9EC;
   --bg:#F5F3FA;--surface:#fff;
   --green:#0F6E56;--green-bg:#E1F5EE;
-  --amber:#a0700a;--amber-bg:#fdefc7;--amber-border:#f0d070;
+  --amber:#7A6200;--amber-bg:#FBF0B0;--amber-border:#C8A800;
   --red:#a33030;--red-bg:#fde0d0;--red-border:#f0a0a0;
   --purple:#534AB7;--purple-bg:#EEEDFB;
 }
@@ -152,7 +152,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .bill-table tr:last-child td{border-bottom:none;}
 .pay-badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
 .pay-current{background:#E1F5EE;color:#0F6E56;}
-.pay-pending{background:#FFF3CD;color:#856404;}
+.pay-pending{background:#FBF0B0;color:#856404;}
 .pay-overdue{background:#FDECEA;color:#a33030;}
 .pay-trial{background:#E8EEFF;color:#3451b2;}
 .run-btn{padding:9px 20px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
@@ -173,7 +173,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .ob-card-sub{font-size:10px;color:var(--mist);}
 .ob-card-days{font-size:10px;margin-top:6px;font-weight:600;}
 .ob-card-days.urgent{color:#a33030;}
-.ob-card-days.warn{color:#a0700a;}
+.ob-card-days.warn{color:#7A6200;}
 .ob-card-days.ok{color:#0F6E56;}
 .ob-empty{font-size:11px;color:var(--mist);text-align:center;padding:14px 0;}
 /* Detail panel */
@@ -545,8 +545,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
             <th style="padding:7px 10px;text-align:right;font-size:10px;color:var(--mist);text-transform:uppercase;">When</th>
           </tr></thead>
           <tbody>
-            <tr><td style="padding:7px 10px;">Year 1 ext. launch</td><td style="padding:7px 10px;text-align:right;font-weight:600;">25</td><td style="padding:7px 10px;text-align:right;">$74,700</td><td style="padding:7px 10px;text-align:right;"><span style="background:#FFF3CD;color:#856404;font-size:10px;padding:2px 6px;border-radius:8px;">~21%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2028</td></tr>
-            <tr style="background:#F8F7FC;"><td style="padding:7px 10px;">Year 2 growth</td><td style="padding:7px 10px;text-align:right;font-weight:600;">75</td><td style="padding:7px 10px;text-align:right;">$224,100</td><td style="padding:7px 10px;text-align:right;"><span style="background:#FFF3CD;color:#856404;font-size:10px;padding:2px 6px;border-radius:8px;">~60%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2029</td></tr>
+            <tr><td style="padding:7px 10px;">Year 1 ext. launch</td><td style="padding:7px 10px;text-align:right;font-weight:600;">25</td><td style="padding:7px 10px;text-align:right;">$74,700</td><td style="padding:7px 10px;text-align:right;"><span style="background:#FBF0B0;color:#856404;font-size:10px;padding:2px 6px;border-radius:8px;">~21%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2028</td></tr>
+            <tr style="background:#F8F7FC;"><td style="padding:7px 10px;">Year 2 growth</td><td style="padding:7px 10px;text-align:right;font-weight:600;">75</td><td style="padding:7px 10px;text-align:right;">$224,100</td><td style="padding:7px 10px;text-align:right;"><span style="background:#FBF0B0;color:#856404;font-size:10px;padding:2px 6px;border-radius:8px;">~60%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2029</td></tr>
             <tr><td style="padding:7px 10px;">Full break-even</td><td style="padding:7px 10px;text-align:right;font-weight:600;">~133</td><td style="padding:7px 10px;text-align:right;">$413,364+</td><td style="padding:7px 10px;text-align:right;"><span style="background:#D4EDDA;color:#155724;font-size:10px;padding:2px 6px;border-radius:8px;">100%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">Mid-2029</td></tr>
             <tr style="background:#F8F7FC;"><td style="padding:7px 10px;">Scout preferred (40 locs)</td><td style="padding:7px 10px;text-align:right;font-weight:600;">40</td><td style="padding:7px 10px;text-align:right;">$71,520</td><td style="padding:7px 10px;text-align:right;"><span style="background:#E8F0FE;color:#1a56db;font-size:10px;padding:2px 6px;border-radius:8px;">~19%</span></td><td style="padding:7px 10px;text-align:right;color:var(--mist);font-size:11px;">2027+</td></tr>
           </tbody>
@@ -849,7 +849,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
               </ul>
             </div>
           </div>
-          <div style="background:#FFF3CD;border:0.5px solid #f0d070;border-radius:8px;padding:10px 14px;font-size:11px;color:#856404;">
+          <div style="background:#FBF0B0;border:0.5px solid #C8A800;border-radius:8px;padding:10px 14px;font-size:11px;color:#856404;">
             <strong>Common issue:</strong> Customer can't log in — check that the email was correctly entered during provisioning. Use Platform Admin → Organizations → edit org to resend credentials.
           </div>
         </div>
@@ -893,7 +893,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div style="background:#E1F5EE;border:0.5px solid #b0ddd0;border-radius:8px;padding:10px 14px;font-size:11px;color:#0F6E56;">
             <strong>Tip:</strong> Keep Week 1 to one power user (Inventory Lead). Don't try to train the whole team at once. Week 2 is where you broaden to manager + additional staff.
           </div>
-          <div style="background:#FFF3CD;border:0.5px solid #f0d070;border-radius:8px;padding:10px 14px;font-size:11px;color:#856404;">
+          <div style="background:#FBF0B0;border:0.5px solid #C8A800;border-radius:8px;padding:10px 14px;font-size:11px;color:#856404;">
             <strong>Common issue:</strong> Par levels feel wrong in first cycle count. This is normal — products not yet in the system will show as missing. Add them manually via the cycle count screen and flag for import cleanup.
           </div>
         </div>
@@ -932,7 +932,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
               </ul>
             </div>
           </div>
-          <div style="background:#FFF3CD;border:0.5px solid #f0d070;border-radius:8px;padding:10px 14px;font-size:11px;color:#856404;">
+          <div style="background:#FBF0B0;border:0.5px solid #C8A800;border-radius:8px;padding:10px 14px;font-size:11px;color:#856404;">
             <strong>Conversion risk flag:</strong> If pulse is Neutral or below for 2+ consecutive weeks, escalate to leadership before Day 45. Do not wait for Day 60.
           </div>
         </div>
@@ -2139,7 +2139,7 @@ function renderBillingTab() {
     const label = {current:'Current',pending:'Pending',overdue:'Overdue',trial:'Trial'}[org.status];
     const enrollBadge = org.enrolled
       ? '<span style="color:#0F6E56;font-size:10px;">✓ Paid</span>'
-      : '<span style="color:#a0700a;font-size:10px;">Pending</span>';
+      : '<span style="color:#7A6200;font-size:10px;">Pending</span>';
     return `<tr onclick="openBillingOrgDetail(${idx})" style="cursor:pointer;">
       <td><div style="font-weight:500;">${org.name}</div><div style="font-size:10px;color:var(--mist);">${org.locs} location${org.locs!==1?'s':''}</div></td>
       <td><span class="tier-badge tier-${org.tier}" style="font-size:10px;">${org.tierLabel}</span></td>
@@ -2697,7 +2697,7 @@ function obUpdateTrialDates(trialStart) {
   const diff = Math.round((end - today) / 86400000);
   if (daysEl) {
     daysEl.textContent = diff <= 0 ? 'Ended' : diff + ' days';
-    daysEl.style.color = diff <= 0 ? '#a33030' : diff <= 7 ? '#a0700a' : '#0F6E56';
+    daysEl.style.color = diff <= 0 ? '#a33030' : diff <= 7 ? '#7A6200' : '#0F6E56';
   }
 }
 
@@ -2725,7 +2725,7 @@ function obRenderMeetings(data) {
         <button onclick="obDeleteMeeting(${data.meetings.length-1-i})" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--mist);">✕</button>
       </div>
       <div class="ob-meeting-note">${m.note || '<em style="color:var(--mist);">No notes</em>'}</div>
-      ${m.followup ? `<div style="margin-top:6px;font-size:10px;font-weight:600;color:#a0700a;background:#FFF8F0;border:0.5px solid #f0d070;border-radius:6px;padding:3px 8px;display:inline-block;">⏰ Follow-up: ${m.followup}</div>` : ''}
+      ${m.followup ? `<div style="margin-top:6px;font-size:10px;font-weight:600;color:#7A6200;background:#FBF0B0;border:0.5px solid #C8A800;border-radius:6px;padding:3px 8px;display:inline-block;">⏰ Follow-up: ${m.followup}</div>` : ''}
     </div>`).join('');
 }
 
@@ -2763,8 +2763,8 @@ function obAddMeeting() {
               </label>`).join('')}
           </div>
         </div>
-        <div id="ob-followup-row" style="display:none;background:#FFF8F0;border:0.5px solid #f0d070;border-radius:9px;padding:12px 14px;display:none;flex-direction:column;gap:8px;">
-          <div style="font-size:11px;font-weight:700;color:#a0700a;">Required when pulse is below Good</div>
+        <div id="ob-followup-row" style="display:none;background:#FBF0B0;border:0.5px solid #C8A800;border-radius:9px;padding:12px 14px;display:none;flex-direction:column;gap:8px;">
+          <div style="font-size:11px;font-weight:700;color:#7A6200;">Required when pulse is below Good</div>
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Follow-up check-in date <span style="color:#a33030;">*</span></div>
             <input type="date" id="ob-m-followup" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;width:100%;">

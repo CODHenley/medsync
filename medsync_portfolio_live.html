@@ -130,7 +130,7 @@ async function loadRecognition() {
     if (glEl && Array.isArray(whGlData)) {
       const total = whGlData.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
       glEl.textContent = total > 0 ? '$' + total.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}) : '$0';
-      glEl.style.color = total > 500 ? '#a33030' : total > 0 ? '#a0700a' : '#1C2B4A';
+      glEl.style.color = total > 500 ? '#a33030' : total > 0 ? '#7A6200' : '#1C2B4A';
     }
 
     // ── Wheaton: live order status ────────────────────────────────────────────
@@ -145,7 +145,7 @@ async function loadRecognition() {
         ordEl.className = 'badge badge-ok'; ordEl.style.fontSize = '11px';
         ordEl.innerHTML = '<i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> Submitted';
       } else if (st === 'pending') {
-        ordEl.className = 'badge'; ordEl.style.cssText = 'font-size:11px;background:#FFF3CD;color:#a0700a;border:1px solid #e0c56a;';
+        ordEl.className = 'badge'; ordEl.style.cssText = 'font-size:11px;background:#FBF0B0;color:#7A6200;border:1px solid #e0c56a;';
         ordEl.innerHTML = '<i class="ti ti-clock" style="font-size:11px;" aria-hidden="true"></i> Pending';
       } else {
         ordEl.className = ''; ordEl.style.fontSize = '11px'; ordEl.style.color = '#8A93A8';
@@ -402,7 +402,7 @@ async function loadLocationCards() {
       const lostEl = document.getElementById('lc-' + l.key + '-gl');
       if (lostEl) {
         lostEl.textContent = lost > 0 ? '$' + lost.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '$0';
-        lostEl.style.color = lost > 1000 ? '#a33030' : lost > 300 ? '#a0700a' : '#1C2B4A';
+        lostEl.style.color = lost > 1000 ? '#a33030' : lost > 300 ? '#7A6200' : '#1C2B4A';
       }
     });
   } catch(err) {
@@ -520,7 +520,7 @@ async function loadWheatonInsights() {
 
     const colorMap = {
       bad:  { bg:'#fff5f5', border:'#f5c6c6', iconBg:'#fde8e8' },
-      warn: { bg:'#fdf8ee', border:'#f0d070', iconBg:'#fdefc7' },
+      warn: { bg:'#FBF0B0', border:'#C8A800', iconBg:'#FBF0B0' },
       info: { bg:'#f0f7ff', border:'#b0ccf0', iconBg:'#dceeff' },
     };
     container.innerHTML = cards.map(function(c) {
@@ -528,7 +528,7 @@ async function loadWheatonInsights() {
       const badgeCls = c.urgency === 'bad' ? 'badge-bad' : c.urgency === 'info' ? 'badge-info' : 'badge-warn';
       return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:' + col.bg + ';border:0.5px solid ' + col.border + ';border-radius:8px;margin-bottom:4px;">' +
         '<div style="width:30px;height:30px;border-radius:7px;background:' + col.iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-        '<i class="ti ' + c.icon + '" style="color:' + (c.urgency==='bad'?'#a33030':c.urgency==='info'?'#1a56db':'#a0700a') + ';font-size:14px;" aria-hidden="true"></i></div>' +
+        '<i class="ti ' + c.icon + '" style="color:' + (c.urgency==='bad'?'#a33030':c.urgency==='info'?'#1a56db':'#7A6200') + ';font-size:14px;" aria-hidden="true"></i></div>' +
         '<div style="flex:1;"><p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">' + c.title + '</p>' +
         '<p style="font-size:11px;color:#4A5568;line-height:1.5;">' + c.body + '</p></div>' +
         '<div style="text-align:right;flex-shrink:0;"><span class="badge ' + badgeCls + '" style="font-size:11px;">' + c.badge + '</span>' +
@@ -605,10 +605,10 @@ async function refreshAllInsights() {
       const urgency = topVal > 500 ? 'bad' : 'warn';
       cards.push({ dollar: topVal, html: makeCard(
         'ti-alert-circle',
-        urgency==='bad' ? '#a33030' : '#a0700a',
-        urgency==='bad' ? '#fff5f5' : '#fdf8ee',
-        urgency==='bad' ? '#f5c6c6' : '#f0d070',
-        urgency==='bad' ? '#fde8e8' : '#fdefc7',
+        urgency==='bad' ? '#a33030' : '#7A6200',
+        urgency==='bad' ? '#fff5f5' : '#FBF0B0',
+        urgency==='bad' ? '#f5c6c6' : '#C8A800',
+        urgency==='bad' ? '#fde8e8' : '#FBF0B0',
         `Goods lost — ${locName} · top location this period`,
         `${count} submission${count!==1?'s':''} totaling ${fmt$(topVal)} in the last 30 days.${topProd ? ' Highest item: ' + topProd + '.' : ''}`,
         fmt$(topVal),
@@ -628,10 +628,10 @@ async function refreshAllInsights() {
       const urgency  = daysLeft <= 14 ? 'bad' : 'warn';
       cards.push({ dollar: 10000 - daysLeft, html: makeCard(
         'ti-alert-triangle',
-        urgency==='bad' ? '#a33030' : '#a0700a',
-        urgency==='bad' ? '#fff5f5' : '#fdf8ee',
-        urgency==='bad' ? '#f5c6c6' : '#f0d070',
-        urgency==='bad' ? '#fde8e8' : '#fdefc7',
+        urgency==='bad' ? '#a33030' : '#7A6200',
+        urgency==='bad' ? '#fff5f5' : '#FBF0B0',
+        urgency==='bad' ? '#f5c6c6' : '#C8A800',
+        urgency==='bad' ? '#fde8e8' : '#FBF0B0',
         `Expiring soon — ${prodName} · ${locName}`,
         `Expires ${exp}${qty != null ? ' · ' + qty + ' remaining' : ''} · ${daysLeft} days left · ${lots.length} lot${lots.length!==1?'s':''} expiring portfolio-wide within 60 days.`,
         `${daysLeft}d`,
@@ -655,7 +655,7 @@ async function refreshAllInsights() {
       });
       const topLoc = Object.entries(locCounts).sort((a,b) => b[1]-a[1])[0]?.[0] || '—';
       cards.push({ dollar: topCost, html: makeCard(
-        'ti-pill', '#a0700a', '#fdf8ee', '#f0d070', '#fdefc7',
+        'ti-pill', '#7A6200', '#FBF0B0', '#C8A800', '#FBF0B0',
         `Top cost driver — ${topProd}`,
         `${fmt$(topCost)} in dispensed cost over 30 days. Highest volume at ${topLoc}. Verify par levels and review substitution options.`,
         fmt$(topCost), 'badge-warn', 'Cost driver'
@@ -1079,15 +1079,15 @@ function deepDiveLoc(locCode) {
   .tbl-row { display: grid; padding: 13px 20px; border-bottom: 0.5px solid #D8D0EC; align-items: center; background: #fff;   grid-template-columns: 1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;
 }
   .tbl-row:last-child { border-bottom: none; }
-  .tbl-row.warn { background: #fdf8ee; }
+  .tbl-row.warn { background: #FBF0B0; }
   .loc-name { font-size: 13px; font-weight: 500; color: #1C2B4A; }
   .loc-sub { font-size: 11px; color: #4A5568; margin-top: 2px; }
   .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
   .badge-ok { background: #DDD6F4; color: #1C2B4A; }
-  .badge-warn { background: #fdefc7; color: #a0700a; border: 0.5px solid #f0d070; }
+  .badge-warn { background: #FBF0B0; color: #7A6200; border: 0.5px solid #C8A800; }
   .badge-bad { background: #fde0d0; color: #a33030; }
   .good { color: #1C2B4A; font-weight: 500;  font-weight: 500; }
-  .warn-t { color: #a0700a; font-weight: 500; }
+  .warn-t { color: #7A6200; font-weight: 500; }
   .bad-t { color: #a33030; font-weight: 500; }
   .insight-bar { background: #1C2B4A; padding: 12px 20px; display: flex; align-items: flex-start; gap: 10px; }
   .insight-bar p { font-size: 12px; color: rgba(255,255,255,0.9); line-height: 1.5; }
@@ -1162,7 +1162,7 @@ function deepDiveLoc(locCode) {
   .lot-table td { padding: 9px 0; border-bottom: 0.5px solid #f0f0ec; vertical-align: middle; }
   .lot-table tr:last-child td { border-bottom: none; }
   .lot-pill { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; display: inline-block; }
-  .alert-box { background: #fdefc7; border: 0.5px solid #f0d070; border-radius: 8px; padding: 12px 15px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-box { background: #FBF0B0; border: 0.5px solid #C8A800; border-radius: 8px; padding: 12px 15px; display: flex; gap: 10px; align-items: flex-start; }
   .alert-text { font-size: 12px; color: #7a5800; line-height: 1.6; }
 
   /* Footer */
@@ -2376,7 +2376,7 @@ function renderLocationCards(glByLocMtd, leadsByLoc, cycleByLoc, poByLoc) {
   liveLocs.forEach(function(loc) {
     var gl = glByLocMtd ? (glByLocMtd[loc.uuid] || 0) : null;
     var glFmt = gl !== null ? (gl > 0 ? '$' + gl.toLocaleString('en-US',{maximumFractionDigits:0}) : '$0') : '…';
-    var glColor = gl !== null ? (gl > 500 ? '#a33030' : gl > 0 ? '#a0700a' : '#1C2B4A') : '#8A93A8';
+    var glColor = gl !== null ? (gl > 500 ? '#a33030' : gl > 0 ? '#7A6200' : '#1C2B4A') : '#8A93A8';
 
     var leadName = leadsByLoc ? (leadsByLoc[loc.uuid] || '—') : '—';
 
@@ -2869,7 +2869,7 @@ let sortCol     = 'ts';
 let sortDir     = 'desc';
 
 const _USER_COLOR_PALETTE = [
-  '#1C2B4A','#0F6E56','#534AB7','#185FA5','#a0700a',
+  '#1C2B4A','#0F6E56','#534AB7','#185FA5','#7A6200',
   '#7B3FA0','#B5451B','#1A7A6E','#4A5568','#2E6DA4'
 ];
 function userColor(u) {
@@ -3327,7 +3327,7 @@ const glTop5Data = {
 
 const glInsightTag = {
   equipment: {label:'Equipment review',bg:'#fff3f0',color:'#a33030'},
-  ordering:  {label:'Review Max',bg:'#fdf8ee',color:'#a0700a'},
+  ordering:  {label:'Review Max',bg:'#FBF0B0',color:'#7A6200'},
   training:  {label:'Training gap',bg:'#f0eef7',color:'#534AB7'},
   revenue:   {label:'Unrecaptured revenue',bg:'#E8E2F6',color:'#1C2B4A'},
   storage:   {label:'Storage/handling',bg:'#f0f7ff',color:'#2E4057'},
@@ -3443,8 +3443,8 @@ function selectLocation(val) {
   // Badge
   document.getElementById('loc-badge').textContent = loc.badge;
   document.getElementById('loc-badge').style.background = val === 'all' ? '#E8E2F6' : '#fff8f0';
-  document.getElementById('loc-badge').style.color = val === 'all' ? '#1C2B4A' : '#a0700a';
-  document.getElementById('loc-badge').style.borderColor = val === 'all' ? '#8899AA' : '#f0d070';
+  document.getElementById('loc-badge').style.color = val === 'all' ? '#1C2B4A' : '#7A6200';
+  document.getElementById('loc-badge').style.borderColor = val === 'all' ? '#8899AA' : '#C8A800';
 
   // Nav label
   const periodLabel = rangeLabels[range] || 'MedSync Analytics';

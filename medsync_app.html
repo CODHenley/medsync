@@ -154,15 +154,15 @@ window.addEventListener('message', function(e) {
   .col-header { display: grid; padding: 8px 20px; background: #F0EEF8; border-bottom: 0.5px solid #C8C4D8; font-size: 10px; color: #4A5568; text-transform: uppercase; letter-spacing: 0.05em; }
   .tbl-row { display: grid; padding: 13px 20px; border-bottom: 0.5px solid #E4E0F0; align-items: center; background: #fff; }
   .tbl-row:last-child { border-bottom: none; }
-  .tbl-row.warn { background: #fdf8ee; }
+  .tbl-row.warn { background: #FBF0B0; }
   .loc-name { font-size: 13px; font-weight: 500; color: #1C2B4A; }
   .loc-sub { font-size: 11px; color: #4A5568; margin-top: 2px; }
   .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
   .badge-ok { background: #E8E4F8; color: #1C2B4A; }
-  .badge-warn { background: #fdefc7; color: #a0700a; border: 0.5px solid #f0d070; }
+  .badge-warn { background: #FBF0B0; color: #7A6200; border: 0.5px solid #C8A800; }
   .badge-bad { background: #fde0d0; color: #a33030; }
   .good { color: #1C2B4A; font-weight: 500;  font-weight: 500; }
-  .warn-t { color: #a0700a; font-weight: 500; }
+  .warn-t { color: #7A6200; font-weight: 500; }
   .bad-t { color: #a33030; font-weight: 500; }
   .insight-bar { background: #1C2B4A; padding: 12px 20px; display: flex; align-items: flex-start; gap: 10px; }
   .insight-bar p { font-size: 12px; color: rgba(255,255,255,0.9); line-height: 1.5; }
@@ -236,7 +236,7 @@ window.addEventListener('message', function(e) {
   .lot-table td { padding: 9px 0; border-bottom: 0.5px solid #f0f0ec; vertical-align: middle; }
   .lot-table tr:last-child td { border-bottom: none; }
   .lot-pill { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; display: inline-block; }
-  .alert-box { background: #fdefc7; border: 0.5px solid #f0d070; border-radius: 8px; padding: 12px 15px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-box { background: #FBF0B0; border: 0.5px solid #C8A800; border-radius: 8px; padding: 12px 15px; display: flex; gap: 10px; align-items: flex-start; }
   .alert-text { font-size: 12px; color: #7a5800; line-height: 1.6; }
 
   /* Footer */
@@ -593,7 +593,7 @@ window.addEventListener('message', function(e) {
         <p class="metric-sub warn-t">OO pending · 1h 58m left</p>
       </div>
       <div class="metric" style="border-left:2px solid #c8902a;cursor:pointer;" onclick="dbNav('wg');">
-        <p class="metric-label" style="color:#a0700a;">White goods flags</p>
+        <p class="metric-label" style="color:#7A6200;">White goods flags</p>
         <p class="metric-value warn-t">2</p>
         <p class="metric-sub warn-t">OO +38% · WL +21% · <span style="text-decoration:underline;">Deep dive →</span></p>
       </div>
@@ -641,7 +641,7 @@ window.addEventListener('message', function(e) {
         <div class="tbl-row" style="grid-template-columns:1.8fr .65fr .65fr .65fr .8fr 1fr 1fr;">
           <div>
             <p class="loc-name">West Loop</p>
-            <p class="loc-sub">IL · Felicia G. · <span style="color:#a0700a;">WG: +21% syringes</span></p>
+            <p class="loc-sub">IL · Felicia G. · <span style="color:#7A6200;">WG: +21% syringes</span></p>
           </div>
           <span class="good">7.9%</span>
           <span class="bad-t">2</span>
@@ -665,21 +665,21 @@ window.addEventListener('message', function(e) {
     </div>
 
     <!-- White goods detail bar -->
-    <div style="background:#fdf8ee;border-top:0.5px solid #f0d070;border-bottom:0.5px solid #f0d070;padding:11px 20px;display:flex;align-items:flex-start;gap:10px;">
-      <i class="ti ti-package" style="color:#a0700a;font-size:17px;flex-shrink:0;margin-top:1px;" aria-hidden="true"></i>
+    <div style="background:#FBF0B0;border-top:0.5px solid #C8A800;border-bottom:0.5px solid #C8A800;padding:11px 20px;display:flex;align-items:flex-start;gap:10px;">
+      <i class="ti ti-package" style="color:#7A6200;font-size:17px;flex-shrink:0;margin-top:1px;" aria-hidden="true"></i>
       <div style="flex:1;">
         <p style="font-size:12px;font-weight:500;color:#7a5800;margin-bottom:3px;">White goods ordering divergence — 2 locations · est. ~$133/mo combined overspend</p>
-        <p style="font-size:11px;color:#a0700a;line-height:1.6;"><strong>Old Orchard:</strong> Gauze 4×4 ordered 38% above expected rate vs. appointment volume (last 30d). <strong>West Loop:</strong> 3cc syringes ordered 21% above expected rate vs. appointment volume (last 30d).</p>
+        <p style="font-size:11px;color:#7A6200;line-height:1.6;"><strong>Old Orchard:</strong> Gauze 4×4 ordered 38% above expected rate vs. appointment volume (last 30d). <strong>West Loop:</strong> 3cc syringes ordered 21% above expected rate vs. appointment volume (last 30d).</p>
       </div>
-      <button onclick="dbNav('wg');" style="background:none;border:0.5px solid #f0d070;border-radius:7px;padding:5px 12px;font-size:11px;color:#a0700a;cursor:pointer;white-space:nowrap;flex-shrink:0;">Review →</button>
+      <button onclick="dbNav('wg');" style="background:none;border:0.5px solid #C8A800;border-radius:7px;padding:5px 12px;font-size:11px;color:#7A6200;cursor:pointer;white-space:nowrap;flex-shrink:0;">Review →</button>
     </div>
 
     <!-- Ranked insight engine — top 3 -->
     <div style="background:#fff;border-top:0.5px solid #C8C4D8;padding:12px 20px;display:flex;flex-direction:column;gap:8px;">
       <p style="font-size:10px;color:#4A5568;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Platform insights — ranked by dollar impact</p>
 
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
-        <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#FBF0B0;border:0.5px solid #C8A800;border-radius:8px;">
+        <div style="width:30px;height:30px;border-radius:7px;background:#FBF0B0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i class="ti ti-tool" style="color:#a33030;font-size:14px;" aria-hidden="true"></i>
         </div>
         <div style="flex:1;">
@@ -692,9 +692,9 @@ window.addEventListener('message', function(e) {
         </div>
       </div>
 
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
-        <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <i class="ti ti-package" style="color:#a0700a;font-size:14px;" aria-hidden="true"></i>
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#FBF0B0;border:0.5px solid #C8A800;border-radius:8px;">
+        <div style="width:30px;height:30px;border-radius:7px;background:#FBF0B0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-package" style="color:#7A6200;font-size:14px;" aria-hidden="true"></i>
         </div>
         <div style="flex:1;">
           <p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">Ordering — Maropitant over-ordered · Old Orchard</p>
@@ -706,9 +706,9 @@ window.addEventListener('message', function(e) {
         </div>
       </div>
 
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fdf8ee;border:0.5px solid #f0d070;border-radius:8px;">
-        <div style="width:30px;height:30px;border-radius:7px;background:#fdefc7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <i class="ti ti-trending-up" style="color:#a0700a;font-size:14px;" aria-hidden="true"></i>
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#FBF0B0;border:0.5px solid #C8A800;border-radius:8px;">
+        <div style="width:30px;height:30px;border-radius:7px;background:#FBF0B0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ti-trending-up" style="color:#7A6200;font-size:14px;" aria-hidden="true"></i>
         </div>
         <div style="flex:1;">
           <p style="font-size:12px;font-weight:500;color:#1C2B4A;margin-bottom:2px;">White goods — Gauze · Old Orchard + Syringes · West Loop</p>
@@ -1471,7 +1471,7 @@ let sortDir     = 'desc';
 
 const USER_COLORS = {
   'Megan Henley':'#1C2B4A','Taryn S.':'#0F6E56','Sam T.':'#534AB7',
-  'Felicia G.':'#a0700a','Jordan P.':'#185FA5','System':'#8899AA'
+  'Felicia G.':'#7A6200','Jordan P.':'#185FA5','System':'#8899AA'
 };
 function userColor(u){ return USER_COLORS[u] || '#4A5568'; }
 function initials(u){ return (u||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
@@ -1800,7 +1800,7 @@ const glTop5Data = {
 
 const glInsightTag = {
   equipment: {label:'Equipment review',bg:'#fff3f0',color:'#a33030'},
-  ordering:  {label:'Review Max',bg:'#fdf8ee',color:'#a0700a'},
+  ordering:  {label:'Review Max',bg:'#FBF0B0',color:'#7A6200'},
   training:  {label:'Training gap',bg:'#f0eef7',color:'#534AB7'},
   revenue:   {label:'Unrecaptured revenue',bg:'#F0EEF8',color:'#1C2B4A'},
   storage:   {label:'Storage/handling',bg:'#f0f7ff',color:'#2E4057'},
@@ -1914,8 +1914,8 @@ function selectLocation(val) {
   // Badge
   document.getElementById('loc-badge').textContent = loc.badge;
   document.getElementById('loc-badge').style.background = val === 'all' ? '#F0EEF8' : '#fff8f0';
-  document.getElementById('loc-badge').style.color = val === 'all' ? '#1C2B4A' : '#a0700a';
-  document.getElementById('loc-badge').style.borderColor = val === 'all' ? '#8899AA' : '#f0d070';
+  document.getElementById('loc-badge').style.color = val === 'all' ? '#1C2B4A' : '#7A6200';
+  document.getElementById('loc-badge').style.borderColor = val === 'all' ? '#8899AA' : '#C8A800';
 
   // Nav label
   const periodLabel = rangeLabels[range] || 'MedSync Analytics';
