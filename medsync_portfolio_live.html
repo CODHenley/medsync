@@ -4832,6 +4832,17 @@ async function sendMessage(channel) {
         content,
       }),
     });
+    // Refresh messages immediately after send
+    if (res.ok) {
+      if (channel === 'staff') {
+        await loadStaffMessages();
+      } else if (_currentDMChannel) {
+        const r2 = await fetch(`${_MSG_SUPA}/rest/v1/messages?channel=eq.${_currentDMChannel}&order=sent_at.asc&limit=200`, { headers: _msgHeaders() });
+        const msgs2 = r2.ok ? await r2.json() : [];
+        _dmMessages[_currentDMChannel] = msgs2;
+        renderMessages(_currentDMChannel, msgs2, 'msg-body-dm');
+      }
+    }
     // Send email notification for DMs (channel format is uid:uid)
     if (res.ok && channel.includes(':')) {
       const recipientId = channel.split(':').find(id => id !== me.id);
