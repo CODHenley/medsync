@@ -4688,7 +4688,9 @@ function renderMessages(channel, msgs, bodyId) {
       lastDay = day;
     }
     const isMine = m.sender_id === me.id;
-    const user = _allUsers.find(u => u.id === m.sender_id) || { full_name: m.sender_name, avatar_b64: m.sender_avatar };
+    const _profileAvatar = (window._userProfiles && (window._userProfiles[m.sender_id] || window._userProfiles[m.sender_name] || {})).avatar_b64 || null;
+    const user = _allUsers.find(u => u.id === m.sender_id) || { full_name: m.sender_name, avatar_b64: m.sender_avatar || _profileAvatar };
+    if (user && !user.avatar_b64 && _profileAvatar) user.avatar_b64 = _profileAvatar;
     html += `<div class="msg-row ${isMine ? 'mine' : ''}">
       <div class="msg-avatar">${_msgAvatar(user)}</div>
       <div class="msg-bubble-wrap">
