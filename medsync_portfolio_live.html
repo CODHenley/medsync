@@ -1646,7 +1646,7 @@ function deepDiveLoc(locCode) {
     <a href="medsync_profile_live.html" title="My Profile" style="text-decoration:none;"><div id="ms-avatar" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;cursor:pointer;overflow:hidden;">MH</div></a>
     <button id="chat-nav-btn" onclick="toggleMessenger()" title="Messages" style="position:relative;background:none;border:none;cursor:pointer;padding:4px 6px;display:flex;align-items:center;justify-content:center;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span id="chat-unread-badge" style="display:none;position:absolute;top:0;right:0;background:#E05050;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;"></span>
+      <span id="chat-unread-badge" style="display:none;position:absolute;top:0;right:0;background:#E05050;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;line-height:1;"></span>
     </button>
     <button onclick="signOut()" style="background:none;border:0.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;">Sign out</button>
   </div>
@@ -4880,6 +4880,7 @@ async function updateBadges() {
   const navBadge = document.getElementById('chat-unread-badge');
   if (navBadge) {
     navBadge.style.display = total > 0 ? 'flex' : 'none';
+    if (total > 0) { navBadge.style.alignItems = 'center'; navBadge.style.justifyContent = 'center'; }
     navBadge.textContent = total > 9 ? '9+' : String(total);
   }
   const staffBadge = document.getElementById('msg-badge-staff');
