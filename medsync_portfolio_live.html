@@ -3147,7 +3147,7 @@ window._userProfiles = {};
 async function loadUserProfiles() {
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/user_profiles?select=user_id,first_name,last_name',
+      SUPA_URL + '/rest/v1/user_profiles?select=user_id,first_name,last_name,avatar_b64,bio',
       { headers: H }
     );
     const rows = await res.json();
