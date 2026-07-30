@@ -168,23 +168,18 @@ tr:last-child td{border-bottom:none;}
         <option value="28253" selected>Wheaton</option>
       </select>
       <select id="sel-period" onchange="onPeriodChange()">
-        <optgroup label="Current">
-          <option value="today">Today</option>
-          <option value="wtd">This week</option>
-          <option value="mtd" selected>This month</option>
-          <option value="qtd">This quarter</option>
-        </optgroup>
-        <optgroup label="Lookback">
-          <option value="ytd">Year to date</option>
-          <option value="30">Last 30 days</option>
-          <option value="60">Last 60 days</option>
-          <option value="90">Last 90 days</option>
-          <option value="lq">Last quarter</option>
-          <option value="ly">Last year</option>
-        </optgroup>
-        <optgroup label="Custom">
-          <option value="custom">Custom range…</option>
-        </optgroup>
+        <option value="today">Today</option>
+        <option value="7">Last 7 Days</option>
+        <option value="30">Last 30 Days</option>
+        <option value="lm">Last Month</option>
+        <option value="mtd" selected>This Month</option>
+        <option value="90">Last 3 Months</option>
+        <option value="180">Last 6 Months</option>
+        <option value="ly">Last Year</option>
+        <option value="ytd">YTD</option>
+        <option value="py">Previous Year</option>
+        <option value="alltime">All-time</option>
+        <option value="custom">Custom range…</option>
       </select>
       <span id="custom-range-wrap" style="display:none;align-items:center;gap:4px;">
         <input type="date" id="custom-from" style="padding:5px 8px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);height:30px;outline:none;" onchange="onCustomDateChange()">
@@ -566,29 +561,25 @@ function getDateRange() {
     const from = document.getElementById('custom-from').value;
     const to   = document.getElementById('custom-to').value;
     return { start: from || iso(now), end: to || iso(now) };
-  } else if (sel === 'ytd') {
-    start = `${y}-01-01`;
   } else if (sel === 'today') {
     start = end;
-  } else if (sel === 'wtd') {
-    const day = now.getDay() || 7; // Mon=1
-    const mon = new Date(now); mon.setDate(d - day + 1);
-    start = iso(mon);
   } else if (sel === 'mtd') {
     start = `${y}-${pad(m+1)}-01`;
-  } else if (sel === 'qtd') {
-    const qStart = Math.floor(m / 3) * 3;
-    start = `${y}-${pad(qStart+1)}-01`;
-  } else if (sel === 'lq') {
-    const qStart = Math.floor(m / 3) * 3;
-    const lqStart = qStart === 0 ? new Date(y-1, 9, 1) : new Date(y, qStart-3, 1);
-    const lqEnd   = new Date(lqStart.getFullYear(), lqStart.getMonth()+3, 0);
-    return { start: iso(lqStart), end: iso(lqEnd) };
+  } else if (sel === 'lm') {
+    const lmStart = new Date(y, m - 1, 1);
+    const lmEnd   = new Date(y, m, 0);
+    return { start: iso(lmStart), end: iso(lmEnd) };
+  } else if (sel === 'ytd') {
+    start = `${y}-01-01`;
+  } else if (sel === 'py') {
+    return { start: `${y-1}-01-01`, end: `${y-1}-12-31` };
   } else if (sel === 'ly') {
-    start = `${y-1}-01-01`;
-    return { start, end: `${y-1}-12-31` };
+    const lyStart = new Date(now); lyStart.setFullYear(y - 1);
+    return { start: iso(lyStart), end };
+  } else if (sel === 'alltime') {
+    return { start: '2020-01-01', end };
   } else {
-    // numeric days lookback
+    // numeric days lookback (7, 30, 90, 180)
     const from = new Date(now); from.setDate(d - parseInt(sel));
     start = iso(from);
   }
