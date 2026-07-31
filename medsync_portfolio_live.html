@@ -1564,16 +1564,27 @@ function deepDiveLoc(locCode) {
 <!-- Welcome splash -->
 <div id="welcome-splash" style="position:fixed;inset:0;z-index:9999;background:#1C2B4A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;opacity:1;transition:opacity .7s ease;pointer-events:none;">
 
-  <!-- Pill — cropped from original logo PNG, exact artwork -->
-  <svg width="390" height="260" viewBox="12 2 30 24" style="display:block;" aria-label="MedSync pill logo">
+  <!-- Pill logo — white left half, Bears Orange right half, navy veterinary symbol -->
+  <svg width="400" height="220" viewBox="2 2 40 24" style="display:block;margin:0 auto;" aria-label="MedSync pill logo">
+    <!-- Left half: white -->
     <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#ffffff"/>
+    <!-- Right half: Bears Orange -->
     <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#C83803"/>
-    <line x1="28" y1="3" x2="28" y2="25" stroke="rgba(28,43,74,0.3)" stroke-width="0.5"/>
-    <line x1="19" y1="7" x2="19" y2="21" stroke="#1C2B4A" stroke-width="0.5" stroke-linecap="round"/>
-    <path d="M 19 9 C 15 11 15 14 19 16 C 23 18 23 20 19 21" fill="none" stroke="#1C2B4A" stroke-width="0.4" stroke-linecap="round"/>
-    <path d="M 19 9 C 23 11 23 14 19 16 C 15 18 15 20 19 21" fill="none" stroke="#1C2B4A" stroke-width="0.4" stroke-linecap="round"/>
-    <path d="M 19 7 C 16 5 12 4 10 6 C 12 6 16 7 19 7 Z" fill="#1C2B4A"/>
-    <path d="M 19 7 C 22 5 26 4 28 6 C 26 6 22 7 19 7 Z" fill="#1C2B4A"/>
+    <!-- Center divider -->
+    <line x1="28" y1="3.5" x2="28" y2="24.5" stroke="rgba(28,43,74,0.25)" stroke-width="0.4"/>
+    <!-- Veterinary caduceus: staff -->
+    <line x1="19" y1="7.5" x2="19" y2="21.5" stroke="#1C2B4A" stroke-width="0.55" stroke-linecap="round"/>
+    <!-- Loop 1 (top) -->
+    <path d="M 19 9.5 C 15.5 10.5 15.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.45" stroke-linecap="round"/>
+    <path d="M 19 9.5 C 22.5 10.5 22.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.45" stroke-linecap="round"/>
+    <!-- Loop 2 (middle) -->
+    <path d="M 19 13 C 15.5 14 15.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.45" stroke-linecap="round"/>
+    <path d="M 19 13 C 22.5 14 22.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.45" stroke-linecap="round"/>
+    <!-- Loop 3 (lower) -->
+    <path d="M 19 16.5 C 15.5 17.5 15.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.45" stroke-linecap="round"/>
+    <path d="M 19 16.5 C 22.5 17.5 22.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.45" stroke-linecap="round"/>
+    <!-- V at top -->
+    <path d="M 17.2 7 L 19 8.5 L 20.8 7" fill="none" stroke="#1C2B4A" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
 
   <!-- Wordmark -->
@@ -1726,15 +1737,18 @@ function deepDiveLoc(locCode) {
       <div style="display:flex;align-items:center;gap:12px;">
         <span class="vp-logotype" style="background:none;padding:0;display:flex;align-items:center;gap:0;">
   <svg width="130" height="28" viewBox="0 0 130 28" style="display:block;" aria-label="MedSync">
-    <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#1C2B4A"/>
-    <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#E86535"/>
-    <line x1="28" y1="4" x2="28" y2="24" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
-    <line x1="19" y1="9" x2="19" y2="23" stroke="rgba(255,255,255,0.8)" stroke-width="1.3" stroke-linecap="round"/>
-    <path d="M 19 11 C 15 13 15 16 19 18 C 23 20 23 22 19 23" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1" stroke-linecap="round"/>
-    <path d="M 19 11 C 23 13 23 16 19 18 C 15 20 15 22 19 23" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1" stroke-linecap="round"/>
-    <path d="M 19 9 C 16 7 12 6 10 8 C 12 8 16 9 19 9 Z" fill="rgba(255,255,255,0.8)"/>
-    <path d="M 19 9 C 22 7 26 6 28 8 C 26 8 22 9 19 9 Z" fill="rgba(255,255,255,0.8)"/>
-    <text x="50" y="18" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" font-weight="300" fill="rgba(255,255,255,0.9)">Med<tspan font-weight="700" fill="#E86535">Sync</tspan></text>
+    <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#ffffff"/>
+    <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#C83803"/>
+    <line x1="28" y1="4" x2="28" y2="24" stroke="rgba(28,43,74,0.25)" stroke-width="0.8"/>
+    <line x1="19" y1="7.5" x2="19" y2="21.5" stroke="#1C2B4A" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M 19 9.5 C 15.5 10.5 15.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 9.5 C 22.5 10.5 22.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 13 C 15.5 14 15.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 13 C 22.5 14 22.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 16.5 C 15.5 17.5 15.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 16.5 C 22.5 17.5 22.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 17.2 7 L 19 8.5 L 20.8 7" fill="none" stroke="#1C2B4A" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="50" y="18" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" font-weight="300" fill="#1C2B4A">Med<tspan font-weight="700" fill="#C83803">Sync</tspan></text>
   </svg>
 </span>
         <span class="vp-nav-sub">Portfolio</span>
