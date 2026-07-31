@@ -11,11 +11,11 @@
 
   :root {
     --navy: #1C2B4A;
-    --gold: #C8922A;
-    --gold-light: #E8B355;
-    --cream: #F5EDD8;
-    --cream-dark: #EDE4CE;
-    --bg: #F5F3FA;
+    --orange: #C83803;
+    --orange-light: #E05028;
+    --cream: #FFF3F0;
+    --cream-dark: #FFE4DC;
+    --bg: #F5F7FA;
     --white: #FFFFFF;
     --text: #1C2B4A;
     --text-muted: #6B7A99;
@@ -45,10 +45,10 @@
     text-decoration: none;
   }
   .nav-logo-mark {
-    width: 36px; height: 36px; border-radius: 8px;
+    width: 44px; height: 44px; border-radius: 50%;
     overflow: hidden; display: flex; align-items: center; justify-content: center;
   }
-  .nav-logo-mark img { width: 36px; height: 36px; object-fit: contain; }
+  .nav-logo-mark img { width: 44px; height: 44px; object-fit: cover; }
   .nav-logo-text {
     font-size: 18px; font-weight: 600; color: var(--white); letter-spacing: -0.3px;
   }
@@ -63,11 +63,11 @@
   }
   .nav-links a:hover { color: var(--white); background: rgba(255,255,255,0.08); }
   .nav-cta {
-    background: var(--gold) !important; color: var(--white) !important;
+    background: var(--orange) !important; color: var(--white) !important;
     padding: 8px 20px !important; border-radius: 8px !important;
     font-weight: 600 !important;
   }
-  .nav-cta:hover { background: var(--gold-light) !important; }
+  .nav-cta:hover { background: var(--orange-light) !important; }
 
   @media(max-width:640px) {
     nav { padding: 0 16px; }
@@ -85,13 +85,13 @@
   .hero::before {
     content: '';
     position: absolute; inset: 0;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='1' fill='rgba(200,146,42,0.12)'/%3E%3C/svg%3E") repeat;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='1' fill='rgba(200,56,3,0.12)'/%3E%3C/svg%3E") repeat;
     pointer-events: none;
   }
   .hero-badge {
     display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(200,146,42,0.18); border: 1px solid rgba(200,146,42,0.4);
-    color: var(--gold-light); font-size: 13px; font-weight: 500;
+    background: rgba(200,56,3,0.18); border: 1px solid rgba(200,56,3,0.4);
+    color: var(--orange-light); font-size: 13px; font-weight: 500;
     padding: 5px 14px; border-radius: 999px; margin-bottom: 28px;
     letter-spacing: 0.3px;
   }
@@ -107,7 +107,7 @@
   }
   .hero-headline em {
     font-style: italic;
-    color: var(--gold-light);
+    color: var(--orange-light);
   }
   .hero-sub {
     font-size: clamp(15px, 2vw, 19px);
@@ -121,14 +121,14 @@
     display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
   }
   .btn-primary {
-    background: var(--gold); color: var(--white);
+    background: var(--orange); color: var(--white);
     font-size: 15px; font-weight: 600;
     padding: 14px 32px; border-radius: 10px;
     border: none; cursor: pointer;
     text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
     transition: background 0.2s, transform 0.1s;
   }
-  .btn-primary:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-primary:hover { background: var(--orange-light); transform: translateY(-1px); }
   .btn-outline {
     background: transparent; color: var(--white);
     font-size: 15px; font-weight: 500;
@@ -168,7 +168,7 @@
     font-size: 36px; color: var(--navy); line-height: 1;
     margin-bottom: 6px;
   }
-  .stat-num span { color: var(--gold); }
+  .stat-num span { color: var(--orange); }
   .stat-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 
   /* ── SECTION COMMON ── */
@@ -176,7 +176,7 @@
   .section-inner { max-width: 1080px; margin: 0 auto; }
   .section-kicker {
     font-size: 12px; font-weight: 600; letter-spacing: 2px;
-    text-transform: uppercase; color: var(--gold); margin-bottom: 12px;
+    text-transform: uppercase; color: var(--orange); margin-bottom: 12px;
   }
   .section-heading {
     font-family: 'DM Serif Display', serif;
@@ -223,7 +223,7 @@
   .step { display: flex; flex-direction: column; align-items: flex-start; }
   .step-num {
     width: 40px; height: 40px; border-radius: 999px;
-    background: var(--navy); color: var(--gold);
+    background: var(--navy); color: var(--orange);
     font-weight: 700; font-size: 15px;
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 16px; flex-shrink: 0;
@@ -250,8 +250,8 @@
     transition: border-color 0.2s, box-shadow 0.2s;
     cursor: pointer;
   }
-  .plan-card:hover { border-color: var(--gold); box-shadow: 0 6px 24px rgba(200,146,42,0.15); }
-  .plan-card.selected { border-color: var(--gold); box-shadow: 0 6px 24px rgba(200,146,42,0.2); }
+  .plan-card:hover { border-color: var(--orange); box-shadow: 0 6px 24px rgba(200,56,3,0.15); }
+  .plan-card.selected { border-color: var(--orange); box-shadow: 0 6px 24px rgba(200,56,3,0.2); }
   .plan-card.popular { border-color: var(--navy); }
   .plan-popular-badge {
     font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
@@ -304,21 +304,21 @@
   }
   .form-field input::placeholder, .form-field textarea::placeholder { color: rgba(255,255,255,0.3); }
   .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
-    border-color: var(--gold);
+    border-color: var(--orange);
   }
   .form-field select option { background: var(--navy); }
   .form-field textarea { resize: vertical; min-height: 100px; }
   .form-submit {
-    margin-top: 6px; background: var(--gold); color: var(--white);
+    margin-top: 6px; background: var(--orange); color: var(--white);
     border: none; padding: 14px 0; border-radius: 10px;
     font-size: 15px; font-weight: 600; cursor: pointer;
     transition: background 0.2s; font-family: inherit;
   }
-  .form-submit:hover { background: var(--gold-light); }
+  .form-submit:hover { background: var(--orange-light); }
   #contact-success {
     display: none; margin-top: 20px; padding: 16px 20px;
-    background: rgba(200,146,42,0.15); border: 1px solid rgba(200,146,42,0.4);
-    border-radius: 10px; color: var(--gold-light); font-size: 14px; text-align: center;
+    background: rgba(200,56,3,0.15); border: 1px solid rgba(200,146,42,0.4);
+    border-radius: 10px; color: var(--orange-light); font-size: 14px; text-align: center;
   }
 
   /* ── FOOTER ── */
@@ -327,7 +327,7 @@
   }
   footer p { font-size: 13px; color: rgba(255,255,255,0.3); }
   footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
-  footer a:hover { color: var(--gold-light); }
+  footer a:hover { color: var(--orange-light); }
 
   /* ── UPGRADE MODAL (reused from pricing section) ── */
   .modal-overlay {
@@ -353,7 +353,7 @@
     background: var(--cream); border-radius: 10px; padding: 14px 18px;
     margin-bottom: 24px; font-size: 14px; color: var(--navy); line-height: 1.5;
   }
-  .trial-callout strong { color: var(--gold); }
+  .trial-callout strong { color: var(--orange); }
 
   /* ── TOAST ── */
   .toast {
@@ -386,6 +386,7 @@
 
 <!-- ── HERO ── -->
 <section class="hero" id="home">
+  <img src="medsync_logo.png" width="120" height="120" style="border-radius:50%;object-fit:cover;margin-bottom:24px;box-shadow:0 8px 32px rgba(0,0,0,0.3);" alt="MedSync">
   <div class="hero-badge">Veterinary Inventory Intelligence</div>
   <h1 class="hero-headline">
     The platform veterinary<br>medicine has been <em>waiting for.</em>
@@ -717,19 +718,19 @@
     const emailBody = `
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#F5F3FA;padding:32px;border-radius:12px;">
   <div style="background:#1C2B4A;padding:20px 28px;border-radius:8px 8px 0 0;margin:-32px -32px 28px;">
-    <span style="color:#C8922A;font-size:20px;font-weight:700;">MedSync</span>
+    <span style="color:#C83803;font-size:20px;font-weight:700;">MedSync</span>
     <span style="color:rgba(255,255,255,0.5);font-size:13px;margin-left:10px;">New Info Request</span>
   </div>
   <p style="font-size:16px;color:#1C2B4A;font-weight:600;margin:0 0 20px;">New Request More Info submission</p>
   <table style="width:100%;border-collapse:collapse;font-size:14px;color:#1C2B4A;">
     <tr><td style="padding:8px 0;color:#6B7A99;width:40%;">Name</td><td><strong>${firstName} ${lastName}</strong></td></tr>
-    <tr><td style="padding:8px 0;color:#6B7A99;">Email</td><td><a href="mailto:${email}" style="color:#C8922A;">${email}</a></td></tr>
+    <tr><td style="padding:8px 0;color:#6B7A99;">Email</td><td><a href="mailto:${email}" style="color:#C83803;">${email}</a></td></tr>
     <tr><td style="padding:8px 0;color:#6B7A99;">Phone</td><td>${phone || '—'}</td></tr>
     <tr><td style="padding:8px 0;color:#6B7A99;">Organization</td><td><strong>${org}</strong></td></tr>
     <tr><td style="padding:8px 0;color:#6B7A99;">Locations</td><td>${locations || '—'}</td></tr>
     <tr><td style="padding:8px 0;color:#6B7A99;">Current PMS</td><td>${pms || '—'}</td></tr>
   </table>
-  ${message ? `<div style="margin-top:20px;padding:16px;background:#fff;border-radius:8px;border-left:3px solid #C8922A;"><p style="font-size:13px;color:#6B7A99;margin:0 0 6px;">Goals / Message</p><p style="font-size:14px;color:#1C2B4A;margin:0;">${message.replace(/\n/g,'<br>')}</p></div>` : ''}
+  ${message ? `<div style="margin-top:20px;padding:16px;background:#fff;border-radius:8px;border-left:3px solid #C83803;"><p style="font-size:13px;color:#6B7A99;margin:0 0 6px;">Goals / Message</p><p style="font-size:14px;color:#1C2B4A;margin:0;">${message.replace(/\n/g,'<br>')}</p></div>` : ''}
 </div>`;
 
     try {
