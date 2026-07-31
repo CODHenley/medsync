@@ -36,7 +36,7 @@ nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 40px; height: 62px;
-  background: var(--green);
+  background: #253654;
 }
 .nav-left { display: flex; align-items: center; gap: 16px; }
 .nav-wordmark {
@@ -412,37 +412,30 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
 
 <!-- HERO -->
 <section class="hero">
-  <!-- Background doodle marks -->
-  <svg class="hero-bg" viewBox="0 0 1400 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-    <!-- Scattered paw prints and marks -->
-    <g opacity="0.13" stroke="#C83803" stroke-width="2.5" fill="none" stroke-linecap="round">
-      <!-- top right squiggle -->
-      <path d="M1100,80 C1120,60 1140,100 1160,80 C1180,60 1200,90 1220,70"/>
-      <circle cx="1090" cy="140" r="8"/>
-      <circle cx="1108" cy="128" r="5"/>
-      <circle cx="1072" cy="126" r="5"/>
-      <circle cx="1090" cy="108" r="5"/>
-      <!-- bottom left -->
-      <path d="M80,640 C100,620 120,660 140,640"/>
-      <circle cx="200" cy="700" r="10"/>
-      <circle cx="222" cy="685" r="6"/>
-      <circle cx="178" cy="685" r="6"/>
-      <circle cx="200" cy="665" r="6"/>
-      <!-- middle right -->
-      <path d="M1280,380 C1300,360 1320,400 1340,380 C1360,360 1380,400 1400,380"/>
-      <!-- stars -->
-      <path d="M300,120 L304,132 L316,132 L306,140 L310,152 L300,144 L290,152 L294,140 L284,132 L296,132 Z" stroke-width="1.5"/>
-      <path d="M1050,600 L1053,609 L1062,609 L1055,614 L1058,623 L1050,618 L1042,623 L1045,614 L1038,609 L1047,609 Z" stroke-width="1.5"/>
+  <!-- Scattered paw prints -->
+  <svg class="hero-bg" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+    <!-- paw shape: 4 toe beans + main pad, reused at different positions/rotations/scales -->
+    <!-- white paws -->
+    <g fill="white">
+      <g opacity="0.06" transform="translate(60,80) rotate(-20) scale(2.2)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.05" transform="translate(340,160) rotate(12) scale(1.6)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.07" transform="translate(80,400) rotate(-35) scale(2.5)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.04" transform="translate(260,620) rotate(8) scale(1.8)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.06" transform="translate(500,50) rotate(-10) scale(1.4)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.05" transform="translate(480,500) rotate(22) scale(2)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.04" transform="translate(160,760) rotate(-15) scale(1.5)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
     </g>
-    <g opacity="0.05" stroke="white" stroke-width="2" fill="none" stroke-linecap="round">
-      <path d="M600,50 C620,30 660,70 700,40 C740,10 780,60 820,30"/>
-      <path d="M200,200 C230,170 270,220 300,180"/>
-      <path d="M1100,650 C1130,620 1170,670 1200,640 C1230,610 1260,650 1290,620"/>
+    <!-- orange paws -->
+    <g fill="#C83803">
+      <g opacity="0.07" transform="translate(200,200) rotate(30) scale(1.9)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.05" transform="translate(420,340) rotate(-25) scale(2.3)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.06" transform="translate(50,600) rotate(15) scale(1.6)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
+      <g opacity="0.04" transform="translate(320,800) rotate(-8) scale(2.1)"><ellipse cx="0" cy="0" rx="5" ry="6.5"/><ellipse cx="11" cy="-3" rx="4.5" ry="6"/><ellipse cx="21" cy="0" rx="4.5" ry="6"/><ellipse cx="30" cy="6" rx="5" ry="6.5"/><ellipse cx="15" cy="18" rx="11" ry="9"/></g>
     </g>
   </svg>
 
   <div class="hero-content">
-    <img src="medsync_logo.png" alt="MedSync" style="width:130px;height:130px;border-radius:50%;object-fit:cover;margin-bottom:32px;box-shadow:0 0 0 5px rgba(200,56,3,0.45),0 12px 40px rgba(0,0,0,0.45);">
+    <img src="medsync_logo.png" alt="MedSync" style="width:195px;height:195px;border-radius:50%;object-fit:cover;margin-bottom:36px;box-shadow:0 0 0 6px rgba(200,56,3,0.5),0 16px 48px rgba(0,0,0,0.5);">
     <div class="hero-eyebrow">Scout Care · Internal platform</div>
     <h1 class="hero-headline">
       Every Scout location,<br><span class="accent">one inventory.</span>
