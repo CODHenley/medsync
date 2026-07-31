@@ -47,6 +47,12 @@
   <path d="M 114,130 C 114,136 118,139 118,139 C 118,139 122,136 122,130"
         stroke="#1C2B4A" stroke-width="2.2"/>
 
+  <!-- Collar with "Med" tag -->
+  <rect x="95" y="148" width="46" height="14" rx="7"
+        fill="#1C2B4A" stroke="#1C2B4A" stroke-width="1.5"/>
+  <text x="118" y="159" font-family="Impact,'Arial Black',sans-serif"
+        font-size="9" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1">MED</text>
+
   <!-- Whiskers -->
   <line x1="112" y1="130" x2="70"  y2="122" stroke="#1C2B4A" stroke-width="1.8"/>
   <line x1="112" y1="134" x2="68"  y2="134" stroke="#1C2B4A" stroke-width="1.8"/>
@@ -129,10 +135,11 @@
   <path d="M 394,147 C 392,158 396,165 400,165 C 404,165 408,158 406,147"
         fill="#C83803" fill-opacity="0.8" stroke="#C83803" stroke-width="1.5"/>
 
-  <!-- Bandana -->
+  <!-- Bandana with "Sync" -->
   <path d="M 367,156 L 400,178 L 433,156 L 424,146 L 376,146 Z"
         fill="#C83803" fill-opacity="0.88" stroke="#1C2B4A" stroke-width="2.5"/>
-  <circle cx="400" cy="172" r="4" fill="#1C2B4A" opacity="0.45"/>
+  <text x="400" y="157" font-family="Impact,'Arial Black',sans-serif"
+        font-size="9" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1">SYNC</text>
 
   <!-- Paws -->
   <ellipse cx="378" cy="282" rx="16" ry="10" fill="white" stroke="#1C2B4A" stroke-width="3"/>
