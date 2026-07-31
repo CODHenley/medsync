@@ -417,16 +417,19 @@
 
 <div class="top-bar">
   <button class="top-bar-back" onclick="goBack()">←</button>
-  <svg width="100" height="22" viewBox="0 0 130 28" style="display:block;flex-shrink:0;" aria-label="MedSync">
+  <svg width="100" height="22" viewBox="0 0 130 28" style="display:block;flex-shrink:0" aria-label="MedSync">
     <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#ffffff"/>
-    <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#E86535"/>
-    <line x1="28" y1="4" x2="28" y2="24" stroke="rgba(28,43,74,0.3)" stroke-width="1.2"/>
-    <line x1="19" y1="9" x2="19" y2="23" stroke="#1C2B4A" stroke-width="1.3" stroke-linecap="round"/>
-    <path d="M 19 11 C 15 13 15 16 19 18 C 23 20 23 22 19 23" fill="none" stroke="#1C2B4A" stroke-width="1" stroke-linecap="round"/>
-    <path d="M 19 11 C 23 13 23 16 19 18 C 15 20 15 22 19 23" fill="none" stroke="#1C2B4A" stroke-width="1" stroke-linecap="round"/>
-    <path d="M 19 9 C 16 7 12 6 10 8 C 12 8 16 9 19 9 Z" fill="#1C2B4A"/>
-    <path d="M 19 9 C 22 7 26 6 28 8 C 26 8 22 9 19 9 Z" fill="#1C2B4A"/>
-    <text x="50" y="18" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" font-weight="300" fill="rgba(255,255,255,0.9)">Med<tspan font-weight="700" fill="#E86535">Sync</tspan></text>
+    <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#C83803"/>
+    <line x1="28" y1="4" x2="28" y2="24" stroke="rgba(28,43,74,0.25)" stroke-width="0.8"/>
+    <line x1="19" y1="7.5" x2="19" y2="21.5" stroke="#1C2B4A" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M 19 9.5 C 15.5 10.5 15.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 9.5 C 22.5 10.5 22.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 13 C 15.5 14 15.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 13 C 22.5 14 22.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 16.5 C 15.5 17.5 15.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 16.5 C 22.5 17.5 22.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 17.2 7 L 19 8.5 L 20.8 7" fill="none" stroke="#1C2B4A" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="50" y="18" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" font-weight="300" fill="#1C2B4A">Med<tspan font-weight="700" fill="#C83803">Sync</tspan></text>
   </svg>
   <span class="top-bar-title" style="color:rgba(255,255,255,0.6);font-weight:400;">User Guide</span>
   <span class="top-bar-role" id="ug-role-badge"></span>
@@ -2179,17 +2182,20 @@ init();
 <!-- ── SANDBOX OVERLAY ── -->
 <div class="sandbox-overlay hidden" id="sandbox-overlay">
   <div class="sandbox-topbar">
-    <svg width="80" height="18" viewBox="0 0 130 28" style="display:block;flex-shrink:0;" aria-label="MedSync">
-      <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#ffffff"/>
-      <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#E86535"/>
-      <line x1="28" y1="4" x2="28" y2="24" stroke="rgba(28,43,74,0.3)" stroke-width="1.2"/>
-      <line x1="19" y1="9" x2="19" y2="23" stroke="#1C2B4A" stroke-width="1.3" stroke-linecap="round"/>
-      <path d="M 19 11 C 15 13 15 16 19 18 C 23 20 23 22 19 23" fill="none" stroke="#1C2B4A" stroke-width="1" stroke-linecap="round"/>
-      <path d="M 19 11 C 23 13 23 16 19 18 C 15 20 15 22 19 23" fill="none" stroke="#1C2B4A" stroke-width="1" stroke-linecap="round"/>
-      <path d="M 19 9 C 16 7 12 6 10 8 C 12 8 16 9 19 9 Z" fill="#1C2B4A"/>
-      <path d="M 19 9 C 22 7 26 6 28 8 C 26 8 22 9 19 9 Z" fill="#1C2B4A"/>
-      <text x="50" y="18" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" font-weight="300" fill="rgba(255,255,255,0.9)">Med<tspan font-weight="700" fill="#E86535">Sync</tspan></text>
-    </svg>
+    <svg width="80" height="18" viewBox="0 0 130 28" style="display:block;flex-shrink:0" aria-label="MedSync">
+    <path d="M 28 4 L 14 4 A 10 10 0 0 0 14 24 L 28 24 Z" fill="#ffffff"/>
+    <path d="M 28 4 L 40 4 A 10 10 0 0 0 40 24 L 28 24 Z" fill="#C83803"/>
+    <line x1="28" y1="4" x2="28" y2="24" stroke="rgba(28,43,74,0.25)" stroke-width="0.8"/>
+    <line x1="19" y1="7.5" x2="19" y2="21.5" stroke="#1C2B4A" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M 19 9.5 C 15.5 10.5 15.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 9.5 C 22.5 10.5 22.5 12.5 19 13" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 13 C 15.5 14 15.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 13 C 22.5 14 22.5 16 19 16.5" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 16.5 C 15.5 17.5 15.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 19 16.5 C 22.5 17.5 22.5 19.5 19 20" fill="none" stroke="#1C2B4A" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M 17.2 7 L 19 8.5 L 20.8 7" fill="none" stroke="#1C2B4A" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="50" y="18" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" font-weight="300" fill="#1C2B4A">Med<tspan font-weight="700" fill="#C83803">Sync</tspan></text>
+  </svg>
     <span class="sandbox-title" id="sandbox-section-title">Practice Mode</span>
     <span class="sandbox-badge">SANDBOX</span>
     <button class="sandbox-close-btn" onclick="closeSandbox()">✕ Exit Practice</button>
