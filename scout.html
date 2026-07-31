@@ -8,19 +8,19 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --green:    #0E5B52;
-  --green-md: #0A4840;
-  --green-lt: #E0EFED;
-  --orange:   #F47B3B;
-  --orange-lt:#FEF0E6;
+  --green:    #1C2B4A;
+  --green-md: #162238;
+  --green-lt: #E8EDF5;
+  --orange:   #C83803;
+  --orange-lt:#FFF0EB;
   --blue-lt:  #D4DCE2;
   --blue-llt: #E8EEF2;
   --cream:    #D4DCE2;
   --white:    #FFFFFF;
-  --text:     #0A3330;
-  --text-md:  #2A5550;
-  --muted:    #5A7E7A;
-  --border:   #B8CBCA;
+  --text:     #1C2B4A;
+  --text-md:  #2A3F6A;
+  --muted:    #6B7A99;
+  --border:   #C5CDD8;
 }
 
 html { scroll-behavior: smooth; overflow-x: hidden; }
@@ -45,7 +45,7 @@ nav {
 }
 .nav-tag {
   font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--orange); background: rgba(244,123,59,0.15);
+  color: var(--orange); background: rgba(200,56,3,0.15);
   padding: 3px 8px; border-radius: 20px;
 }
 .nav-links { display: flex; gap: 2px; list-style: none; }
@@ -62,7 +62,7 @@ nav {
   font-size: 13px; font-weight: 700; text-decoration: none;
   transition: background 0.12s, transform 0.1s;
 }
-.nav-btn:hover { background: #E06728; transform: translateY(-1px); }
+.nav-btn:hover { background: #B03002; transform: translateY(-1px); }
 
 /* ── HERO ── */
 .hero {
@@ -122,7 +122,7 @@ nav {
   transition: all 0.15s;
 }
 .btn-hero-primary { background: var(--orange); color: #fff; }
-.btn-hero-primary:hover { background: #E06728; transform: translateY(-1px); }
+.btn-hero-primary:hover { background: #B03002; transform: translateY(-1px); }
 .btn-hero-ghost {
   border: 1.5px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8);
 }
@@ -209,7 +209,7 @@ nav {
 }
 .role-card:hover {
   border-color: var(--green);
-  box-shadow: 0 4px 16px rgba(14,91,82,0.12);
+  box-shadow: 0 4px 16px rgba(28,43,74,0.12);
 }
 .role-card--leadership {
   border-color: var(--green);
@@ -312,7 +312,7 @@ nav {
 }
 .loc-card.live:hover {
   border-color: var(--green);
-  box-shadow: 0 4px 16px rgba(14,91,82,0.1);
+  box-shadow: 0 4px 16px rgba(28,43,74,0.1);
 }
 .loc-pill {
   display: inline-flex; align-items: center; gap: 5px;
@@ -348,7 +348,7 @@ nav {
   white-space: nowrap; transition: all 0.15s;
 }
 .btn-cta-primary { background: var(--orange); color: #fff; }
-.btn-cta-primary:hover { background: #E06728; transform: translateY(-1px); }
+.btn-cta-primary:hover { background: #B03002; transform: translateY(-1px); }
 .btn-cta-ghost { border: 1.5px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); }
 .btn-cta-ghost:hover { border-color: rgba(255,255,255,0.55); color: #fff; }
 @media (max-width: 800px) {
@@ -388,7 +388,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
 <!-- NAV -->
 <nav>
   <div class="nav-left">
-    <a class="nav-wordmark" href="#">MedSync</a>
+    <a class="nav-wordmark" href="#" style="display:flex;align-items:center;gap:8px;"><img src="medsync_logo.png" width="40" height="40" style="border-radius:50%;object-fit:cover;" alt="MedSync">MedSync</a>
     <span class="nav-tag">Scout Care</span>
   </div>
   <ul class="nav-links">
@@ -404,7 +404,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
   <!-- Background doodle marks -->
   <svg class="hero-bg" viewBox="0 0 1400 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
     <!-- Scattered paw prints and marks -->
-    <g opacity="0.07" stroke="#F47B3B" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <g opacity="0.07" stroke="#C83803" stroke-width="2.5" fill="none" stroke-linecap="round">
       <!-- top right squiggle -->
       <path d="M1100,80 C1120,60 1140,100 1160,80 C1180,60 1200,90 1220,70"/>
       <circle cx="1090" cy="140" r="8"/>
@@ -489,7 +489,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       <div class="role-card role-card--leadership">
         <div class="role-illo">
           <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-            <circle cx="36" cy="36" r="28" fill="#0E5B52" stroke="#0E5B52" stroke-width="2"/>
+            <circle cx="36" cy="36" r="28" fill="#1C2B4A" stroke="#1C2B4A" stroke-width="2"/>
             <circle cx="36" cy="36" r="20" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-dasharray="3 3"/>
             <path d="M36 14 L39.5 26.5 L52.5 26.5 L42 34.5 L45.5 47 L36 39.5 L26.5 47 L30 34.5 L19.5 26.5 L32.5 26.5 Z" fill="white"/>
           </svg>
@@ -508,7 +508,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       <div class="role-card role-card--leadership">
         <div class="role-illo">
           <svg width="64" height="72" viewBox="0 0 64 72" fill="none">
-            <path d="M32 4L8 14V36C8 50 18 62 32 68C46 62 56 50 56 36V14L32 4Z" fill="#0E5B52" stroke="#0E5B52" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M32 4L8 14V36C8 50 18 62 32 68C46 62 56 50 56 36V14L32 4Z" fill="#1C2B4A" stroke="#1C2B4A" stroke-width="2.5" stroke-linejoin="round"/>
             <rect x="28" y="22" width="8" height="24" rx="2" fill="white"/>
             <rect x="20" y="30" width="24" height="8" rx="2" fill="white"/>
           </svg>
@@ -527,7 +527,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       <div class="role-card role-card--leadership">
         <div class="role-illo">
           <svg width="64" height="72" viewBox="0 0 64 72" fill="none">
-            <rect x="10" y="8" width="44" height="56" rx="6" fill="#0E5B52" stroke="#0E5B52" stroke-width="2"/>
+            <rect x="10" y="8" width="44" height="56" rx="6" fill="#1C2B4A" stroke="#1C2B4A" stroke-width="2"/>
             <rect x="18" y="20" width="28" height="3" rx="1.5" fill="white" opacity="0.9"/>
             <rect x="18" y="28" width="20" height="3" rx="1.5" fill="white" opacity="0.6"/>
             <rect x="18" y="36" width="24" height="3" rx="1.5" fill="white" opacity="0.6"/>
