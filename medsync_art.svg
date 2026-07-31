@@ -145,47 +145,5 @@
   <line x1="427" y1="277" x2="427" y2="287" stroke="#1C2B4A" stroke-width="1.8"/>
 
 
-  <!-- ════════════════ FLOATING PILLS ════════════════ -->
-
-  <!-- Orange capsule, top-left -->
-  <g transform="rotate(-28 60 78)">
-    <rect x="40" y="70" width="40" height="17" rx="8.5"
-          fill="#C83803" stroke="#1C2B4A" stroke-width="2.5"/>
-    <rect x="60" y="70" width="20" height="17" rx="8.5"
-          fill="white" fill-opacity="0.3"/>
-    <line x1="60" y1="71" x2="60" y2="86" stroke="#1C2B4A" stroke-width="2"/>
-  </g>
-
-  <!-- Outline tablet, top-right -->
-  <g transform="rotate(18 462 72)">
-    <rect x="440" y="62" width="44" height="20" rx="10"
-          fill="white" stroke="#1C2B4A" stroke-width="2.5"/>
-    <line x1="462" y1="64" x2="462" y2="80" stroke="#1C2B4A" stroke-width="1.8"/>
-  </g>
-
-  <!-- Round pill, left -->
-  <circle cx="52" cy="200" r="13" fill="white" stroke="#1C2B4A" stroke-width="2.5"/>
-  <line x1="43" y1="200" x2="61" y2="200" stroke="#1C2B4A" stroke-width="1.8"/>
-
-  <!-- Orange capsule, bottom-right -->
-  <g transform="rotate(32 465 285)">
-    <rect x="444" y="277" width="42" height="18" rx="9"
-          fill="#C83803" stroke="#1C2B4A" stroke-width="2.5"/>
-    <rect x="465" y="277" width="21" height="18" rx="9"
-          fill="white" fill-opacity="0.25"/>
-    <line x1="465" y1="279" x2="465" y2="293" stroke="white" stroke-width="1.8" opacity="0.45"/>
-  </g>
-
-  <!-- Round tablet near bottle -->
-  <circle cx="210" cy="100" r="12" fill="white" stroke="#C83803" stroke-width="2.5"/>
-  <line x1="200" y1="100" x2="220" y2="100" stroke="#C83803" stroke-width="1.8"/>
-
-  <!-- Medical cross -->
-  <line x1="304" y1="56" x2="304" y2="78" stroke="#C83803" stroke-width="4"/>
-  <line x1="293" y1="67" x2="315" y2="67" stroke="#C83803" stroke-width="4"/>
-
-  <!-- Small round pill, bottom-center -->
-  <circle cx="300" cy="298" r="9" fill="white" stroke="#1C2B4A" stroke-width="2.2"/>
-  <line x1="293" y1="298" x2="307" y2="298" stroke="#1C2B4A" stroke-width="1.5"/>
 
 </svg>
