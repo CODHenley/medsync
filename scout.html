@@ -358,13 +358,24 @@ nav {
 
 /* ── FOOTER ── */
 footer {
-  background: #083830;
-  padding: 28px 56px;
+  background: #ffffff;
+  padding: 32px 56px;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  position: relative; overflow: hidden;
+  border-top: 3px solid var(--orange);
 }
-.footer-brand { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.35); }
-.footer-brand strong { color: rgba(255,255,255,0.6); }
-.footer-note { font-size: 12px; color: rgba(255,255,255,0.2); }
+.footer-paws {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.footer-brand {
+  font-size: 13px; font-weight: 700; color: rgba(28,43,74,0.45);
+  position: relative; z-index: 1;
+}
+.footer-brand strong { color: var(--navy); }
+.footer-note {
+  font-size: 12px; color: rgba(28,43,74,0.35);
+  position: relative; z-index: 1;
+}
 
 /* ── Responsive ── */
 @media (max-width: 800px) {
@@ -734,6 +745,66 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
 
 <!-- FOOTER -->
 <footer>
+  <!-- Scattered paw prints -->
+  <svg class="footer-paws" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 90" preserveAspectRatio="xMidYMid slice">
+    <!-- paw print = 4 toe beans + 1 main pad -->
+    <!-- paw 1 -->
+    <g opacity="0.07" fill="#1C2B4A" transform="translate(80,18) rotate(-15)">
+      <ellipse cx="0"  cy="0"  rx="5" ry="6.5"/>
+      <ellipse cx="11" cy="-3" rx="4.5" ry="6"/>
+      <ellipse cx="21" cy="0"  rx="4.5" ry="6"/>
+      <ellipse cx="30" cy="6"  rx="5" ry="6.5"/>
+      <ellipse cx="15" cy="18" rx="11" ry="9"/>
+    </g>
+    <!-- paw 2 -->
+    <g opacity="0.05" fill="#C83803" transform="translate(240,38) rotate(10) scale(1.3)">
+      <ellipse cx="0"  cy="0"  rx="5" ry="6.5"/>
+      <ellipse cx="11" cy="-3" rx="4.5" ry="6"/>
+      <ellipse cx="21" cy="0"  rx="4.5" ry="6"/>
+      <ellipse cx="30" cy="6"  rx="5" ry="6.5"/>
+      <ellipse cx="15" cy="18" rx="11" ry="9"/>
+    </g>
+    <!-- paw 3 -->
+    <g opacity="0.06" fill="#1C2B4A" transform="translate(420,10) rotate(-30) scale(0.9)">
+      <ellipse cx="0"  cy="0"  rx="5" ry="6.5"/>
+      <ellipse cx="11" cy="-3" rx="4.5" ry="6"/>
+      <ellipse cx="21" cy="0"  rx="4.5" ry="6"/>
+      <ellipse cx="30" cy="6"  rx="5" ry="6.5"/>
+      <ellipse cx="15" cy="18" rx="11" ry="9"/>
+    </g>
+    <!-- paw 4 -->
+    <g opacity="0.045" fill="#C83803" transform="translate(600,30) rotate(20) scale(1.15)">
+      <ellipse cx="0"  cy="0"  rx="5" ry="6.5"/>
+      <ellipse cx="11" cy="-3" rx="4.5" ry="6"/>
+      <ellipse cx="21" cy="0"  rx="4.5" ry="6"/>
+      <ellipse cx="30" cy="6"  rx="5" ry="6.5"/>
+      <ellipse cx="15" cy="18" rx="11" ry="9"/>
+    </g>
+    <!-- paw 5 -->
+    <g opacity="0.07" fill="#1C2B4A" transform="translate(780,12) rotate(-8) scale(1.05)">
+      <ellipse cx="0"  cy="0"  rx="5" ry="6.5"/>
+      <ellipse cx="11" cy="-3" rx="4.5" ry="6"/>
+      <ellipse cx="21" cy="0"  rx="4.5" ry="6"/>
+      <ellipse cx="30" cy="6"  rx="5" ry="6.5"/>
+      <ellipse cx="15" cy="18" rx="11" ry="9"/>
+    </g>
+    <!-- paw 6 -->
+    <g opacity="0.05" fill="#1C2B4A" transform="translate(950,35) rotate(25) scale(0.85)">
+      <ellipse cx="0"  cy="0"  rx="5" ry="6.5"/>
+      <ellipse cx="11" cy="-3" rx="4.5" ry="6"/>
+      <ellipse cx="21" cy="0"  rx="4.5" ry="6"/>
+      <ellipse cx="30" cy="6"  rx="5" ry="6.5"/>
+      <ellipse cx="15" cy="18" rx="11" ry="9"/>
+    </g>
+    <!-- paw 7 -->
+    <g opacity="0.06" fill="#C83803" transform="translate(1100,15) rotate(-18) scale(1.2)">
+      <ellipse cx="0"  cy="0"  rx="5" ry="6.5"/>
+      <ellipse cx="11" cy="-3" rx="4.5" ry="6"/>
+      <ellipse cx="21" cy="0"  rx="4.5" ry="6"/>
+      <ellipse cx="30" cy="6"  rx="5" ry="6.5"/>
+      <ellipse cx="15" cy="18" rx="11" ry="9"/>
+    </g>
+  </svg>
   <span class="footer-brand"><strong>MedSync</strong> at Scout Care</span>
   <span class="footer-note">Internal use only · Scout Care, Chicagoland Region</span>
 </footer>
