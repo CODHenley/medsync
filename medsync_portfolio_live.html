@@ -717,7 +717,7 @@ async function loadPortfolioHeroTiles() {
     const totalGL = glRows.reduce(function(s, r) { return s + (Number(r.value_lost) || 0); }, 0);
     const heroGlVal = document.getElementById('hero-gl-val');
     const heroGlSub = document.getElementById('hero-gl-sub');
-    if (heroGlVal) { heroGlVal.textContent = '$' + totalGL.toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); heroGlVal.style.color = totalGL > 0 ? '#E8C76A' : '#6FE0A0'; }
+    if (heroGlVal) { heroGlVal.textContent = '$' + totalGL.toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); heroGlVal.style.color = totalGL > 0 ? '#B86D00' : '#0F6E56'; }
     if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? glRows.length + ' incident' + (glRows.length !== 1 ? 's' : '') + ' MTD' : 'No losses this month';
 
     // Kick off live COGs load — monthStart/today are plain date strings
@@ -728,7 +728,7 @@ async function loadPortfolioHeroTiles() {
     const exp60 = lots.length;
     const heroExpVal = document.getElementById('hero-exp-val');
     const heroExpSub = document.getElementById('hero-exp-sub');
-    if (heroExpVal) { heroExpVal.textContent = exp30; heroExpVal.style.color = exp30 > 3 ? '#FF8A80' : exp30 > 0 ? '#E8C76A' : '#6FE0A0'; }
+    if (heroExpVal) { heroExpVal.textContent = exp30; heroExpVal.style.color = exp30 > 3 ? '#a33030' : exp30 > 0 ? '#B86D00' : '#0F6E56'; }
     if (heroExpSub) heroExpSub.textContent = exp30 > 0 ? (exp60 - exp30) + ' more within 60 days' : exp60 > 0 ? exp60 + ' expiring within 60 days' : 'All lots current';
 
   } catch(e) {
@@ -780,15 +780,15 @@ async function loadPriorityChips() {
     const onTrack = Math.max(0, total - offTrackCount);
     if (sub) {
       sub.innerHTML = chips.length === 0
-        ? `<span style="color:#6FE0A0;">All ${total} locations on track</span>`
+        ? `<span style="color:#0F6E56;">All ${total} locations on track</span>`
         : onTrack === total
-          ? `<span style="color:#6FE0A0;">All ${total} locations on track</span>` + (chips.length ? ` · <span style="color:#E84545;">${expLots.length} lot${expLots.length!==1?'s':''} expiring</span>` : '')
-          : `${onTrack} of ${total} locations on track` + (pendingOrders.length ? ` · <span style="color:#E8C76A;">${pendingOrders.length} order${pendingOrders.length!==1?'s':''} pending today</span>` : '');
+          ? `<span style="color:#0F6E56;">All ${total} locations on track</span>` + (chips.length ? ` · <span style="color:#a33030;">${expLots.length} lot${expLots.length!==1?'s':''} expiring</span>` : '')
+          : `${onTrack} of ${total} locations on track` + (pendingOrders.length ? ` · <span style="color:#B86D00;">${pendingOrders.length} order${pendingOrders.length!==1?'s':''} pending today</span>` : '');
     }
 
     // Render chips
     if (chips.length === 0) {
-      el.innerHTML = `<span style="display:flex;align-items:center;gap:6px;background:rgba(111,224,160,0.15);border:1px solid rgba(111,224,160,0.3);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:#6FE0A0;white-space:nowrap;">All clear — no urgent actions</span>`;
+      el.innerHTML = `<span style="display:flex;align-items:center;gap:6px;background:rgba(111,224,160,0.15);border:1px solid rgba(111,224,160,0.3);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:#0F6E56;white-space:nowrap;">All clear — no urgent actions</span>`;
       return;
     }
     el.innerHTML = chips.map(c => `
@@ -1782,17 +1782,17 @@ function deepDiveLoc(locCode) {
         <div onclick="dbNav('cogs')" style="background:#F4F4F4;border:1px solid #E0E0E0;border-radius:12px;padding:16px 18px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#EAEAEA'" onmouseout="this.style.background='#F4F4F4'">
           <div style="font-size:11px;color:#1C2B4A;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Drug COGs</div>
           <div style="font-size:9px;color:#8A93A8;margin-bottom:8px;letter-spacing:0.3px;">drug spend ÷ total revenue</div>
-          <div id="hero-cogs-val" style="font-size:28px;font-weight:700;color:#6FE0A0;line-height:1;">—</div>
+          <div id="hero-cogs-val" style="font-size:28px;font-weight:700;color:#0F6E56;line-height:1;">—</div>
           <div id="hero-cogs-sub" style="font-size:11px;color:#8A93A8;margin-top:4px;">Loading…</div>
         </div>
         <div onclick="dbNav('gl')" style="background:#F4F4F4;border:1px solid #E0E0E0;border-radius:12px;padding:16px 18px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#EAEAEA'" onmouseout="this.style.background='#F4F4F4'">
           <div style="font-size:11px;color:#1C2B4A;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Goods Lost MTD</div>
-          <div id="hero-gl-val" style="font-size:28px;font-weight:700;color:#E8C76A;line-height:1;">—</div>
+          <div id="hero-gl-val" style="font-size:28px;font-weight:700;color:#B86D00;line-height:1;">—</div>
           <div id="hero-gl-sub" style="font-size:11px;color:#8A93A8;margin-top:4px;">Loading…</div>
         </div>
         <div onclick="showScreen('lifecycle')" style="background:#F4F4F4;border:1px solid #E0E0E0;border-radius:12px;padding:16px 18px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#EAEAEA'" onmouseout="this.style.background='#F4F4F4'">
           <div style="font-size:11px;color:#1C2B4A;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Expiring &lt;30 Days</div>
-          <div id="hero-exp-val" style="font-size:28px;font-weight:700;color:#FF8A80;line-height:1;">—</div>
+          <div id="hero-exp-val" style="font-size:28px;font-weight:700;color:#a33030;line-height:1;">—</div>
           <div id="hero-exp-sub" style="font-size:11px;color:#8A93A8;margin-top:4px;">Loading…</div>
         </div>
       </div>
@@ -2155,7 +2155,7 @@ const GL_COLORS = {
   'Diagnostic duplicate': '#6B4FBB',
   'Expired product':      'var(--red)',
   'In-house use':         'var(--amber)',
-  'Medication waste':     'var(--green)',
+  'Medication waste':     '#0F6E56',
   'Damaged / Spilled':    'var(--mist)',
   'Other':                'var(--slate)'
 };
@@ -2198,7 +2198,7 @@ async function loadData() {
     // Update hero tile
     const heroGlVal = document.getElementById('hero-gl-val');
     const heroGlSub = document.getElementById('hero-gl-sub');
-    if (heroGlVal) { heroGlVal.textContent = fmt$(totalGL); heroGlVal.style.color = totalGL > 0 ? '#E8C76A' : 'var(--green)'; }
+    if (heroGlVal) { heroGlVal.textContent = fmt$(totalGL); heroGlVal.style.color = totalGL > 0 ? '#B86D00' : '#0F6E56'; }
     if (heroGlSub) heroGlSub.textContent = totalGL > 0 ? realGLRows.length + ' incident' + (realGLRows.length !== 1 ? 's' : '') : 'No losses this period';
 
     // Goods lost by category (real incidents only — exclude snapshot imports)
@@ -2327,7 +2327,7 @@ async function loadLiveCOGs(loc, from, to) {
       totalRev      += rev;
       totalSpend    += spend;
       const pct   = rev > 0 ? (spend / rev) * 100 : 0;
-      const color = pct === 0 ? '#aaa' : pct > COGS_MAX ? 'var(--red)' : pct >= COGS_MIN ? 'var(--amber)' : 'var(--green)';
+      const color = pct === 0 ? '#aaa' : pct > COGS_MAX ? 'var(--red)' : pct >= COGS_MIN ? 'var(--amber)' : '#0F6E56';
       const w     = pct > 0 ? Math.min(Math.round((pct / 15) * 100), 100) : 0;
       const label = pct > 0 ? pct.toFixed(1) + '%' : 'No data';
       const revLabel = rev > 0 ? ' · $' + (rev/1000).toFixed(0) + 'K total rev' : '';
@@ -2371,7 +2371,7 @@ function updateHeroCOGs(portCogs, totalRev, totalSpend) {
   const _cs = (function(){ try { return JSON.parse(localStorage.getItem('medsync_settings') || '{}'); } catch(e) { return {}; } })();
   const _cogsMax = parseFloat(_cs.cogs_max) || 10.0;
   const _cogsMin2 = parseFloat(_cs.cogs_min) || 8.0;
-  const color = portCogs > _cogsMax ? '#FF8A80' : portCogs >= _cogsMin2 ? '#E8C76A' : '#6FE0A0';
+  const color = portCogs > _cogsMax ? '#a33030' : portCogs >= _cogsMin2 ? '#B86D00' : '#0F6E56';
   valEl.style.color = color;
   if (subEl) {
     const spendFmt = totalSpend >= 1000 ? '$' + (totalSpend/1000).toFixed(1) + 'K' : '$' + Math.round(totalSpend);
@@ -2487,7 +2487,7 @@ function renderCompliance(orders, loc) {
       const late = locOrders.filter(o => o.status === 'Late').length;
       const rate = locOrders.length > 0
         ? Math.round(((locOrders.length-late)/locOrders.length)*100) : 100;
-      const color = rate === 100 ? 'var(--green)' : 'var(--amber)';
+      const color = rate === 100 ? '#0F6E56' : 'var(--amber)';
       const cls   = rate === 100 ? 'cg' : 'ca';
       return `<div class="oc-r">
         <span class="oc-loc">${l.name}</span>
@@ -2598,7 +2598,7 @@ function updateKPIs() {
   const expCount = soon30 + soon60;
   const heroExpVal = document.getElementById('hero-exp-val');
   const heroExpSub = document.getElementById('hero-exp-sub');
-  if (heroExpVal) { heroExpVal.textContent = expCount; heroExpVal.style.color = expCount > 5 ? '#FF8A80' : expCount > 0 ? '#E8C76A' : 'var(--green)'; }
+  if (heroExpVal) { heroExpVal.textContent = expCount; heroExpVal.style.color = expCount > 5 ? '#a33030' : expCount > 0 ? '#B86D00' : '#0F6E56'; }
   if (heroExpSub) heroExpSub.textContent = expired > 0 ? expired + ' already expired' : expCount > 0 ? 'within 60 days' : 'All lots current';
   document.getElementById('kpi-cs').textContent      = cs;
 }
@@ -2754,7 +2754,7 @@ async function openLot(dbId) {
     // Always show received event first
     const events = [
       { action: 'Lot received', meta: formatDate(lot.received) + ' · ' + lot.recvBy,
-        note: lot.po + ' · ' + lot.vendor + ' · ' + lot.qtyIn + ' units', dot: 'var(--green)' },
+        note: lot.po + ' · ' + lot.vendor + ' · ' + lot.qtyIn + ' units', dot: '#0F6E56' },
       ...safeL.map(l => ({
         action: l.description,
         meta: formatDateTime(l.created_at) + (l.users?.full_name ? ' · ' + l.users.full_name : ''),
