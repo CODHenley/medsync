@@ -108,7 +108,7 @@ def build_insights():
 
     # ── 2. Most urgent expiring lot (next 60 days, all locations) ──────────
     lots = supa_get(
-        f"/rest/v1/lots?select=expiration_date,quantity_remaining,location_id,products(name)"
+        f"/rest/v1/lots?select=expiration_date,qty_remaining,location_id,products(name)"
         f"&expiration_date=gte.{today_str}&expiration_date=lte.{days60_fwd}"
         f"&order=expiration_date.asc&limit=50"
     )
@@ -117,7 +117,7 @@ def build_insights():
         exp      = lot.get("expiration_date", "")
         days_left= (date.fromisoformat(exp) - today).days if exp else 999
         prod_name= (lot.get("products") or {}).get("name", "Unknown product")
-        qty      = lot.get("quantity_remaining")
+        qty      = lot.get("qty_remaining")
         loc_name = LOC_NAMES.get(lot.get("location_id", ""), "Unknown location")
         total_exp= len(lots)
         qty_txt  = f" · {qty} remaining" if qty is not None else ""
