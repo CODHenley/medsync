@@ -1647,8 +1647,18 @@ function ovRefresh() {
   loadData().finally(() => { if (icon) icon.style.animation = ''; });
 }
 
-// ── Boot ─────────────────────────────────────────────────────
-loadData();
+// ── Boot — fetch org settings from Supabase before first render ──
+(function() {
+  fetch(SUPA_URL + '/rest/v1/organization_settings?id=eq.1&select=settings_json&limit=1', { headers: HEADERS })
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .then(function(rows) {
+      if (rows && rows.length && rows[0].settings_json) {
+        localStorage.setItem('medsync_settings', JSON.stringify(rows[0].settings_json));
+      }
+    })
+    .catch(function() {})
+    .finally(function() { loadData(); });
+})();
 
 function navHome() {
   if (window.self !== window.top) {
