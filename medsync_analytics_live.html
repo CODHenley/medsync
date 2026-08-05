@@ -496,7 +496,7 @@ if (window.self !== window.top) {
         <div class="card">
           <div class="card-head">
             <div class="card-title" id="cogs-title">COGs by location — May 2026</div>
-            <div class="card-sub">Target: 6.5–7.1% · gross production denominator</div>
+            <div class="card-sub" id="cogs-chart-target">Target: 6.5–7.1% · gross production denominator</div>
           </div>
           <div class="bar-chart" id="cogs-bars">
             <div class="br">
@@ -1170,6 +1170,8 @@ async function renderCOGSBars(glRows, loc, _unused) {
     const _cogsMin2 = parseFloat(_cogsSt2.cogs_min) || 8.0;
     const ovTargetEl = document.getElementById('ov-cogs-target');
     if (ovTargetEl) ovTargetEl.textContent = _cogsMin2.toFixed(1) + '–' + _cogsMax2.toFixed(1) + '%';
+    const chartTargetEl = document.getElementById('cogs-chart-target');
+    if (chartTargetEl) chartTargetEl.textContent = 'Target: ' + _cogsMin2.toFixed(1) + '–' + _cogsMax2.toFixed(1) + '% · gross production denominator';
     if (container) container.innerHTML = barsData.map(l => {
       if (l.pct === null) {
         return `<div class="br">
