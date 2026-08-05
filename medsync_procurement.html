@@ -63,6 +63,16 @@ select:focus{border-color:var(--navy);}
 .cg{color:var(--green);}
 .ca{color:var(--amber);}
 .cr{color:var(--red);}
+/* Column header info tooltip */
+.col-tip-wrap{position:relative;display:inline-block;margin-left:4px;vertical-align:middle;}
+.col-tip-icon{font-size:11px;color:var(--mist);cursor:default;line-height:1;}
+.col-tip{
+  display:none;position:absolute;top:calc(100% + 6px);right:0;
+  background:#3a3f4a;color:#f0f2f5;font-size:11px;line-height:1.5;
+  padding:8px 11px;border-radius:7px;width:230px;z-index:9999;
+  box-shadow:0 4px 16px rgba(0,0,0,.22);pointer-events:none;text-align:left;font-weight:400;white-space:normal;
+}
+.col-tip-wrap:hover .col-tip{display:block;}
 .cm{color:var(--mist);}
 .cp{color:var(--purple);}
 .cgold{color:var(--gold);}
@@ -312,7 +322,13 @@ tr:last-child td{border-bottom:none;}
             <tr>
               <th onclick="sortBy('product_name')">Product ↕</th>
               <th onclick="sortBy('location_name')">Location ↕</th>
-              <th onclick="sortBy('total_qty_dispensed')" style="text-align:right;">Dispensed Qty ↕</th>
+              <th onclick="sortBy('total_qty_dispensed')" style="text-align:right;position:relative;">
+                Dispensed Qty ↕
+                <span class="col-tip-wrap" onclick="event.stopPropagation()">
+                  <span class="col-tip-icon">ⓘ</span>
+                  <span class="col-tip">Billed dispenses only · excludes in-house &amp; QC use. Compare to Vetspire Usage Report for total consumption.</span>
+                </span>
+              </th>
               <th onclick="sortBy('unit_cost')" style="text-align:right;">Unit Cost ↕</th>
               <th onclick="sortBy('true_cogs')" style="text-align:right;">True COGS ↕</th>
               <th style="text-align:right;">Revenue Charged</th>
