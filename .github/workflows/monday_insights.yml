@@ -30,14 +30,3 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: python3 monday_email.py
 
-      - name: Push changes
-        run: |
-          git config user.name  "MedSync Insights Bot"
-          git config user.email "bot@medsync.vet"
-          git add index.html
-          if git diff --staged --quiet; then
-            echo "No changes — insights unchanged this week."
-          else
-            git commit -m "chore: Monday insights refresh $(date -u +%Y-%m-%d)"
-            git push
-          fi
