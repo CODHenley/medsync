@@ -6,7 +6,7 @@ updates the MANAGED-INSIGHTS block in index.html, then commits and pushes.
 Runs via GitHub Actions every Monday at 8am CT.
 """
 
-import json, urllib.request, urllib.error, re, subprocess, sys
+import json, urllib.request, urllib.error, sys
 from datetime import date, timedelta
 
 SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
@@ -184,48 +184,24 @@ def build_insights():
     return [i["html"] for i in insights[:3]]
 
 
-def update_html(cards):
-    path = "index.html"
-    with open(path, encoding="utf-8") as f:
-        html = f.read()
-
-    start_marker = "<!-- MANAGED-INSIGHTS-START -->"
-    end_marker   = "<!-- MANAGED-INSIGHTS-END -->"
-    start_idx = html.find(start_marker)
-    end_idx   = html.find(end_marker)
-
-    if start_idx == -1 or end_idx == -1:
-        print("ERROR: Could not find MANAGED-INSIGHTS markers in index.html")
-        sys.exit(1)
-
-    inner = "\n".join(cards)
-    new_html = (
-        html[:start_idx + len(start_marker)]
-        + "\n"
-        + inner
-        + "\n      "
-        + html[end_idx:]
+def save_insights(cards):
+    """Persist generated insight cards to Supabase so the portfolio page can cache them."""
+    payload = json.dumps({"id": 1, "insights_html": cards, "refreshed_at": today_str}).encode()
+    req = urllib.request.Request(
+        SUPA_URL + "/rest/v1/organization_settings",
+        data=payload,
+        headers={
+            **H,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
     )
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(new_html)
-
-    print(f"  Updated {len(cards)} insight card(s) in index.html")
-
-
-def git_commit_push():
-    run = lambda *args: subprocess.run(args, check=True)
-    result = subprocess.run(["git", "diff", "--staged", "--quiet"], capture_output=True)
-    subprocess.run(["git", "add", "index.html"])
-    result = subprocess.run(["git", "diff", "--staged", "--quiet"], capture_output=True)
-    if result.returncode == 0:
-        print("  No changes to commit — insights unchanged.")
-        return
-    run("git", "config", "user.name",  "MedSync Insights Bot")
-    run("git", "config", "user.email", "bot@medsync.vet")
-    run("git", "commit", "-m", f"chore: Monday insights refresh {today_str}")
-    run("git", "push")
-    print("  Committed and pushed.")
+    req.get_method = lambda: "POST"
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            print(f"  Saved {len(cards)} insight card(s) to Supabase (HTTP {r.status})")
+    except urllib.error.HTTPError as e:
+        print(f"  Warning: could not save to Supabase ({e.code}) — insights still generated for email")
 
 
 if __name__ == "__main__":
@@ -236,6 +212,5 @@ if __name__ == "__main__":
         print("  No insights generated — check Supabase data.")
         sys.exit(0)
     print(f"  {len(cards)} insight(s) generated.")
-    update_html(cards)
-    git_commit_push()
+    save_insights(cards)
     print("\nDone.\n")
