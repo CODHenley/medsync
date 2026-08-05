@@ -144,8 +144,8 @@ def main():
             prod = item.get("product") or {}
             pid  = item.get("productId") or prod.get("id")
             sku  = prod.get("sku")
-            if not pid or not sku:
-                continue  # skip services / non-inventory items
+            if not pid:
+                continue  # skip true services with no product ID
 
             dispensed_at = today + "T00:00:00Z"
 
@@ -166,6 +166,8 @@ def main():
                     r["returned"] = True
                 if bool(item.get("refunded", False)):
                     r["refunded"] = True
+                if sku and not r["sku"]:
+                    r["sku"] = sku
             else:
                 agg[key] = {
                     "order_item_id":          None,
