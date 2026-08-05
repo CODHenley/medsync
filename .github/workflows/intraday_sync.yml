@@ -2,8 +2,8 @@ name: Intraday Vetspire Sync
 
 on:
   schedule:
-    - cron: '*/15 14-23 * * *'  # every 15 min, 8 AM–5 PM CST (UTC-6)
-    - cron: '*/15 0-4 * * *'   # every 15 min, 6 PM–10 PM CST (UTC-6)
+    - cron: '*/5 14-23 * * *'  # every 5 min, 8 AM–5 PM CST (UTC-6)
+    - cron: '*/5 0-4 * * *'   # every 5 min, 6 PM–10 PM CST (UTC-6)
   workflow_dispatch:        # manual trigger from GitHub Actions UI
   push:
     branches: [main]        # backstop: sync on every deploy
