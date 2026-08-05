@@ -932,6 +932,9 @@ function consolidateByProduct(rows) {
       g.pct = g.total_revenue > 0 ? Math.round((1 - g.true_cogs / g.total_revenue) * 100) : null;
       if (p.last_dispensed_at && (!g.last_dispensed_at || p.last_dispensed_at > g.last_dispensed_at))
         g.last_dispensed_at = p.last_dispensed_at;
+      // Carry SKU and unit_cost from any entry that has them
+      if (p.sku && p.sku.trim()) g.sku = p.sku.trim();
+      if (p.unit_cost !== null && p.unit_cost !== undefined) g.unit_cost = p.unit_cost;
     }
   });
   return Object.values(map).map(p => ({ ...p, location_name: [...p._locs].join(', ') }));
@@ -949,15 +952,15 @@ function renderProductTable() {
     data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
   }
 
-  // Exclude items without a SKU (services, external Rx, OTC recommendations, procedures)
-  data = data.filter(p => p.sku && p.sku.trim() !== '');
-
   // Search filter
   const searchQ = (document.getElementById('product-search')?.value || '').trim().toLowerCase();
   if (searchQ) data = data.filter(p => p.product_name.toLowerCase().includes(searchQ));
 
-  // Consolidate across locations
+  // Consolidate across locations first, then exclude products with no SKU anywhere
+  // (services/procedures have no SKU across all locations; real inventory items always
+  // have a SKU on at least one dispense event even if some in-house events lack one)
   data = consolidateByProduct(data);
+  data = data.filter(p => p.sku && p.sku.trim() !== '');
 
   // Sort
   data.sort((a, b) => {
