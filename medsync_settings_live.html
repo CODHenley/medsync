@@ -1140,6 +1140,7 @@ function saveSettings() {
     margin_drift_pct:   document.getElementById('margin-drift-pct') ? document.getElementById('margin-drift-pct').value : '5',
   };
   localStorage.setItem('medsync_settings', JSON.stringify(settings));
+  window.parent.postMessage({ type: 'settings_synced', settings: settings }, '*');
   showToast('✓ Settings saved');
   // Also persist to Supabase so all devices/users share the same thresholds
   fetch(SUPA_URL + '/rest/v1/organization_settings', {

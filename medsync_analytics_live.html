@@ -1700,7 +1700,10 @@ window.addEventListener('message', function(e) {
     if (e.source) e.source.postMessage({type:'locationSet'}, '*');
   }
   if (e.data.type === 'settings_synced') {
-    // Settings iframe confirmed Supabase sync — re-render COGs with updated thresholds
+    // Update localStorage with the freshly-saved settings so renderCOGSBars sees the new values
+    if (e.data.settings) {
+      try { localStorage.setItem('medsync_settings', JSON.stringify(e.data.settings)); } catch(_) {}
+    }
     var locSel = document.getElementById('loc');
     var locVal = locSel ? locSel.value : 'all';
     if (typeof renderCOGSBars === 'function') renderCOGSBars([], locVal, null);
