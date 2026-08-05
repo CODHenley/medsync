@@ -594,7 +594,7 @@ if (window.self !== window.top) {
             <button id="ov-refresh-btn" onclick="ovRefresh()" title="Refresh" style="background:none;border:0.5px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;font-size:11px;color:var(--navy);display:flex;align-items:center;gap:4px;"><i class="ti ti-refresh" id="ov-refresh-icon" style="font-size:12px;"></i> Refresh</button>
           </div>
           <div class="mrow"><span class="mk">Portfolio COGs</span><span class="mv cg" id="ov-cogs">…</span></div>
-          <div class="mrow"><span class="mk">Target range</span><span class="mv">6.5–7.1%</span></div>
+          <div class="mrow"><span class="mk">Target range</span><span class="mv" id="ov-cogs-target">…</span></div>
           <div class="mrow"><span class="mk">Total revenue</span><span class="mv" id="ov-revenue">…</span></div>
           <div class="mrow"><span class="mk">Drug spend</span><span class="mv" id="ov-drug-spend">…</span></div>
           <div class="mrow"><span class="mk">Goods lost</span><span class="mv ca" id="ov-gl">…</span></div>
@@ -1165,6 +1165,11 @@ async function renderCOGSBars(glRows, loc, _unused) {
     });
 
     const max = 15;
+    const _cogsSt2 = (function(){ try { return JSON.parse(localStorage.getItem('medsync_settings') || '{}'); } catch(e) { return {}; } })();
+    const _cogsMax2 = parseFloat(_cogsSt2.cogs_max) || 10.0;
+    const _cogsMin2 = parseFloat(_cogsSt2.cogs_min) || 8.0;
+    const ovTargetEl = document.getElementById('ov-cogs-target');
+    if (ovTargetEl) ovTargetEl.textContent = _cogsMin2.toFixed(1) + '–' + _cogsMax2.toFixed(1) + '%';
     if (container) container.innerHTML = barsData.map(l => {
       if (l.pct === null) {
         return `<div class="br">
@@ -1173,7 +1178,7 @@ async function renderCOGSBars(glRows, loc, _unused) {
           <div class="br-val" style="color:var(--mist);">No data</div>
         </div>`;
       }
-      const color = l.pct > 9 ? 'var(--red)' : l.pct > 7 ? 'var(--amber)' : 'var(--green)';
+      const color = l.pct > _cogsMax2 ? 'var(--red)' : l.pct >= _cogsMin2 ? 'var(--amber)' : 'var(--green)';
       const w = Math.min(Math.round((l.pct / max) * 100), 100);
       const revLabel = l.rev > 0 ? ` <span style="font-size:9px;color:var(--mist);font-weight:400;">$${(l.rev/1000).toFixed(0)}K rev</span>` : '';
       return `<div class="br">
@@ -1187,10 +1192,7 @@ async function renderCOGSBars(glRows, loc, _unused) {
     const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
     const kcogsEl  = document.getElementById('k-cogs');
     const ovCogsEl = document.getElementById('ov-cogs');
-    const _cogsSt = (function(){ try { return JSON.parse(localStorage.getItem('medsync_settings') || '{}'); } catch(e) { return {}; } })();
-    const _cogsMax = parseFloat(_cogsSt.cogs_max) || 10.0;
-    const _cogsMin = parseFloat(_cogsSt.cogs_min) || 8.0;
-    const cogsColor = portCogs === null ? 'cm' : portCogs > _cogsMax ? 'cr' : portCogs >= _cogsMin ? 'ca' : 'cg';
+    const cogsColor = portCogs === null ? 'cm' : portCogs > _cogsMax2 ? 'cr' : portCogs >= _cogsMin2 ? 'ca' : 'cg';
     const cogsText  = portCogs !== null ? portCogs.toFixed(1) + '%' : '—';
     if (kcogsEl)  { kcogsEl.textContent  = cogsText; kcogsEl.className  = 'kpi-v ' + cogsColor; }
     if (ovCogsEl) { ovCogsEl.textContent = cogsText; ovCogsEl.className = 'mv ' + cogsColor; }
@@ -1686,6 +1688,12 @@ window.addEventListener('message', function(e) {
     if (sel) { sel.value = e.data.loc; if(typeof refresh==='function') refresh(); }
     window.scrollTo(0,0);
     if (e.source) e.source.postMessage({type:'locationSet'}, '*');
+  }
+  if (e.data.type === 'settings_synced') {
+    // Settings iframe confirmed Supabase sync — re-render COGs with updated thresholds
+    var locSel = document.getElementById('loc');
+    var locVal = locSel ? locSel.value : 'all';
+    if (typeof renderCOGSBars === 'function') renderCOGSBars([], locVal, null);
   }
 });
 

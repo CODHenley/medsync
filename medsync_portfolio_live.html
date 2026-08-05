@@ -836,6 +836,14 @@ window.addEventListener('message', function(e) {
   if (e.data.type === 'navigate') { showScreen(e.data.screen); }
 
   // Cycle count complete → switch to weekly order + notify it to highlight below-par items
+  // Settings iframe synced from Supabase — forward to analytics iframe so COGs re-renders with correct thresholds
+  if (e.data.type === 'settings_synced') {
+    var analyticsFrame = document.querySelector('#ms-analytics iframe');
+    if (analyticsFrame && analyticsFrame.contentWindow) {
+      analyticsFrame.contentWindow.postMessage(e.data, '*');
+    }
+  }
+
   if (e.data.type === 'cycleCountDone') {
     showScreen('order');
     // Give the weekly order iframe a moment to load, then tell it to flag below-par items
