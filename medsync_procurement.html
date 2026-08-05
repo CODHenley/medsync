@@ -661,6 +661,7 @@ async function reload() {
       if (!p.last_dispensed_at  || dt > p.last_dispensed_at)  p.last_dispensed_at  = dt;
       if (!p.first_dispensed_at || dt < p.first_dispensed_at) p.first_dispensed_at = dt;
       if (row.unit_cost !== null) p.unit_cost = row.unit_cost;
+      if (row.sku && row.sku.trim()) p.sku = row.sku.trim();
     }
 
     ALL_PRODUCTS = Object.values(byProduct).map(p => ({
