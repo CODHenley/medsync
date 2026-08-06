@@ -468,8 +468,8 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
   <div class="hero-card">
     <!-- Trio illustration — inline SVG for live animations (v3 redesign) -->
     <svg viewBox="0 -58 500 403" fill="none" stroke-linecap="round" stroke-linejoin="round"
-         style="position:absolute;bottom:210px;left:50%;transform:translateX(-50%);
-                width:115%;max-width:600px;height:auto;z-index:1;pointer-events:none;">
+         style="position:absolute;bottom:155px;left:50%;transform:translateX(-50%);
+                width:115%;max-width:600px;height:auto;z-index:3;pointer-events:none;">
       <defs>
         <clipPath id="topknot-clip">
           <path d="M 368,112 C 350,112 338,102 338,90 C 338,78 348,68 362,68
@@ -573,13 +573,15 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         </g>
         <path d="M 209,62 L 211,59 M 214,60 L 215,57 M 218,59 L 218,56 M 222,60 L 223,57 M 226,62 L 228,59" stroke="#281008" stroke-width="1.3" stroke-linecap="round"/>
         <path d="M 228,62 L 230,59 M 233,60 L 234,57 M 238,59 L 238,56 M 242,60 L 243,57 M 246,62 L 248,59" stroke="#281008" stroke-width="1.3" stroke-linecap="round"/>
-        <ellipse cx="218" cy="68" rx="12" ry="12" fill="#A8C8E8" fill-opacity="0.16"/>
-        <ellipse cx="238" cy="68" rx="12" ry="12" fill="#A8C8E8" fill-opacity="0.16"/>
-        <ellipse cx="218" cy="68" rx="12" ry="12" fill="none" stroke="#2A1408" stroke-width="2.2"/>
-        <ellipse cx="238" cy="68" rx="12" ry="12" fill="none" stroke="#2A1408" stroke-width="2.2"/>
-        <path d="M 230,67 C 231,64 231,64 230,67" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
-        <path d="M 206,68 C 202,65 198,61 194,60" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
-        <path d="M 250,68 C 254,65 258,61 262,60" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
+        <ellipse cx="215" cy="68" rx="11" ry="11" fill="#A8C8E8" fill-opacity="0.16"/>
+        <ellipse cx="241" cy="68" rx="11" ry="11" fill="#A8C8E8" fill-opacity="0.16"/>
+        <ellipse cx="215" cy="68" rx="11" ry="11" fill="none" stroke="#2A1408" stroke-width="2.2"/>
+        <ellipse cx="241" cy="68" rx="11" ry="11" fill="none" stroke="#2A1408" stroke-width="2.2"/>
+        <!-- bridge between inner edges (215+11=226 → 241-11=230) -->
+        <path d="M 226,68 Q 228,65 230,68" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
+        <!-- temples from outer edges outward -->
+        <path d="M 204,68 C 200,65 196,61 192,60" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 252,68 C 256,65 260,61 264,60" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
         <ellipse cx="228" cy="82" rx="7" ry="5" fill="#7A3C1C"/>
         <ellipse cx="206" cy="84" rx="10" ry="6" fill="#C05830" opacity="0.2"/>
         <ellipse cx="250" cy="84" rx="10" ry="6" fill="#C05830" opacity="0.2"/>
