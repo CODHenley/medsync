@@ -266,7 +266,8 @@ nav {
 .why-text { font-size: 13px; line-height: 1.65; color: var(--muted); }
 .why-visual {
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
+  clip-path: inset(0 round 16px);
   position: sticky; top: 80px;
   border: 1.5px solid var(--border);
 }
@@ -468,7 +469,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
   <div class="hero-card">
     <!-- Trio illustration — inline SVG for live animations (v3 redesign) -->
     <svg viewBox="0 -58 500 403" fill="none" stroke-linecap="round" stroke-linejoin="round"
-         style="position:absolute;bottom:235px;left:50%;transform:translateX(-50%);
+         style="position:absolute;bottom:260px;left:50%;transform:translateX(-50%);
                 width:115%;max-width:600px;height:auto;z-index:3;pointer-events:none;">
       <defs>
         <clipPath id="topknot-clip">
@@ -543,6 +544,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       </g>
 
       <!-- DR. HENLEY — center -->
+      <g transform="translate(0,31)">
       <g transform="translate(228,298) scale(1.15) translate(-228,-298)">
         <ellipse cx="228" cy="18" rx="58" ry="52" fill="#281008"/>
         <ellipse cx="184" cy="44" rx="24" ry="36" fill="#281008"/>
@@ -624,9 +626,10 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
           <text x="228" y="263" font-family="Georgia,'Times New Roman',serif" font-size="32" font-weight="bold" fill="#1C2B4A" text-anchor="middle">&#8478;</text>
         </g>
       </g>
+      </g>
 
       <!-- SYNC — toy poodle -->
-      <g transform="translate(-30,0)">
+      <g transform="translate(-30,21)">
       <g transform="translate(402,306) scale(0.8) translate(-402,-306)">
         <circle cx="443" cy="214" r="8" fill="#EED8B0"/>
         <g class="sync-tail">
@@ -922,11 +925,11 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
           <!-- Mascot trio — individual images aligned at feet, dog 20% larger than scene ratio -->
           <div style="display:flex;align-items:flex-end;justify-content:center;gap:2px;">
             <img src="mascot-med.png" alt="Med the cat"
-                 style="height:124px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
+                 style="height:105px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
             <img src="mascot-dr-henley.png" alt="Dr. Henley"
-                 style="height:299px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
+                 style="height:252px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
             <img src="mascot-sync.png" alt="Sync the poodle"
-                 style="height:294px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
+                 style="height:248px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
           </div>
           <div style="font-size:11px;color:rgba(255,255,255,0.55);line-height:1.5;text-align:center;">
             Log in for live numbers by location.
