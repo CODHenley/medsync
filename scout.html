@@ -266,7 +266,8 @@ nav {
 .why-text { font-size: 13px; line-height: 1.65; color: var(--muted); }
 .why-visual {
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
+  clip-path: inset(0 round 16px);
   position: sticky; top: 80px;
   border: 1.5px solid var(--border);
 }
@@ -924,11 +925,11 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
           <!-- Mascot trio — individual images aligned at feet, dog 20% larger than scene ratio -->
           <div style="display:flex;align-items:flex-end;justify-content:center;gap:2px;">
             <img src="mascot-med.png" alt="Med the cat"
-                 style="height:124px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
+                 style="height:105px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
             <img src="mascot-dr-henley.png" alt="Dr. Henley"
-                 style="height:299px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
+                 style="height:252px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
             <img src="mascot-sync.png" alt="Sync the poodle"
-                 style="height:294px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
+                 style="height:248px;width:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));">
           </div>
           <div style="font-size:11px;color:rgba(255,255,255,0.55);line-height:1.5;text-align:center;">
             Log in for live numbers by location.
