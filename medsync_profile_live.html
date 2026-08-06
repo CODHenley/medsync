@@ -113,6 +113,25 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 .pf-upload-btn:hover { background: #E4DCFA; }
 input[type="file"] { display: none; }
 
+/* ── Animal avatar picker ── */
+.pf-animal-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: #8A93A8;
+  margin: 4px 0 8px; display: block; text-align: left; width: 100%;
+}
+.pf-animal-grid {
+  display: grid; grid-template-columns: repeat(4, 48px);
+  gap: 8px; justify-content: center; width: 100%;
+}
+.pf-animal-opt {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 2.5px solid transparent; cursor: pointer;
+  overflow: hidden; transition: border-color 0.15s, transform 0.12s;
+  background: #F0EEFA;
+}
+.pf-animal-opt:hover { transform: scale(1.1); border-color: #9B7FD4; }
+.pf-animal-opt.selected { border-color: #6B4FBF; box-shadow: 0 0 0 3px rgba(107,79,191,.2); }
+
 .pf-bio-label {
   font-size: 11px;
   font-weight: 700;
@@ -289,6 +308,216 @@ input[type="file"] { display: none; }
         </button>
         <input type="file" id="pf-photo-input" accept="image/*" onchange="handlePhotoUpload(this)">
 
+        <!-- Animal avatar picker -->
+        <div style="width:100%;">
+          <span class="pf-animal-label">— or choose an avatar —</span>
+          <div class="pf-animal-grid" id="pf-animal-grid">
+            <!-- Dog -->
+            <div class="pf-animal-opt" title="Dog" onclick="selectAnimalAvatar(this,'dog')" data-key="dog">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#F9E4C8"/>
+                <!-- ears -->
+                <ellipse cx="13" cy="18" rx="6" ry="9" fill="#C8935A" transform="rotate(-15 13 18)"/>
+                <ellipse cx="35" cy="18" rx="6" ry="9" fill="#C8935A" transform="rotate(15 35 18)"/>
+                <ellipse cx="13" cy="18" rx="3.5" ry="6.5" fill="#E8B07A" transform="rotate(-15 13 18)"/>
+                <ellipse cx="35" cy="18" rx="3.5" ry="6.5" fill="#E8B07A" transform="rotate(15 35 18)"/>
+                <!-- head -->
+                <ellipse cx="24" cy="26" rx="14" ry="13" fill="#E8B07A"/>
+                <!-- eyes -->
+                <circle cx="19" cy="23" r="2.5" fill="#3A2A1A"/>
+                <circle cx="29" cy="23" r="2.5" fill="#3A2A1A"/>
+                <circle cx="20" cy="22.2" r="0.9" fill="#fff"/>
+                <circle cx="30" cy="22.2" r="0.9" fill="#fff"/>
+                <!-- muzzle -->
+                <ellipse cx="24" cy="30" rx="6" ry="4" fill="#F9D4A8"/>
+                <!-- nose -->
+                <ellipse cx="24" cy="28" rx="2.5" ry="1.7" fill="#3A2A1A"/>
+                <!-- mouth -->
+                <path d="M21 31 Q24 34 27 31" stroke="#3A2A1A" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <!-- Cat -->
+            <div class="pf-animal-opt" title="Cat" onclick="selectAnimalAvatar(this,'cat')" data-key="cat">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#E8E4F0"/>
+                <!-- ears -->
+                <polygon points="10,20 16,6 20,20" fill="#B0A0C8"/>
+                <polygon points="38,20 32,6 28,20" fill="#B0A0C8"/>
+                <polygon points="12,19 16,9 19,19" fill="#F0D0D8"/>
+                <polygon points="36,19 32,9 29,19" fill="#F0D0D8"/>
+                <!-- head -->
+                <ellipse cx="24" cy="27" rx="13" ry="12" fill="#C8BCDC"/>
+                <!-- eyes -->
+                <ellipse cx="19" cy="24" rx="2.5" ry="3" fill="#5A8A3A"/>
+                <ellipse cx="29" cy="24" rx="2.5" ry="3" fill="#5A8A3A"/>
+                <ellipse cx="19" cy="24" rx="1" ry="2.5" fill="#1A1A2A"/>
+                <ellipse cx="29" cy="24" rx="1" ry="2.5" fill="#1A1A2A"/>
+                <circle cx="19.8" cy="23" r="0.7" fill="#fff"/>
+                <circle cx="29.8" cy="23" r="0.7" fill="#fff"/>
+                <!-- muzzle -->
+                <ellipse cx="24" cy="31" rx="5" ry="3.5" fill="#F0E8F4"/>
+                <!-- nose -->
+                <polygon points="24,27.5 22.5,29.5 25.5,29.5" fill="#D070A0"/>
+                <!-- mouth -->
+                <path d="M22 30.5 Q24 33 26 30.5" stroke="#9A5070" stroke-width="1" fill="none" stroke-linecap="round"/>
+                <!-- whiskers -->
+                <line x1="10" y1="30" x2="19" y2="30.5" stroke="#9A8AAA" stroke-width="0.8"/>
+                <line x1="10" y1="32" x2="19" y2="31.5" stroke="#9A8AAA" stroke-width="0.8"/>
+                <line x1="38" y1="30" x2="29" y2="30.5" stroke="#9A8AAA" stroke-width="0.8"/>
+                <line x1="38" y1="32" x2="29" y2="31.5" stroke="#9A8AAA" stroke-width="0.8"/>
+              </svg>
+            </div>
+            <!-- Rabbit -->
+            <div class="pf-animal-opt" title="Rabbit" onclick="selectAnimalAvatar(this,'rabbit')" data-key="rabbit">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#F4F0F8"/>
+                <!-- tall ears -->
+                <ellipse cx="17" cy="12" rx="5" ry="10" fill="#E0D8EC"/>
+                <ellipse cx="31" cy="12" rx="5" ry="10" fill="#E0D8EC"/>
+                <ellipse cx="17" cy="12" rx="2.8" ry="7.5" fill="#F4B8C8"/>
+                <ellipse cx="31" cy="12" rx="2.8" ry="7.5" fill="#F4B8C8"/>
+                <!-- head -->
+                <ellipse cx="24" cy="30" rx="12" ry="11" fill="#E8E0F4"/>
+                <!-- eyes -->
+                <circle cx="19.5" cy="27.5" r="2.5" fill="#D060A0"/>
+                <circle cx="28.5" cy="27.5" r="2.5" fill="#D060A0"/>
+                <circle cx="19.5" cy="27.5" r="1.2" fill="#1A0A18"/>
+                <circle cx="28.5" cy="27.5" r="1.2" fill="#1A0A18"/>
+                <circle cx="20.2" cy="26.8" r="0.6" fill="#fff"/>
+                <circle cx="29.2" cy="26.8" r="0.6" fill="#fff"/>
+                <!-- nose -->
+                <ellipse cx="24" cy="32" rx="1.8" ry="1.2" fill="#F07090"/>
+                <!-- mouth -->
+                <path d="M22 33 Q24 35.5 26 33" stroke="#C04070" stroke-width="1" fill="none" stroke-linecap="round"/>
+                <line x1="24" y1="33.2" x2="24" y2="35.5" stroke="#C04070" stroke-width="1"/>
+              </svg>
+            </div>
+            <!-- Bird -->
+            <div class="pf-animal-opt" title="Bird" onclick="selectAnimalAvatar(this,'bird')" data-key="bird">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#E8F4FF"/>
+                <!-- head crest -->
+                <ellipse cx="20" cy="13" rx="3" ry="6" fill="#4AA8E8" transform="rotate(-20 20 13)"/>
+                <ellipse cx="24" cy="11" rx="2.5" ry="5" fill="#5ABAF0"/>
+                <ellipse cx="28" cy="13" rx="3" ry="6" fill="#4AA8E8" transform="rotate(20 28 13)"/>
+                <!-- head -->
+                <circle cx="24" cy="26" r="13" fill="#7AC8F0"/>
+                <!-- cheek patches -->
+                <circle cx="17" cy="28" r="4" fill="#F07070" opacity="0.6"/>
+                <circle cx="31" cy="28" r="4" fill="#F07070" opacity="0.6"/>
+                <!-- eyes -->
+                <circle cx="19.5" cy="23" r="3.5" fill="#fff"/>
+                <circle cx="28.5" cy="23" r="3.5" fill="#fff"/>
+                <circle cx="19.5" cy="23" r="2" fill="#1A1A2A"/>
+                <circle cx="28.5" cy="23" r="2" fill="#1A1A2A"/>
+                <circle cx="20.3" cy="22.2" r="0.7" fill="#fff"/>
+                <circle cx="29.3" cy="22.2" r="0.7" fill="#fff"/>
+                <!-- beak -->
+                <polygon points="21,28.5 27,28.5 24,33" fill="#F0A030"/>
+                <line x1="21" y1="30.8" x2="27" y2="30.8" stroke="#D08020" stroke-width="0.8"/>
+              </svg>
+            </div>
+            <!-- Hamster -->
+            <div class="pf-animal-opt" title="Hamster" onclick="selectAnimalAvatar(this,'hamster')" data-key="hamster">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#FFF0D8"/>
+                <!-- chubby cheeks -->
+                <circle cx="11" cy="29" r="8" fill="#F8C890"/>
+                <circle cx="37" cy="29" r="8" fill="#F8C890"/>
+                <!-- ears -->
+                <circle cx="13" cy="15" r="5.5" fill="#E8A060"/>
+                <circle cx="35" cy="15" r="5.5" fill="#E8A060"/>
+                <circle cx="13" cy="15" r="3.2" fill="#F8C8C8"/>
+                <circle cx="35" cy="15" r="3.2" fill="#F8C8C8"/>
+                <!-- head -->
+                <ellipse cx="24" cy="27" rx="13" ry="12" fill="#F8D090"/>
+                <!-- eyes -->
+                <circle cx="19" cy="23" r="2.8" fill="#1A1010"/>
+                <circle cx="29" cy="23" r="2.8" fill="#1A1010"/>
+                <circle cx="19.8" cy="22.2" r="1" fill="#fff"/>
+                <circle cx="29.8" cy="22.2" r="1" fill="#fff"/>
+                <!-- nose -->
+                <ellipse cx="24" cy="28.5" rx="2" ry="1.5" fill="#E06070"/>
+                <!-- mouth -->
+                <path d="M21.5 30 Q24 32.5 26.5 30" stroke="#B04050" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                <!-- whiskers -->
+                <line x1="9" y1="29" x2="18" y2="29.5" stroke="#C8A070" stroke-width="0.8"/>
+                <line x1="9" y1="31" x2="18" y2="30.5" stroke="#C8A070" stroke-width="0.8"/>
+                <line x1="39" y1="29" x2="30" y2="29.5" stroke="#C8A070" stroke-width="0.8"/>
+                <line x1="39" y1="31" x2="30" y2="30.5" stroke="#C8A070" stroke-width="0.8"/>
+              </svg>
+            </div>
+            <!-- Turtle -->
+            <div class="pf-animal-opt" title="Turtle" onclick="selectAnimalAvatar(this,'turtle')" data-key="turtle">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#E8F4E8"/>
+                <!-- shell -->
+                <ellipse cx="24" cy="26" rx="16" ry="13" fill="#5A9A5A"/>
+                <!-- shell pattern -->
+                <polygon points="24,15 30,20 28,27 20,27 18,20" fill="#3A7A3A"/>
+                <ellipse cx="16" cy="24" rx="4.5" ry="5.5" fill="#3A7A3A"/>
+                <ellipse cx="32" cy="24" rx="4.5" ry="5.5" fill="#3A7A3A"/>
+                <ellipse cx="20" cy="33" rx="5" ry="3.5" fill="#3A7A3A"/>
+                <ellipse cx="28" cy="33" rx="5" ry="3.5" fill="#3A7A3A"/>
+                <!-- shell highlight -->
+                <ellipse cx="24" cy="22" rx="7" ry="5" fill="#70BA70" opacity="0.4"/>
+                <!-- head -->
+                <ellipse cx="24" cy="14" rx="7" ry="6" fill="#6AB070"/>
+                <!-- eyes -->
+                <circle cx="21" cy="12.5" r="2" fill="#1A2A1A"/>
+                <circle cx="27" cy="12.5" r="2" fill="#1A2A1A"/>
+                <circle cx="21.6" cy="12" r="0.7" fill="#fff"/>
+                <circle cx="27.6" cy="12" r="0.7" fill="#fff"/>
+                <!-- mouth -->
+                <path d="M21 16.5 Q24 18.5 27 16.5" stroke="#3A6A3A" stroke-width="1" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <!-- Fish -->
+            <div class="pf-animal-opt" title="Fish" onclick="selectAnimalAvatar(this,'fish')" data-key="fish">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#E0F0FF"/>
+                <!-- tail -->
+                <polygon points="38,18 48,12 48,36 38,30" fill="#4080D0"/>
+                <polygon points="38,18 48,12 48,36 38,30" fill="#5090E0" opacity="0.5"/>
+                <!-- body -->
+                <ellipse cx="24" cy="24" rx="18" ry="11" fill="#5090E0"/>
+                <!-- scales -->
+                <path d="M20 17 Q24 20 28 17" stroke="#4080C8" stroke-width="1.2" fill="none"/>
+                <path d="M16 20 Q20 23 24 20" stroke="#4080C8" stroke-width="1.2" fill="none"/>
+                <path d="M24 20 Q28 23 32 20" stroke="#4080C8" stroke-width="1.2" fill="none"/>
+                <path d="M18 25 Q22 28 26 25" stroke="#4080C8" stroke-width="1.2" fill="none"/>
+                <!-- belly -->
+                <ellipse cx="22" cy="26" rx="10" ry="5" fill="#A8D0F8" opacity="0.5"/>
+                <!-- eye -->
+                <circle cx="12" cy="22" r="4.5" fill="#fff"/>
+                <circle cx="12" cy="22" r="2.8" fill="#1A3A5A"/>
+                <circle cx="13" cy="20.8" r="1" fill="#fff"/>
+                <!-- fin top -->
+                <path d="M18 14 Q24 8 30 14" stroke="#3070C0" stroke-width="2" fill="#4888D8"/>
+                <!-- mouth -->
+                <ellipse cx="5" cy="24" rx="2.5" ry="1.5" fill="#3A70C0"/>
+              </svg>
+            </div>
+            <!-- Paw -->
+            <div class="pf-animal-opt" title="Paw print" onclick="selectAnimalAvatar(this,'paw')" data-key="paw">
+              <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#FFF0E8"/>
+                <!-- toe beans -->
+                <ellipse cx="14" cy="16" rx="4" ry="4.5" fill="#E87858"/>
+                <ellipse cx="21" cy="13" rx="4" ry="4.5" fill="#E87858"/>
+                <ellipse cx="28" cy="13" rx="4" ry="4.5" fill="#E87858"/>
+                <ellipse cx="35" cy="16" rx="4" ry="4.5" fill="#E87858"/>
+                <!-- main pad -->
+                <ellipse cx="24" cy="30" rx="11" ry="10" fill="#E87858"/>
+                <!-- inner paw detail -->
+                <ellipse cx="18" cy="30" rx="2.5" ry="2.8" fill="#F09878" opacity="0.6"/>
+                <ellipse cx="24" cy="27" rx="2.5" ry="2.8" fill="#F09878" opacity="0.6"/>
+                <ellipse cx="30" cy="30" rx="2.5" ry="2.8" fill="#F09878" opacity="0.6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
         <div style="width:100%;">
           <label class="pf-bio-label" for="pf-bio">Bio / Fun Statement</label>
           <textarea class="pf-bio-textarea" id="pf-bio" maxlength="200" placeholder="Share something fun about yourself…" oninput="updateCharCount()"></textarea>
@@ -433,6 +662,8 @@ function setAvatarDisplay(b64, name) {
 function handlePhotoUpload(input) {
   const file = input.files[0];
   if (!file) return;
+  // Clear any animal selection
+  document.querySelectorAll('.pf-animal-opt').forEach(el => el.classList.remove('selected'));
   const reader = new FileReader();
   reader.onload = function(e) {
     const img = new Image();
@@ -452,6 +683,27 @@ function handlePhotoUpload(input) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function selectAnimalAvatar(el, key) {
+  // Highlight selected tile
+  document.querySelectorAll('.pf-animal-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  // Render the SVG to a canvas at 400×400 and store as data URL
+  const svgEl = el.querySelector('svg');
+  const svgStr = new XMLSerializer().serializeToString(svgEl);
+  const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400; canvas.height = 400;
+    canvas.getContext('2d').drawImage(img, 0, 0, 400, 400);
+    URL.revokeObjectURL(url);
+    _currentAvatarB64 = canvas.toDataURL('image/png');
+    setAvatarDisplay(_currentAvatarB64, document.getElementById('pf-display-name').textContent);
+  };
+  img.src = url;
 }
 
 async function changePassword() {
