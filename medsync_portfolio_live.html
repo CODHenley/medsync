@@ -4437,6 +4437,28 @@ let _allUsers       = [];          // [{id, full_name, avatar_b64}]
 let _readSet        = new Set();   // message IDs this user has read
 let _staffMessages  = [];
 let _dmMessages     = {};          // channel → messages[]
+let _lastKnownUnread = 0;          // for new-message sound detection
+
+// ── Notification sound (Web Audio API — no external files) ────────
+function _playMsgSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Short dog bark: two quick chirps with a pitch drop
+    function bark(startTime) {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(520, startTime);
+      osc.frequency.exponentialRampToValueAtTime(220, startTime + 0.12);
+      gain.gain.setValueAtTime(0.28, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.14);
+      osc.start(startTime); osc.stop(startTime + 0.15);
+    }
+    bark(ctx.currentTime);
+    bark(ctx.currentTime + 0.18);
+  } catch(e) {}
+}
 
 function _msgSession() {
   try { return JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; }
@@ -4512,10 +4534,16 @@ async function initMessenger() {
 }
 
 async function loadStaffMessages() {
+  const prevLen = _staffMessages.length;
   try {
     const r = await fetch(`${_MSG_SUPA}/rest/v1/messages?channel=eq.staff&order=sent_at.asc&limit=200`, { headers: _msgHeaders() });
     _staffMessages = r.ok ? await r.json() : [];
   } catch(e) { _staffMessages = []; }
+  if (prevLen > 0 && _staffMessages.length > prevLen) {
+    const me3 = _msgMe();
+    const hasNewFromOther = _staffMessages.slice(prevLen).some(m => m.sender_id !== me3.id);
+    if (hasNewFromOther) _playMsgSound();
+  }
   renderMessages('staff', _staffMessages, 'msg-body-staff');
   markRead(_staffMessages);
   updateBadges();
@@ -4935,7 +4963,11 @@ function subscribeRealtime() {
           { headers: _msgHeaders() }
         );
         const msgs = r.ok ? await r.json() : [];
-        if (msgs.length !== (_dmMessages[_currentDMChannel]||[]).length) {
+        const prevLen = (_dmMessages[_currentDMChannel]||[]).length;
+        if (msgs.length !== prevLen) {
+          const me2 = _msgMe();
+          const hasNewFromOther = msgs.slice(prevLen).some(m => m.sender_id !== me2.id);
+          if (hasNewFromOther) _playMsgSound();
           _dmMessages[_currentDMChannel] = msgs;
           renderMessages(_currentDMChannel, msgs, 'msg-body-dm');
           markRead(msgs);
@@ -4958,6 +4990,8 @@ async function pollUnreadCount() {
     );
     const msgs = r.ok ? await r.json() : [];
     const unread = msgs.filter(m => !_readSet.has(m.id)).length;
+    if (unread > _lastKnownUnread) _playMsgSound();
+    _lastKnownUnread = unread;
     const navBadge = document.getElementById('chat-unread-badge');
     if (navBadge) {
       navBadge.style.display = unread > 0 ? 'flex' : 'none';
