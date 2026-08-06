@@ -179,6 +179,7 @@ tr:last-child td{border-bottom:none;}
       </select>
       <select id="sel-period" onchange="onPeriodChange()">
         <option value="today">Today</option>
+        <option value="tw">This Week</option>
         <option value="7">Last 7 Days</option>
         <option value="30">Last 30 Days</option>
         <option value="lm">Last Month</option>
@@ -575,6 +576,10 @@ function getDateRange() {
     return { start: from || iso(now), end: to || iso(now) };
   } else if (sel === 'today') {
     start = end;
+  } else if (sel === 'tw') {
+    const dow = now.getDay(); // 0=Sun, 1=Mon...
+    const monday = new Date(now); monday.setDate(d - (dow === 0 ? 6 : dow - 1));
+    start = iso(monday);
   } else if (sel === 'mtd') {
     start = `${y}-${pad(m+1)}-01`;
   } else if (sel === 'lm') {
@@ -1345,19 +1350,41 @@ function setLoading(on) {
 function exportCSV() {
   if (!ALL_PRODUCTS.length) { showToast('No data to export'); return; }
 
-  // Consolidate rows by product name across all locations
+  // ── KPI summary header ──────────────────────────────────────────
+  const { start: csvStart, end: csvEnd } = getDateRange();
+  const locEl  = document.getElementById('sel-location');
+  const locTxt = locEl?.options[locEl.selectedIndex]?.text || 'All locations';
+  const g = id => document.getElementById(id)?.textContent?.trim() || '';
+  const kpiRows = [
+    ['MedSync Procurement & COGS Export'],
+    ['Period', csvStart + ' → ' + csvEnd],
+    ['Location', locTxt],
+    ['Exported', new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }) + ' CT'],
+    [],
+    ['KPI', 'Value'],
+    ['Purchase Value',   g('kv-purchase')],
+    ['True COGS',        g('kv-cogs')],
+    ['Dispense Events',  g('ks-cogs')],
+    ['Remaining Inventory', g('kv-remaining')],
+    ['Total Revenue',    g('kv-totalrev')],
+    ['COGS % Revenue',   g('kv-cogspc')],
+    ['Pharmacy Margin',  g('kv-pharmamargin')],
+    [],
+  ];
+
+  // ── Product detail rows ─────────────────────────────────────────
   const byProduct = {};
   ALL_PRODUCTS.forEach(p => {
     const key = p.product_name;
     if (!byProduct[key]) {
       byProduct[key] = { product_name: p.product_name, qty: 0, cogs: 0, revenue: 0, unit_cost: p.unit_cost, last_dispensed: p.last_dispensed_at };
     }
-    const g = byProduct[key];
-    g.qty     += p.total_qty_dispensed;
-    g.cogs    += p.true_cogs;
-    g.revenue += p.total_revenue;
-    if (p.last_dispensed_at && (!g.last_dispensed || p.last_dispensed_at > g.last_dispensed))
-      g.last_dispensed = p.last_dispensed_at;
+    const grp = byProduct[key];
+    grp.qty     += p.total_qty_dispensed;
+    grp.cogs    += p.true_cogs;
+    grp.revenue += p.total_revenue;
+    if (p.last_dispensed_at && (!grp.last_dispensed || p.last_dispensed_at > grp.last_dispensed))
+      grp.last_dispensed = p.last_dispensed_at;
   });
 
   const consolidated = Object.values(byProduct).sort((a, b) => b.cogs - a.cogs);
@@ -1366,7 +1393,7 @@ function exportCSV() {
   const totalRev  = consolidated.reduce((s, p) => s + p.revenue, 0);
   const totalMargin = totalRev > 0 ? ((1 - totalCOGS / totalRev) * 100).toFixed(1) + '%' : '';
 
-  const rows = [
+  const detailRows = [
     ['Product', 'Qty Dispensed', 'Unit Cost', 'True COGS', 'Total Revenue', 'Margin %', 'Last Dispensed'],
     ...consolidated.map(p => {
       const margin = p.revenue > 0 ? ((1 - p.cogs / p.revenue) * 100).toFixed(1) + '%' : '';
@@ -1381,10 +1408,12 @@ function exportCSV() {
     [],
     ['TOTALS', totalQty.toFixed(2), '', totalCOGS.toFixed(2), totalRev.toFixed(2), totalMargin, '']
   ];
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+  const allRows = [...kpiRows, ...detailRows];
+  const csv = allRows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'medsync_cogs_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'medsync_cogs_' + csvStart + '_' + csvEnd + '.csv';
   a.click();
 }
 
