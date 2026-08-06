@@ -4443,20 +4443,28 @@ let _lastKnownUnread = 0;          // for new-message sound detection
 function _playMsgSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Short dog bark: two quick chirps with a pitch drop
-    function bark(startTime) {
+    function chime(freq, startTime, duration) {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(520, startTime);
-      osc.frequency.exponentialRampToValueAtTime(220, startTime + 0.12);
-      gain.gain.setValueAtTime(0.28, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.14);
-      osc.start(startTime); osc.stop(startTime + 0.15);
+      const osc2  = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc.connect(gain);   gain.connect(ctx.destination);
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc.type  = 'sine';
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      osc2.frequency.setValueAtTime(freq * 2, startTime);
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.22, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      gain2.gain.setValueAtTime(0, startTime);
+      gain2.gain.linearRampToValueAtTime(0.06, startTime + 0.02);
+      gain2.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.start(startTime);  osc.stop(startTime + duration);
+      osc2.start(startTime); osc2.stop(startTime + duration);
     }
-    bark(ctx.currentTime);
-    bark(ctx.currentTime + 0.18);
+    chime(520, ctx.currentTime,        0.55);
+    chime(660, ctx.currentTime + 0.18, 0.55);
   } catch(e) {}
 }
 
