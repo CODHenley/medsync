@@ -4539,6 +4539,20 @@ async function initMessenger() {
   await loadStaffMessages();
   await loadDMList();
   subscribeRealtime();
+  // If arrived via a notify-dm email deep-link (?open_dm=CHANNEL), open that thread
+  const params = new URLSearchParams(window.location.search);
+  const openDMChannel = params.get('open_dm');
+  if (openDMChannel && openDMChannel.includes(':')) {
+    const otherUid = openDMChannel.split(':').find(id => id !== me.id);
+    const otherUser = _allUsers.find(u => u.id === otherUid);
+    const name = otherUser?.full_name || 'Direct Message';
+    switchMsgTab('dms');
+    await openDMConvo(openDMChannel, name);
+    // Remove param from URL without reload so back-navigation works cleanly
+    const url = new URL(window.location.href);
+    url.searchParams.delete('open_dm');
+    history.replaceState(null, '', url.toString());
+  }
 }
 
 async function loadStaffMessages() {
@@ -4845,6 +4859,11 @@ function _closeMention() {
 }
 
 async function sendMessage(channel) {
+  // Guard: DM sends must have a valid channel; abort rather than accidentally post to staff
+  if (!channel) {
+    console.warn('sendMessage: channel is null — aborting to prevent misrouting');
+    return;
+  }
   const inputId = channel === 'staff' ? 'msg-input-staff' : 'msg-input-dm';
   const input = document.getElementById(inputId);
   const content = (input?.value || '').trim();
@@ -4880,18 +4899,18 @@ async function sendMessage(channel) {
     // Send email notifications
     if (res.ok) {
       const senderName = meUser.full_name || 'A teammate';
-      // DM: notify the other person
+      // DM: notify the other person — include channel so email deep-links to this thread
       if (channel.includes(':')) {
         const recipientId = channel.split(':').find(id => id !== me.id);
         if (recipientId) {
           fetch(`${_MSG_SUPA}/functions/v1/notify-dm`, {
             method: 'POST',
             headers: { ..._msgHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify({ recipient_id: recipientId, sender_name: senderName, preview: content }),
+            body: JSON.stringify({ recipient_id: recipientId, sender_name: senderName, preview: content, dm_channel: channel }),
           }).catch(() => {});
         }
       }
-      // Staff channel or DM: notify any @mentioned users
+      // Staff channel: notify any @mentioned users — include channel for deep-link
       const mentionRegex = /@([^@\s][^@]*?)(?=\s|$|@)/g;
       let match;
       while ((match = mentionRegex.exec(content)) !== null) {
@@ -4903,7 +4922,7 @@ async function sendMessage(channel) {
             fetch(`${_MSG_SUPA}/functions/v1/notify-dm`, {
               method: 'POST',
               headers: { ..._msgHeaders(), 'Content-Type': 'application/json' },
-              body: JSON.stringify({ recipient_id: mentionedUser.id, sender_name: senderName, preview: content }),
+              body: JSON.stringify({ recipient_id: mentionedUser.id, sender_name: senderName, preview: content, dm_channel: channel }),
             }).catch(() => {});
           }
         }
