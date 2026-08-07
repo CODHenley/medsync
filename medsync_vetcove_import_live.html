@@ -94,6 +94,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .result-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:#F4F4F4;border-radius:7px;font-size:12px;}
 .result-row.error{background:#FEF2F2;}
 
+/* Duplicate / last-import UI */
+.last-import-banner{display:flex;align-items:center;gap:10px;background:#F0F9FF;border:0.5px solid #BAE6FD;border-radius:10px;padding:11px 16px;margin-top:16px;font-size:12px;}
+.lib-icon{font-size:18px;flex-shrink:0;}
+.lib-body{flex:1;color:#0369a1;}
+.lib-label{font-weight:700;margin-bottom:1px;}
+.lib-detail{color:#0284c7;font-size:11px;}
+.dup-alert{display:none;background:#FFFBEB;border:0.5px solid #FCD34D;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#92400e;}
+.dup-alert-title{font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:6px;}
+.badge-dup{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#92400e;border:0.5px solid #FCD34D;}
+.preview-table tr.dup-row td{background:#FFFBEB;opacity:.55;}
+
 /* Toast */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s;}
 .toast.show{opacity:1;}
@@ -177,6 +188,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           </div>
           <button class="btn-link" onclick="downloadTemplate()">↓ Template</button>
         </div>
+
+        <div class="last-import-banner" id="last-import-banner" style="display:none;">
+          <div class="lib-icon">🗓</div>
+          <div class="lib-body">
+            <div class="lib-label">Last Vetcove import accepted</div>
+            <div class="lib-detail" id="lib-detail">—</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -187,6 +206,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
   <!-- STEP 2: Preview -->
   <div id="s2" style="display:none;">
+    <div class="dup-alert" id="dup-alert">
+      <div class="dup-alert-title">⚠ Duplicate rows auto-skipped</div>
+      <div id="dup-alert-body"></div>
+    </div>
     <div class="card">
       <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
         <div>
@@ -218,6 +241,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
         <div class="stat"><div class="stat-v" id="stat-rows">0</div><div class="stat-l">rows</div></div>
         <div class="stat"><div class="stat-v" id="stat-matched" style="color:var(--green);">0</div><div class="stat-l">matched</div></div>
         <div class="stat"><div class="stat-v" id="stat-unmatched" style="color:var(--amber);">0</div><div class="stat-l">unmatched</div></div>
+        <div class="stat"><div class="stat-v" id="stat-dupes" style="color:#92400e;">0</div><div class="stat-l">dup skipped</div></div>
         <div class="stat"><div class="stat-v" id="stat-value">$0</div><div class="stat-l">total value</div></div>
       </div>
       <button class="btn-primary" id="btn-import" onclick="doImport()">Import losses →</button>
@@ -250,9 +274,46 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
 
-let ALL_PRODUCTS  = [];   // {id, name, normalized}
-let ALL_LOCATIONS = [];   // {id, name}
-let parsedRows    = [];   // parsed + matched rows
+let ALL_PRODUCTS      = [];   // {id, name, normalized}
+let ALL_LOCATIONS     = [];   // {id, name}
+let parsedRows        = [];   // parsed + matched rows
+let _priorImportDates = new Set(); // YYYY-MM-DD strings already in goods_lost via Vetcove import
+let _priorImportRange = null;      // { min, max, count } for display
+
+// ── Prior import date tracking ────────────────────────────────────
+async function loadPriorImports() {
+  try {
+    const res = await fetch(
+      SUPA_URL + '/rest/v1/goods_lost?notes=ilike.*Imported%20from%20Vetcove%20export*&select=created_at&limit=2000',
+      { headers: H }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length) return;
+    rows.forEach(r => {
+      if (r.created_at) _priorImportDates.add(r.created_at.substring(0, 10));
+    });
+    const sorted = [..._priorImportDates].sort();
+    _priorImportRange = { min: sorted[0], max: sorted[sorted.length - 1], count: rows.length };
+    renderLastImportBanner();
+  } catch(e) {}
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderLastImportBanner() {
+  const banner = document.getElementById('last-import-banner');
+  const detail = document.getElementById('lib-detail');
+  if (!_priorImportRange) { banner.style.display = 'none'; return; }
+  const { min, max, count } = _priorImportRange;
+  const rangeStr = min === max ? fmtDate(min) : `${fmtDate(min)} – ${fmtDate(max)}`;
+  detail.textContent = `${rangeStr} · ${count} record${count !== 1 ? 's' : ''} already in MedSync — rows in this range will be auto-skipped`;
+  banner.style.display = 'flex';
+}
 
 // ── Boot ─────────────────────────────────────────────────────────
 (async function boot() {
@@ -280,6 +341,7 @@ let parsedRows    = [];   // parsed + matched rows
   } catch(e) {
     showToast('Could not load product/location data');
   }
+  loadPriorImports();
 })();
 
 // ── CSV utilities ────────────────────────────────────────────────
@@ -416,8 +478,25 @@ function parseCSV() {
     const cat   = mapCategory(raw);
     const loc   = resolveLocation(raw);
     const match = matchProduct(productName);
-    return { i, raw, productName, qty, price, value, dateRaw, cat, loc, match, skip: false };
+    // Duplicate detection: check if this row's date was already imported via Vetcove
+    const dateKey = dateRaw ? (new Date(dateRaw).toISOString().substring(0, 10) || dateRaw.substring(0, 10)) : null;
+    const isDup = !!(dateKey && _priorImportDates.has(dateKey));
+    return { i, raw, productName, qty, price, value, dateRaw, dateKey, cat, loc, match, skip: isDup, dupSkip: isDup };
   });
+
+  // Show dup alert banner
+  const dupRows = parsedRows.filter(r => r.dupSkip);
+  const dupAlert = document.getElementById('dup-alert');
+  if (dupRows.length) {
+    const dupDates = [...new Set(dupRows.map(r => r.dateKey).filter(Boolean))].sort();
+    const rangeStr = dupDates.length === 1 ? fmtDate(dupDates[0])
+      : `${fmtDate(dupDates[0])} – ${fmtDate(dupDates[dupDates.length-1])}`;
+    document.getElementById('dup-alert-body').textContent =
+      `${dupRows.length} row${dupRows.length !== 1 ? 's' : ''} from ${rangeStr} were already imported and have been auto-skipped. You can re-include individual rows using the toggle below.`;
+    dupAlert.style.display = 'block';
+  } else {
+    dupAlert.style.display = 'none';
+  }
 
   renderPreview();
   goStep2();
@@ -442,9 +521,11 @@ function renderPreview() {
     const _d = row.dateRaw ? new Date(row.dateRaw) : null;
     const dateDisp = (_d && !isNaN(_d)) ? _d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : (row.dateRaw ? row.dateRaw.substring(0,10) : '—');
 
-    return `<tr id="row-${idx}" class="${row.skip ? 'skip' : ''}">
+    const rowClass = row.dupSkip ? 'dup-row' : (row.skip ? 'skip' : '');
+    const dupBadge = row.dupSkip ? ' <span class="badge-dup">already imported</span>' : '';
+    return `<tr id="row-${idx}" class="${rowClass}">
       <td><button class="skip-toggle" data-idx="${idx}" onclick="toggleSkip(this)" title="${row.skip ? 'Include' : 'Skip'}">${row.skip ? '⊕' : '⊖'}</button></td>
-      <td><div class="prod-name">${row.productName || '—'}</div><div class="prod-matched">${row.loc ? row.loc.name : '<span style="color:var(--red);">no location</span>'}</div></td>
+      <td><div class="prod-name">${row.productName || '—'}${dupBadge}</div><div class="prod-matched">${row.loc ? row.loc.name : '<span style="color:var(--red);">no location</span>'}</div></td>
       <td>${dateDisp}</td>
       <td>${row.qty}</td>
       <td>$${row.value.toFixed(2)}</td>
@@ -459,9 +540,11 @@ function renderPreview() {
 function toggleSkip(btn) {
   const idx = parseInt(btn.dataset.idx);
   parsedRows[idx].skip = !parsedRows[idx].skip;
+  if (!parsedRows[idx].skip) parsedRows[idx].dupSkip = false; // user explicitly re-included
   btn.textContent = parsedRows[idx].skip ? '⊕' : '⊖';
   btn.title = parsedRows[idx].skip ? 'Include' : 'Skip';
-  document.getElementById('row-' + idx).classList.toggle('skip', parsedRows[idx].skip);
+  const tr = document.getElementById('row-' + idx);
+  tr.className = parsedRows[idx].dupSkip ? 'dup-row' : (parsedRows[idx].skip ? 'skip' : '');
   updateSummary();
 }
 
@@ -473,10 +556,12 @@ function updateCat(sel) {
 function updateSummary() {
   const active = parsedRows.filter(r => !r.skip);
   const matched = active.filter(r => r.match);
+  const dupes = parsedRows.filter(r => r.dupSkip);
   const total = active.reduce((s,r) => s + r.value, 0);
   document.getElementById('stat-rows').textContent      = active.length;
   document.getElementById('stat-matched').textContent   = matched.length;
   document.getElementById('stat-unmatched').textContent = active.length - matched.length;
+  document.getElementById('stat-dupes').textContent     = dupes.length;
   document.getElementById('stat-value').textContent     = '$' + total.toFixed(0);
   document.getElementById('btn-import').disabled = active.length === 0;
 }
@@ -525,6 +610,11 @@ async function doImport() {
       results.push({ ok: false, name: row.productName, reason: e.message.substring(0,80) });
     }
   }
+
+  // Refresh prior import dates so a second upload in the same session sees the new records
+  _priorImportDates = new Set();
+  _priorImportRange = null;
+  await loadPriorImports();
 
   showResults(results);
 }
