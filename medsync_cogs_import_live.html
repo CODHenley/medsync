@@ -148,7 +148,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     <div class="ib-icon">📦</div>
     <div class="ib-body">
       <div class="ib-title">What this screen does</div>
-      Download your <strong>Order History</strong> from Vetcove (Orders → Export). Upload it here and MedSync logs each completed purchase to your COGS spend. The preview below shows <strong>budget vs. spend week-by-week for the calendar year</strong>, using the same revenue × COGs% formula as the Procurement screen. Cancelled, backordered, and $0 orders are excluded automatically.
+      Download your <strong>Order History Items</strong> from Vetcove (Orders → Export → Items). Upload it here and MedSync logs each completed line item to your COGS spend. The preview below shows <strong>budget vs. spend week-by-week for the calendar year</strong>, using the same revenue × COGs% formula as the Procurement screen. Cancelled, backordered, and $0 items are excluded automatically.
     </div>
   </div>
 
@@ -167,7 +167,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div class="card-head">
         <div>
           <div class="card-title">Upload Vetcove Order History CSV</div>
-          <div class="card-sub">From Vetcove: Orders → Export → Order History (.csv)</div>
+          <div class="card-sub">From Vetcove: Orders → Export → Order History Items (.csv)</div>
         </div>
       </div>
       <div class="card-body">
@@ -176,7 +176,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
              ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
           <div class="uz-icon" id="uz-icon">📂</div>
           <div class="uz-title" id="uz-title">Drop your CSV here or click to browse</div>
-          <div class="uz-sub" id="uz-sub">Vetcove Order History export (.csv)</div>
+          <div class="uz-sub" id="uz-sub">Vetcove Order History Items export (.csv)</div>
           <div class="uz-filename" id="uz-filename"></div>
         </div>
         <input type="file" id="file-input" accept=".csv,.tsv,.txt" onchange="onFileSelect(event)">
@@ -270,7 +270,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     <!-- Summary bar -->
     <div class="summary-bar">
       <div class="sum-stats">
-        <div class="ss"><div class="ss-v" id="sb-orders">0</div><div class="ss-l">orders to import</div></div>
+        <div class="ss"><div class="ss-v" id="sb-orders">0</div><div class="ss-l">items to import</div></div>
         <div class="ss"><div class="ss-v" style="color:var(--green);" id="sb-spend">$0</div><div class="ss-l">net spend</div></div>
         <div class="ss"><div class="ss-v" style="color:#92400e;" id="sb-dupes">0</div><div class="ss-l">dup skipped</div></div>
       </div>
@@ -412,7 +412,8 @@ async function loadPriorImports(){
     const rows = await res.json();
     if (!Array.isArray(rows) || !rows.length) return;
     rows.forEach(r => {
-      const m = (r.note || '').match(/VID:(\d+)/);
+      // Match both old order-level VIDs and new item-level VIDs (VID:123 or VID:123_45)
+      const m = (r.note || '').match(/VID:([\d_]+)/);
       if (m) _priorVIDs.add(m[1]);
     });
     const dates = rows.map(r => r.purchased_at ? r.purchased_at.slice(0,10) : null).filter(Boolean).sort();
@@ -427,7 +428,7 @@ function renderLastImportBanner(){
   const { min, max, count } = _priorRange;
   const rangeStr = min === max ? fmtDate(min) : `${fmtDate(min)} – ${fmtDate(max)}`;
   document.getElementById('lib-detail').textContent =
-    `${rangeStr} · ${count} order${count!==1?'s':''} already in MedSync — duplicates will be auto-skipped`;
+    `${rangeStr} · ${count} item${count!==1?'s':''} already in MedSync — duplicates will be auto-skipped`;
   banner.style.display = 'flex';
 }
 
@@ -500,23 +501,34 @@ async function startParse(){
   const fallbackLoc=ALL_LOCATIONS.find(l=>l.id===fallbackLocId)||null;
 
   parsedOrders=raw.map((row,i)=>{
-    const vetcoveId = colVal(row,'vetcove id','vetcoveid','id');
-    const date      = colVal(row,'date','order date');
-    const hospital  = colVal(row,'hospital','location','clinic','site');
-    const purchaser = colVal(row,'purchaser','ordered by','buyer');
-    const supplier  = colVal(row,'supplier','vendor','distributor');
-    const orderNum  = colVal(row,'order #','order#','order number','order no');
-    const poNum     = colVal(row,'po number','po#','po num');
-    const total     = parseFloat(colVal(row,'total'))||0;
-    const status    = colVal(row,'status');
-    const loc       = resolveLocation(hospital)||fallbackLoc;
-    const sLower    = status.toLowerCase();
-    const excluded  = (SKIP_STATUSES.has(sLower)||total===0) ? { reason: SKIP_STATUSES.has(sLower)?'cancelled/backordered':'zero total' } : null;
-    const isDup     = !excluded && vetcoveId && _priorVIDs.has(vetcoveId);
-    const dateKey   = date ? date.slice(0,10) : null;
-    const wk        = dateKey ? weekStart(dateKey) : null;
-    return { i, vetcoveId, date, dateKey, wk, hospital, purchaser, supplier, orderNum, poNum,
-             total, status, loc, excluded, isDup, skip: isDup||!!excluded };
+    // Itemized CSV columns (Order History Items export)
+    const vetcoveItemId = colVal(row,'vetcove item id','vetcoveitemid');
+    const vetcoveId     = colVal(row,'vetcove id','vetcoveid','id'); // order-level ID
+    const date          = colVal(row,'date','order date');
+    const hospital      = colVal(row,'hospital','location','clinic','site');
+    const itemName      = colVal(row,'name','item name','product name','description');
+    const supplier      = colVal(row,'supplier','vendor','distributor');
+    const manufacturer  = colVal(row,'manufacturer');
+    const orderNum      = colVal(row,'order #','order#','order number','order no');
+    const poNum         = colVal(row,'po number','po#','po num');
+    const totalPrice    = parseFloat(colVal(row,'total price','totalprice'))||0;
+    const unitPrice     = parseFloat(colVal(row,'unit price','unitprice'))||0;
+    const quantity      = parseFloat(colVal(row,'quantity','qty'))||0;
+    const status        = colVal(row,'item status','status');
+    const primaryCat    = colVal(row,'primary category','primarycategory','category');
+    // Use vetcove item id as dedup key; fall back to order+item combo
+    const dedupKey      = vetcoveItemId || (vetcoveId + '_' + i);
+    const loc           = resolveLocation(hospital)||fallbackLoc;
+    const sLower        = status.toLowerCase();
+    const excluded      = (SKIP_STATUSES.has(sLower)||totalPrice===0)
+                            ? { reason: SKIP_STATUSES.has(sLower)?'cancelled/backordered':'zero total' } : null;
+    const isDup         = !excluded && dedupKey && _priorVIDs.has(dedupKey);
+    const dateKey       = date ? date.slice(0,10) : null;
+    const wk            = dateKey ? weekStart(dateKey) : null;
+    return { i, vetcoveItemId, vetcoveId, dedupKey, date, dateKey, wk, hospital,
+             itemName, supplier, manufacturer, orderNum, poNum,
+             total: totalPrice, unitPrice, quantity, status, primaryCat,
+             loc, excluded, isDup, skip: isDup||!!excluded };
   });
 
   // Determine calendar year from CSV data
@@ -594,7 +606,7 @@ function buildPreview(year){
     const rangeStr = dupDates.length===1 ? fmtDate(dupDates[0])
       : `${fmtDate(dupDates[0])} – ${fmtDate(dupDates[dupDates.length-1])}`;
     document.getElementById('dup-alert-body').textContent =
-      `${dups.length} order${dups.length!==1?'s':''} from ${rangeStr} were already imported and auto-skipped. Toggle ⊕ on any row to re-include.`;
+      `${dups.length} item${dups.length!==1?'s':''} from ${rangeStr} were already imported and auto-skipped. Toggle ⊕ on any row to re-include.`;
     dupAlert.style.display='flex';
   } else {
     dupAlert.style.display='none';
@@ -682,12 +694,14 @@ function buildPreview(year){
         ? `<button class="skip-toggle" data-idx="${r.i}" onclick="event.stopPropagation();toggleSkip(this,'${wk}')" title="${r.skip?'Include':'Skip'}">${r.skip?'⊕':'⊖'}</button>`
         : '<span style="font-size:10px;color:var(--mist);">✕</span>';
       const amtColor = r.total<0?'color:var(--red);':'';
+      const itemLabel = r.itemName ? (r.itemName.length>60?r.itemName.slice(0,57)+'…':r.itemName) : (r.supplier||'—');
       return `<tr>
         <td>${toggleBtn}</td>
-        <td class="ord-sup">${r.supplier||'—'}${dupBadge}</td>
+        <td class="ord-sup">${itemLabel}${dupBadge}</td>
+        <td style="color:var(--mist);">${r.supplier||'—'}</td>
         <td>${r.orderNum||r.vetcoveId||'—'}</td>
         <td style="text-align:right;font-weight:500;${amtColor}">${r.total<0?'-':''}${fmt$(r.total)}</td>
-        <td style="color:var(--mist);">${r.status||'—'}</td>
+        <td style="color:var(--mist);">${r.quantity?r.quantity+' × ':''}${r.status||'—'}</td>
       </tr>`;
     }).join('');
 
@@ -696,10 +710,11 @@ function buildPreview(year){
         <table class="order-mini-table" style="width:100%;">
           <thead><tr style="background:#F0F0F8;">
             <th style="width:28px;padding:5px 10px;"></th>
+            <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;">Item</th>
             <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;">Supplier</th>
             <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;">Order #</th>
             <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:right;">Total</th>
-            <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Status</th>
+            <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Qty · Status</th>
           </tr></thead>
           <tbody>${orderRows}</tbody>
         </table>
@@ -780,11 +795,12 @@ async function doImport(){
   for (const r of toImport){
     if (!r.loc){ failed++; continue; }
     try {
-      const note = `VID:${r.vetcoveId||''}` +
+      // Store item-level VID for dedup; include item name, order ref, supplier
+      const itemNameTrunc = r.itemName ? (r.itemName.length>80?r.itemName.slice(0,77)+'…':r.itemName) : '';
+      const note = `VID:${r.dedupKey||''}` +
+        (itemNameTrunc ? ` · ${itemNameTrunc}`:'') +
         (r.orderNum ? ` · Order ${r.orderNum}`:'') +
-        (r.poNum    ? ` · PO ${r.poNum}`:'') +
-        (r.supplier ? ` · ${r.supplier}`:'') +
-        (r.purchaser&&r.purchaser!=='N/A'?` · ${r.purchaser}`:'');
+        (r.supplier ? ` · ${r.supplier}`:'');
       const res = await fetch(SUPA_URL + '/rest/v1/purchase_history', {
         method:'POST',
         headers:{...H,'Prefer':'return=minimal'},
@@ -807,8 +823,8 @@ async function doImport(){
   await loadPriorImports();
 
   document.getElementById('result-icon').textContent  = failed ? '⚠️' : '✅';
-  document.getElementById('result-title').textContent = failed ? `${ok} imported, ${failed} failed` : `${ok} orders imported`;
-  document.getElementById('result-sub').textContent   = `${(totalSpend<0?'-':'')+fmt$(totalSpend)} net spend logged to COGS`;
+  document.getElementById('result-title').textContent = failed ? `${ok} imported, ${failed} failed` : `${ok} items imported`;
+  document.getElementById('result-sub').textContent   = `${(totalSpend<0?'-':'')+fmt$(totalSpend)} net spend logged to COGS · ${ok} line items`;
   goStep3();
 }
 
@@ -820,7 +836,7 @@ function goStep1(){
   document.getElementById('btn-parse').textContent='Review →';
   document.getElementById('uz-icon').textContent='📂';
   document.getElementById('uz-title').textContent='Drop your CSV here or click to browse';
-  document.getElementById('uz-sub').textContent='Vetcove Order History export (.csv)';
+  document.getElementById('uz-sub').textContent='Vetcove Order History Items export (.csv)';
   document.getElementById('uz-filename').textContent='';
   document.getElementById('upload-zone').classList.remove('has-file','drag');
   document.getElementById('file-input').value='';
