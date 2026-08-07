@@ -5048,9 +5048,27 @@ Exported: ${new Date().toLocaleString()}
   a.click();
 }
 
+// Pre-seed _readSet from Supabase so already-read messages stay read across sessions
+async function seedReadSet() {
+  const me = _msgMe();
+  if (!me.id) return;
+  try {
+    const since = new Date(Date.now() - 7 * 24*60*60*1000).toISOString();
+    const r = await fetch(
+      `${_MSG_SUPA}/rest/v1/message_reads?user_id=eq.${me.id}&read_at=gte.${since}&select=message_id&limit=1000`,
+      { headers: _msgHeaders() }
+    );
+    if (r.ok) {
+      const rows = await r.json();
+      rows.forEach(row => _readSet.add(row.message_id));
+    }
+  } catch(e) {}
+}
+
 // Kick off background polling once page loads
-window.addEventListener('load', () => {
-  setTimeout(pollUnreadCount, 3000);
+window.addEventListener('load', async () => {
+  await seedReadSet();
+  setTimeout(pollUnreadCount, 500);
   setInterval(pollUnreadCount, 30000);
 });
 
