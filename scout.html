@@ -546,11 +546,15 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       <!-- DR. HENLEY — center -->
       <g transform="translate(0,31)">
       <g transform="translate(228,298) scale(1.15) translate(-228,-298)">
+
+        <g transform="translate(228,50) scale(1.25) translate(-228,-50)">
         <ellipse cx="228" cy="18" rx="58" ry="52" fill="#281008"/>
         <ellipse cx="184" cy="44" rx="24" ry="36" fill="#281008"/>
         <ellipse cx="272" cy="44" rx="24" ry="36" fill="#281008"/>
         <ellipse cx="180" cy="86" rx="20" ry="30" fill="#281008"/>
         <ellipse cx="276" cy="86" rx="20" ry="30" fill="#281008"/>
+        <ellipse cx="180" cy="122" rx="40" ry="44" fill="#281008"/>
+        <ellipse cx="276" cy="122" rx="40" ry="44" fill="#281008"/>
         <ellipse cx="228" cy="8" rx="32" ry="22" fill="#381808" opacity="0.5"/>
         <ellipse cx="228" cy="72" rx="32" ry="35" fill="#8C4C28"/>
         <ellipse cx="196" cy="74" rx="9" ry="12" fill="#8C4C28"/>
@@ -577,9 +581,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <ellipse cx="241" cy="68" rx="11" ry="11" fill="#A8C8E8" fill-opacity="0.16"/>
         <ellipse cx="215" cy="68" rx="11" ry="11" fill="none" stroke="#2A1408" stroke-width="2.2"/>
         <ellipse cx="241" cy="68" rx="11" ry="11" fill="none" stroke="#2A1408" stroke-width="2.2"/>
-        <!-- bridge between inner edges (215+11=226 → 241-11=230) -->
         <path d="M 226,68 Q 228,65 230,68" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
-        <!-- temples from outer edges outward -->
         <path d="M 204,68 C 200,65 196,61 192,60" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
         <path d="M 252,68 C 256,65 260,61 264,60" fill="none" stroke="#2A1408" stroke-width="2" stroke-linecap="round"/>
         <ellipse cx="228" cy="82" rx="7" ry="5" fill="#7A3C1C"/>
@@ -588,44 +590,49 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <path d="M 218,94 C 222,102 234,102 238,94 C 234,105 222,105 218,94 Z" fill="#3A0C08"/>
         <path d="M 219,95 C 222,101 234,101 237,95" fill="#F4E8E0"/>
         <path d="M 217,93 Q 222,89 228,91 Q 234,89 239,93" fill="#9B3848"/>
-        <rect x="220" y="105" width="16" height="28" rx="3" fill="#8C4C28"/>
+        <rect x="212" y="105" width="32" height="20" fill="#8C4C28"/>
+        </g>
+
+        <rect x="206" y="119" width="44" height="20" fill="#8C4C28"/>
         <rect x="199" y="272" width="20" height="28" rx="4" fill="#4878C0"/>
         <rect x="237" y="272" width="20" height="28" rx="4" fill="#4878C0"/>
         <ellipse cx="209" cy="300" rx="18" ry="9" fill="#F0F0EE" stroke="#CCCCCC" stroke-width="1.2"/>
         <ellipse cx="247" cy="300" rx="18" ry="9" fill="#F0F0EE" stroke="#CCCCCC" stroke-width="1.2"/>
         <ellipse cx="204" cy="297" rx="6" ry="3" fill="white" opacity="0.4"/>
         <ellipse cx="242" cy="297" rx="6" ry="3" fill="white" opacity="0.4"/>
-        <ellipse cx="180" cy="122" rx="40" ry="44" fill="#281008"/>
-        <ellipse cx="276" cy="122" rx="40" ry="44" fill="#281008"/>
-        <ellipse cx="228" cy="120" rx="56" ry="20" fill="#8C4C28"/>
-        <path d="M 182,116 C 184,134 184,158 190,182 C 186,212 180,248 178,280 L 278,280 C 276,248 270,212 266,182 C 272,158 272,134 274,116 C 262,110 246,128 228,130 C 210,128 194,110 182,116 Z" fill="#F8F8F8" stroke="#CCCCCC" stroke-width="1.5"/>
-        <polygon points="182,116 218,128 220,152 194,132" fill="#F8F8F8" stroke="#C0C0C0" stroke-width="1.5"/>
-        <polygon points="274,116 238,128 236,152 262,132" fill="#F8F8F8" stroke="#C0C0C0" stroke-width="1.5"/>
-        <polygon points="218,128 238,128 228,152" fill="#A8D0F0"/>
-        <circle cx="190" cy="82" r="7" fill="none" stroke="#D4A830" stroke-width="2.5"/>
-        <circle cx="266" cy="82" r="7" fill="none" stroke="#D4A830" stroke-width="2.5"/>
-        <line x1="228" y1="156" x2="228" y2="274" stroke="#D0D0D0" stroke-width="0.8" opacity="0.5"/>
-        <circle cx="228" cy="172" r="3" fill="#E0E0E0" stroke="#C0C0C0" stroke-width="1"/>
+        <path d="M 210,135 L 246,135 C 244,154 238,170 228,182 C 218,170 212,154 210,135 Z" fill="#4878C0"/>
+        <path d="M 182,135 C 184,162 184,205 182,280 L 228,280 L 228,182 C 218,170 212,154 210,135 Z" fill="#F8F8F8" stroke="none"/>
+        <path d="M 274,135 C 272,162 272,205 274,280 L 228,280 L 228,182 C 238,170 244,154 246,135 Z" fill="#F8F8F8" stroke="none"/>
+        <path d="M 182,135 C 184,162 184,205 182,280 L 274,280 C 272,205 272,162 274,135" fill="none" stroke="#CCCCCC" stroke-width="1.5"/>
+        <ellipse cx="207" cy="132" rx="17" ry="20" fill="#281008"/>
+        <ellipse cx="249" cy="132" rx="17" ry="20" fill="#281008"/>
+        <line x1="228" y1="184" x2="228" y2="274" stroke="#D8D8D8" stroke-width="0.8" opacity="0.5"/>
         <circle cx="228" cy="196" r="3" fill="#E0E0E0" stroke="#C0C0C0" stroke-width="1"/>
-        <circle cx="228" cy="220" r="3" fill="#E0E0E0" stroke="#C0C0C0" stroke-width="1"/>
-        <rect x="188" y="158" width="32" height="22" rx="3" fill="white" stroke="#D0D0D0" stroke-width="1"/>
-        <text x="204" y="166" font-family="Arial,sans-serif" font-size="5.5" fill="#2A3C6A" text-anchor="middle" font-weight="700">Dr. Henley</text>
-        <line x1="190" y1="169" x2="218" y2="169" stroke="#D8D8D8" stroke-width="0.8"/>
-        <rect x="236" y="158" width="30" height="22" rx="3" fill="white" stroke="#D0D0D0" stroke-width="1"/>
-        <text x="251" y="166" font-family="Impact,'Arial Black',sans-serif" font-size="8" font-weight="900" fill="#2D6858" text-anchor="middle" letter-spacing="1">SCOUT</text>
+        <circle cx="228" cy="218" r="3" fill="#E0E0E0" stroke="#C0C0C0" stroke-width="1"/>
+        <circle cx="228" cy="240" r="3" fill="#E0E0E0" stroke="#C0C0C0" stroke-width="1"/>
+        <g transform="translate(228,50) scale(1.25) translate(-228,-50)">
+          <circle cx="190" cy="82" r="7" fill="none" stroke="#D4A830" stroke-width="2.5"/>
+          <circle cx="266" cy="82" r="7" fill="none" stroke="#D4A830" stroke-width="2.5"/>
+        </g>
+        <rect x="184" y="184" width="38" height="22" rx="3" fill="white" stroke="#D0D0D0" stroke-width="1"/>
+        <text x="203" y="192" font-family="Arial,sans-serif" font-size="5.5" fill="#2A3C6A" text-anchor="middle" font-weight="700">Dr. Henley</text>
+        <line x1="186" y1="195" x2="220" y2="195" stroke="#D8D8D8" stroke-width="0.8"/>
+        <text x="203" y="203" font-family="Arial,sans-serif" font-size="4.5" fill="#666" text-anchor="middle">Veterinarian</text>
+        <rect x="234" y="184" width="36" height="22" rx="3" fill="white" stroke="#D0D0D0" stroke-width="1"/>
+        <text x="252" y="192" font-family="Impact,'Arial Black',sans-serif" font-size="8" font-weight="900" fill="#2D6858" text-anchor="middle" letter-spacing="1">SCOUT</text>
         <g class="vet-bag-bob">
-          <path d="M 184,130 C 172,156 180,192 212,202" stroke="#F8F8F8" stroke-width="16" stroke-linecap="round" fill="none"/>
-          <path d="M 184,130 C 172,156 180,192 212,202" stroke="#D8D8D8" stroke-width="1.5" fill="none"/>
-          <ellipse cx="212" cy="204" rx="11" ry="10" transform="rotate(-20,212,204)" fill="#8C4C28"/>
-          <path d="M 207,199 C 206,204 207,209 212,210" stroke="#7A3C1C" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-          <path d="M 272,130 C 284,156 276,192 244,202" stroke="#F8F8F8" stroke-width="16" stroke-linecap="round" fill="none"/>
-          <path d="M 272,130 C 284,156 276,192 244,202" stroke="#D8D8D8" stroke-width="1.5" fill="none"/>
-          <ellipse cx="244" cy="204" rx="11" ry="10" transform="rotate(20,244,204)" fill="#8C4C28"/>
-          <path d="M 249,199 C 250,204 249,209 244,210" stroke="#7A3C1C" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-          <rect x="198" y="210" width="60" height="70" rx="6" fill="#F0F6FF" stroke="#B0C0D8" stroke-width="2"/>
-          <rect x="198" y="210" width="60" height="13" rx="6" fill="#D8E8F8" stroke="#B0C0D8" stroke-width="2"/>
-          <path d="M 212,210 C 212,197 221,190 228,190 C 235,190 244,197 244,210" fill="none" stroke="#B0C0D8" stroke-width="3.5" stroke-linecap="round"/>
-          <text x="228" y="263" font-family="Georgia,'Times New Roman',serif" font-size="32" font-weight="bold" fill="#1C2B4A" text-anchor="middle">&#8478;</text>
+          <path d="M 184,148 C 172,172 180,204 212,214" stroke="#F8F8F8" stroke-width="16" stroke-linecap="round" fill="none"/>
+          <path d="M 184,148 C 172,172 180,204 212,214" stroke="#D8D8D8" stroke-width="1.5" fill="none"/>
+          <ellipse cx="212" cy="216" rx="11" ry="10" transform="rotate(-20,212,216)" fill="#8C4C28"/>
+          <path d="M 207,211 C 206,216 207,221 212,222" stroke="#7A3C1C" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M 272,148 C 284,172 276,204 244,214" stroke="#F8F8F8" stroke-width="16" stroke-linecap="round" fill="none"/>
+          <path d="M 272,148 C 284,172 276,204 244,214" stroke="#D8D8D8" stroke-width="1.5" fill="none"/>
+          <ellipse cx="244" cy="216" rx="11" ry="10" transform="rotate(20,244,216)" fill="#8C4C28"/>
+          <path d="M 249,211 C 250,216 249,221 244,222" stroke="#7A3C1C" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <rect x="198" y="216" width="60" height="70" rx="6" fill="#F0F6FF" stroke="#B0C0D8" stroke-width="2"/>
+          <rect x="198" y="216" width="60" height="13" rx="6" fill="#D8E8F8" stroke="#B0C0D8" stroke-width="2"/>
+          <path d="M 212,216 C 212,203 221,196 228,196 C 235,196 244,203 244,216" fill="none" stroke="#B0C0D8" stroke-width="3.5" stroke-linecap="round"/>
+          <text x="228" y="269" font-family="Georgia,'Times New Roman',serif" font-size="32" font-weight="bold" fill="#1C2B4A" text-anchor="middle">&#8478;</text>
         </g>
       </g>
       </g>
