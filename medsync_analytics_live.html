@@ -1119,7 +1119,7 @@ async function renderCOGSBars(glRows, loc, _unused) {
     const [revRes, spendRes, phRes] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${revLocOr})`, { headers: HEADERS }),
       fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${revLocOr})`, { headers: HEADERS }),
-      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.${from}&purchased_at=lte.${to}&or=(${phLocOr})`, { headers: HEADERS })
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.${from}&purchased_at=lte.${to}&or=(${phLocOr})`, { headers: HEADERS })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
@@ -1545,7 +1545,11 @@ async function loadPurchaseHistory() {
 function renderPurchaseTable() {
   const wrap = document.getElementById('ph-table-wrap');
   if (!wrap) return;
-  const rows = _purchaseRows.filter(r => _purchaseFilter === 'all' || r.source === _purchaseFilter);
+  const rows = _purchaseRows.filter(r =>
+    _purchaseFilter === 'all' ||
+    r.source === _purchaseFilter ||
+    (_purchaseFilter === 'external' && r.source === 'vetcove_import')
+  );
   if (!rows.length) {
     wrap.innerHTML = '<div style="color:var(--mist);font-size:12px;padding:16px 0;text-align:center;">No purchases found for this period.</div>';
     return;
@@ -1564,6 +1568,8 @@ function renderPurchaseTable() {
       ${rows.map(r => {
         const srcBadge = r.source === 'medsync_po'
           ? '<span style="background:#F4F4F4;color:var(--navy);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;">MedSync</span>'
+          : r.source === 'vetcove_import'
+          ? '<span style="background:#EFF6FF;color:#1d4ed8;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;">Vetcove</span>'
           : '<span style="background:#FEF3C7;color:#d97706;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;">External</span>';
         return `<tr style="border-bottom:0.5px solid #F4F4F4;">
           <td style="padding:6px 4px;color:var(--slate);white-space:nowrap;">${r.date}</td>
@@ -1587,7 +1593,11 @@ function filterPurchases(source, btn) {
 }
 
 function exportPurchaseHistory() {
-  const rows = _purchaseRows.filter(r => _purchaseFilter === 'all' || r.source === _purchaseFilter);
+  const rows = _purchaseRows.filter(r =>
+    _purchaseFilter === 'all' ||
+    r.source === _purchaseFilter ||
+    (_purchaseFilter === 'external' && r.source === 'vetcove_import')
+  );
   if (!rows.length) { showToast('⚠ No data to export'); return; }
   const period = (_analyticsCache && _analyticsCache.period) || new Date().toISOString().slice(0,10);
   const headers = ['Date', 'Location', 'Source', 'Vendor', 'Note', 'Amount'];

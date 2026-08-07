@@ -9,7 +9,7 @@
 <script src="medsync_locations.js"></script>
 <script>
 // These run synchronously before body renders
-var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','invoices','quarterly','users','newlocation','regions','settings','training','reports','priceaudit'];
+var __screens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','receiver','goods','cycle','vcimport','cogsimport','invoices','quarterly','users','newlocation','regions','settings','training','reports','priceaudit'];
 function showScreen(name) {
   if (name === 'cycle') {
     var mu = JSON.parse(localStorage.getItem('medsync_user') || '{}');
@@ -348,7 +348,7 @@ async function loadLocationCards() {
   try {
     const [revRes, phRes, diRes, glRes, cycleRes, poRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&or=(' + vidFilter + ')', { headers: _H }),
-      fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&or=(' + uuidFilter + ')', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&or=(' + uuidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&or=(' + vidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,value_lost&created_at=gte.' + monthStart + 'T00:00:00&or=(' + uuidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + monthStart + '&or=(' + uuidFilter + ')&order=created_at.desc', { headers: _H }),
@@ -1677,6 +1677,7 @@ function deepDiveLoc(locCode) {
   <div style="padding:8px 14px 4px;font-size:9px;font-weight:700;color:#8899AA;text-transform:uppercase;letter-spacing:.1em;">Ordering</div>
   <div class="asb-item" id="asb-order" onclick="closeMobileMenu();showScreen('order')">🛒 Weekly Order</div>
   <div class="asb-item" id="asb-vcimport" onclick="closeMobileMenu();showScreen('vcimport')">↑ Vetcove Import</div>
+  <div class="asb-item" id="asb-cogsimport" onclick="closeMobileMenu();showScreen('cogsimport')">📦 COGS Import</div>
 
   <!-- Receiving -->
   <hr style="border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;">
@@ -1922,6 +1923,12 @@ function deepDiveLoc(locCode) {
   <iframe src="medsync_vetcove_import_live.html?v=20260611"
     style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
     title="Import from Vetcove">
+  </iframe>
+</div>
+<div id="ms-cogsimport" class="ms-screen" style="display:none;">
+  <iframe src="medsync_cogs_import_live.html?v=20260807"
+    style="width:100%;height:calc(100vh - 48px);border:none;display:block;"
+    title="COGS Import">
   </iframe>
 </div>
 <div id="ms-invoices" class="ms-screen" style="display:none;">
@@ -2280,7 +2287,7 @@ async function loadLiveCOGs(loc, from, to) {
     const [revRes, spendRes, phRes] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${fromD}&date=lte.${toD}&or=(${vidFilter})`, { headers: H2 }),
       fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${fromD}T00:00:00&dispensed_at=lte.${toD}T23:59:59&or=(${vidFilter})`, { headers: H2 }),
-      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.${fromD}&purchased_at=lte.${toD}&or=(${uuidFilter})`, { headers: H2 })
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.${fromD}&purchased_at=lte.${toD}&or=(${uuidFilter})`, { headers: H2 })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
@@ -4274,7 +4281,7 @@ function renderTrainingStaffCards(rows) {
   } else {
     // admin / medsync_superadmin: full access
     var _hashScreen = (location.hash || '').replace('#', '').trim();
-    var _validScreens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','goods','invoices','cycle','vcimport','priceaudit','training','users','settings','newlocation','regions'];
+    var _validScreens = ['portfolio','analytics','lifecycle','procurement','actlog','order','receiving','goods','invoices','cycle','vcimport','cogsimport','priceaudit','training','users','settings','newlocation','regions'];
     showScreen((_hashScreen && _validScreens.indexOf(_hashScreen) !== -1) ? _hashScreen : 'portfolio');
     loadRegionFilter();
     setTimeout(loadRecognition, 400);
