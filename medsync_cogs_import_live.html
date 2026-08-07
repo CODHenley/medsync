@@ -596,8 +596,13 @@ async function startParse(){
   // Fetch budget data for full range
   await fetchBudgetData(csvStart, csvEnd);
 
-  buildPreview(csvStart, csvEnd);
-  goStep2();
+  try {
+    buildPreview(csvStart, csvEnd);
+    goStep2();
+  } catch(e) {
+    console.error('buildPreview error:', e);
+    showToast('Preview error — check console');
+  }
   document.getElementById('btn-parse').disabled=false;
   document.getElementById('btn-parse').textContent='Review →';
 }
@@ -717,7 +722,6 @@ function buildPreview(csvStart, csvEnd){
     : 'All Time';
   document.getElementById('bvs-title').textContent =
     'Budget vs Spend' + (locName ? ' · ' + locName : '') + ' · ' + titleRange;
-  document.getElementById('bvs-year').textContent = ''; // cleared — title handles it now
 
   // Tiles
   document.getElementById('t-budget').textContent   = fmt$(totalBudget);
