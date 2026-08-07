@@ -8,19 +8,16 @@
 <style>
 :root{
   --navy:#1C2B4A;--gold:#C83803;--green:#2E8B57;--red:#C0392B;
-  --amber:#C83803;--mist:#8A93A8;--border:#B8B0D0;--bg:#F4F4F4;
+  --amber:#b45309;--mist:#8A93A8;--border:#B8B0D0;--bg:#F4F4F4;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 
-/* Topbar */
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.tb-left{display:flex;flex-direction:column;justify-content:center;}
 .tb-title{font-size:15px;font-weight:600;color:#fff;}
 .tb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
 
-/* Shell */
-.shell{max-width:960px;margin:0 auto;padding:24px 20px 60px;display:flex;flex-direction:column;gap:20px;}
+.shell{max-width:1000px;margin:0 auto;padding:24px 20px 60px;display:flex;flex-direction:column;gap:20px;}
 
 /* Steps */
 .steps{display:flex;align-items:center;}
@@ -50,7 +47,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 #file-input{display:none;}
 
 /* Info banners */
-.info-banner{display:flex;align-items:flex-start;gap:12px;border-radius:10px;padding:12px 16px;margin-top:16px;font-size:12px;}
+.info-banner{display:flex;align-items:flex-start;gap:12px;border-radius:10px;padding:12px 16px;font-size:12px;}
 .info-banner.blue{background:#EFF6FF;border:0.5px solid #BFDBFE;color:#1e40af;}
 .info-banner.amber{background:#FFFBEB;border:0.5px solid #FCD34D;color:#92400e;}
 .info-banner.green{background:#F0FBF4;border:0.5px solid #A7F3D0;color:#065f46;}
@@ -63,41 +60,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .lib-detail{font-size:11px;color:#0284c7;margin-top:2px;}
 
 /* Summary tiles */
-.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px;}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
 .tile{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
-.tile-v{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;}
+.tile-v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
 .tile-l{font-size:10px;color:var(--mist);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
 .tile-v.green{color:var(--green);}
 .tile-v.amber{color:var(--amber);}
+.tile-v.red{color:var(--red);}
 .tile-v.muted{color:var(--mist);}
 
-/* Monthly accordion */
-.month-group{background:#fff;border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
-.month-head{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;cursor:pointer;user-select:none;}
-.month-head:hover{background:#FAFAFA;}
-.month-label{font-size:13px;font-weight:600;}
-.month-meta{display:flex;gap:16px;align-items:center;}
-.month-total{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
-.month-count{font-size:11px;color:var(--mist);}
-.month-dup{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#92400e;}
-.month-body{border-top:0.5px solid var(--border);display:none;}
-.month-body.open{display:block;}
+/* Budget vs Spend table */
+.bvs-table{width:100%;border-collapse:collapse;font-size:11px;}
+.bvs-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;background:#FAFAFA;border-bottom:0.5px solid var(--border);white-space:nowrap;}
+.bvs-table td{padding:8px 10px;border-bottom:0.5px solid #F4F4F4;vertical-align:middle;font-variant-numeric:tabular-nums;}
+.bvs-table tr:last-child td{border-bottom:none;}
+.bvs-table tr.bvs-cur{background:#F0F9FF;}
+.bvs-table tr.bvs-over td:last-child{color:var(--red);}
+.bvs-table tr.bvs-ok td:last-child{color:var(--green);}
+.bvs-table tr.no-spend td{color:var(--mist);}
+.bvs-table tr.bvs-cur .wk-label{font-weight:700;color:var(--navy);}
 
-/* Order rows */
-.order-table{width:100%;border-collapse:collapse;font-size:11px;}
-.order-table th{padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;background:#FAFAFA;border-bottom:0.5px solid var(--border);}
-.order-table td{padding:8px 10px;border-bottom:0.5px solid #F4F4F4;vertical-align:middle;}
-.order-table tr:last-child td{border-bottom:none;}
-.order-table tr.dup-row td{background:#FFFBEB;opacity:.6;}
-.order-table tr.excluded td{opacity:.3;}
-.order-table tr.return-row td{background:#FEF2F2;}
-.status-pill{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
-.sp-ok{background:#E8F5EE;color:var(--green);}
-.sp-drop{background:#EFF6FF;color:#1d4ed8;}
-.sp-ret{background:#FEF2F2;color:var(--red);}
-.sp-proc{background:#F5F3FF;color:#6d28d9;}
-.badge-dup{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#92400e;border:0.5px solid #FCD34D;white-space:nowrap;}
-.skip-toggle{background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:var(--mist);padding:0 2px;}
+.bar-wrap{width:80px;height:6px;background:#E8E8EC;border-radius:3px;display:inline-block;vertical-align:middle;}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s;}
+
+.cogs-pct-note{font-size:11px;color:var(--mist);padding:8px 10px;border-top:0.5px solid var(--border);background:#FAFAFA;display:flex;align-items:center;justify-content:space-between;}
+
+/* Order detail panel (expandable per week) */
+.week-orders{display:none;background:#FAFAFA;border-top:0.5px solid var(--border);}
+.week-orders.open{display:block;}
+.order-mini-table{width:100%;border-collapse:collapse;font-size:11px;}
+.order-mini-table td{padding:6px 10px 6px 28px;border-bottom:0.5px solid #F0F0F4;color:var(--mist);}
+.order-mini-table tr:last-child td{border-bottom:none;}
+.order-mini-table .ord-sup{color:var(--navy);font-weight:500;}
+.badge-dup{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:#FEF3C7;color:#92400e;border:0.5px solid #FCD34D;margin-left:4px;}
+.skip-toggle{background:none;border:none;cursor:pointer;font-size:15px;line-height:1;color:var(--mist);padding:0 2px;}
 .skip-toggle:hover{color:var(--red);}
 
 /* Summary bar */
@@ -129,30 +125,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .field label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
 .field select,.field input{padding:9px 11px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
 
-@media(max-width:680px){
+@media(max-width:700px){
   .tiles{grid-template-columns:1fr 1fr;}
+  .bvs-table th:nth-child(3),.bvs-table td:nth-child(3),
+  .bvs-table th:nth-child(4),.bvs-table td:nth-child(4){display:none;}
   .field-row{grid-template-columns:1fr;}
-  .order-table th:nth-child(4),.order-table td:nth-child(4){display:none;}
 }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="tb-left">
+  <div>
     <div class="tb-title">COGS Import — Vetcove Order History</div>
-    <div class="tb-sub">Logs purchase spend to Analytics &amp; Purchase History</div>
+    <div class="tb-sub">Logs purchase spend · Budget vs Spend week-by-week for the calendar year</div>
   </div>
 </div>
 
 <div class="shell">
 
-  <!-- Explainer -->
   <div class="info-banner blue">
     <div class="ib-icon">📦</div>
     <div class="ib-body">
       <div class="ib-title">What this screen does</div>
-      Download your <strong>Order History</strong> from Vetcove (not return credits — use the Vetcove Import screen for those). Upload it here and MedSync will log each completed purchase to your Cost of Goods spend, which flows into the Analytics COGs chart and Purchase History panel. Cancelled, backordered, and $0 orders are excluded automatically. Returns are logged as negative spend to offset.
+      Download your <strong>Order History</strong> from Vetcove (Orders → Export). Upload it here and MedSync logs each completed purchase to your COGS spend. The preview below shows <strong>budget vs. spend week-by-week for the calendar year</strong>, using the same revenue × COGs% formula as the Procurement screen. Cancelled, backordered, and $0 orders are excluded automatically.
     </div>
   </div>
 
@@ -160,7 +156,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   <div class="steps">
     <div class="step active" id="step-1"><div class="step-num" id="sn-1">1</div> Upload file</div>
     <div class="step-line"></div>
-    <div class="step" id="step-2"><div class="step-num" id="sn-2">2</div> Review orders</div>
+    <div class="step" id="step-2"><div class="step-num" id="sn-2">2</div> Budget vs Spend</div>
     <div class="step-line"></div>
     <div class="step" id="step-3"><div class="step-num" id="sn-3">3</div> Import</div>
   </div>
@@ -187,7 +183,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
         <div class="field-row">
           <div class="field">
-            <label>Fallback location (if Hospital not matched)</label>
+            <label>Location (if Hospital not matched from CSV)</label>
             <select id="loc-select"><option value="">Select location…</option></select>
           </div>
         </div>
@@ -202,7 +198,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px;">
-      <button class="btn-primary" id="btn-parse" onclick="parseCSV()" disabled>Review orders →</button>
+      <button class="btn-primary" id="btn-parse" onclick="startParse()" disabled>Review →</button>
     </div>
   </div>
 
@@ -217,28 +213,68 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       </div>
     </div>
 
-    <!-- Summary tiles -->
-    <div class="tiles" id="tiles">
-      <div class="tile"><div class="tile-v green" id="t-total">$0</div><div class="tile-l">Net spend</div></div>
-      <div class="tile"><div class="tile-v" id="t-orders">0</div><div class="tile-l">Orders to import</div></div>
-      <div class="tile"><div class="tile-v amber" id="t-dupes">0</div><div class="tile-l">Dup skipped</div></div>
-      <div class="tile"><div class="tile-v muted" id="t-excl">0</div><div class="tile-l">Excluded (zero/$cancelled)</div></div>
+    <!-- YTD summary tiles -->
+    <div class="tiles">
+      <div class="tile">
+        <div class="tile-v" id="t-budget">—</div>
+        <div class="tile-l">YTD Budget</div>
+      </div>
+      <div class="tile">
+        <div class="tile-v" id="t-spend">—</div>
+        <div class="tile-l">YTD Spend (this import)</div>
+      </div>
+      <div class="tile">
+        <div class="tile-v" id="t-variance">—</div>
+        <div class="tile-l">YTD Variance</div>
+      </div>
+      <div class="tile">
+        <div class="tile-v" id="t-pct">—</div>
+        <div class="tile-l">COGs % target</div>
+      </div>
+      <div class="tile">
+        <div class="tile-v muted" id="t-excl">0</div>
+        <div class="tile-l">Excluded</div>
+      </div>
     </div>
 
-    <!-- Monthly groups -->
-    <div id="month-groups" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <!-- Weekly table -->
+    <div class="card" id="bvs-card">
+      <div class="card-head">
+        <div>
+          <div class="card-title" id="bvs-title">Budget vs Spend — <span id="bvs-year"></span></div>
+          <div class="card-sub">Click any week with orders to expand. Budget = actual revenue × COGs% target (matches Procurement screen).</div>
+        </div>
+        <div id="bvs-loading" style="font-size:12px;color:var(--mist);">Loading revenue data…</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="bvs-table" id="bvs-table">
+          <thead>
+            <tr>
+              <th style="width:130px;">Week</th>
+              <th style="text-align:right;">Revenue</th>
+              <th style="text-align:right;">Budget</th>
+              <th style="text-align:right;">Spend</th>
+              <th style="text-align:right;">Variance</th>
+              <th style="width:110px;">% of Budget</th>
+            </tr>
+          </thead>
+          <tbody id="bvs-tbody"></tbody>
+        </table>
+      </div>
+      <div class="cogs-pct-note" id="cogs-pct-note">
+        <span id="cogs-formula-note">Budget = revenue × COGs% (from location settings)</span>
+        <span id="bvs-back-btn" style="cursor:pointer;color:var(--navy);font-weight:600;" onclick="goStep1()">← Back</span>
+      </div>
+    </div>
 
     <!-- Summary bar -->
     <div class="summary-bar">
       <div class="sum-stats">
-        <div class="ss"><div class="ss-v" id="sb-orders">0</div><div class="ss-l">orders</div></div>
-        <div class="ss"><div class="ss-v" style="color:var(--green);" id="sb-spend">$0</div><div class="ss-l">total spend</div></div>
+        <div class="ss"><div class="ss-v" id="sb-orders">0</div><div class="ss-l">orders to import</div></div>
+        <div class="ss"><div class="ss-v" style="color:var(--green);" id="sb-spend">$0</div><div class="ss-l">net spend</div></div>
         <div class="ss"><div class="ss-v" style="color:#92400e;" id="sb-dupes">0</div><div class="ss-l">dup skipped</div></div>
       </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn-secondary" onclick="goStep1()">← Back</button>
-        <button class="btn-primary" id="btn-import" onclick="doImport()" disabled>Import to COGS →</button>
-      </div>
+      <button class="btn-primary" id="btn-import" onclick="doImport()" disabled>Import to COGS →</button>
     </div>
   </div>
 
@@ -253,7 +289,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     </div>
     <div class="info-banner green" style="margin-top:0;">
       <div class="ib-icon">📊</div>
-      <div class="ib-body">COGs data has been updated. Open <strong>Analytics → Purchases</strong> to view the updated spend history, and <strong>Analytics → COGs</strong> to see the updated cost-of-goods trend.</div>
+      <div class="ib-body">COGs data updated. Open <strong>Analytics → Purchases</strong> to view the updated spend history and <strong>Analytics → COGs</strong> for the updated trend chart.</div>
     </div>
     <div style="display:flex;gap:10px;margin-top:4px;">
       <button class="btn-secondary" onclick="goStep1()">Import another file</button>
@@ -262,7 +298,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
   </div>
 
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -271,31 +306,80 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
 
+// VID map matching procurement screen
+const VID_MAP = {
+  'Lincoln Park':  '23083',
+  'Old Orchard':   '27390',
+  'West Loop':     '24356',
+  'Wheaton':       '28253',
+};
+
 let ALL_LOCATIONS   = [];
-let parsedOrders    = [];  // all rows after parse
-let _priorVIDs      = new Set(); // Vetcove IDs already in purchase_history
-let _priorRange     = null; // { min, max, count }
+let parsedOrders    = [];
+let _priorVIDs      = new Set();
+let _priorRange     = null;
+let _budgetData     = null; // { cogsPct, weeklyRevenue: {weekKey: revenue} }
 
 // ── Helpers ───────────────────────────────────────────────────────
-function norm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
-function fmt$(n){ return '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmt$(n){ return '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}); }
 function fmtDate(iso){
   if (!iso) return '—';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
-function fmtMonth(iso){
-  if (!iso) return '—';
-  const d = new Date(iso.slice(0,7) + '-01T12:00:00');
-  return d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+
+// Monday-based week start for a date string YYYY-MM-DD
+function weekStart(dateStr){
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.getDay(); // 0=Sun
+  const offset = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - offset);
+  return d.toISOString().slice(0,10);
+}
+
+// All Monday-week-starts for a calendar year up to today
+function weeksForYear(year){
+  const today = new Date();
+  const weeks = [];
+  const d = new Date(year + '-01-01T12:00:00');
+  // Advance to first Monday on or after Jan 1
+  const dow = d.getDay();
+  if (dow !== 1) d.setDate(d.getDate() + ((8 - dow) % 7));
+  // Also check if Jan 1 itself is within a week that should appear — start from first Mon ≤ Jan 7
+  // Simpler: start from Monday of the week that contains Jan 1
+  const jan1 = new Date(year + '-01-01T12:00:00');
+  const jan1dow = jan1.getDay();
+  const jan1offset = jan1dow === 0 ? 6 : jan1dow - 1;
+  jan1.setDate(jan1.getDate() - jan1offset);
+  // jan1 is now the Monday of the week containing Jan 1
+  const cur = new Date(jan1);
+  while (cur.getFullYear() <= year && cur <= today) {
+    weeks.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate() + 7);
+  }
+  return weeks;
+}
+
+function addDays(isoStr, n){
+  const d = new Date(isoStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
+function fmtWeekRange(monStr){
+  const mon = new Date(monStr + 'T12:00:00');
+  const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return fmt(mon) + ' – ' + fmt(sun);
 }
 
 function resolveLocation(hospitalName){
-  const n = norm(hospitalName);
-  if (!n) return null;
-  return ALL_LOCATIONS.find(l => norm(l.name).includes(n.split(' ').pop()) || n.includes(norm(l.name).split(' ').pop()))
-    || ALL_LOCATIONS.find(l => norm(l.name).split(' ').some(w => w.length > 3 && n.includes(w)))
-    || null;
+  const n = hospitalName.toLowerCase();
+  const hit = ALL_LOCATIONS.find(l => {
+    const ln = l.name.toLowerCase();
+    return ln === n || n.includes(ln.split(' ').filter(w=>w.length>3).pop()||'__') || ln.includes(n.split(' ').filter(w=>w.length>3).pop()||'__');
+  });
+  return hit || null;
 }
 
 // ── Boot ─────────────────────────────────────────────────────────
@@ -343,7 +427,7 @@ function renderLastImportBanner(){
   const { min, max, count } = _priorRange;
   const rangeStr = min === max ? fmtDate(min) : `${fmtDate(min)} – ${fmtDate(max)}`;
   document.getElementById('lib-detail').textContent =
-    `${rangeStr} · ${count} order${count !== 1 ? 's' : ''} already in MedSync — orders in this range will be auto-skipped`;
+    `${rangeStr} · ${count} order${count!==1?'s':''} already in MedSync — duplicates will be auto-skipped`;
   banner.style.display = 'flex';
 }
 
@@ -352,299 +436,415 @@ function parseCSVText(text){
   const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l => l.trim());
   if (!lines.length) return [];
   function splitRow(line){
-    const fields = []; let cur = ''; let inQ = false;
-    for (let i = 0; i < line.length; i++){
-      const c = line[i];
-      if (c === '"'){ inQ = !inQ; continue; }
-      if ((c === ',' || c === '\t') && !inQ){ fields.push(cur.trim()); cur = ''; continue; }
-      cur += c;
+    const fields=[]; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){inQ=!inQ;continue;}
+      if((c===','||c==='\t')&&!inQ){fields.push(cur.trim());cur='';continue;}
+      cur+=c;
     }
     fields.push(cur.trim()); return fields;
   }
-  const headers = splitRow(lines[0]).map(h => h.replace(/"/g,'').trim().toLowerCase());
-  const rows = [];
-  for (let i = 1; i < lines.length; i++){
-    if (!lines[i].trim()) continue;
-    const vals = splitRow(lines[i]);
-    const row = {};
-    headers.forEach((h,idx) => { row[h] = (vals[idx] || '').replace(/"/g,'').trim(); });
+  const headers = splitRow(lines[0]).map(h=>h.replace(/"/g,'').trim().toLowerCase());
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    if(!lines[i].trim()) continue;
+    const vals=splitRow(lines[i]);
+    const row={};
+    headers.forEach((h,idx)=>{ row[h]=(vals[idx]||'').replace(/"/g,'').trim(); });
     rows.push(row);
   }
   return rows;
 }
 
-function colVal(row, ...keys){
-  for (const k of keys){
-    const hit = Object.keys(row).find(rk => rk === k.toLowerCase() || rk.replace(/\s+/g,'') === k.replace(/\s+/g,'').toLowerCase());
-    if (hit !== undefined && row[hit] !== '' && row[hit] !== undefined) return row[hit];
+function colVal(row,...keys){
+  for(const k of keys){
+    const hit=Object.keys(row).find(rk=>rk===k.toLowerCase()||rk.replace(/\s+/g,'')===k.replace(/\s+/g,'').toLowerCase());
+    if(hit!==undefined&&row[hit]!==''&&row[hit]!==undefined) return row[hit];
   }
   return '';
 }
 
 const SKIP_STATUSES = new Set(['cancelled','backordered']);
 
-function shouldExclude(status, total){
-  const s = (status || '').toLowerCase();
-  if (SKIP_STATUSES.has(s)) return { reason: 'cancelled/backordered' };
-  if (total === 0) return { reason: 'zero total' };
-  return null;
-}
-
 // ── File handling ─────────────────────────────────────────────────
-function onDrag(e, entering){ e.preventDefault(); document.getElementById('upload-zone').classList.toggle('drag', entering); }
-function onDrop(e){ e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); }
-function onFileSelect(e){ if (e.target.files[0]) processFile(e.target.files[0]); }
+function onDrag(e,entering){ e.preventDefault(); document.getElementById('upload-zone').classList.toggle('drag',entering); }
+function onDrop(e){ e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag'); if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); }
+function onFileSelect(e){ if(e.target.files[0]) processFile(e.target.files[0]); }
 
-let _csvText = '';
+let _csvText='';
 function processFile(file){
-  const reader = new FileReader();
-  reader.onload = function(e){
-    _csvText = e.target.result;
-    document.getElementById('uz-icon').textContent = '✅';
-    document.getElementById('uz-title').textContent = 'File ready';
-    document.getElementById('uz-sub').textContent = file.name;
-    document.getElementById('uz-filename').textContent = Math.round(file.size/1024) + ' KB · ' + file.name.split('.').pop().toUpperCase();
+  const reader=new FileReader();
+  reader.onload=function(e){
+    _csvText=e.target.result;
+    document.getElementById('uz-icon').textContent='✅';
+    document.getElementById('uz-title').textContent='File ready';
+    document.getElementById('uz-sub').textContent=file.name;
+    document.getElementById('uz-filename').textContent=Math.round(file.size/1024)+' KB · '+file.name.split('.').pop().toUpperCase();
     document.getElementById('upload-zone').classList.add('has-file');
-    document.getElementById('btn-parse').disabled = false;
+    document.getElementById('btn-parse').disabled=false;
   };
   reader.readAsText(file);
 }
 
-// ── Parse & build preview ─────────────────────────────────────────
-function parseCSV(){
-  if (!_csvText) return;
-  const raw = parseCSVText(_csvText);
-  if (!raw.length){ showToast('No rows found in CSV'); return; }
+// ── Parse → fetch budget → build preview ─────────────────────────
+async function startParse(){
+  if(!_csvText) return;
+  document.getElementById('btn-parse').disabled=true;
+  document.getElementById('btn-parse').textContent='Loading…';
 
-  const fallbackLocId = document.getElementById('loc-select').value;
-  const fallbackLoc   = ALL_LOCATIONS.find(l => l.id === fallbackLocId) || null;
+  const raw=parseCSVText(_csvText);
+  if(!raw.length){ showToast('No rows found in CSV'); document.getElementById('btn-parse').disabled=false; document.getElementById('btn-parse').textContent='Review →'; return; }
 
-  parsedOrders = raw.map((row, i) => {
-    const vetcoveId  = colVal(row, 'vetcove id','vetcoveid','id');
-    const date       = colVal(row, 'date','order date');
-    const hospital   = colVal(row, 'hospital','location','clinic','site');
-    const purchaser  = colVal(row, 'purchaser','ordered by','buyer');
-    const supplier   = colVal(row, 'supplier','vendor','distributor');
-    const orderNum   = colVal(row, 'order #','order#','order number','order no');
-    const poNum      = colVal(row, 'po number','po#','po num');
-    const total      = parseFloat(colVal(row, 'total')) || 0;
-    const subtotal   = parseFloat(colVal(row, 'subtotal')) || 0;
-    const tax        = parseFloat(colVal(row, 'tax')) || 0;
-    const shipping   = parseFloat(colVal(row, 'shipping')) || 0;
-    const status     = colVal(row, 'status');
-    const loc        = resolveLocation(hospital) || fallbackLoc;
-    const excluded   = shouldExclude(status, total);
-    const isDup      = !excluded && vetcoveId && _priorVIDs.has(vetcoveId);
-    const dateKey    = date ? date.slice(0,10) : null;
-    const monthKey   = dateKey ? dateKey.slice(0,7) : 'unknown';
-    return { i, vetcoveId, date, dateKey, monthKey, hospital, purchaser, supplier, orderNum, poNum,
-             total, subtotal, tax, shipping, status, loc, excluded, isDup, skip: isDup || !!excluded };
+  const fallbackLocId=document.getElementById('loc-select').value;
+  const fallbackLoc=ALL_LOCATIONS.find(l=>l.id===fallbackLocId)||null;
+
+  parsedOrders=raw.map((row,i)=>{
+    const vetcoveId = colVal(row,'vetcove id','vetcoveid','id');
+    const date      = colVal(row,'date','order date');
+    const hospital  = colVal(row,'hospital','location','clinic','site');
+    const purchaser = colVal(row,'purchaser','ordered by','buyer');
+    const supplier  = colVal(row,'supplier','vendor','distributor');
+    const orderNum  = colVal(row,'order #','order#','order number','order no');
+    const poNum     = colVal(row,'po number','po#','po num');
+    const total     = parseFloat(colVal(row,'total'))||0;
+    const status    = colVal(row,'status');
+    const loc       = resolveLocation(hospital)||fallbackLoc;
+    const sLower    = status.toLowerCase();
+    const excluded  = (SKIP_STATUSES.has(sLower)||total===0) ? { reason: SKIP_STATUSES.has(sLower)?'cancelled/backordered':'zero total' } : null;
+    const isDup     = !excluded && vetcoveId && _priorVIDs.has(vetcoveId);
+    const dateKey   = date ? date.slice(0,10) : null;
+    const wk        = dateKey ? weekStart(dateKey) : null;
+    return { i, vetcoveId, date, dateKey, wk, hospital, purchaser, supplier, orderNum, poNum,
+             total, status, loc, excluded, isDup, skip: isDup||!!excluded };
   });
 
-  buildPreview();
+  // Determine calendar year from CSV data
+  const allDates = parsedOrders.map(r=>r.dateKey).filter(Boolean).sort();
+  const csvYear  = allDates.length ? parseInt(allDates[allDates.length-1].slice(0,4)) : new Date().getFullYear();
+
+  // Fetch budget data
+  await fetchBudgetData(csvYear);
+
+  buildPreview(csvYear);
   goStep2();
+  document.getElementById('btn-parse').disabled=false;
+  document.getElementById('btn-parse').textContent='Review →';
 }
 
-// ── Preview rendering ─────────────────────────────────────────────
-function buildPreview(){
-  const active    = parsedOrders.filter(r => !r.excluded && !r.skip);
-  const dups      = parsedOrders.filter(r => r.isDup);
-  const excluded  = parsedOrders.filter(r => r.excluded);
-  const netSpend  = active.reduce((s,r) => s + r.total, 0);
-  const returns   = active.filter(r => r.total < 0);
+// ── Fetch revenue + COGs% for the calendar year ───────────────────
+async function fetchBudgetData(year){
+  document.getElementById('bvs-loading').style.display='';
+  _budgetData = { cogsPct: 0.069, weeklyRevenue: {} };
 
-  // Summary tiles
-  document.getElementById('t-total').textContent  = (netSpend < 0 ? '-' : '') + fmt$(netSpend);
-  document.getElementById('t-orders').textContent = active.length;
-  document.getElementById('t-dupes').textContent  = dups.length;
-  document.getElementById('t-excl').textContent   = excluded.length;
+  // Determine primary location from CSV (most common loc id)
+  const locFreq = {};
+  parsedOrders.filter(r=>r.loc).forEach(r=>{ locFreq[r.loc.id]=(locFreq[r.loc.id]||0)+1; });
+  const primaryLocId = Object.keys(locFreq).sort((a,b)=>locFreq[b]-locFreq[a])[0] || null;
+
+  if (!primaryLocId) { document.getElementById('bvs-loading').style.display='none'; return; }
+
+  // Find VID for daily_revenue queries
+  const locName    = (ALL_LOCATIONS.find(l=>l.id===primaryLocId)||{}).name||'';
+  const primaryVid = VID_MAP[locName] || null;
+
+  try {
+    const yearStart = year + '-01-01';
+    const today     = new Date().toISOString().slice(0,10);
+    const yearEnd   = today.slice(0,4) === String(year) ? today : year + '-12-31';
+
+    const [settRes, revRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/location_settings?select=cogs_pct&location_id=eq.' + primaryLocId, { headers: H }),
+      primaryVid
+        ? fetch(SUPA_URL + '/rest/v1/daily_revenue?select=date,revenue&location_id=eq.' + primaryVid + '&date=gte.' + yearStart + '&date=lte.' + yearEnd + '&limit=5000', { headers: H })
+        : Promise.resolve({ ok: false })
+    ]);
+
+    if (settRes.ok) {
+      const sRows = await settRes.json();
+      if (Array.isArray(sRows) && sRows.length && sRows[0].cogs_pct != null)
+        _budgetData.cogsPct = parseFloat(sRows[0].cogs_pct);
+    }
+
+    if (revRes.ok) {
+      const rRows = await revRes.json();
+      if (Array.isArray(rRows)) {
+        rRows.forEach(r => {
+          if (!r.date || !r.revenue) return;
+          const wk = weekStart(r.date);
+          _budgetData.weeklyRevenue[wk] = (_budgetData.weeklyRevenue[wk]||0) + parseFloat(r.revenue);
+        });
+      }
+    }
+  } catch(e){ console.error('fetchBudgetData error:', e); }
+
+  document.getElementById('bvs-loading').style.display='none';
+}
+
+// ── Build preview ─────────────────────────────────────────────────
+function buildPreview(year){
+  const dups     = parsedOrders.filter(r=>r.isDup);
+  const excluded = parsedOrders.filter(r=>r.excluded);
+  const active   = parsedOrders.filter(r=>!r.excluded&&!r.skip);
 
   // Dup alert
   const dupAlert = document.getElementById('dup-alert');
-  if (dups.length){
-    const dupDates = [...new Set(dups.map(r => r.dateKey).filter(Boolean))].sort();
-    const rangeStr = dupDates.length === 1 ? fmtDate(dupDates[0])
+  if (dups.length) {
+    const dupDates = [...new Set(dups.map(r=>r.dateKey).filter(Boolean))].sort();
+    const rangeStr = dupDates.length===1 ? fmtDate(dupDates[0])
       : `${fmtDate(dupDates[0])} – ${fmtDate(dupDates[dupDates.length-1])}`;
     document.getElementById('dup-alert-body').textContent =
-      `${dups.length} order${dups.length !== 1 ? 's' : ''} from ${rangeStr} were already imported and have been auto-skipped. Use the ⊕ toggle on any row to re-include it.`;
-    dupAlert.style.display = 'flex';
+      `${dups.length} order${dups.length!==1?'s':''} from ${rangeStr} were already imported and auto-skipped. Toggle ⊕ on any row to re-include.`;
+    dupAlert.style.display='flex';
   } else {
-    dupAlert.style.display = 'none';
+    dupAlert.style.display='none';
   }
 
-  // Monthly groups
-  const months = {};
+  // Build spend-by-week map from CSV
+  const spendByWeek = {};
+  const ordersByWeek = {};
   parsedOrders.forEach(r => {
-    const k = r.monthKey;
-    if (!months[k]) months[k] = [];
-    months[k].push(r);
+    if (!r.wk) return;
+    if (!spendByWeek[r.wk])  spendByWeek[r.wk]  = 0;
+    if (!ordersByWeek[r.wk]) ordersByWeek[r.wk]  = [];
+    if (!r.excluded) {
+      spendByWeek[r.wk]  += r.skip ? 0 : r.total;
+      ordersByWeek[r.wk].push(r);
+    }
   });
-  const sortedMonths = Object.keys(months).sort().reverse();
 
-  const container = document.getElementById('month-groups');
-  container.innerHTML = sortedMonths.map(mk => {
-    const rows = months[mk];
-    const activeRows = rows.filter(r => !r.excluded && !r.skip);
-    const dupCount   = rows.filter(r => r.isDup).length;
-    const monthTotal = activeRows.reduce((s,r) => s + r.total, 0);
-    const label = mk === 'unknown' ? 'No date' : fmtMonth(mk + '-01');
+  // YTD budget and spend (only weeks with revenue data)
+  const cogsPct = _budgetData ? _budgetData.cogsPct : 0.069;
+  const weeklyRevenue = (_budgetData && _budgetData.weeklyRevenue) || {};
+  const allWeeks = weeksForYear(year);
+  const today = new Date().toISOString().slice(0,10);
+  const currentWeek = weekStart(today);
 
-    const rowsHtml = rows.map(r => {
-      const cls = r.excluded ? 'excluded' : r.isDup ? 'dup-row' : (r.total < 0 ? 'return-row' : '');
-      const skipped = r.skip || r.excluded;
+  let ytdBudget = 0, ytdSpend = 0;
+  allWeeks.forEach(wk => {
+    const rev = weeklyRevenue[wk]||0;
+    ytdBudget += rev * cogsPct;
+    ytdSpend  += spendByWeek[wk]||0;
+  });
+  const ytdVariance = ytdBudget - ytdSpend;
+
+  // Tiles
+  document.getElementById('bvs-year').textContent = year;
+  document.getElementById('t-budget').textContent   = fmt$(ytdBudget);
+  document.getElementById('t-budget').className     = 'tile-v';
+  document.getElementById('t-spend').textContent    = fmt$(ytdSpend);
+  document.getElementById('t-spend').className      = 'tile-v';
+  document.getElementById('t-variance').textContent = (ytdVariance<0?'-':'')+fmt$(ytdVariance);
+  document.getElementById('t-variance').className   = 'tile-v ' + (ytdVariance<0?'red':'green');
+  document.getElementById('t-pct').textContent      = (cogsPct*100).toFixed(1)+'%';
+  document.getElementById('t-excl').textContent     = excluded.length;
+
+  // COGs formula note
+  const locName = (() => {
+    const locFreq = {};
+    parsedOrders.filter(r=>r.loc).forEach(r=>{ locFreq[r.loc.name]=(locFreq[r.loc.name]||0)+1; });
+    return Object.keys(locFreq).sort((a,b)=>locFreq[b]-locFreq[a])[0]||'—';
+  })();
+  document.getElementById('cogs-formula-note').textContent =
+    `Budget = actual revenue × ${(cogsPct*100).toFixed(1)}% COGs target · Location: ${locName}`;
+
+  // Weekly table
+  const tbody = document.getElementById('bvs-tbody');
+  tbody.innerHTML = allWeeks.map(wk => {
+    const rev      = weeklyRevenue[wk]||0;
+    const budget   = rev * cogsPct;
+    const spend    = spendByWeek[wk]||0;
+    const variance = budget - spend;
+    const pct      = budget > 0 ? spend / budget : null;
+    const isCur    = wk === currentWeek;
+    const hasOrders = (ordersByWeek[wk]||[]).length > 0;
+    const weekEnd  = addDays(wk, 6);
+    const isPartial = weekEnd > today; // current incomplete week
+
+    const varColor = budget===0 ? '#8A93A8' : variance < 0 ? 'var(--red)' : 'var(--green)';
+    const barColor = pct===null ? '#B8B0D0' : pct>1 ? '#dc2626' : pct>0.85 ? '#d97706' : '#16a34a';
+    const barW     = pct===null ? 0 : Math.min(Math.round(pct*100),100);
+
+    const trClass  = isCur ? 'bvs-cur' : (budget>0&&spend===0 ? 'no-spend' : '');
+    const curBadge = isCur ? ' <span style="font-size:9px;background:#DBEAFE;color:#1d4ed8;padding:1px 5px;border-radius:4px;font-weight:700;vertical-align:middle;">NOW</span>' : '';
+    const partialNote = isPartial&&rev>0 ? ' <span style="font-size:9px;color:var(--mist);">partial</span>' : '';
+
+    const rowId = 'bvs-wk-' + wk;
+    const detailId = 'bvs-det-' + wk;
+
+    const clickFn = hasOrders ? `toggleWeekOrders('${wk}')` : '';
+    const rowStyle = hasOrders ? 'cursor:pointer;' : '';
+
+    // Build order detail sub-rows
+    const orderRows = (ordersByWeek[wk]||[]).map(r => {
       const dupBadge = r.isDup ? '<span class="badge-dup">already imported</span>' : '';
-      const statusCls = /return/i.test(r.status) ? 'sp-ret' : /drop/i.test(r.status) ? 'sp-drop' : /processed/i.test(r.status) ? 'sp-proc' : 'sp-ok';
       const toggleBtn = !r.excluded
-        ? `<button class="skip-toggle" data-idx="${r.i}" onclick="toggleSkip(this)" title="${r.skip ? 'Include' : 'Skip'}">${r.skip ? '⊕' : '⊖'}</button>`
-        : '<span style="font-size:11px;color:var(--mist);" title="' + r.excluded.reason + '">✕</span>';
-      return `<tr id="ord-${r.i}" class="${cls}">
+        ? `<button class="skip-toggle" data-idx="${r.i}" onclick="event.stopPropagation();toggleSkip(this,'${wk}')" title="${r.skip?'Include':'Skip'}">${r.skip?'⊕':'⊖'}</button>`
+        : '<span style="font-size:10px;color:var(--mist);">✕</span>';
+      const amtColor = r.total<0?'color:var(--red);':'';
+      return `<tr>
         <td>${toggleBtn}</td>
-        <td>${r.date ? r.date.slice(5) : '—'}</td>
-        <td>${r.supplier || '—'}${dupBadge}</td>
-        <td>${r.orderNum || r.vetcoveId || '—'}</td>
-        <td>${r.loc ? r.loc.name : '<span style="color:var(--red);">no location</span>'}</td>
-        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500;color:${r.total<0?'var(--red)':'inherit'};">${r.total<0?'-':''}${fmt$(r.total)}</td>
-        <td><span class="status-pill ${statusCls}">${r.status || '—'}</span></td>
+        <td class="ord-sup">${r.supplier||'—'}${dupBadge}</td>
+        <td>${r.orderNum||r.vetcoveId||'—'}</td>
+        <td style="text-align:right;font-weight:500;${amtColor}">${r.total<0?'-':''}${fmt$(r.total)}</td>
+        <td style="color:var(--mist);">${r.status||'—'}</td>
       </tr>`;
     }).join('');
 
-    const totalColor = monthTotal < 0 ? 'var(--red)' : 'var(--navy)';
-    return `<div class="month-group">
-      <div class="month-head" onclick="toggleMonth(this)">
-        <span class="month-label">${label}</span>
-        <div class="month-meta">
-          ${dupCount ? `<span class="month-dup">${dupCount} dup skipped</span>` : ''}
-          <span class="month-count">${activeRows.length} order${activeRows.length!==1?'s':''}</span>
-          <span class="month-total" style="color:${totalColor};">${monthTotal<0?'-':''}${fmt$(monthTotal)}</span>
-          <span style="font-size:14px;color:var(--mist);">▸</span>
-        </div>
-      </div>
-      <div class="month-body">
-        <table class="order-table">
-          <thead><tr>
-            <th style="width:30px;"></th><th>Date</th><th>Supplier</th><th>Order #</th>
-            <th>Location</th><th style="text-align:right;">Total</th><th>Status</th>
+    const detailHtml = hasOrders ? `<tr id="${detailId}" style="display:none;">
+      <td colspan="6" style="padding:0;">
+        <table class="order-mini-table" style="width:100%;">
+          <thead><tr style="background:#F0F0F8;">
+            <th style="width:28px;padding:5px 10px;"></th>
+            <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;">Supplier</th>
+            <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left;">Order #</th>
+            <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:right;">Total</th>
+            <th style="padding:5px 10px;font-size:10px;color:var(--mist);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Status</th>
           </tr></thead>
-          <tbody>${rowsHtml}</tbody>
+          <tbody>${orderRows}</tbody>
         </table>
-      </div>
-    </div>`;
+      </td>
+    </tr>` : '';
+
+    return `<tr id="${rowId}" class="${trClass}" style="${rowStyle}" onclick="${clickFn}">
+      <td class="wk-label">${fmtWeekRange(wk)}${curBadge}${partialNote}</td>
+      <td style="text-align:right;color:${rev>0?'var(--navy)':'var(--mist)'};">${rev>0?fmt$(rev):'—'}</td>
+      <td style="text-align:right;color:${budget>0?'var(--navy)':'var(--mist)'};">${budget>0?fmt$(budget):'—'}</td>
+      <td style="text-align:right;font-weight:${spend?'600':'400'};color:${spend>0?'var(--navy)':spend<0?'var(--red)':'var(--mist)'};">${spend?((spend<0?'-':'')+fmt$(spend)):'—'}</td>
+      <td style="text-align:right;font-weight:600;color:${varColor};">${budget===0?'—':(variance<0?'-':'')+fmt$(variance)}</td>
+      <td>
+        ${pct!==null ? `<div style="display:flex;align-items:center;gap:6px;">
+          <div class="bar-wrap"><div class="bar-fill" style="width:${barW}%;background:${barColor};"></div></div>
+          <span style="font-size:10px;font-weight:600;color:${barColor};">${Math.round(pct*100)}%</span>
+        </div>` : '—'}
+      </td>
+    </tr>${detailHtml}`;
   }).join('');
 
   updateSummaryBar();
 }
 
-function toggleMonth(el){
-  const body = el.nextElementSibling;
-  body.classList.toggle('open');
-  const arrow = el.querySelector('span:last-child');
-  if (arrow) arrow.textContent = body.classList.contains('open') ? '▾' : '▸';
+function toggleWeekOrders(wk){
+  const detRow = document.getElementById('bvs-det-' + wk);
+  if (!detRow) return;
+  const open = detRow.style.display !== 'none';
+  detRow.style.display = open ? 'none' : '';
 }
 
-function toggleSkip(btn){
+function toggleSkip(btn, wk){
   const idx = parseInt(btn.dataset.idx);
   parsedOrders[idx].skip = !parsedOrders[idx].skip;
   if (!parsedOrders[idx].skip) parsedOrders[idx].isDup = false;
   btn.textContent = parsedOrders[idx].skip ? '⊕' : '⊖';
   btn.title = parsedOrders[idx].skip ? 'Include' : 'Skip';
-  const tr = document.getElementById('ord-' + idx);
-  if (tr) tr.className = parsedOrders[idx].skip ? 'dup-row' : (parsedOrders[idx].total < 0 ? 'return-row' : '');
+  // Recalculate spend for this week
+  const spendByWeek = {};
+  parsedOrders.forEach(r => {
+    if (r.wk && !r.excluded && !r.skip) spendByWeek[r.wk] = (spendByWeek[r.wk]||0) + r.total;
+  });
   updateSummaryBar();
+  // Update the week row totals
+  const year = parseInt(Object.keys(spendByWeek).sort().pop()||new Date().getFullYear());
+  buildPreviewRefresh();
+}
+
+function buildPreviewRefresh(){
+  // Re-derive year from parsedOrders
+  const allDates = parsedOrders.map(r=>r.dateKey).filter(Boolean).sort();
+  const csvYear  = allDates.length ? parseInt(allDates[allDates.length-1].slice(0,4)) : new Date().getFullYear();
+  buildPreview(csvYear);
 }
 
 function updateSummaryBar(){
-  const active  = parsedOrders.filter(r => !r.excluded && !r.skip);
-  const dups    = parsedOrders.filter(r => r.isDup);
-  const spend   = active.reduce((s,r) => s + r.total, 0);
+  const active = parsedOrders.filter(r=>!r.excluded&&!r.skip);
+  const dups   = parsedOrders.filter(r=>r.isDup);
+  const spend  = active.reduce((s,r)=>s+r.total,0);
   document.getElementById('sb-orders').textContent = active.length;
-  document.getElementById('sb-spend').textContent  = (spend < 0 ? '-' : '') + fmt$(spend);
+  document.getElementById('sb-spend').textContent  = (spend<0?'-':'')+fmt$(spend);
   document.getElementById('sb-dupes').textContent  = dups.length;
-  document.getElementById('btn-import').disabled   = active.length === 0;
+  document.getElementById('btn-import').disabled   = active.length===0;
 }
 
 // ── Import ────────────────────────────────────────────────────────
 async function doImport(){
-  const toImport = parsedOrders.filter(r => !r.excluded && !r.skip);
+  const toImport = parsedOrders.filter(r=>!r.excluded&&!r.skip);
   if (!toImport.length) return;
 
-  const noLoc = toImport.filter(r => !r.loc).length;
-  if (noLoc && !confirm(`${noLoc} order${noLoc>1?'s have':' has'} no location and will be skipped. Continue with the remaining ${toImport.length - noLoc}?`)) return;
+  const noLoc = toImport.filter(r=>!r.loc).length;
+  if (noLoc && !confirm(`${noLoc} order${noLoc>1?'s have':' has'} no location and will be skipped. Continue with ${toImport.length-noLoc} remaining?`)) return;
 
   const btn = document.getElementById('btn-import');
-  btn.disabled = true; btn.textContent = 'Importing…';
+  btn.disabled=true; btn.textContent='Importing…';
 
-  let ok = 0, failed = 0, totalSpend = 0;
+  let ok=0, failed=0, totalSpend=0;
   for (const r of toImport){
-    if (!r.loc) { failed++; continue; }
+    if (!r.loc){ failed++; continue; }
     try {
-      const note = `VID:${r.vetcoveId || ''}` +
-        (r.orderNum ? ` · Order ${r.orderNum}` : '') +
-        (r.poNum    ? ` · PO ${r.poNum}`        : '') +
-        (r.supplier ? ` · ${r.supplier}`         : '') +
-        (r.purchaser && r.purchaser !== 'N/A' ? ` · ${r.purchaser}` : '');
-      const body = {
-        purchased_at: r.dateKey || r.date,
-        vendor:       r.supplier || 'Vetcove',
-        note:         note,
-        amount:       r.total,
-        location_id:  r.loc.id,
-        source:       'vetcove_import'
-      };
+      const note = `VID:${r.vetcoveId||''}` +
+        (r.orderNum ? ` · Order ${r.orderNum}`:'') +
+        (r.poNum    ? ` · PO ${r.poNum}`:'') +
+        (r.supplier ? ` · ${r.supplier}`:'') +
+        (r.purchaser&&r.purchaser!=='N/A'?` · ${r.purchaser}`:'');
       const res = await fetch(SUPA_URL + '/rest/v1/purchase_history', {
-        method: 'POST',
-        headers: { ...H, 'Prefer': 'return=minimal' },
-        body: JSON.stringify(body)
+        method:'POST',
+        headers:{...H,'Prefer':'return=minimal'},
+        body:JSON.stringify({
+          purchased_at: r.dateKey||r.date,
+          vendor:       r.supplier||'Vetcove',
+          note,
+          amount:       r.total,
+          location_id:  r.loc.id,
+          source:       'vetcove_import'
+        })
       });
       if (!res.ok) throw new Error(await res.text());
-      ok++; totalSpend += r.total;
+      ok++; totalSpend+=r.total;
     } catch(e){ failed++; }
   }
 
   // Refresh prior VIDs for same-session re-uploads
-  _priorVIDs = new Set(); _priorRange = null;
+  _priorVIDs=new Set(); _priorRange=null;
   await loadPriorImports();
 
-  const icon = failed ? '⚠️' : '✅';
-  const title = failed ? `${ok} imported, ${failed} failed` : `${ok} orders imported`;
-  const sub   = `${(totalSpend < 0 ? '-' : '') + fmt$(totalSpend)} net spend logged to COGS`;
-  document.getElementById('result-icon').textContent  = icon;
-  document.getElementById('result-title').textContent = title;
-  document.getElementById('result-sub').textContent   = sub;
+  document.getElementById('result-icon').textContent  = failed ? '⚠️' : '✅';
+  document.getElementById('result-title').textContent = failed ? `${ok} imported, ${failed} failed` : `${ok} orders imported`;
+  document.getElementById('result-sub').textContent   = `${(totalSpend<0?'-':'')+fmt$(totalSpend)} net spend logged to COGS`;
   goStep3();
 }
 
 // ── Navigation ────────────────────────────────────────────────────
 function goStep1(){
   show('s1'); hide('s2'); hide('s3'); setStep(1);
-  _csvText = ''; parsedOrders = [];
-  document.getElementById('btn-parse').disabled = true;
-  document.getElementById('uz-icon').textContent = '📂';
-  document.getElementById('uz-title').textContent = 'Drop your CSV here or click to browse';
-  document.getElementById('uz-sub').textContent = 'Vetcove Order History export (.csv)';
-  document.getElementById('uz-filename').textContent = '';
+  _csvText=''; parsedOrders=[];
+  document.getElementById('btn-parse').disabled=true;
+  document.getElementById('btn-parse').textContent='Review →';
+  document.getElementById('uz-icon').textContent='📂';
+  document.getElementById('uz-title').textContent='Drop your CSV here or click to browse';
+  document.getElementById('uz-sub').textContent='Vetcove Order History export (.csv)';
+  document.getElementById('uz-filename').textContent='';
   document.getElementById('upload-zone').classList.remove('has-file','drag');
-  document.getElementById('file-input').value = '';
+  document.getElementById('file-input').value='';
 }
 function goStep2(){ hide('s1'); show('s2'); hide('s3'); setStep(2); }
 function goStep3(){ hide('s1'); hide('s2'); show('s3'); setStep(3); }
-function show(id){ document.getElementById(id).style.display = ''; }
-function hide(id){ document.getElementById(id).style.display = 'none'; }
+function show(id){ document.getElementById(id).style.display=''; }
+function hide(id){ document.getElementById(id).style.display='none'; }
 function setStep(n){
-  [1,2,3].forEach(k => {
-    const el = document.getElementById('step-'+k);
-    const sn = document.getElementById('sn-'+k);
-    el.className = 'step' + (k < n ? ' done' : k === n ? ' active' : '');
-    sn.textContent = k < n ? '✓' : k;
+  [1,2,3].forEach(k=>{
+    const el=document.getElementById('step-'+k);
+    const sn=document.getElementById('sn-'+k);
+    el.className='step'+(k<n?' done':k===n?' active':'');
+    sn.textContent=k<n?'✓':k;
   });
 }
 function navAnalytics(){
-  if (window.self !== window.top) window.parent.postMessage({ type:'navigate', screen:'analytics' }, '*');
-  else window.location.href = 'medsync_analytics_live.html';
+  if(window.self!==window.top) window.parent.postMessage({type:'navigate',screen:'analytics'},'*');
+  else window.location.href='medsync_analytics_live.html';
 }
 function showToast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
 }
 </script>
 </body>
