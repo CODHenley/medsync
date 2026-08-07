@@ -249,8 +249,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     <div class="card" id="bvs-card">
       <div class="card-head">
         <div>
-          <div class="card-title" id="bvs-title">Budget vs Spend — <span id="bvs-year"></span></div>
-          <div class="card-sub">Click any week with orders to expand. Budget = actual revenue × COGs% target (matches Procurement screen).</div>
+          <div class="card-title" id="bvs-title">Budget vs Spend</div>
+          <div class="card-sub">Click any week with orders to expand. Weeks without revenue data show estimated budget based on average weekly revenue.</div>
         </div>
         <div id="bvs-loading" style="font-size:12px;color:var(--mist);">Loading revenue data…</div>
       </div>
@@ -345,23 +345,12 @@ function weekStart(dateStr){
   return d.toISOString().slice(0,10);
 }
 
-// All Monday-week-starts for a calendar year up to today
-function weeksForYear(year){
-  const today = new Date();
+// All Monday-week-starts from startIso through today (or endIso if provided)
+function weeksForRange(startIso, endIso){
+  const limit = endIso ? new Date(endIso + 'T12:00:00') : new Date();
   const weeks = [];
-  const d = new Date(year + '-01-01T12:00:00');
-  // Advance to first Monday on or after Jan 1
-  const dow = d.getDay();
-  if (dow !== 1) d.setDate(d.getDate() + ((8 - dow) % 7));
-  // Also check if Jan 1 itself is within a week that should appear — start from first Mon ≤ Jan 7
-  // Simpler: start from Monday of the week that contains Jan 1
-  const jan1 = new Date(year + '-01-01T12:00:00');
-  const jan1dow = jan1.getDay();
-  const jan1offset = jan1dow === 0 ? 6 : jan1dow - 1;
-  jan1.setDate(jan1.getDate() - jan1offset);
-  // jan1 is now the Monday of the week containing Jan 1
-  const cur = new Date(jan1);
-  while (cur.getFullYear() <= year && cur <= today) {
+  const cur = new Date(weekStart(startIso) + 'T12:00:00');
+  while (cur <= limit) {
     weeks.push(cur.toISOString().slice(0,10));
     cur.setDate(cur.getDate() + 7);
   }
@@ -377,8 +366,10 @@ function addDays(isoStr, n){
 function fmtWeekRange(monStr){
   const mon = new Date(monStr + 'T12:00:00');
   const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
-  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  return fmt(mon) + ' – ' + fmt(sun);
+  const fmtMD  = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const sunYear = sun.getFullYear();
+  // Show year on the end date; if Mon and Sun are same year show it once
+  return fmtMD(mon) + ' – ' + fmtMD(sun) + ', ' + sunYear;
 }
 
 function resolveLocation(hospitalName){
@@ -597,24 +588,25 @@ async function startParse(){
              loc, excluded, isDup, skip: isDup||!!excluded };
   });
 
-  // Determine calendar year from CSV data
+  // Determine full date range from CSV data
   const allDates = parsedOrders.map(r=>r.dateKey).filter(Boolean).sort();
-  const csvYear  = allDates.length ? parseInt(allDates[allDates.length-1].slice(0,4)) : new Date().getFullYear();
+  const csvStart = allDates.length ? allDates[0] : new Date().toISOString().slice(0,10);
+  const csvEnd   = allDates.length ? allDates[allDates.length-1] : csvStart;
 
-  // Fetch budget data
-  await fetchBudgetData(csvYear);
+  // Fetch budget data for full range
+  await fetchBudgetData(csvStart, csvEnd);
 
-  buildPreview(csvYear);
+  buildPreview(csvStart, csvEnd);
   goStep2();
   document.getElementById('btn-parse').disabled=false;
   document.getElementById('btn-parse').textContent='Review →';
 }
 
-// ── Fetch revenue + COGs% for the calendar year ───────────────────
-async function fetchBudgetData(year){
+// ── Fetch revenue for the full CSV date range ─────────────────────
+async function fetchBudgetData(startIso, endIso){
   document.getElementById('bvs-loading').style.display='';
   const inputPct = parseFloat(document.getElementById('cogs-target-input').value) || 8.0;
-  _budgetData = { cogsPct: inputPct / 100, weeklyRevenue: {} };
+  _budgetData = { cogsPct: inputPct / 100, weeklyRevenue: {}, locName: '' };
 
   // Determine primary location from CSV (most common loc id)
   const locFreq = {};
@@ -623,20 +615,21 @@ async function fetchBudgetData(year){
 
   if (!primaryLocId) { document.getElementById('bvs-loading').style.display='none'; return; }
 
-  // Find VID for daily_revenue queries
   const locName    = (ALL_LOCATIONS.find(l=>l.id===primaryLocId)||{}).name||'';
   const primaryVid = VID_MAP[locName] || null;
+  _budgetData.locName = locName;
 
   try {
-    const yearStart = year + '-01-01';
-    const today     = new Date().toISOString().slice(0,10);
-    const yearEnd   = today.slice(0,4) === String(year) ? today : year + '-12-31';
+    const today  = new Date().toISOString().slice(0,10);
+    const rangeEnd = endIso > today ? today : endIso;
 
+    // Fetch all daily_revenue for the full date range (limit 10000 covers ~27 years of daily data)
     const revRes = primaryVid
-      ? await fetch(SUPA_URL + '/rest/v1/daily_revenue?select=date,revenue&location_id=eq.' + primaryVid + '&date=gte.' + yearStart + '&date=lte.' + yearEnd + '&limit=5000', { headers: H })
+      ? await fetch(
+          SUPA_URL + '/rest/v1/daily_revenue?select=date,revenue&location_id=eq.' + primaryVid +
+          '&date=gte.' + startIso + '&date=lte.' + rangeEnd + '&limit=10000',
+          { headers: H })
       : { ok: false };
-
-    // cogsPct is already set from user input — don't override from location_settings
 
     if (revRes.ok) {
       const rRows = await revRes.json();
@@ -654,7 +647,7 @@ async function fetchBudgetData(year){
 }
 
 // ── Build preview ─────────────────────────────────────────────────
-function buildPreview(year){
+function buildPreview(csvStart, csvEnd){
   const dups     = parsedOrders.filter(r=>r.isDup);
   const excluded = parsedOrders.filter(r=>r.excluded);
   const active   = parsedOrders.filter(r=>!r.excluded&&!r.skip);
@@ -691,72 +684,85 @@ function buildPreview(year){
     }
   });
 
-  // YTD budget and spend (only weeks with revenue data)
-  const cogsPct = _budgetData ? _budgetData.cogsPct : 0.069;
+  const cogsPct       = _budgetData ? _budgetData.cogsPct : 0.08;
   const weeklyRevenue = (_budgetData && _budgetData.weeklyRevenue) || {};
-  const allWeeks = weeksForYear(year);
-  const today = new Date().toISOString().slice(0,10);
-  const currentWeek = weekStart(today);
+  const allWeeks      = weeksForRange(csvStart, csvEnd);
+  const today         = new Date().toISOString().slice(0,10);
+  const currentWeek   = weekStart(today);
 
-  let ytdBudget = 0, ytdSpend = 0, ytdRevenue = 0;
+  // Compute average weekly revenue from weeks that DO have data (for estimates)
+  const knownRevWeeks = Object.values(weeklyRevenue).filter(v=>v>0);
+  const avgWeeklyRev  = knownRevWeeks.length ? knownRevWeeks.reduce((s,v)=>s+v,0)/knownRevWeeks.length : 0;
+
+  // Totals — use actual revenue where known, estimated where not
+  let totalBudget = 0, totalSpend = 0, totalRevKnown = 0;
   allWeeks.forEach(wk => {
-    const rev = weeklyRevenue[wk]||0;
-    ytdRevenue += rev;
-    ytdBudget  += rev * cogsPct;
-    ytdSpend   += spendByWeek[wk]||0;
+    const rev   = weeklyRevenue[wk] || 0;
+    const effRev = rev > 0 ? rev : avgWeeklyRev;
+    totalRevKnown += rev;
+    totalBudget   += effRev * cogsPct;
+    totalSpend    += spendByWeek[wk]||0;
   });
-  const ytdVariance  = ytdBudget - ytdSpend;
-  const actualCogsPct = ytdRevenue > 0 ? ytdSpend / ytdRevenue * 100 : null;
+  const totalVariance  = totalBudget - totalSpend;
+  const actualCogsPct  = totalRevKnown > 0 ? totalSpend / totalRevKnown * 100 : null;
+
+  // Title — show location + date range
+  const locName = (_budgetData && _budgetData.locName) || (() => {
+    const lf = {};
+    parsedOrders.filter(r=>r.loc).forEach(r=>{ lf[r.loc.name]=(lf[r.loc.name]||0)+1; });
+    return Object.keys(lf).sort((a,b)=>lf[b]-lf[a])[0]||'';
+  })();
+  const titleRange = csvStart && csvEnd
+    ? fmtDate(csvStart) + ' – ' + fmtDate(csvEnd)
+    : 'All Time';
+  document.getElementById('bvs-title').textContent =
+    'Budget vs Spend' + (locName ? ' · ' + locName : '') + ' · ' + titleRange;
+  document.getElementById('bvs-year').textContent = ''; // cleared — title handles it now
 
   // Tiles
-  document.getElementById('bvs-year').textContent = year;
-  document.getElementById('t-budget').textContent   = fmt$(ytdBudget);
+  document.getElementById('t-budget').textContent   = fmt$(totalBudget);
   document.getElementById('t-budget').className     = 'tile-v';
-  document.getElementById('t-spend').textContent    = fmt$(ytdSpend);
+  document.getElementById('t-spend').textContent    = fmt$(totalSpend);
   document.getElementById('t-spend').className      = 'tile-v';
-  document.getElementById('t-variance').textContent = (ytdVariance<0?'-':'')+fmt$(ytdVariance);
-  document.getElementById('t-variance').className   = 'tile-v ' + (ytdVariance<0?'red':'green');
-  // Actual COGs % tile (spend ÷ revenue, colored same thresholds as portfolio)
+  document.getElementById('t-variance').textContent = (totalVariance<0?'-':'')+fmt$(totalVariance);
+  document.getElementById('t-variance').className   = 'tile-v ' + (totalVariance<0?'red':'green');
+
   const actualEl = document.getElementById('t-actual-pct');
-  if (actualCogsPct !== null && ytdSpend > 0) {
-    actualEl.textContent  = actualCogsPct.toFixed(1)+'%';
-    actualEl.className    = 'tile-v ' + (actualCogsPct <= 7 ? 'green' : actualCogsPct <= 9 ? 'amber' : 'red');
+  if (actualCogsPct !== null && totalSpend > 0) {
+    actualEl.textContent = actualCogsPct.toFixed(1)+'%';
+    actualEl.className   = 'tile-v ' + (actualCogsPct<=7?'green':actualCogsPct<=9?'amber':'red');
   } else {
-    actualEl.textContent  = ytdRevenue > 0 ? '—' : 'No rev data';
-    actualEl.className    = 'tile-v muted';
+    actualEl.textContent = totalRevKnown > 0 ? '—' : 'No rev data';
+    actualEl.className   = 'tile-v muted';
   }
 
   document.getElementById('t-excl').textContent = excluded.length;
-
-  // COGs formula note
-  const locName = (() => {
-    const locFreq = {};
-    parsedOrders.filter(r=>r.loc).forEach(r=>{ locFreq[r.loc.name]=(locFreq[r.loc.name]||0)+1; });
-    return Object.keys(locFreq).sort((a,b)=>locFreq[b]-locFreq[a])[0]||'—';
-  })();
   document.getElementById('cogs-formula-note').textContent =
-    `Budget = actual revenue × ${(cogsPct*100).toFixed(1)}% target · Location: ${locName} · Actual COGs = spend ÷ revenue`;
+    `Budget = revenue × ${(cogsPct*100).toFixed(1)}% target · weeks with no revenue data use estimated avg ($${Math.round(avgWeeklyRev).toLocaleString()}/wk)`;
 
   // Weekly table
   const tbody = document.getElementById('bvs-tbody');
   tbody.innerHTML = allWeeks.map(wk => {
-    const rev      = weeklyRevenue[wk]||0;
-    const budget   = rev * cogsPct;
-    const spend    = spendByWeek[wk]||0;
-    const variance = budget - spend;
-    const pct      = budget > 0 ? spend / budget : null;
-    const isCur    = wk === currentWeek;
+    const rev       = weeklyRevenue[wk]||0;
+    const isEst     = rev === 0 && avgWeeklyRev > 0; // no actual revenue — use estimate
+    const effRev    = rev > 0 ? rev : avgWeeklyRev;
+    const budget    = effRev * cogsPct;
+    const spend     = spendByWeek[wk]||0;
+    const variance  = budget - spend;
+    const pct       = budget > 0 ? spend / budget : null;
+    const isCur     = wk === currentWeek;
     const hasOrders = (ordersByWeek[wk]||[]).length > 0;
-    const weekEnd  = addDays(wk, 6);
-    const isPartial = weekEnd > today; // current incomplete week
+    const weekEnd   = addDays(wk, 6);
+    const isPartial = weekEnd > today;
 
-    const varColor = budget===0 ? '#8A93A8' : variance < 0 ? 'var(--red)' : 'var(--green)';
-    const barColor = pct===null ? '#B8B0D0' : pct>1 ? '#dc2626' : pct>0.85 ? '#d97706' : '#16a34a';
-    const barW     = pct===null ? 0 : Math.min(Math.round(pct*100),100);
+    const varColor   = budget===0 ? '#8A93A8' : variance < 0 ? 'var(--red)' : 'var(--green)';
+    const barColor   = pct===null ? '#B8B0D0' : pct>1 ? '#dc2626' : pct>0.85 ? '#d97706' : '#16a34a';
+    const barW       = pct===null ? 0 : Math.min(Math.round(pct*100),100);
+    const estTag     = isEst ? ' <span style="font-size:9px;background:#F3F4F6;color:#6B7280;padding:1px 5px;border-radius:4px;font-weight:600;vertical-align:middle;border:0.5px solid #D1D5DB;">Est</span>' : '';
 
-    const trClass  = isCur ? 'bvs-cur' : (budget>0&&spend===0 ? 'no-spend' : '');
-    const curBadge = isCur ? ' <span style="font-size:9px;background:#DBEAFE;color:#1d4ed8;padding:1px 5px;border-radius:4px;font-weight:700;vertical-align:middle;">NOW</span>' : '';
-    const partialNote = isPartial&&rev>0 ? ' <span style="font-size:9px;color:var(--mist);">partial</span>' : '';
+    const trClass    = isCur ? 'bvs-cur' : (budget>0&&spend===0 ? 'no-spend' : '');
+    const curBadge   = isCur ? ' <span style="font-size:9px;background:#DBEAFE;color:#1d4ed8;padding:1px 5px;border-radius:4px;font-weight:700;vertical-align:middle;">NOW</span>' : '';
+    const partialNote = (isPartial&&rev>0) ? ' <span style="font-size:9px;color:var(--mist);">partial</span>' : '';
 
     const rowId = 'bvs-wk-' + wk;
     const detailId = 'bvs-det-' + wk;
@@ -800,8 +806,8 @@ function buildPreview(year){
 
     return `<tr id="${rowId}" class="${trClass}" style="${rowStyle}" onclick="${clickFn}">
       <td class="wk-label">${fmtWeekRange(wk)}${curBadge}${partialNote}</td>
-      <td style="text-align:right;color:${rev>0?'var(--navy)':'var(--mist)'};">${rev>0?fmt$(rev):'—'}</td>
-      <td style="text-align:right;color:${budget>0?'var(--navy)':'var(--mist)'};">${budget>0?fmt$(budget):'—'}</td>
+      <td style="text-align:right;color:${rev>0?'var(--navy)':'var(--mist)'};">${rev>0?fmt$(rev):(isEst?fmt$(effRev)+estTag:'—')}</td>
+      <td style="text-align:right;color:${effRev>0?'var(--navy)':'var(--mist)'};">${effRev>0?(fmt$(budget)+(isEst?estTag:'')):'—'}</td>
       <td style="text-align:right;font-weight:${spend?'600':'400'};color:${spend>0?'var(--navy)':spend<0?'var(--red)':'var(--mist)'};">${spend?((spend<0?'-':'')+fmt$(spend)):'—'}</td>
       <td style="text-align:right;font-weight:600;color:${varColor};">${budget===0?'—':(variance<0?'-':'')+fmt$(variance)}</td>
       <td>
@@ -841,10 +847,10 @@ function toggleSkip(btn, wk){
 }
 
 function buildPreviewRefresh(){
-  // Re-derive year from parsedOrders
   const allDates = parsedOrders.map(r=>r.dateKey).filter(Boolean).sort();
-  const csvYear  = allDates.length ? parseInt(allDates[allDates.length-1].slice(0,4)) : new Date().getFullYear();
-  buildPreview(csvYear);
+  const start = allDates.length ? allDates[0] : new Date().toISOString().slice(0,10);
+  const end   = allDates.length ? allDates[allDates.length-1] : start;
+  buildPreview(start, end);
 }
 
 function updateSummaryBar(){
