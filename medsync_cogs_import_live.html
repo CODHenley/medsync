@@ -406,6 +406,23 @@ function resolveLocation(hospitalName){
       }
     } catch(e){}
   } catch(e){ showToast('Could not load locations'); }
+
+  // Pre-fill COGs target from organization_settings (what Settings screen saves)
+  try {
+    // Try localStorage first (instant), then Supabase to get latest
+    const ls = JSON.parse(localStorage.getItem('medsync_settings') || '{}');
+    if (ls.cogs_min) document.getElementById('cogs-target-input').value = parseFloat(ls.cogs_min).toFixed(1);
+
+    const ogRes = await fetch(SUPA_URL + '/rest/v1/organization_settings?id=eq.1&select=settings_json&limit=1', { headers: H });
+    if (ogRes.ok) {
+      const ogRows = await ogRes.json();
+      if (Array.isArray(ogRows) && ogRows.length && ogRows[0].settings_json) {
+        const s = ogRows[0].settings_json;
+        if (s.cogs_min) document.getElementById('cogs-target-input').value = parseFloat(s.cogs_min).toFixed(1);
+      }
+    }
+  } catch(e){}
+
   loadPriorImports();
 })();
 
@@ -855,12 +872,14 @@ async function doImport(){
   for (const r of toImport){
     if (!r.loc){ failed++; continue; }
     try {
-      // Store item-level VID for dedup; include item name, order ref, supplier
+      // Store item-level VID, item name, order ref, supplier, and the COGs rate active at import time
+      const importRate = parseFloat(document.getElementById('cogs-target-input').value) || 8.0;
       const itemNameTrunc = r.itemName ? (r.itemName.length>80?r.itemName.slice(0,77)+'…':r.itemName) : '';
       const note = `VID:${r.dedupKey||''}` +
         (itemNameTrunc ? ` · ${itemNameTrunc}`:'') +
         (r.orderNum ? ` · Order ${r.orderNum}`:'') +
-        (r.supplier ? ` · ${r.supplier}`:'');
+        (r.supplier ? ` · ${r.supplier}`:'') +
+        ` · RATE:${(importRate/100).toFixed(4)}`;
       const res = await fetch(SUPA_URL + '/rest/v1/purchase_history', {
         method:'POST',
         headers:{...H,'Prefer':'return=minimal'},

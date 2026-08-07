@@ -440,7 +440,11 @@ async function loadCogsBudget() {
     if (Array.isArray(settingsRows) && settingsRows.length && settingsRows[0].cogs_pct != null) {
       state.cogsPct = parseFloat(settingsRows[0].cogs_pct);
     } else {
-      state.cogsPct = 0.069;
+      // Fall back to org-wide cogs_min from Settings screen (localStorage then Supabase)
+      try {
+        const ls = JSON.parse(localStorage.getItem('medsync_settings') || '{}');
+        state.cogsPct = ls.cogs_min ? parseFloat(ls.cogs_min) / 100 : 0.08;
+      } catch(e) { state.cogsPct = 0.08; }
     }
 
     if (Array.isArray(mRows))  state.mtdRevenue  = mRows.reduce((s,r)  => s + (parseFloat(r.revenue)||0), 0);
