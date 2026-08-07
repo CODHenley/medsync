@@ -285,8 +285,9 @@ nav {
 }
 .why-visual-bottom {
   background: var(--green);
-  padding: 16px 16px 20px;
+  padding: 16px 0 0;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
+  overflow: hidden;
 }
 .why-v-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
@@ -944,7 +945,7 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <div class="why-visual-bottom">
           <!-- Mascot trio — single composite image preserves correct proportions and spacing -->
           <img src="mascot-trio.png" alt="Med, Dr. Henley, and Sync"
-               style="width:100%;max-width:420px;height:auto;display:block;margin:0 auto;
+               style="width:100%;height:auto;display:block;
                       filter:drop-shadow(0 4px 14px rgba(0,0,0,0.35));">
           <div style="font-size:11px;color:rgba(255,255,255,0.55);line-height:1.5;text-align:center;">
             Log in for live numbers by location.
