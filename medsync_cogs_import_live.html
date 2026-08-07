@@ -229,7 +229,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       </div>
       <div class="tile">
         <div class="tile-v" id="t-pct">—</div>
-        <div class="tile-l">COGs % target</div>
+        <div class="tile-l">COGs budget target</div>
       </div>
       <div class="tile">
         <div class="tile-v muted" id="t-excl">0</div>
@@ -433,34 +433,54 @@ function renderLastImportBanner(){
 }
 
 // ── CSV parsing ───────────────────────────────────────────────────
+// Normalize: strip BOM, collapse all Unicode whitespace variants to plain space
+function normHeader(s){
+  return s.replace(/^﻿/,'').replace(/[     \t]+/g,' ').replace(/"/g,'').trim().toLowerCase();
+}
+
 function parseCSVText(text){
-  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l => l.trim());
-  if (!lines.length) return [];
+  // Strip BOM if present
+  const clean = text.replace(/^﻿/,'');
+  const lines = clean.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l => l.trim());
+  if (!lines.length) return { rows: [], headers: [] };
   function splitRow(line){
     const fields=[]; let cur=''; let inQ=false;
     for(let i=0;i<line.length;i++){
       const c=line[i];
-      if(c==='"'){inQ=!inQ;continue;}
-      if((c===','||c==='\t')&&!inQ){fields.push(cur.trim());cur='';continue;}
+      if(c==='"'){ inQ=!inQ; continue; }
+      if((c===','||c==='\t')&&!inQ){ fields.push(cur.trim()); cur=''; continue; }
       cur+=c;
     }
     fields.push(cur.trim()); return fields;
   }
-  const headers = splitRow(lines[0]).map(h=>h.replace(/"/g,'').trim().toLowerCase());
+  const headers = splitRow(lines[0]).map(normHeader);
   const rows=[];
   for(let i=1;i<lines.length;i++){
     if(!lines[i].trim()) continue;
     const vals=splitRow(lines[i]);
-    const row={};
+    const row={_idx:i-1};
     headers.forEach((h,idx)=>{ row[h]=(vals[idx]||'').replace(/"/g,'').trim(); });
+    // Also store by position for fallback access
+    row._vals = vals;
     rows.push(row);
   }
-  return rows;
+  return { rows, headers };
+}
+
+// Find column index in headers array (Unicode-safe, space-collapse)
+function findColIdx(headers, ...names){
+  const norm = s => s.replace(/[\s ]+/g,'').toLowerCase();
+  for(const name of names){
+    const idx = headers.findIndex(h => norm(h) === norm(name));
+    if(idx >= 0) return idx;
+  }
+  return -1;
 }
 
 function colVal(row,...keys){
   for(const k of keys){
-    const hit=Object.keys(row).find(rk=>rk===k.toLowerCase()||rk.replace(/\s+/g,'')===k.replace(/\s+/g,'').toLowerCase());
+    const normK = normHeader(k);
+    const hit=Object.keys(row).find(rk=>rk===normK || rk.replace(/\s+/g,'')===normK.replace(/\s+/g,''));
     if(hit!==undefined&&row[hit]!==''&&row[hit]!==undefined) return row[hit];
   }
   return '';
@@ -494,28 +514,49 @@ async function startParse(){
   document.getElementById('btn-parse').disabled=true;
   document.getElementById('btn-parse').textContent='Loading…';
 
-  const raw=parseCSVText(_csvText);
+  const parsed=parseCSVText(_csvText);
+  const raw = parsed.rows;
+  const csvHeaders = parsed.headers;
   if(!raw.length){ showToast('No rows found in CSV'); document.getElementById('btn-parse').disabled=false; document.getElementById('btn-parse').textContent='Review →'; return; }
+
+  // Pre-resolve column indices for critical numeric columns (handles Unicode header quirks)
+  const _idxTotalPrice  = findColIdx(csvHeaders,'total price','totalprice','total');
+  const _idxItemStatus  = findColIdx(csvHeaders,'item status','itemstatus','status');
+  const _idxVetcoveItem = findColIdx(csvHeaders,'vetcove item id','vetcoveitemid','item id');
+  const _idxVetcoveId   = findColIdx(csvHeaders,'vetcove id','vetcoveid');
+  const _idxDate        = findColIdx(csvHeaders,'date','order date');
+  const _idxHospital    = findColIdx(csvHeaders,'hospital','location','clinic');
+  const _idxName        = findColIdx(csvHeaders,'name','item name','product name');
+  const _idxSupplier    = findColIdx(csvHeaders,'supplier','vendor');
+  const _idxOrderNum    = findColIdx(csvHeaders,'order #','order#','order number');
+  const _idxPoNum       = findColIdx(csvHeaders,'po number','po#');
+  const _idxQty         = findColIdx(csvHeaders,'quantity','qty');
+  const _idxUnitPrice   = findColIdx(csvHeaders,'unit price','unitprice');
+
+  function getByIdx(row, idx, fallbackKey){
+    if(idx >= 0 && row._vals && row._vals[idx] !== undefined) return (row._vals[idx]||'').replace(/"/g,'').trim();
+    return colVal(row, fallbackKey);
+  }
 
   const fallbackLocId=document.getElementById('loc-select').value;
   const fallbackLoc=ALL_LOCATIONS.find(l=>l.id===fallbackLocId)||null;
 
   parsedOrders=raw.map((row,i)=>{
-    // Itemized CSV columns (Order History Items export)
-    const vetcoveItemId = colVal(row,'vetcove item id','vetcoveitemid');
-    const vetcoveId     = colVal(row,'vetcove id','vetcoveid','id'); // order-level ID
-    const date          = colVal(row,'date','order date');
-    const hospital      = colVal(row,'hospital','location','clinic','site');
-    const itemName      = colVal(row,'name','item name','product name','description');
-    const supplier      = colVal(row,'supplier','vendor','distributor');
+    // Itemized CSV columns — use index-based access first for reliability
+    const vetcoveItemId = getByIdx(row,_idxVetcoveItem,'vetcove item id');
+    const vetcoveId     = getByIdx(row,_idxVetcoveId,'vetcove id');
+    const date          = getByIdx(row,_idxDate,'date');
+    const hospital      = getByIdx(row,_idxHospital,'hospital');
+    const itemName      = getByIdx(row,_idxName,'name');
+    const supplier      = getByIdx(row,_idxSupplier,'supplier');
     const manufacturer  = colVal(row,'manufacturer');
-    const orderNum      = colVal(row,'order #','order#','order number','order no');
-    const poNum         = colVal(row,'po number','po#','po num');
-    const totalPrice    = parseFloat(colVal(row,'total price','totalprice'))||0;
-    const unitPrice     = parseFloat(colVal(row,'unit price','unitprice'))||0;
-    const quantity      = parseFloat(colVal(row,'quantity','qty'))||0;
-    const status        = colVal(row,'item status','status');
-    const primaryCat    = colVal(row,'primary category','primarycategory','category');
+    const orderNum      = getByIdx(row,_idxOrderNum,'order #');
+    const poNum         = getByIdx(row,_idxPoNum,'po number');
+    const totalPrice    = parseFloat(getByIdx(row,_idxTotalPrice,'total price'))||0;
+    const unitPrice     = parseFloat(getByIdx(row,_idxUnitPrice,'unit price'))||0;
+    const quantity      = parseFloat(getByIdx(row,_idxQty,'quantity'))||0;
+    const status        = getByIdx(row,_idxItemStatus,'item status');
+    const primaryCat    = colVal(row,'primary category');
     // Use vetcove item id as dedup key; fall back to order+item combo
     const dedupKey      = vetcoveItemId || (vetcoveId + '_' + i);
     const loc           = resolveLocation(hospital)||fallbackLoc;
@@ -598,6 +639,12 @@ function buildPreview(year){
   const dups     = parsedOrders.filter(r=>r.isDup);
   const excluded = parsedOrders.filter(r=>r.excluded);
   const active   = parsedOrders.filter(r=>!r.excluded&&!r.skip);
+
+  // If everything is excluded, something went wrong with parsing — show a clear error
+  if (excluded.length === parsedOrders.length && parsedOrders.length > 0) {
+    showToast('⚠ All rows excluded — check that this is an Order History Items CSV');
+    console.warn('COGS Import: all rows excluded. First parsed row:', parsedOrders[0]);
+  }
 
   // Dup alert
   const dupAlert = document.getElementById('dup-alert');
