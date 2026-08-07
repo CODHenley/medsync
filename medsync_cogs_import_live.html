@@ -60,7 +60,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .lib-detail{font-size:11px;color:#0284c7;margin-top:2px;}
 
 /* Summary tiles */
-.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
 .tile{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
 .tile-v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
 .tile-l{font-size:10px;color:var(--mist);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
@@ -125,7 +125,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .field label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
 .field select,.field input{padding:9px 11px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
 
-@media(max-width:700px){
+@media(max-width:900px){
+  .tiles{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:600px){
   .tiles{grid-template-columns:1fr 1fr;}
   .bvs-table th:nth-child(3),.bvs-table td:nth-child(3),
   .bvs-table th:nth-child(4),.bvs-table td:nth-child(4){display:none;}
@@ -230,6 +233,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       <div class="tile">
         <div class="tile-v" id="t-pct">—</div>
         <div class="tile-l">COGs budget target</div>
+      </div>
+      <div class="tile">
+        <div class="tile-v" id="t-actual-pct">—</div>
+        <div class="tile-l">Actual COGs %</div>
       </div>
       <div class="tile">
         <div class="tile-v muted" id="t-excl">0</div>
@@ -679,13 +686,15 @@ function buildPreview(year){
   const today = new Date().toISOString().slice(0,10);
   const currentWeek = weekStart(today);
 
-  let ytdBudget = 0, ytdSpend = 0;
+  let ytdBudget = 0, ytdSpend = 0, ytdRevenue = 0;
   allWeeks.forEach(wk => {
     const rev = weeklyRevenue[wk]||0;
-    ytdBudget += rev * cogsPct;
-    ytdSpend  += spendByWeek[wk]||0;
+    ytdRevenue += rev;
+    ytdBudget  += rev * cogsPct;
+    ytdSpend   += spendByWeek[wk]||0;
   });
-  const ytdVariance = ytdBudget - ytdSpend;
+  const ytdVariance  = ytdBudget - ytdSpend;
+  const actualCogsPct = ytdRevenue > 0 ? ytdSpend / ytdRevenue * 100 : null;
 
   // Tiles
   document.getElementById('bvs-year').textContent = year;
@@ -696,7 +705,18 @@ function buildPreview(year){
   document.getElementById('t-variance').textContent = (ytdVariance<0?'-':'')+fmt$(ytdVariance);
   document.getElementById('t-variance').className   = 'tile-v ' + (ytdVariance<0?'red':'green');
   document.getElementById('t-pct').textContent      = (cogsPct*100).toFixed(1)+'%';
-  document.getElementById('t-excl').textContent     = excluded.length;
+
+  // Actual COGs % tile (spend ÷ revenue, colored same thresholds as portfolio)
+  const actualEl = document.getElementById('t-actual-pct');
+  if (actualCogsPct !== null && ytdSpend > 0) {
+    actualEl.textContent  = actualCogsPct.toFixed(1)+'%';
+    actualEl.className    = 'tile-v ' + (actualCogsPct <= 7 ? 'green' : actualCogsPct <= 9 ? 'amber' : 'red');
+  } else {
+    actualEl.textContent  = ytdRevenue > 0 ? '—' : 'No rev data';
+    actualEl.className    = 'tile-v muted';
+  }
+
+  document.getElementById('t-excl').textContent = excluded.length;
 
   // COGs formula note
   const locName = (() => {
