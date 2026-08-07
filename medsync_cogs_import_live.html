@@ -60,7 +60,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .lib-detail{font-size:11px;color:#0284c7;margin-top:2px;}
 
 /* Summary tiles */
-.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
 .tile{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
 .tile-v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
 .tile-l{font-size:10px;color:var(--mist);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
@@ -189,6 +189,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
             <label>Location (if Hospital not matched from CSV)</label>
             <select id="loc-select"><option value="">Select location…</option></select>
           </div>
+          <div class="field">
+            <label>COGs Budget Target %</label>
+            <input type="number" id="cogs-target-input" value="8.0" min="1" max="30" step="0.1"
+              style="max-width:140px;" placeholder="e.g. 8.0">
+          </div>
         </div>
 
         <div class="last-import-banner" id="last-import-banner" style="display:none;">
@@ -224,15 +229,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
       </div>
       <div class="tile">
         <div class="tile-v" id="t-spend">—</div>
-        <div class="tile-l">YTD Spend (this import)</div>
+        <div class="tile-l">YTD Spend</div>
       </div>
       <div class="tile">
         <div class="tile-v" id="t-variance">—</div>
         <div class="tile-l">YTD Variance</div>
-      </div>
-      <div class="tile">
-        <div class="tile-v" id="t-pct">—</div>
-        <div class="tile-l">COGs budget target</div>
       </div>
       <div class="tile">
         <div class="tile-v" id="t-actual-pct">—</div>
@@ -595,7 +596,8 @@ async function startParse(){
 // ── Fetch revenue + COGs% for the calendar year ───────────────────
 async function fetchBudgetData(year){
   document.getElementById('bvs-loading').style.display='';
-  _budgetData = { cogsPct: 0.069, weeklyRevenue: {} };
+  const inputPct = parseFloat(document.getElementById('cogs-target-input').value) || 8.0;
+  _budgetData = { cogsPct: inputPct / 100, weeklyRevenue: {} };
 
   // Determine primary location from CSV (most common loc id)
   const locFreq = {};
@@ -613,18 +615,11 @@ async function fetchBudgetData(year){
     const today     = new Date().toISOString().slice(0,10);
     const yearEnd   = today.slice(0,4) === String(year) ? today : year + '-12-31';
 
-    const [settRes, revRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/location_settings?select=cogs_pct&location_id=eq.' + primaryLocId, { headers: H }),
-      primaryVid
-        ? fetch(SUPA_URL + '/rest/v1/daily_revenue?select=date,revenue&location_id=eq.' + primaryVid + '&date=gte.' + yearStart + '&date=lte.' + yearEnd + '&limit=5000', { headers: H })
-        : Promise.resolve({ ok: false })
-    ]);
+    const revRes = primaryVid
+      ? await fetch(SUPA_URL + '/rest/v1/daily_revenue?select=date,revenue&location_id=eq.' + primaryVid + '&date=gte.' + yearStart + '&date=lte.' + yearEnd + '&limit=5000', { headers: H })
+      : { ok: false };
 
-    if (settRes.ok) {
-      const sRows = await settRes.json();
-      if (Array.isArray(sRows) && sRows.length && sRows[0].cogs_pct != null)
-        _budgetData.cogsPct = parseFloat(sRows[0].cogs_pct);
-    }
+    // cogsPct is already set from user input — don't override from location_settings
 
     if (revRes.ok) {
       const rRows = await revRes.json();
@@ -704,8 +699,6 @@ function buildPreview(year){
   document.getElementById('t-spend').className      = 'tile-v';
   document.getElementById('t-variance').textContent = (ytdVariance<0?'-':'')+fmt$(ytdVariance);
   document.getElementById('t-variance').className   = 'tile-v ' + (ytdVariance<0?'red':'green');
-  document.getElementById('t-pct').textContent      = (cogsPct*100).toFixed(1)+'%';
-
   // Actual COGs % tile (spend ÷ revenue, colored same thresholds as portfolio)
   const actualEl = document.getElementById('t-actual-pct');
   if (actualCogsPct !== null && ytdSpend > 0) {
@@ -725,7 +718,7 @@ function buildPreview(year){
     return Object.keys(locFreq).sort((a,b)=>locFreq[b]-locFreq[a])[0]||'—';
   })();
   document.getElementById('cogs-formula-note').textContent =
-    `Budget = actual revenue × ${(cogsPct*100).toFixed(1)}% COGs target · Location: ${locName}`;
+    `Budget = actual revenue × ${(cogsPct*100).toFixed(1)}% target · Location: ${locName} · Actual COGs = spend ÷ revenue`;
 
   // Weekly table
   const tbody = document.getElementById('bvs-tbody');
