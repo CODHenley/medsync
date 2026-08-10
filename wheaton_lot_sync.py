@@ -76,7 +76,7 @@ def get_or_create_product_id(name):
 # ── Fetch all inventory adjustments for Wheaton ──────────────────────────────
 # inventoryAdjustments returns a plain list (not a Connection) — no edges wrapper.
 # Probe confirmed fields: expirationDate, lotNumber, product { id name },
-#                         quantityChange, insertedAt, isWastage, reason
+#                         quantityChange, insertedAt
 
 QUERY = """
 query($lid: ID!) {
@@ -86,7 +86,6 @@ query($lid: ID!) {
         expirationDate
         quantityChange
         insertedAt
-        isWastage
         product { id name }
     }
 }
