@@ -45,12 +45,12 @@ DECLARE
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
-    -- Skip if the table doesn't exist in this project
+    -- Skip if it doesn't exist or is a view (RLS only applies to base tables)
     IF NOT EXISTS (
       SELECT 1 FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name = t
+      WHERE table_schema = 'public' AND table_name = t AND table_type = 'BASE TABLE'
     ) THEN
-      RAISE NOTICE 'Skipping % (table does not exist)', t;
+      RAISE NOTICE 'Skipping % (does not exist or is a view)', t;
       CONTINUE;
     END IF;
 
