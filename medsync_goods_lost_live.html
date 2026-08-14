@@ -408,6 +408,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let state = {
   locationId: null,
@@ -547,8 +548,8 @@ async function loadHistory() {
       : '';
     return `<div class="history-row">
       <div class="hr-left">
-        <div class="hr-prod">${r.product_name || r.products?.name || '—'}</div>
-        <div class="hr-meta">${r.category} · ${new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+        <div class="hr-prod">${esc(r.product_name || r.products?.name || '—')}</div>
+        <div class="hr-meta">${esc(r.category)} · ${new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
         ${printBtn}
@@ -882,7 +883,7 @@ async function exportGLPDF() {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

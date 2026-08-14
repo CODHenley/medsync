@@ -1070,7 +1070,7 @@ async function submitReportToAdmin() {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/report-unknown-product`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY) },
       body: JSON.stringify({
         scanned_value:    _pendingNDC,
         fda_brand_name:   fdaBrand,
@@ -1729,7 +1729,7 @@ window.addEventListener('message', function(e) {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

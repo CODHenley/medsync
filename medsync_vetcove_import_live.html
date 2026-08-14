@@ -273,6 +273,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let ALL_PRODUCTS      = [];   // {id, name, normalized}
 let ALL_LOCATIONS     = [];   // {id, name}
@@ -525,7 +526,7 @@ function renderPreview() {
     const dupBadge = row.dupSkip ? ' <span class="badge-dup">already imported</span>' : '';
     return `<tr id="row-${idx}" class="${rowClass}">
       <td><button class="skip-toggle" data-idx="${idx}" onclick="toggleSkip(this)" title="${row.skip ? 'Include' : 'Skip'}">${row.skip ? '⊕' : '⊖'}</button></td>
-      <td><div class="prod-name">${row.productName || '—'}${dupBadge}</div><div class="prod-matched">${row.loc ? row.loc.name : '<span style="color:var(--red);">no location</span>'}</div></td>
+      <td><div class="prod-name">${esc(row.productName || '—')}${dupBadge}</div><div class="prod-matched">${row.loc ? esc(row.loc.name) : '<span style="color:var(--red);">no location</span>'}</div></td>
       <td>${dateDisp}</td>
       <td>${row.qty}</td>
       <td>$${row.value.toFixed(2)}</td>
@@ -670,7 +671,7 @@ function setStepState(active) {
 }
 
 function nav(screen) {
-  if (window.self !== window.top) window.parent.postMessage({ type:'navigate', screen }, '*');
+  if (window.self !== window.top) window.parent.postMessage({ type:'navigate', screen }, window.location.origin);
 }
 
 // ── Template download ────────────────────────────────────────────
@@ -693,7 +694,7 @@ function showToast(msg) {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

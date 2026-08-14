@@ -327,6 +327,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (()=>{ try{ return JSON.parse(localStorage.getItem('medsync_session')||'{}'); }catch(e){ return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+(_sess.access_token||SUPA_KEY), 'Content-Type': 'application/json' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -1526,8 +1527,8 @@ function filterProducts(q) {
     const sel = selectedProduct && selectedProduct.id === p.id;
     return `<div class="prod-opt ${sel?'sel':''}" onclick="selectProduct(${JSON.stringify(p).replace(/"/g,'&quot;')})">
       <div>
-        <div class="po-name">${p.name}</div>
-        <div class="po-meta">${p.vendor}</div>
+        <div class="po-name">${esc(p.name)}</div>
+        <div class="po-meta">${esc(p.vendor)}</div>
       </div>
       <div class="po-oh">${p.onHand} on hand</div>
     </div>`;
@@ -1643,7 +1644,7 @@ boot();
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }
