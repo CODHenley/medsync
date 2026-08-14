@@ -62,7 +62,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 </head>
 <body>
 <div class="topbar"><div class="tb-left">
-    <a class="tb-back" href="medsync_settings_live.html">← Settings</a>
+    <a class="tb-back" href="javascript:void(0)" onclick="(function(){if(window.self!==window.top){window.parent.postMessage({type:'navigate',screen:'settings'},window.location.origin);}else{window.location.href='medsync_settings_live.html';}})()">← Settings</a>
     <span class="tb-divider">/</span>
     <div>
         <div class="tb-title">Manage Regions</div>
@@ -349,7 +349,7 @@ boot();
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

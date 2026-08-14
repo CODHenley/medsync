@@ -777,19 +777,19 @@ function printGLReturn(r) {
     @media print{body{padding:20px;}}
   </style></head><body>
   <h1>Scout Veterinary — Vendor Return Document</h1>
-  <div class="sub">Generated ${now} · ${r.location||'—'} · Logged ${dateStr}</div>
+  <div class="sub">Generated ${now} · ${esc(r.location||'—')} · Logged ${dateStr}</div>
   <h2>Return Details</h2>
   <table>
-    <tr><td>Product</td><td>${r.product_name||'—'}</td></tr>
-    <tr><td>Category</td><td>${r.category||'Vendor return / credit'}</td></tr>
-    <tr><td>Qty Returned</td><td>${r.qty_lost||'—'} units</td></tr>
+    <tr><td>Product</td><td>${esc(r.product_name||'—')}</td></tr>
+    <tr><td>Category</td><td>${esc(r.category||'Vendor return / credit')}</td></tr>
+    <tr><td>Qty Returned</td><td>${esc(String(r.qty_lost||'—'))} units</td></tr>
     <tr><td>Credit Value</td><td>$${Number(r.value_lost||0).toFixed(2)}</td></tr>
-    <tr><td>Vendor</td><td>${vendor}</td></tr>
-    <tr><td>PO Reference</td><td>${poRef}</td></tr>
-    <tr><td>Location</td><td>${r.location||'—'}</td></tr>
-    <tr><td>Notes</td><td>${r.notes||'—'}</td></tr>
+    <tr><td>Vendor</td><td>${esc(vendor)}</td></tr>
+    <tr><td>PO Reference</td><td>${esc(poRef)}</td></tr>
+    <tr><td>Location</td><td>${esc(r.location||'—')}</td></tr>
+    <tr><td>Notes</td><td>${esc(r.notes||'—')}</td></tr>
   </table>
-  ${contact !== '—' ? `<h2>Vendor Contact</h2><div class="contact-box"><strong>${vendor}</strong> Customer Service: <strong>${contact}</strong></div>` : ''}
+  ${contact !== '—' ? `<h2>Vendor Contact</h2><div class="contact-box"><strong>${esc(vendor)}</strong> Customer Service: <strong>${esc(contact)}</strong></div>` : ''}
   <h2>Shipping Notes</h2>
   <ul>
     <li>Include this document inside the return shipment.</li>
