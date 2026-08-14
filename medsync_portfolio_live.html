@@ -347,9 +347,9 @@ async function loadLocationCards() {
 
   try {
     const [revRes, phRes, diRes, glRes, cycleRes, poRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&or=(' + vidFilter + ')', { headers: _H }),
-      fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&or=(' + uuidFilter + ')', { headers: _H }),
-      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&or=(' + vidFilter + ')', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&or=(' + vidFilter + ')&limit=5000', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&or=(' + uuidFilter + ')&limit=5000', { headers: _H }),
+      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&or=(' + vidFilter + ')&limit=5000', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,value_lost&created_at=gte.' + monthStart + 'T00:00:00&or=(' + uuidFilter + ')', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + monthStart + '&or=(' + uuidFilter + ')&order=created_at.desc', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/po_items?select=location_id,status&submitted_at=gte.' + monthStart + '&or=(' + uuidFilter + ')&order=submitted_at.desc', { headers: _H }),
@@ -426,7 +426,7 @@ async function loadWheatonInsights() {
       fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,qty_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&status=neq.Disposed&qty_remaining=gt.0&order=expiration_date.asc', { headers: _H }),
       fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&product_name=neq.Monthly Summary Import&limit=500', { headers: _H }),
       fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&returned=eq.false&refunded=eq.false&limit=5000', { headers: _H }),
-      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today, { headers: _H }),
+      fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today + '&limit=5000', { headers: _H }),
     ]);
 
     const lotsJson = await lotsRes.json();  const lots    = Array.isArray(lotsJson)  ? lotsJson  : [];
@@ -2288,9 +2288,9 @@ async function loadLiveCOGs(loc, from, to) {
 
   try {
     const [revRes, spendRes, phRes] = await Promise.all([
-      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${fromD}&date=lte.${toD}&or=(${vidFilter})`, { headers: H2 }),
-      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${fromD}T00:00:00&dispensed_at=lte.${toD}T23:59:59&or=(${vidFilter})`, { headers: H2 }),
-      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.${fromD}&purchased_at=lte.${toD}&or=(${uuidFilter})`, { headers: H2 })
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${fromD}&date=lte.${toD}&or=(${vidFilter})&limit=5000`, { headers: H2 }),
+      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${fromD}T00:00:00&dispensed_at=lte.${toD}T23:59:59&or=(${vidFilter})&limit=5000`, { headers: H2 }),
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.${fromD}&purchased_at=lte.${toD}&or=(${uuidFilter})&limit=5000`, { headers: H2 })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
