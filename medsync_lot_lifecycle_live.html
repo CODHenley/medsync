@@ -763,7 +763,7 @@ async function loadLots() {
   setTableLoading(true);
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/lots?select=*,products(*),locations(name),users(full_name)&location_id=in.(' + ALL_LOC_UUIDS.join(',') + ')&order=expiration_date.asc',
+      SUPA_URL + '/rest/v1/lots?select=*,products(*),locations(name),users(full_name)&location_id=in.(' + ALL_LOC_UUIDS.join(',') + ')&status=neq.Disposed&order=expiration_date.asc',
       { headers: H }
     );
     const rows = await res.json();
@@ -920,6 +920,9 @@ function filterTable() {
             <span class="lot-card-label">LOC</span><span style="font-size:12px;">${lot.loc}</span>
             ${lot.cs ? `<span class="b-dea" style="margin-left:8px;">DEA ${lot.deaSched.replace('Schedule ','')}</span>` : ''}
           </div>
+          ${lot.status === 'Expired' ? `<div class="lot-card-row" style="margin-top:6px;">
+            <button onclick="event.stopPropagation();quickDispose('${lot.dbId}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;cursor:pointer;">Mark Disposed</button>
+          </div>` : ''}
         </div>
       </td></tr>`;
     }
@@ -931,7 +934,7 @@ function filterTable() {
       <td><span class="qty">${lot.qtyRem} / ${lot.qtyIn}</span></td>
       <td><span class="exp-date ${expClass}">${formatDate(lot.exp)}</span></td>
       <td><span class="days-col ${dayCls}">${daysTxt}</span></td>
-      <td style="display:flex;align-items:center;gap:8px;"><span class="badge ${statusClass(lot.status)}">${lot.status}</span><span class="lot-row-hint">View / Edit →</span></td>
+      <td style="display:flex;align-items:center;gap:8px;"><span class="badge ${statusClass(lot.status)}">${lot.status}</span>${lot.status === 'Expired' ? `<button onclick="event.stopPropagation();quickDispose('${lot.dbId}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;cursor:pointer;white-space:nowrap;">Mark Disposed</button>` : `<span class="lot-row-hint">View / Edit →</span>`}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--mist);">No lots match your filters.</td></tr>';
 
@@ -1534,6 +1537,14 @@ async function logVaccineReturn() {
   } catch(e) {
     showToast('⚠ Could not log return');
   }
+}
+
+// ── Quick dispose from row (no modal needed) ─────────────────
+async function quickDispose(dbId) {
+  const lot = ALL_LOTS.find(l => l.dbId === dbId);
+  const name = lot ? lot.name : 'this lot';
+  if (!confirm(`Mark "${name}" as Disposed? This will remove it from the list.`)) return;
+  await logDisposal(dbId);
 }
 
 // ── Log disposal — updates lot status in Supabase ────────────
