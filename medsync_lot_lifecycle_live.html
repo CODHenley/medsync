@@ -750,6 +750,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY) };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 const TODAY = new Date();
 const EXP_DAYS = (function(){try{return parseInt(JSON.parse(localStorage.getItem('medsync_settings')||'{}').exp_days)||30;}catch(e){return 30;}})();
@@ -906,18 +907,18 @@ function filterTable() {
       return `<tr><td colspan="8" style="padding:0;border:none;">
         <div class="lot-card" onclick="openLot('${lot.dbId}')">
           <div class="lot-card-top">
-            <div style="font-weight:600;font-size:13px;">${lot.name}</div>
-            <span class="badge ${statusClass(lot.status)}">${lot.status}</span>
+            <div style="font-weight:600;font-size:13px;">${esc(lot.name)}</div>
+            <span class="badge ${statusClass(lot.status)}">${esc(lot.status)}</span>
           </div>
           <div class="lot-card-row">
-            <span class="lot-card-label">LOT</span><span class="lot-num" style="font-size:12px;">${lot.id}</span>
+            <span class="lot-card-label">LOT</span><span class="lot-num" style="font-size:12px;">${esc(lot.id)}</span>
             <span class="lot-card-label" style="margin-left:12px;">QTY</span><span class="qty" style="font-size:12px;">${lot.qtyRem} / ${lot.qtyIn}</span>
           </div>
           <div class="lot-card-row">
-            <span class="lot-card-label">EXP</span><span class="exp-date ${expClass}" style="font-size:12px;">${formatDate(lot.exp)} · ${daysTxt}</span>
+            <span class="lot-card-label">EXP</span><span class="exp-date ${expClass}" style="font-size:12px;">${formatDate(lot.exp)} · ${esc(daysTxt)}</span>
           </div>
           <div class="lot-card-row">
-            <span class="lot-card-label">LOC</span><span style="font-size:12px;">${lot.loc}</span>
+            <span class="lot-card-label">LOC</span><span style="font-size:12px;">${esc(lot.loc)}</span>
             ${lot.cs ? `<span class="b-dea" style="margin-left:8px;">DEA ${lot.deaSched.replace('Schedule ','')}</span>` : ''}
           </div>
           ${lot.status === 'Expired' ? `<div class="lot-card-row" style="margin-top:6px;">
@@ -927,10 +928,10 @@ function filterTable() {
       </td></tr>`;
     }
     return `<tr class="lot-row" onclick="openLot('${lot.dbId}')" title="Click to view details &amp; edit">
-      <td><span class="lot-num">${lot.id}</span></td>
-      <td><div class="prod-name">${lot.name}</div><div class="prod-mfr">${lot.mfr}</div></td>
+      <td><span class="lot-num">${esc(lot.id)}</span></td>
+      <td><div class="prod-name">${esc(lot.name)}</div><div class="prod-mfr">${esc(lot.mfr)}</div></td>
       <td>${dea}</td>
-      <td>${lot.loc}</td>
+      <td>${esc(lot.loc)}</td>
       <td><span class="qty">${lot.qtyRem} / ${lot.qtyIn}</span></td>
       <td><span class="exp-date ${expClass}">${formatDate(lot.exp)}</span></td>
       <td><span class="days-col ${dayCls}">${daysTxt}</span></td>
@@ -1266,8 +1267,8 @@ async function openLot(dbId) {
 
   // Badges
   const bd = document.getElementById('m-badges');
-  bd.innerHTML = `<span class="badge ${statusClass(lot.status)}">${lot.status}</span>`;
-  if (lot.cs) bd.innerHTML += `<span class="b-dea">DEA ${lot.deaSched.replace('Schedule ','')}</span>`;
+  bd.innerHTML = `<span class="badge ${statusClass(lot.status)}">${esc(lot.status)}</span>`;
+  if (lot.cs) bd.innerHTML += `<span class="b-dea">DEA ${esc(lot.deaSched.replace('Schedule ',''))}</span>`;
 
   // CS section
   document.getElementById('m-cs-section').style.display = lot.cs ? '' : 'none';
@@ -1427,8 +1428,8 @@ async function fetchLinkedInvoice(lot) {
       if (!best) best = { inv: invs[0], item: null };
       _linkedInvoice = best;
       const dateStr = best.inv.invoice_date ? new Date(best.inv.invoice_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-      invEl.innerHTML = `📄 Invoice on file: <strong>${best.inv.invoice_number || 'No #'}</strong> · ${best.inv.vendor} · ${dateStr}` +
-        (best.item ? ` · ${best.item.product_name} @ $${Number(best.item.unit_price_invoiced||0).toFixed(2)}/unit` : '');
+      invEl.innerHTML = `📄 Invoice on file: <strong>${esc(best.inv.invoice_number || 'No #')}</strong> · ${esc(best.inv.vendor)} · ${esc(dateStr)}` +
+        (best.item ? ` · ${esc(best.item.product_name)} @ $${Number(best.item.unit_price_invoiced||0).toFixed(2)}/unit` : '');
     } else {
       invEl.textContent = 'No invoice on file — attach proof of purchase for BI claims.';
     }
@@ -1917,7 +1918,7 @@ function exportLotsPDF() {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

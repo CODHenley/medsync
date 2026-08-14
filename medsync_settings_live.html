@@ -770,7 +770,7 @@ async function loadBillingBranding() {
     if (org.billing_contact_name) document.getElementById('bb-billing-name').value = org.billing_contact_name;
     if (org.billing_email)        document.getElementById('bb-billing-email').value = org.billing_email;
     if (org.billing_phone)        document.getElementById('bb-billing-phone').value = org.billing_phone;
-    if (org.payment_terms)        document.getElementById('bb-payment-terms').value = org.payment_terms;
+    if (org.payment_terms)        { const el = document.getElementById('bb-payment-terms'); if (el) el.value = org.payment_terms; }
     // ACH fields
     if (org.ach_bank_name)       document.getElementById('bb-ach-bank').value = org.ach_bank_name;
     if (org.ach_account_holder)  document.getElementById('bb-ach-holder').value = org.ach_account_holder;
@@ -1037,7 +1037,7 @@ const NAV_MAP = {
 };
 function nav(screen) {
   if (window.self !== window.top) {
-    window.parent.postMessage({type:'navigate',screen:screen},'*');
+    window.parent.postMessage({type:'navigate',screen:screen},window.location.origin);
   } else {
     var url = NAV_MAP[screen];
     if (url) window.location.href = url;
@@ -1139,7 +1139,7 @@ function saveSettings() {
     margin_drift_pct:   document.getElementById('margin-drift-pct') ? document.getElementById('margin-drift-pct').value : '5',
   };
   localStorage.setItem('medsync_settings', JSON.stringify(settings));
-  window.parent.postMessage({ type: 'settings_synced', settings: settings }, '*');
+  window.parent.postMessage({ type: 'settings_synced', settings: settings }, window.location.origin);
   showToast('✓ Settings saved');
   // Also persist to Supabase so all devices/users share the same thresholds
   fetch(SUPA_URL + '/rest/v1/organization_settings', {
@@ -1221,7 +1221,7 @@ function showToast(msg) {
       if (!rows || !rows.length || !rows[0].settings_json) return;
       var s = rows[0].settings_json;
       localStorage.setItem('medsync_settings', JSON.stringify(s));
-      window.parent.postMessage({ type: 'settings_synced', settings: s }, '*');
+      window.parent.postMessage({ type: 'settings_synced', settings: s }, window.location.origin);
       if (s.cogs_min)        document.getElementById('cogs-min').value = s.cogs_min;
       if (s.cogs_max)        document.getElementById('cogs-max').value = s.cogs_max;
       if (s.gl_pct_thresh)   document.getElementById('gl-pct-thresh').value = s.gl_pct_thresh;
@@ -1289,7 +1289,7 @@ window.addEventListener('message', function(e) {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

@@ -58,7 +58,7 @@ function dbNav(panel) {
     attempts++;
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, '*');
+      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, window.location.origin);
     }
     if (attempts < 15) setTimeout(tryPost, 200);
   }
@@ -81,7 +81,7 @@ function deepDiveLoc(locCode) {
     attempts++;
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, '*');
+      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, window.location.origin);
     }
     if (attempts < 15) setTimeout(tryPost, 200);
   }
@@ -89,6 +89,7 @@ function deepDiveLoc(locCode) {
 }
 
 window.addEventListener('message', function(e) {
+  if (e.origin !== window.location.origin) return;
   if (!e.data) return;
   if (e.data.type === 'navigate' && e.data.screen) showScreen(e.data.screen);
 });
@@ -1802,7 +1803,7 @@ function deepDiveLoc(locCode) {
   setTimeout(function() {
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, '*');
+      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, window.location.origin);
     }
   }, 600);
 }
@@ -1825,7 +1826,7 @@ function dbNav(panel) {
     attempts++;
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, '*');
+      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, window.location.origin);
     }
     if (attempts < 15) setTimeout(tryPost, 200);
   }

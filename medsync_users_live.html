@@ -140,6 +140,7 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
 .msg{padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:12px;display:none;}
 .msg.success{background:var(--green-bg);color:var(--green);border:0.5px solid #B0D8C0;display:block;}
 .msg.error{background:var(--red-bg);color:var(--red);border:0.5px solid #F0AAAA;display:block;}
+.msg.warning{background:#FFF8EC;color:#92610B;border:0.5px solid #F0D8A0;display:block;}
 .empty{color:var(--mist);font-size:12px;padding:12px 0;text-align:center;}
 .nav{display:none;}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s;}
@@ -257,7 +258,7 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
       </div>
       <div class="field">
         <label>Temporary password</label>
-        <input id="new-pass" type="text" value="MedSync2026!" autocomplete="off">
+        <input id="new-pass" type="password" value="MedSync2026!" autocomplete="new-password">
       </div>
       <div class="field">
         <label>Role</label>
@@ -361,6 +362,7 @@ const SUPA_URL   = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 // Email sending routed through Supabase Edge Function (send-welcome-email) — key is never in client
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
 
 let _regions = [];
@@ -514,30 +516,30 @@ async function loadUsers() {
     let actionBtns = '';
     if (canManage) {
       const toggleBtn = active
-        ? `<button class="action-btn btn-deactivate" data-id="${u.id}" onclick="deactivateUser('${u.id}','${u.full_name}')">Deactivate</button>`
-        : `<button class="action-btn btn-activate"   data-id="${u.id}" onclick="activateUser('${u.id}','${u.full_name}')">Activate</button>`;
-      const editBtn   = `<button class="action-btn btn-edit" onclick="openEditUser('${u.id}')">Edit</button>`;
-      const deleteBtn = `<button class="action-btn btn-delete" onclick="confirmDelete('${u.id}','${u.full_name}')">Delete</button>`;
+        ? `<button class="action-btn btn-deactivate" data-id="${esc(u.id)}" data-name="${esc(u.full_name)}" onclick="deactivateUser(this.dataset.id,this.dataset.name)">Deactivate</button>`
+        : `<button class="action-btn btn-activate"   data-id="${esc(u.id)}" data-name="${esc(u.full_name)}" onclick="activateUser(this.dataset.id,this.dataset.name)">Activate</button>`;
+      const editBtn   = `<button class="action-btn btn-edit" data-id="${esc(u.id)}" onclick="openEditUser(this.dataset.id)">Edit</button>`;
+      const deleteBtn = `<button class="action-btn btn-delete" data-id="${esc(u.id)}" data-name="${esc(u.full_name)}" onclick="confirmDelete(this.dataset.id,this.dataset.name)">Delete</button>`;
       actionBtns = editBtn + toggleBtn + deleteBtn;
     }
 
     return `
       <div class="user-row${active ? '' : ' inactive'}" id="row-${u.id}">
         <div class="user-info">
-          <div class="user-name">${u.full_name || '—'}</div>
-          <div class="user-email">${u.email || ''}</div>
-          <div class="user-access">${formatAccess(u)}</div>
+          <div class="user-name">${esc(u.full_name || '—')}</div>
+          <div class="user-email">${esc(u.email || '')}</div>
+          <div class="user-access">${esc(formatAccess(u))}</div>
         </div>
         <div class="user-status-cell">${statusPill}</div>
-        <div class="user-role-cell"><span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role] || u.role}</span></div>
+        <div class="user-role-cell"><span class="role-badge rb-${esc(u.role)}">${esc(ROLE_LABELS[u.role] || u.role)}</span></div>
         <div class="user-actions-cell">${actionBtns}</div>
       </div>
       <div id="confirm-${u.id}" style="display:none;">
         <div class="confirm-row">
-          <span class="confirm-text">Delete <strong>${u.full_name}</strong>? This cannot be undone.</span>
+          <span class="confirm-text">Delete <strong>${esc(u.full_name)}</strong>? This cannot be undone.</span>
           <div class="confirm-actions">
-            <button class="btn-cancel-del" onclick="cancelDelete('${u.id}')">Cancel</button>
-            <button class="btn-confirm-del" onclick="deleteUser('${u.id}','${u.full_name}')">Delete</button>
+            <button class="btn-cancel-del" data-id="${esc(u.id)}" onclick="cancelDelete(this.dataset.id)">Cancel</button>
+            <button class="btn-confirm-del" data-id="${esc(u.id)}" data-name="${esc(u.full_name)}" onclick="deleteUser(this.dataset.id,this.dataset.name)">Delete</button>
           </div>
         </div>
       </div>`;
@@ -678,7 +680,7 @@ async function deleteUser(id, name) {
 async function sendWelcomeEmail(name, email, pass, role) {
   const firstName = name.split(' ')[0];
   const roleLabel = ROLE_LABELS[role] || role;
-  const loginUrl  = 'https://medsync.vet/medsync_login_v2.html';
+  const loginUrl  = 'https://medsync.vet/medsync_login.html';
 
   const NAVY   = '#1B2A4A';
   const GOLD   = '#C9A84C';
@@ -755,7 +757,7 @@ async function sendWelcomeEmail(name, email, pass, role) {
   try {
     const res = await fetch(SUPA_URL + '/functions/v1/send-welcome-email', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: email,
         subject: 'Welcome to MedSync — your login details',
@@ -849,7 +851,7 @@ boot();
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

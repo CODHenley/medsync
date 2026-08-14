@@ -153,6 +153,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let state = {
   screen: 'welcome', // welcome | task | receive | goods | done
@@ -171,9 +172,13 @@ let state = {
 };
 
 async function boot() {
-  // mobile nav offset handled by parent index.html
-  const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
-  state.locations = await res.json();
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
+    state.locations = res.ok ? await res.json() : [];
+  } catch(e) {
+    state.locations = [];
+    console.warn('Failed to load locations:', e);
+  }
   render();
 }
 
@@ -226,8 +231,8 @@ function onNameNext() {
 function renderTask() {
   return `
     <div class="header">
-      <div class="header-title">Hi, ${state.name} 👋</div>
-      <div class="header-sub">${state.locationName} · What would you like to do?</div>
+      <div class="header-title">Hi, ${esc(state.name)} 👋</div>
+      <div class="header-sub">${esc(state.locationName)} · What would you like to do?</div>
     </div>
     <div class="card" style="gap:10px;">
       <button class="task-btn" onclick="onTaskSelect('receive')">
@@ -282,14 +287,14 @@ function renderReceive() {
     return `
       <div class="header">
         <div class="header-title">Receive delivery</div>
-        <div class="header-sub">${state.locationName} · Select the order arriving today</div>
+        <div class="header-sub">${esc(state.locationName)} · Select the order arriving today</div>
       </div>
       <div class="card" style="gap:10px;">
         ${state.orders.length ? state.orders.map(o => `
           <button class="task-btn" onclick="onPOGroupSelect(${JSON.stringify(o.key)})">
             <div class="task-icon" style="background:#E1F5EE;">🚚</div>
             <div>
-              <div class="task-title">${o.vendor || 'Vendor'} · ${o.week_start ? new Date(o.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</div>
+              <div class="task-title">${esc(o.vendor || 'Vendor')} · ${o.week_start ? new Date(o.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</div>
               <div class="task-sub">$${o.total.toFixed(2)} · ${o.items.length} SKUs · Submitted</div>
             </div>
           </button>`).join('')
@@ -625,7 +630,7 @@ boot();
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({type:'navigate',screen:'portfolio'},'*');
+    window.parent.postMessage({type:'navigate',screen:'portfolio'},window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

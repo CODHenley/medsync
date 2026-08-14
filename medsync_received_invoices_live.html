@@ -200,6 +200,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e){ return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let allRecords = [];
 let filtered = [];
@@ -366,7 +367,7 @@ function renderList() {
     const badgeTxt = status === 'uploaded' ? '✓ Invoice' : status === 'flagged' ? '⚠ Flagged' : '○ No invoice';
     return `<div class="inv-row${inv.id===activeId?' active':''}" onclick="selectInvoice(${JSON.stringify(inv.id)})">
       <div class="inv-row-top">
-        <div class="inv-row-vendor">${inv.vendor || '—'}</div>
+        <div class="inv-row-vendor">${esc(inv.vendor || '—')}</div>
         <div class="inv-row-amount">${fmtAmt(inv.total_amount)}</div>
       </div>
       <div class="inv-row-meta">${locName(inv.location_id)} · ${fmtDate(inv.received_date)}</div>
@@ -440,12 +441,12 @@ function renderDetail(inv, lines) {
     <!-- Invoice header -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div>
-        <div style="font-size:16px;font-weight:700;">${inv.vendor || 'Unknown Vendor'}</div>
-        <div style="font-size:12px;color:var(--mist);margin-top:3px;">${inv.po_reference || '—'} · ${locName(inv.location_id)} · Received ${fmtDate(inv.received_date)}</div>
+        <div style="font-size:16px;font-weight:700;">${esc(inv.vendor || 'Unknown Vendor')}</div>
+        <div style="font-size:12px;color:var(--mist);margin-top:3px;">${esc(inv.po_reference || '—')} · ${esc(locName(inv.location_id))} · Received ${esc(fmtDate(inv.received_date))}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         ${inv.has_discrepancy ? '<span class="badge b-flagged">⚠ Discrepancy</span>' : '<span class="badge b-ok">✓ Received</span>'}
-        ${hasFile ? `<a href="${inv.invoice_url}" target="_blank" style="padding:6px 12px;background:var(--navy);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">↗ Open PDF</a>` : `<button onclick="triggerUpload(${JSON.stringify(inv.id)})" style="padding:6px 12px;background:#f1f0f7;color:var(--navy);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">📎 Upload Invoice</button>`}
+        ${hasFile && /^https?:\/\//i.test(inv.invoice_url) ? `<a href="${esc(inv.invoice_url)}" target="_blank" rel="noopener noreferrer" style="padding:6px 12px;background:var(--navy);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">↗ Open PDF</a>` : hasFile ? '' : `<button onclick="triggerUpload(${JSON.stringify(inv.id)})" style="padding:6px 12px;background:#f1f0f7;color:var(--navy);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">📎 Upload Invoice</button>`}
       </div>
     </div>
 
@@ -470,7 +471,7 @@ function renderDetail(inv, lines) {
               </tr></thead>
               <tbody>
                 ${lines.map(l => `<tr>
-                  <td><div class="prod-name">${l.product_name || '—'}</div><div class="prod-sub">${l.vendor || ''}</div></td>
+                  <td><div class="prod-name">${esc(l.product_name || '—')}</div><div class="prod-sub">${esc(l.vendor || '')}</div></td>
                   <td class="num">${l.qty_ordered || '—'}</td>
                   <td class="num">${l.unit_price ? '$'+parseFloat(l.unit_price).toFixed(2) : '—'}</td>
                   <td class="num">${l.unit_price && l.qty_ordered ? '$'+(parseFloat(l.unit_price)*parseFloat(l.qty_ordered)).toFixed(2) : '—'}</td>
@@ -510,9 +511,9 @@ function renderDetail(inv, lines) {
         <div class="meta-section">
           <div class="meta-title">Invoice Details</div>
           <div class="meta-row"><span class="meta-label">Type</span><span class="meta-value">Invoice</span></div>
-          <div class="meta-row"><span class="meta-label">Supplier</span><span class="meta-value">${inv.vendor || '—'}</span></div>
-          <div class="meta-row"><span class="meta-label">Invoice #</span><span class="meta-value" style="font-family:monospace;font-size:11px;">${inv.invoice_number || '—'}</span></div>
-          <div class="meta-row"><span class="meta-label">PO Number</span><span class="meta-value" style="font-family:monospace;font-size:11px;">${inv.po_reference || '—'}</span></div>
+          <div class="meta-row"><span class="meta-label">Supplier</span><span class="meta-value">${esc(inv.vendor || '—')}</span></div>
+          <div class="meta-row"><span class="meta-label">Invoice #</span><span class="meta-value" style="font-family:monospace;font-size:11px;">${esc(inv.invoice_number || '—')}</span></div>
+          <div class="meta-row"><span class="meta-label">PO Number</span><span class="meta-value" style="font-family:monospace;font-size:11px;">${esc(inv.po_reference || '—')}</span></div>
         </div>
 
         <!-- Invoice Dates -->
@@ -525,18 +526,24 @@ function renderDetail(inv, lines) {
         <!-- Received by -->
         <div class="meta-section">
           <div class="meta-title">Received By</div>
-          <div style="font-size:12px;font-weight:600;color:var(--navy);">${inv.received_by || '—'}</div>
-          <div style="font-size:11px;color:var(--mist);margin-top:3px;">${locName(inv.location_id)}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--navy);">${esc(inv.received_by || '—')}</div>
+          <div style="font-size:11px;color:var(--mist);margin-top:3px;">${esc(locName(inv.location_id))}</div>
         </div>
 
         <!-- Notes -->
         <div class="meta-section">
           <div class="meta-title">Notes</div>
-          <textarea class="notes-area" id="notes-area" placeholder="Add notes about this delivery…">${inv.notes || ''}</textarea>
-          <button class="btn-save-notes" onclick="saveNotes(${JSON.stringify(inv.id)})">Save notes</button>
+          <textarea class="notes-area" id="notes-area" placeholder="Add notes about this delivery…"></textarea>
+          <button class="btn-save-notes" id="notes-save-btn">Save notes</button>
         </div>
       </div>
     </div>`;
+
+  // Set textarea value safely (avoids XSS via inv.notes in innerHTML)
+  const notesArea = document.getElementById('notes-area');
+  if (notesArea) notesArea.value = inv.notes || '';
+  const notesSaveBtn = document.getElementById('notes-save-btn');
+  if (notesSaveBtn) notesSaveBtn.onclick = () => saveNotes(inv.id);
 
   // Render PDF if applicable
   if (hasFile && isPdf) {

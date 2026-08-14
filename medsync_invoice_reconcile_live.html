@@ -151,7 +151,9 @@ tr:hover td { background:#fafafa; }
 // ── Config ────────────────────────────────────────────────────────────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+const _irTok = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}').access_token || SUPA_KEY; } catch(e) { return SUPA_KEY; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _irTok, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -211,10 +213,10 @@ function renderSidebar() {
   list.innerHTML = state.invoices.map(inv => {
     const statusBadge = { pending:'badge-pending', reconciled:'badge-matched', discrepancy:'badge-discrepancy', approved:'badge-approved' }[inv.status] || 'badge-pending';
     return `<div class="invoice-row${state.activeInvoiceId === inv.id ? ' active' : ''}" onclick="openInvoice('${inv.id}')">
-      <div class="invoice-row-vendor">${inv.vendor || 'Unknown Vendor'}</div>
-      <div class="invoice-row-meta">${inv.invoice_number ? '#' + inv.invoice_number + ' · ' : ''}${inv.invoice_date || ''}</div>
+      <div class="invoice-row-vendor">${esc(inv.vendor || 'Unknown Vendor')}</div>
+      <div class="invoice-row-meta">${inv.invoice_number ? '#' + esc(inv.invoice_number) + ' · ' : ''}${esc(inv.invoice_date || '')}</div>
       <div class="invoice-row-footer">
-        <span class="badge ${statusBadge}">${inv.status || 'pending'}</span>
+        <span class="badge ${statusBadge}">${esc(inv.status || 'pending')}</span>
         <span style="font-size:12px;color:#8A93A8;">${inv.total_amount ? '$' + Number(inv.total_amount).toFixed(2) : ''}</span>
       </div>
     </div>`;
@@ -241,13 +243,13 @@ function renderDetail(inv, items) {
     <div class="detail-header">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div>
-          <div class="detail-title">${inv.vendor || 'Invoice'}</div>
+          <div class="detail-title">${esc(inv.vendor || 'Invoice')}</div>
           <div class="detail-meta">
-            ${inv.invoice_number ? `<div class="detail-meta-item"><strong>#${inv.invoice_number}</strong>Invoice #</div>` : ''}
-            ${inv.invoice_date   ? `<div class="detail-meta-item"><strong>${inv.invoice_date}</strong>Invoice date</div>` : ''}
+            ${inv.invoice_number ? `<div class="detail-meta-item"><strong>#${esc(inv.invoice_number)}</strong>Invoice #</div>` : ''}
+            ${inv.invoice_date   ? `<div class="detail-meta-item"><strong>${esc(inv.invoice_date)}</strong>Invoice date</div>` : ''}
             ${inv.total_amount   ? `<div class="detail-meta-item"><strong>$${Number(inv.total_amount).toFixed(2)}</strong>Total</div>` : ''}
             <div class="detail-meta-item"><strong>${items.length}</strong>Line items</div>
-            <div class="detail-meta-item"><strong>${inv.location_name || inv.location_id}</strong>Location</div>
+            <div class="detail-meta-item"><strong>${esc(inv.location_name || inv.location_id || '')}</strong>Location</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -314,10 +316,10 @@ function renderItemRow(item) {
   return `<tr>
     <td style="color:#9ca3af;">${item.line_number || ''}</td>
     <td>
-      <div style="font-weight:500;">${item.product_name || '—'}</div>
-      ${item.po_product_name ? `<div class="match-name">PO: ${item.po_product_name}</div>` : ''}
+      <div style="font-weight:500;">${esc(item.product_name || '—')}</div>
+      ${item.po_product_name ? `<div class="match-name">PO: ${esc(item.po_product_name)}</div>` : ''}
     </td>
-    <td style="color:#9ca3af;font-size:11px;">${item.sku || '—'}</td>
+    <td style="color:#9ca3af;font-size:11px;">${esc(item.sku || '—')}</td>
     <td style="text-align:right;">${item.qty_invoiced ?? '—'}</td>
     <td style="text-align:right;">${item.unit_price_invoiced != null ? '$' + Number(item.unit_price_invoiced).toFixed(2) : '—'}</td>
     <td style="text-align:right;color:#8A93A8;">${item.qty_ordered ?? '—'}</td>
@@ -359,7 +361,7 @@ async function checkUnInvoicedPOs() {
   const banner = document.createElement('div');
   banner.className = 'alert alert-warn';
   banner.style.margin = '0 20px 0 0';
-  banner.innerHTML = `<i class="ti ti-alert-triangle"></i><div><strong>${pos.length} PO${pos.length>1?'s':''} submitted &gt;5 days ago with no invoice uploaded.</strong><div style="margin-top:4px;font-size:12px;">${pos.slice(0,3).map(p=>`${p.product_name} (${p.vendor||'unknown vendor'})`).join(' · ')}${pos.length>3?` · +${pos.length-3} more`:''}</div></div>`;
+  banner.innerHTML = `<i class="ti ti-alert-triangle"></i><div><strong>${pos.length} PO${pos.length>1?'s':''} submitted &gt;5 days ago with no invoice uploaded.</strong><div style="margin-top:4px;font-size:12px;">${pos.slice(0,3).map(p=>`${esc(p.product_name)} (${esc(p.vendor||'unknown vendor')})`).join(' · ')}${pos.length>3?` · +${pos.length-3} more`:''}</div></div>`;
   const nav = document.querySelector('.vp-nav');
   nav.insertAdjacentElement('afterend', banner);
   } catch(e) { /* ignore banner errors */ }
@@ -793,10 +795,15 @@ async function fetchRecentPOItems() {
     const cutoffStr = cutoff.toISOString().split('T')[0];
     // Try location_name first, fall back to location (used by some older po_items schemas)
     let data = null;
-    const fields = ['location_name', 'location', 'location_id'];
-    for (const field of fields) {
+    const fieldValues = [
+      ['location_name', state.locationName],
+      ['location',      state.locationName],
+      ['location_id',   state.locationId],
+    ];
+    for (const [field, val] of fieldValues) {
+      if (!val) continue;
       try {
-        data = await supa('GET', `/rest/v1/po_items?${field}=eq.${encodeURIComponent(state.locationName)}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,gpo_price,status`);
+        data = await supa('GET', `/rest/v1/po_items?${field}=eq.${encodeURIComponent(val)}&week_start=gte.${cutoffStr}&select=id,product_name,vendor,qty_ordered,gpo_price,status`);
         if (Array.isArray(data) && data.length > 0) break;
         if (Array.isArray(data)) break; // 0 results is still a valid response
       } catch(e) { /* try next field */ }
@@ -877,6 +884,7 @@ async function saveInvoice(parsed, reconciledItems, fileName) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Auto-select location from parent frame if available
 window.addEventListener('message', e => {
+  if (e.origin !== window.location.origin) return;
   // Handle { type: 'setLocation', loc: 'Wheaton' } from index.html
   if (e.data?.type === 'setLocation' && e.data.loc) {
     const locName = e.data.loc;
@@ -899,7 +907,7 @@ window.addEventListener('message', e => {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({type:'navigate',screen:'portfolio'},'*');
+    window.parent.postMessage({type:'navigate',screen:'portfolio'},window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

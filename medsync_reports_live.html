@@ -146,7 +146,9 @@ tbody tr:hover td{background:#FAFAFE;}
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+const _repSess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_repSess.access_token || SUPA_KEY) };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 // LOCS is populated at boot from the live locations table — do not hardcode UUIDs
 let LOCS = [];
@@ -261,20 +263,34 @@ async function loadAll() {
     supa('purchase_history?select=purchased_at,amount,vendor,note,location_id,source&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.'+year+'-01-01&purchased_at=lte.'+year+'-12-31'+lf+'&order=purchased_at.desc&limit=5000'),
   ]);
 
+  // Warn if any dataset hit the 5000-row cap
+  if (poRows.length>=5000||glRows.length>=5000||lotRows.length>=5000||phRows.length>=5000) {
+    const warn = document.createElement('div');
+    warn.style.cssText='background:#FFF8EC;border:1px solid #F0D8A0;color:#92610B;padding:8px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;';
+    warn.textContent='⚠ Some data sets reached the 5,000-row limit — totals may be incomplete. Contact support to export full data.';
+    document.getElementById('page-body').prepend(warn);
+  }
+
   // Client-side filter as safety net (RLS on anon key may pass all rows)
   poRows  = filterByLoc(poRows);
   glRows  = filterByLoc(glRows);
   lotRows = filterByLoc(lotRows);
   phRows  = filterByLoc(phRows);
 
-  const html = [
-    renderInventory(lotRows),
-    renderSpending(poRows, phRows, qs, ms, year),
-    renderGoodsLost(glRows, qs, ms, year),
-    renderOrderHistory(poRows),
-    renderIntegrity(glRows, poRows, lotRows, year),
-  ].join('');
-
+  let html;
+  try {
+    html = [
+      renderInventory(lotRows),
+      renderSpending(poRows, phRows, qs, ms, year),
+      renderGoodsLost(glRows, qs, ms, year),
+      renderOrderHistory(poRows),
+      renderIntegrity(glRows, poRows, lotRows, year),
+    ].join('');
+  } catch(err) {
+    document.getElementById('page-body').innerHTML = '<div style="padding:40px;text-align:center;color:var(--red);">Error rendering report. Try refreshing.<br><small>'+String(err.message||err)+'</small></div>';
+    console.error('Reports render error:', err);
+    return;
+  }
   document.getElementById('page-body').innerHTML = html;
 }
 
@@ -519,9 +535,9 @@ function renderOrderHistory(pos) {
     const locName = (LOCS.find(l=>l.id===r.location_id)||{}).name || '—';
     return `<tr>
       <td>${r.week_start || '—'}</td>
-      <td>${r.product_name || '—'}</td>
-      <td>${r.vendor || '—'}</td>
-      <td>${locName}</td>
+      <td>${esc(r.product_name || '—')}</td>
+      <td>${esc(r.vendor || '—')}</td>
+      <td>${esc(locName)}</td>
       <td class="num">${fmtN(r.qty_ordered)}</td>
       <td class="num">${fmt$(total)}</td>
       <td><span class="badge ${statusClass}">${r.status||'—'}</span></td>
