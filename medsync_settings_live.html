@@ -770,7 +770,7 @@ async function loadBillingBranding() {
     if (org.billing_contact_name) document.getElementById('bb-billing-name').value = org.billing_contact_name;
     if (org.billing_email)        document.getElementById('bb-billing-email').value = org.billing_email;
     if (org.billing_phone)        document.getElementById('bb-billing-phone').value = org.billing_phone;
-    if (org.payment_terms)        document.getElementById('bb-payment-terms').value = org.payment_terms;
+    if (org.payment_terms)        { const el = document.getElementById('bb-payment-terms'); if (el) el.value = org.payment_terms; }
     // ACH fields
     if (org.ach_bank_name)       document.getElementById('bb-ach-bank').value = org.ach_bank_name;
     if (org.ach_account_holder)  document.getElementById('bb-ach-holder').value = org.ach_account_holder;

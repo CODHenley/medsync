@@ -850,9 +850,9 @@ async function submitCount() {
     console.warn('Activity log write failed:', e);
   }
 
-  // Writeback counted products to Vetspire (Wheaton only)
+  // Writeback counted products to Vetspire for all locations
   let vetspireSynced = 0;
-  if (currentLocation === 'Wheaton') {
+  if (VID_MAP[currentLocation]) {
     const _locMap = VID_MAP;
     const locationId = _locMap[currentLocation];
     const toWrite = prods.filter(p => p.actual !== null && p.vetspireProductId);
@@ -863,7 +863,7 @@ async function submitCount() {
           : [{ quantity: p.actual, lot_number: null, expiration_date: null }];
         const wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'apikey': SUPA_KEY },
           body: JSON.stringify({ vetspire_location_id: locationId, vetspire_product_id: p.vetspireProductId, product_name: p.name, location_name: currentLocation, lot_entries: lotEntries })
         });
         const wbJson = await wbRes.json();
@@ -968,7 +968,13 @@ async function init() {
     }
   }
 
-  var _urlLoc = new URLSearchParams(window.location.search).get('location'); if(_urlLoc){ currentLocation = _urlLoc; } var _sel=document.getElementById('loc-label'); if(_sel && _sel.tagName==='SELECT'){_sel.value=currentLocation;} else if(_sel){_sel.textContent=currentLocation;}
+  var _urlLoc = new URLSearchParams(window.location.search).get('location');
+  if (_urlLoc) {
+    // Validate against known location names to prevent arbitrary string injection
+    var _knownLocs = ['Lincoln Park','Old Orchard','West Loop','Wheaton'];
+    if (_knownLocs.includes(_urlLoc)) { currentLocation = _urlLoc; }
+  }
+  var _sel=document.getElementById('loc-label'); if(_sel && _sel.tagName==='SELECT'){_sel.value=currentLocation;} else if(_sel){_sel.textContent=currentLocation;}
 
   // Due categories
   dueCategories = getDueCategories();

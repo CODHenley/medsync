@@ -172,9 +172,13 @@ let state = {
 };
 
 async function boot() {
-  // mobile nav offset handled by parent index.html
-  const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
-  state.locations = await res.json();
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/locations?select=id,name&order=name', { headers: H });
+    state.locations = res.ok ? await res.json() : [];
+  } catch(e) {
+    state.locations = [];
+    console.warn('Failed to load locations:', e);
+  }
   render();
 }
 

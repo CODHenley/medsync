@@ -522,7 +522,8 @@ function allocatedRevenue(productName, unitPrice, qty) {
 // ── Supabase config ──────────────────────────────────────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+const _procTok = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}').access_token || SUPA_KEY; } catch(e) { return SUPA_KEY; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _procTok, 'Content-Type': 'application/json' };
 
 // State
 let ALL_PRODUCTS  = [];
@@ -812,7 +813,7 @@ async function updateKPIs() {
   // (avoids defaulting to Wheaton when "All locations" is chosen)
   if (_locVid) {
     try {
-      const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+_locVid+"&limit=500", {headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});
+      const snapRes = await fetch(SUPA_URL+"/rest/v1/inventory_snapshots?select=on_hand,unit_cost&vetspire_location_id=eq."+_locVid+"&limit=500", {headers:H});
       const snapRows = await snapRes.json();
       const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand)||0) * (parseFloat(r.unit_cost)||0)), 0);
       if (iv > 0) inventoryValue = iv;
@@ -904,8 +905,10 @@ async function updateKPIs() {
     ? 'higher is better · industry avg 75–82%'
     : 'no pharmacy revenue';
 
-  document.getElementById('kv-items').textContent     = totalItems.toLocaleString();
-  document.getElementById('ks-items').textContent     = ALL_PRODUCTS.length + ' unique products';
+  const kvItems = document.getElementById('kv-items');
+  if (kvItems) kvItems.textContent = totalItems.toLocaleString();
+  const ksItems = document.getElementById('ks-items');
+  if (ksItems) ksItems.textContent = ALL_PRODUCTS.length + ' unique products';
 
   // Color COGS % — lower is better; industry avg 18–25%
   // ≤25% = at/below industry avg (green), 26–30% = slightly elevated (amber), >30% = high (red)
