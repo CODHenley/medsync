@@ -5090,5 +5090,413 @@ document.addEventListener('mousedown', (e) => {
 });
 </script>
 
+<!-- ══════════════════════════════════════════════════════════════
+     NEW USER ONBOARDING WIZARD
+     ══════════════════════════════════════════════════════════════ -->
+<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;background:rgba(14,22,40,.72);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div id="onboarding-modal" style="background:#fff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.25);overflow:hidden;font-family:'DM Sans',sans-serif;">
+
+    <!-- Progress bar -->
+    <div style="height:3px;background:#F0EEF8;">
+      <div id="ob-progress" style="height:100%;background:#C83803;transition:width .35s;width:33%;"></div>
+    </div>
+
+    <!-- Step 1: Password -->
+    <div id="ob-step-1" class="ob-step" style="padding:36px 32px 28px;">
+      <div style="font-size:11px;font-weight:700;color:#C83803;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Step 1 of 3</div>
+      <div style="font-size:22px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Set your password</div>
+      <div style="font-size:13px;color:#6B7A99;margin-bottom:24px;line-height:1.5;">Choose a secure password for your MedSync account. You'll use this every time you log in.</div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">New Password</label>
+        <div style="position:relative;">
+          <input id="ob-pw1" type="password" placeholder="Min. 8 characters" autocomplete="new-password"
+            style="width:100%;padding:11px 40px 11px 13px;border:1.5px solid #D8D0EC;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;color:#1C2B4A;">
+          <button onclick="obTogglePw('ob-pw1','ob-eye1')" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#8899AA;" id="ob-eye1">👁</button>
+        </div>
+      </div>
+      <div style="margin-bottom:8px;">
+        <label style="font-size:11px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Confirm Password</label>
+        <div style="position:relative;">
+          <input id="ob-pw2" type="password" placeholder="Repeat password" autocomplete="new-password"
+            style="width:100%;padding:11px 40px 11px 13px;border:1.5px solid #D8D0EC;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;color:#1C2B4A;">
+          <button onclick="obTogglePw('ob-pw2','ob-eye2')" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#8899AA;" id="ob-eye2">👁</button>
+        </div>
+      </div>
+      <div id="ob-pw-msg" style="font-size:12px;color:#a33030;min-height:18px;margin-bottom:14px;"></div>
+      <button id="ob-step1-btn" onclick="obStep1Next()" style="width:100%;padding:12px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set Password & Continue →</button>
+    </div>
+
+    <!-- Step 2: Avatar -->
+    <div id="ob-step-2" class="ob-step" style="display:none;padding:36px 32px 28px;">
+      <div style="font-size:11px;font-weight:700;color:#C83803;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Step 2 of 3</div>
+      <div style="font-size:22px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Pick your avatar</div>
+      <div style="font-size:13px;color:#6B7A99;margin-bottom:22px;">Choose a color — your initials will appear on it. Or upload a photo.</div>
+      <div id="ob-avatar-preview" style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+        <div id="ob-av-preview-el" style="width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;flex-shrink:0;"></div>
+        <div style="font-size:13px;color:#6B7A99;line-height:1.5;">This is how you'll appear<br>in the messenger and across MedSync.</div>
+      </div>
+      <div id="ob-color-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px;"></div>
+      <label style="display:flex;align-items:center;gap:9px;padding:10px 14px;border:1.5px dashed #D8D0EC;border-radius:9px;cursor:pointer;font-size:13px;color:#4A5568;margin-bottom:20px;">
+        <span style="font-size:18px;">📎</span> Upload a photo instead
+        <input type="file" id="ob-photo-upload" accept="image/*" style="display:none;" onchange="obHandlePhoto(this)">
+      </label>
+      <div style="display:flex;gap:10px;">
+        <button onclick="obGoStep(1)" style="flex:1;padding:12px;background:#F4F4F4;color:#4A5568;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">← Back</button>
+        <button onclick="obStep2Next()" style="flex:2;padding:12px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Save Avatar & Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Profile -->
+    <div id="ob-step-3" class="ob-step" style="display:none;padding:36px 32px 28px;">
+      <div style="font-size:11px;font-weight:700;color:#C83803;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Step 3 of 3</div>
+      <div style="font-size:22px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Complete your profile</div>
+      <div style="font-size:13px;color:#6B7A99;margin-bottom:22px;">This is how teammates will see you in MedSync.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">First Name</label>
+          <input id="ob-first" type="text" autocomplete="given-name" placeholder="First"
+            style="width:100%;padding:11px 13px;border:1.5px solid #D8D0EC;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;color:#1C2B4A;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Last Name</label>
+          <input id="ob-last" type="text" autocomplete="family-name" placeholder="Last"
+            style="width:100%;padding:11px 13px;border:1.5px solid #D8D0EC;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;color:#1C2B4A;">
+        </div>
+      </div>
+      <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Phone (optional)</label>
+        <input id="ob-phone" type="tel" autocomplete="tel" placeholder="e.g. 312-555-0100"
+          style="width:100%;padding:11px 13px;border:1.5px solid #D8D0EC;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;color:#1C2B4A;">
+      </div>
+      <div id="ob-step3-msg" style="font-size:12px;color:#a33030;min-height:18px;margin-bottom:14px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="obGoStep(2)" style="flex:1;padding:12px;background:#F4F4F4;color:#4A5568;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">← Back</button>
+        <button onclick="obStep3Finish()" id="ob-finish-btn" style="flex:2;padding:12px;background:#C83803;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Finish Setup ✓</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Onboarding wizard ─────────────────────────────────────────────────────────
+(function() {
+
+const OB_COLORS = ['#C83803','#1C6FAD','#4A7DB5','#2E7D6B','#6B5B9E','#A03060','#5C7A2E','#7A4F28','#1C2B4A','#546E7A','#B06020','#0D7377'];
+let _obStep = 1;
+let _obAvatarB64 = null;
+let _obColorPick = OB_COLORS[0];
+let _obInitials = '';
+
+function _obSess() {
+  try { return JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; }
+}
+function _obUser() {
+  try { return JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) { return {}; }
+}
+function _obHeaders() {
+  const s = _obSess();
+  const tok = s.access_token || (s.user && s.user.access_token) || '';
+  return { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (tok || SUPA_KEY), 'Content-Type': 'application/json' };
+}
+
+// Check whether this user needs onboarding (with retry for slow auth writes)
+async function obCheck(attempt) {
+  attempt = attempt || 1;
+  const sess = _obSess();
+  const userId = (sess.user || sess).id;
+  if (!userId) {
+    // Session may not be written yet; retry up to 3 times with backoff
+    if (attempt < 4) setTimeout(function(){ obCheck(attempt + 1); }, attempt * 800);
+    return;
+  }
+
+  // If already dismissed this session, skip
+  if (sessionStorage.getItem('ob_done_' + userId)) return;
+
+  try {
+    const r = await fetch(SUPA_KEY_URL() + '/rest/v1/user_profiles?user_id=eq.' + encodeURIComponent(userId) + '&select=onboarding_complete&limit=1', { headers: _obHeaders() });
+    if (!r.ok) { obShow(); return; } // can't confirm done → show wizard
+    const rows = await r.json();
+    const done = Array.isArray(rows) && rows.length > 0 && rows[0].onboarding_complete === true;
+    if (done) return;
+  } catch(e) { obShow(); return; } // network error → show wizard conservatively
+
+  obShow();
+}
+
+function SUPA_KEY_URL() { return typeof SUPA_URL !== 'undefined' ? SUPA_URL : 'https://aemkdummdrmxtwrkggjw.supabase.co'; }
+
+function obShow() {
+  // Pre-fill initials from user name
+  const mu = _obUser();
+  const name = mu.full_name || ((_obSess().user || _obSess()).email || '').split('@')[0];
+  _obInitials = (name || '?').split(/\s+/).map(p => p[0]).join('').slice(0,2).toUpperCase();
+
+  // Pre-fill name fields
+  const parts = (name || '').split(' ');
+  const fn = document.getElementById('ob-first');
+  const ln = document.getElementById('ob-last');
+  if (fn && parts[0]) fn.value = parts[0];
+  if (ln && parts[1]) ln.value = parts.slice(1).join(' ');
+
+  // Build color grid — use textContent for initials to prevent XSS
+  const grid = document.getElementById('ob-color-grid');
+  if (grid) {
+    grid.innerHTML = OB_COLORS.map((c, i) =>
+      `<div onclick="obPickColor('${c}')" id="ob-col-${i}" style="width:100%;aspect-ratio:1;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;cursor:pointer;border:3px solid ${i===0?'#1C2B4A':'transparent'};box-sizing:border-box;transition:border .15s;"></div>`
+    ).join('');
+    OB_COLORS.forEach((c, i) => {
+      const el = document.getElementById('ob-col-' + i);
+      if (el) el.textContent = _obInitials;
+    });
+  }
+  _obColorPick = OB_COLORS[0];
+  obUpdateAvatarPreview();
+
+  const overlay = document.getElementById('onboarding-overlay');
+  if (overlay) { overlay.style.display = 'flex'; }
+  obGoStep(1);
+}
+
+window.obPickColor = function(color) {
+  _obColorPick = color;
+  _obAvatarB64 = null; // clear any uploaded photo
+  document.getElementById('ob-photo-upload').value = '';
+  OB_COLORS.forEach((c, i) => {
+    const el = document.getElementById('ob-col-' + i);
+    if (el) el.style.border = c === color ? '3px solid #1C2B4A' : '3px solid transparent';
+  });
+  obUpdateAvatarPreview();
+};
+
+function obUpdateAvatarPreview() {
+  const el = document.getElementById('ob-av-preview-el');
+  if (!el) return;
+  if (_obAvatarB64) {
+    el.innerHTML = `<img src="${_obAvatarB64}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">`;
+    el.style.background = 'none';
+  } else {
+    el.innerHTML = _obInitials;
+    el.style.background = _obColorPick;
+  }
+}
+
+window.obHandlePhoto = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Photo must be under 2 MB.'); input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    // Resize to max 200px to keep avatar_b64 small
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const sz = Math.min(img.width, img.height, 200);
+      canvas.width = sz; canvas.height = sz;
+      const ctx = canvas.getContext('2d');
+      const ox = (img.width - sz) / 2, oy = (img.height - sz) / 2;
+      ctx.drawImage(img, ox, oy, sz, sz, 0, 0, sz, sz);
+      _obAvatarB64 = canvas.toDataURL('image/jpeg', 0.85);
+      // Deselect color tiles
+      OB_COLORS.forEach((c, i) => {
+        const el2 = document.getElementById('ob-col-' + i);
+        if (el2) el2.style.border = '3px solid transparent';
+      });
+      obUpdateAvatarPreview();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.obTogglePw = function(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  const btn = document.getElementById(btnId);
+  if (btn) btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+};
+
+window.obGoStep = function(n) {
+  _obStep = n;
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('ob-step-' + i);
+    if (el) el.style.display = i === n ? 'block' : 'none';
+  });
+  const prog = document.getElementById('ob-progress');
+  if (prog) prog.style.width = (['33%','66%','100%'][n-1] || '33%');
+};
+
+window.obStep1Next = async function() {
+  const pw1 = document.getElementById('ob-pw1').value;
+  const pw2 = document.getElementById('ob-pw2').value;
+  const msg = document.getElementById('ob-pw-msg');
+  msg.textContent = '';
+
+  if (pw1.length < 8) { msg.textContent = 'Password must be at least 8 characters.'; return; }
+  if (pw1 !== pw2) { msg.textContent = 'Passwords do not match.'; return; }
+
+  const btn = document.getElementById('ob-step1-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  try {
+    const _s = _obSess();
+    const tok = _s.access_token || (_s.user && _s.user.access_token);
+    if (!tok) throw new Error('No session token');
+    const r = await fetch(SUPA_KEY_URL() + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw1 })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.message || 'HTTP ' + r.status);
+    }
+    obGoStep(2);
+  } catch(e) {
+    msg.textContent = 'Could not update password: ' + e.message;
+  } finally {
+    btn.textContent = 'Set Password & Continue →'; btn.disabled = false;
+  }
+};
+
+window.obStep2Next = function() {
+  // Build avatar_b64 from color + initials if no photo uploaded
+  if (!_obAvatarB64) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = _obColorPick;
+    ctx.beginPath(); ctx.arc(100, 100, 100, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 80px DM Sans, Arial, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(_obInitials, 100, 105);
+    _obAvatarB64 = canvas.toDataURL('image/png');
+  }
+  obGoStep(3);
+};
+
+window.obStep3Finish = async function() {
+  const firstName = document.getElementById('ob-first').value.trim();
+  const lastName = document.getElementById('ob-last').value.trim();
+  const phone = document.getElementById('ob-phone').value.trim();
+  const msg = document.getElementById('ob-step3-msg');
+  msg.textContent = '';
+
+  if (!firstName) { msg.textContent = 'Please enter your first name.'; return; }
+
+  const btn = document.getElementById('ob-finish-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  const sess = _obSess();
+  const userId = (sess.user || sess).id;
+  const fullName = [firstName, lastName].filter(Boolean).join(' ');
+
+  try {
+    const headers = _obHeaders();
+    const profilePayload = {
+      user_id: userId,
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone || null,
+      onboarding_complete: true,
+      updated_at: new Date().toISOString(),
+    };
+    if (_obAvatarB64) profilePayload.avatar_b64 = _obAvatarB64;
+
+    // Upsert user_profiles — try with onboarding_complete flag first,
+    // fall back without it if the column doesn't exist yet in the schema
+    let pr = await fetch(SUPA_KEY_URL() + '/rest/v1/user_profiles', {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(profilePayload)
+    });
+    if (!pr.ok && pr.status === 400) {
+      const fallback = { ...profilePayload };
+      delete fallback.onboarding_complete;
+      pr = await fetch(SUPA_KEY_URL() + '/rest/v1/user_profiles', {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(fallback)
+      });
+    }
+    if (!pr.ok) throw new Error('Profile save failed: HTTP ' + pr.status);
+
+    // Patch users.full_name so messenger shows their real name
+    await fetch(SUPA_KEY_URL() + '/rest/v1/users?id=eq.' + encodeURIComponent(userId), {
+      method: 'PATCH',
+      headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ full_name: fullName })
+    }).catch(() => {});
+
+    // Update medsync_user in localStorage so nav bar reflects the new name immediately
+    try {
+      const mu = _obUser();
+      mu.full_name = fullName;
+      if (_obAvatarB64) mu.avatar_b64 = _obAvatarB64;
+      localStorage.setItem('medsync_user', JSON.stringify(mu));
+    } catch(e) {}
+
+    sessionStorage.setItem('ob_done_' + userId, '1');
+    document.getElementById('onboarding-overlay').style.display = 'none';
+
+    // Refresh messenger user list so this user's new name + avatar show up
+    if (typeof loadAllUsers === 'function') loadAllUsers();
+
+    // Update nav avatar if present
+    obUpdateNavAvatar(fullName, _obAvatarB64);
+
+  } catch(e) {
+    msg.textContent = 'Could not save profile: ' + e.message;
+    btn.textContent = 'Finish Setup ✓'; btn.disabled = false;
+  }
+};
+
+function obUpdateNavAvatar(name, avatarB64) {
+  // Update any initials/avatar elements in the top nav
+  const navAvatarEls = document.querySelectorAll('.vp-avatar, #nav-avatar');
+  navAvatarEls.forEach(el => {
+    if (avatarB64) {
+      el.innerHTML = `<img src="${avatarB64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    } else {
+      el.textContent = (name || '?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+    }
+  });
+}
+
+// Run check after a brief delay to let the page settle
+setTimeout(obCheck, 1200);
+
+})();
+</script>
+
+<!-- ── Messenger: load avatars alongside user list ────────────────────────── -->
+<script>
+// Intentionally shadows the messenger-defined loadAllUsers to also fetch
+// user_profiles and merge avatar_b64 for DM contact avatars.
+async function loadAllUsers() {
+  try {
+    const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role&order=full_name.asc&limit=200`, { headers: _msgHeaders() });
+    const rows = r.ok ? await r.json() : [];
+    _allUsers = Array.isArray(rows) ? rows.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, location_name: null, avatar_b64: null })) : [];
+  } catch(e) { _allUsers = []; }
+
+  // Fetch avatars from user_profiles and merge
+  try {
+    const pr = await fetch(`${_MSG_SUPA}/rest/v1/user_profiles?select=user_id,avatar_b64&limit=200`, { headers: _msgHeaders() });
+    if (pr.ok) {
+      const profiles = await pr.json();
+      if (Array.isArray(profiles)) {
+        const avatarMap = {};
+        profiles.forEach(p => { if (p.user_id && p.avatar_b64) avatarMap[p.user_id] = p.avatar_b64; });
+        _allUsers = _allUsers.map(u => ({ ...u, avatar_b64: avatarMap[u.id] || null }));
+      }
+    }
+  } catch(e) {}
+}
+</script>
+
 </body>
 </html>
