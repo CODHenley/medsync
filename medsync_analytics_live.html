@@ -1097,18 +1097,16 @@ async function renderCOGSBars(glRows, loc, fromArg, toArg) {
   const container = document.getElementById('cogs-bars');
   if (container) container.innerHTML = '<div style="color:var(--mist);font-size:12px;padding:8px;">Loading COGs…</div>';
 
-  const allLocIds = [
-    '11111111-0000-0000-0000-000000000001',
-    '11111111-0000-0000-0000-000000000002',
-    '11111111-0000-0000-0000-000000000003',
-    '11111111-0000-0000-0000-000000000004'
-  ];
-  // daily_revenue stores location_id as VID (e.g. '28253'), dispensed_items uses UUID
-  const allLocVids = LOCS.map(l => l.vid);
-  const targetIds = loc === 'all' ? allLocIds : [LOC_IDS[loc]].filter(Boolean);
-  const targetVids = loc === 'all' ? allLocVids : [LOCS.find(l => l.key === loc)?.vid].filter(Boolean);
-  const phLocOr  = targetIds.map(id  => `location_id.eq.${id}`).join(',');
-  const revLocOr = targetVids.map(vid => `location_id.eq.${vid}`).join(',');
+  // Build location filter strings — use in.() for multi-value (reliable), eq. for single
+  const targetLoc  = loc === 'all' ? null : LOCS.find(l => l.key === loc);
+  const targetVids = loc === 'all' ? LOCS.map(l => l.vid) : (targetLoc ? [targetLoc.vid] : []);
+  const targetUuids = loc === 'all' ? LOCS.map(l => l.uuid) : (targetLoc ? [targetLoc.uuid] : []);
+  const vidFilter  = targetVids.length === 1
+    ? `location_id=eq.${targetVids[0]}`
+    : `location_id=in.(${targetVids.join(',')})`;
+  const uuidFilter = targetUuids.length === 1
+    ? `location_id=eq.${targetUuids[0]}`
+    : `location_id=in.(${targetUuids.join(',')})`;
 
   // Use passed date range (from loadData) — fall back to current month if called standalone
   const _now = new Date();
@@ -1117,9 +1115,9 @@ async function renderCOGSBars(glRows, loc, fromArg, toArg) {
 
   try {
     const [revRes, spendRes, phRes] = await Promise.all([
-      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&or=(${revLocOr})&limit=5000`, { headers: HEADERS }),
-      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&or=(${revLocOr})&limit=5000`, { headers: HEADERS }),
-      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.${from}&purchased_at=lte.${to}&or=(${phLocOr})&limit=5000`, { headers: HEADERS })
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${from}&date=lte.${to}&${vidFilter}&limit=5000`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&${vidFilter}&limit=5000`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.${from}&purchased_at=lte.${to}&${uuidFilter}&limit=5000`, { headers: HEADERS })
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
     const spendRows = spendRes.ok ? await spendRes.json() : [];
@@ -1395,13 +1393,12 @@ async function loadCOGSTrend() {
       { uuid: '11111111-0000-0000-0000-000000000003', vid: '24356' },
       { uuid: '11111111-0000-0000-0000-000000000004', vid: '28253' },
     ]);
-    const trendVidOr  = allUUIDs.map(l => `location_id.eq.${l.vid}`).join(',');
-    const trendUuidOr = allUUIDs.map(l => `location_id.eq.${l.uuid}`).join(',');
+    const trendVidIn  = 'location_id=in.(' + allUUIDs.map(l => l.vid).join(',') + ')';
 
     const results = await Promise.all(months.map(async m => {
       const [diRes, revRes] = await Promise.all([
-        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + m.from + '&dispensed_at=lte.' + m.to + '&or=(' + trendVidOr + ')&limit=5000', { headers: HEADERS }),
-        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + m.from + '&date=lte.' + m.to + '&or=(' + trendVidOr + ')&limit=5000', { headers: HEADERS }),
+        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + m.from + '&dispensed_at=lte.' + m.to + '&' + trendVidIn + '&limit=5000', { headers: HEADERS }),
+        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + m.from + '&date=lte.' + m.to + '&' + trendVidIn + '&limit=5000', { headers: HEADERS }),
       ]);
       const di  = diRes.ok  ? await diRes.json()  : [];
       const rev = revRes.ok ? await revRes.json() : [];
