@@ -1609,6 +1609,7 @@ function showToast(msg) {
 
 // ── Parent app messages ───────────────────────────────────────────────────────
 window.addEventListener('message', e => {
+  if (e.origin !== window.location.origin) return;
   if (!e.data) return;
 
   if (e.data.type === 'setLocation') {

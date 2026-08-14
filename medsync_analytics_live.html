@@ -1686,6 +1686,7 @@ function navHome() {
 
 <script>
 window.addEventListener('message', function(e) {
+  if (e.origin !== window.location.origin) return;
   if (!e.data) return;
   if (e.data.type === 'switchPanel') {
     var mapped = e.data.panel;
