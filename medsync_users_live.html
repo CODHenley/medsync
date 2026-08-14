@@ -757,7 +757,7 @@ async function sendWelcomeEmail(name, email, pass, role) {
   try {
     const res = await fetch(SUPA_URL + '/functions/v1/send-welcome-email', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: email,
         subject: 'Welcome to MedSync — your login details',

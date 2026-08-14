@@ -168,6 +168,7 @@ const UPGRADE_TIERS = [
 ];
 const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
 const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let planInfo = null; // set by checkLocationLimit, read by render()
 let _orgIdCache = null;
@@ -973,19 +974,22 @@ function renderOrderScreen() {
           ${cats.map(cat => {
             const catItems = items.filter(i => i.cat === cat);
             const color = CAT_COLORS[cat] || 'var(--navy)';
-            return catItems.map((item, idx) => `
+            return catItems.map((item, idx) => {
+              const globalIdx = state.orderItems.indexOf(item);
+              return `
               <tr ${idx===0?`style="background:#FAFAF8;"`:''}>
-                ${idx===0?`<td colspan="1" style="font-weight:600;font-size:11px;color:${color};padding-top:12px;">${cat}</td>`:
+                ${idx===0?`<td colspan="1" style="font-weight:600;font-size:11px;color:${color};padding-top:12px;">${esc(cat)}</td>`:
                   '<td></td>'}
               </tr>
               <tr>
-                <td style="padding-left:16px;">${item.name}</td>
-                <td style="font-family:monospace;font-size:10px;color:var(--mist);">${item.sku}</td>
-                <td><span class="cat-badge" style="background:${color}20;color:${color};">${item.section}</span></td>
-                <td style="color:var(--mist);font-size:11px;">${item.section}</td>
-                <td style="text-align:center;"><input class="qty-input" type="number" min="0" value="${item.qty}" onchange="updateQty('${item.sku}',this.value)"></td>
+                <td style="padding-left:16px;">${esc(item.name)}</td>
+                <td style="font-family:monospace;font-size:10px;color:var(--mist);">${esc(item.sku)}</td>
+                <td><span class="cat-badge" style="background:${color}20;color:${color};">${esc(item.section)}</span></td>
+                <td style="color:var(--mist);font-size:11px;">${esc(item.section)}</td>
+                <td style="text-align:center;"><input class="qty-input" type="number" min="0" value="${item.qty}" onchange="updateQty(${globalIdx},this.value)"></td>
                 <td class="tbd-price">Via Vetcove</td>
-              </tr>`).join('');
+              </tr>`;
+            }).join('');
           }).join('')}
         </tbody>
       </table>
@@ -1033,9 +1037,8 @@ function renderOrderInPlace() {
   if (shell) shell.innerHTML = renderOrderScreen();
 }
 
-function updateQty(sku, val) {
-  const item = state.orderItems.find(i => i.sku === sku);
-  if (item) item.qty = parseInt(val) || 0;
+function updateQty(idx, val) {
+  if (state.orderItems[idx]) state.orderItems[idx].qty = parseInt(val) || 0;
 }
 
 function showAddItem() {
@@ -1081,6 +1084,7 @@ async function submitOrder() {
     }
     // Save location
     var payload = {name: state.locationName, address: state.address, practice_type: state.practiceType || null};
+    if (state.openDate) payload.open_date = state.openDate;
     if (regionId) payload.region_id = regionId;
     var locRes = await fetch(SUPA_URL+'/rest/v1/locations', {
       method:'POST', headers:{...H,'Prefer':'return=representation'},
@@ -1199,15 +1203,23 @@ async function connectPIMS() {
       practice_type: state.practiceType || null,
       vetspire_location_id: state.vetspireLocId || null,
     };
+    if (state.openDate) payload.open_date = state.openDate;
     if (regionId) payload.region_id = regionId;
     var locRes = await fetch(SUPA_URL+'/rest/v1/locations', {
       method:'POST', headers:{...H,'Prefer':'return=representation'},
       body: JSON.stringify(payload)
     });
+    if (!locRes.ok) {
+      var errBody = ''; try { errBody = JSON.stringify(await locRes.json()); } catch(e2) {}
+      showToast('Failed to save location (' + locRes.status + '). ' + errBody);
+      return;
+    }
     var locData = await locRes.json();
     state.newLocationId = Array.isArray(locData) ? locData[0]?.id : locData?.id;
   } catch(e) {
+    showToast('Connection error: ' + e.message);
     console.warn('Location save failed:', e);
+    return;
   }
   state.screen = 'done';
   render();

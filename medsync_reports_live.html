@@ -263,20 +263,34 @@ async function loadAll() {
     supa('purchase_history?select=purchased_at,amount,vendor,note,location_id,source&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.'+year+'-01-01&purchased_at=lte.'+year+'-12-31'+lf+'&order=purchased_at.desc&limit=5000'),
   ]);
 
+  // Warn if any dataset hit the 5000-row cap
+  if (poRows.length>=5000||glRows.length>=5000||lotRows.length>=5000||phRows.length>=5000) {
+    const warn = document.createElement('div');
+    warn.style.cssText='background:#FFF8EC;border:1px solid #F0D8A0;color:#92610B;padding:8px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;';
+    warn.textContent='⚠ Some data sets reached the 5,000-row limit — totals may be incomplete. Contact support to export full data.';
+    document.getElementById('page-body').prepend(warn);
+  }
+
   // Client-side filter as safety net (RLS on anon key may pass all rows)
   poRows  = filterByLoc(poRows);
   glRows  = filterByLoc(glRows);
   lotRows = filterByLoc(lotRows);
   phRows  = filterByLoc(phRows);
 
-  const html = [
-    renderInventory(lotRows),
-    renderSpending(poRows, phRows, qs, ms, year),
-    renderGoodsLost(glRows, qs, ms, year),
-    renderOrderHistory(poRows),
-    renderIntegrity(glRows, poRows, lotRows, year),
-  ].join('');
-
+  let html;
+  try {
+    html = [
+      renderInventory(lotRows),
+      renderSpending(poRows, phRows, qs, ms, year),
+      renderGoodsLost(glRows, qs, ms, year),
+      renderOrderHistory(poRows),
+      renderIntegrity(glRows, poRows, lotRows, year),
+    ].join('');
+  } catch(err) {
+    document.getElementById('page-body').innerHTML = '<div style="padding:40px;text-align:center;color:var(--red);">Error rendering report. Try refreshing.<br><small>'+String(err.message||err)+'</small></div>';
+    console.error('Reports render error:', err);
+    return;
+  }
   document.getElementById('page-body').innerHTML = html;
 }
 

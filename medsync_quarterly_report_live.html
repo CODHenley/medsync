@@ -204,7 +204,7 @@ async function boot() {
   // Load locations
   try {
     const r = await fetch(SUPA_URL+'/rest/v1/locations?select=id,name&order=name', { headers: H });
-    _locations = await r.json();
+    _locations = r.ok ? await r.json() : [];
     const lSel = document.getElementById('loc-sel');
     _locations.forEach(l => {
       const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; lSel.appendChild(o);
@@ -354,7 +354,7 @@ function render(d) {
     const glCls   = parseFloat(glPct) > 5 ? 'cr' : parseFloat(glPct) > 2 ? 'ca' : 'cg';
     const isCurrent = q.q === cq && q.year === new Date().getFullYear();
     const hasData = q.spend > 0 || q.glTotal > 0;
-    return `<tr class="${!hasData ? 'opacity:0.4;' : ''}">
+    return `<tr style="${!hasData ? 'opacity:0.4;' : ''}">
       <td><span class="q-badge ${qClass[q.q-1]}${isCurrent ? ' current' : ''}">
         ${q.label}${isCurrent ? ' ·  now' : ''}
       </span></td>
