@@ -5103,7 +5103,10 @@ document.addEventListener('mousedown', (e) => {
 
     <!-- Step 1: Password -->
     <div id="ob-step-1" class="ob-step" style="padding:36px 32px 28px;">
-      <div style="font-size:11px;font-weight:700;color:#C83803;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Step 1 of 3</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:700;color:#C83803;text-transform:uppercase;letter-spacing:.08em;">Step 1 of 3</div>
+        <button onclick="obDismiss()" type="button" title="I'm already set up" style="background:none;border:none;cursor:pointer;font-size:12px;color:#9BA8BE;text-decoration:underline;padding:0;font-family:'DM Sans',sans-serif;">Already set up? Skip →</button>
+      </div>
       <div style="font-size:22px;font-weight:700;color:#1C2B4A;margin-bottom:6px;">Set your password</div>
       <div style="font-size:13px;color:#6B7A99;margin-bottom:24px;line-height:1.5;">Choose a secure password for your MedSync account. You'll use this every time you log in.</div>
       <div style="margin-bottom:14px;">
@@ -5328,6 +5331,22 @@ window.obGoStep = function(n) {
   if (prog) prog.style.width = (['33%','66%','100%'][n-1] || '33%');
 };
 
+// Dismiss for existing users — marks them complete so wizard never shows again
+window.obDismiss = async function() {
+  document.getElementById('onboarding-overlay').style.display = 'none';
+  const sess = _obSess();
+  const userId = (sess.user || sess).id;
+  if (userId) {
+    sessionStorage.setItem('ob_done_' + userId, '1');
+    // Silently mark complete so this never re-triggers
+    fetch(SUPA_KEY_URL() + '/rest/v1/user_profiles', {
+      method: 'POST',
+      headers: { ..._obHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ user_id: userId, onboarding_complete: true, updated_at: new Date().toISOString() })
+    }).catch(() => {});
+  }
+};
+
 window.obStep1Next = async function() {
   const pw1 = document.getElementById('ob-pw1').value;
   const pw2 = document.getElementById('ob-pw2').value;
@@ -5351,7 +5370,10 @@ window.obStep1Next = async function() {
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
-      throw new Error(err.message || 'HTTP ' + r.status);
+      const msg = r.status === 422
+        ? 'Password cannot be the same as your current password. Choose a new one.'
+        : (err.message || 'HTTP ' + r.status);
+      throw new Error(msg);
     }
     obGoStep(2);
   } catch(e) {
