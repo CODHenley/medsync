@@ -5123,7 +5123,7 @@ document.addEventListener('mousedown', (e) => {
         </div>
       </div>
       <div id="ob-pw-msg" style="font-size:12px;color:#a33030;min-height:18px;margin-bottom:14px;"></div>
-      <button onclick="obStep1Next()" style="width:100%;padding:12px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set Password & Continue →</button>
+      <button id="ob-step1-btn" onclick="obStep1Next()" style="width:100%;padding:12px;background:#1C2B4A;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Set Password & Continue →</button>
     </div>
 
     <!-- Step 2: Avatar -->
@@ -5195,25 +5195,32 @@ function _obUser() {
   try { return JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) { return {}; }
 }
 function _obHeaders() {
-  const tok = _obSess().access_token || _obSess().user?.access_token || '';
+  const s = _obSess();
+  const tok = s.access_token || (s.user && s.user.access_token) || '';
   return { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (tok || SUPA_KEY), 'Content-Type': 'application/json' };
 }
 
-// Check whether this user needs onboarding
-async function obCheck() {
+// Check whether this user needs onboarding (with retry for slow auth writes)
+async function obCheck(attempt) {
+  attempt = attempt || 1;
   const sess = _obSess();
   const userId = (sess.user || sess).id;
-  if (!userId) return;
+  if (!userId) {
+    // Session may not be written yet; retry up to 3 times with backoff
+    if (attempt < 4) setTimeout(function(){ obCheck(attempt + 1); }, attempt * 800);
+    return;
+  }
 
   // If already dismissed this session, skip
   if (sessionStorage.getItem('ob_done_' + userId)) return;
 
   try {
     const r = await fetch(SUPA_KEY_URL() + '/rest/v1/user_profiles?user_id=eq.' + encodeURIComponent(userId) + '&select=onboarding_complete&limit=1', { headers: _obHeaders() });
-    const rows = r.ok ? await r.json() : [];
+    if (!r.ok) { obShow(); return; } // can't confirm done → show wizard
+    const rows = await r.json();
     const done = Array.isArray(rows) && rows.length > 0 && rows[0].onboarding_complete === true;
     if (done) return;
-  } catch(e) { /* network error — don't block login */ return; }
+  } catch(e) { obShow(); return; } // network error → show wizard conservatively
 
   obShow();
 }
@@ -5233,12 +5240,16 @@ function obShow() {
   if (fn && parts[0]) fn.value = parts[0];
   if (ln && parts[1]) ln.value = parts.slice(1).join(' ');
 
-  // Build color grid
+  // Build color grid — use textContent for initials to prevent XSS
   const grid = document.getElementById('ob-color-grid');
   if (grid) {
     grid.innerHTML = OB_COLORS.map((c, i) =>
-      `<div onclick="obPickColor('${c}')" id="ob-col-${i}" style="width:100%;aspect-ratio:1;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;cursor:pointer;border:3px solid ${i===0?'#1C2B4A':'transparent'};box-sizing:border-box;transition:border .15s;">${_obInitials}</div>`
+      `<div onclick="obPickColor('${c}')" id="ob-col-${i}" style="width:100%;aspect-ratio:1;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;cursor:pointer;border:3px solid ${i===0?'#1C2B4A':'transparent'};box-sizing:border-box;transition:border .15s;"></div>`
     ).join('');
+    OB_COLORS.forEach((c, i) => {
+      const el = document.getElementById('ob-col-' + i);
+      if (el) el.textContent = _obInitials;
+    });
   }
   _obColorPick = OB_COLORS[0];
   obUpdateAvatarPreview();
@@ -5314,7 +5325,7 @@ window.obGoStep = function(n) {
     if (el) el.style.display = i === n ? 'block' : 'none';
   });
   const prog = document.getElementById('ob-progress');
-  if (prog) prog.style.width = (n * 33.3) + '%';
+  if (prog) prog.style.width = (['33%','66%','100%'][n-1] || '33%');
 };
 
 window.obStep1Next = async function() {
@@ -5326,11 +5337,12 @@ window.obStep1Next = async function() {
   if (pw1.length < 8) { msg.textContent = 'Password must be at least 8 characters.'; return; }
   if (pw1 !== pw2) { msg.textContent = 'Passwords do not match.'; return; }
 
-  const btn = document.querySelector('#ob-step-1 button:last-child');
+  const btn = document.getElementById('ob-step1-btn');
   btn.textContent = 'Saving…'; btn.disabled = true;
 
   try {
-    const tok = _obSess().access_token;
+    const _s = _obSess();
+    const tok = _s.access_token || (_s.user && _s.user.access_token);
     if (!tok) throw new Error('No session token');
     const r = await fetch(SUPA_KEY_URL() + '/auth/v1/user', {
       method: 'PUT',
@@ -5462,8 +5474,8 @@ setTimeout(obCheck, 1200);
 
 <!-- ── Messenger: load avatars alongside user list ────────────────────────── -->
 <script>
-// Patch loadAllUsers to also fetch user_profiles and merge avatar_b64
-const _origLoadAllUsers = typeof loadAllUsers === 'function' ? loadAllUsers : null;
+// Intentionally shadows the messenger-defined loadAllUsers to also fetch
+// user_profiles and merge avatar_b64 for DM contact avatars.
 async function loadAllUsers() {
   try {
     const r = await fetch(`${_MSG_SUPA}/rest/v1/users?select=id,full_name,role&order=full_name.asc&limit=200`, { headers: _msgHeaders() });
