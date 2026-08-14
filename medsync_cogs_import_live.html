@@ -373,12 +373,18 @@ function fmtWeekRange(monStr){
 }
 
 function resolveLocation(hospitalName){
-  const n = hospitalName.toLowerCase();
-  const hit = ALL_LOCATIONS.find(l => {
-    const ln = l.name.toLowerCase();
-    return ln === n || n.includes(ln.split(' ').filter(w=>w.length>3).pop()||'__') || ln.includes(n.split(' ').filter(w=>w.length>3).pop()||'__');
-  });
-  return hit || null;
+  if (!hospitalName) return null;
+  const n = hospitalName.toLowerCase().trim();
+  // 1. Exact match
+  let hit = ALL_LOCATIONS.find(l => l.name.toLowerCase() === n);
+  if (hit) return hit;
+  // 2. Hospital name contains the full location name (e.g. "Scout Vet – Lincoln Park" contains "Lincoln Park")
+  hit = ALL_LOCATIONS.find(l => n.includes(l.name.toLowerCase()));
+  if (hit) return hit;
+  // 3. Location name contains the hospital name fragment
+  hit = ALL_LOCATIONS.find(l => l.name.toLowerCase().includes(n));
+  if (hit) return hit;
+  return null;
 }
 
 // ── Boot ─────────────────────────────────────────────────────────
