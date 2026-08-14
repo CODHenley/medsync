@@ -1392,16 +1392,37 @@ async function loadCOGSTrend() {
       });
     }
 
-    // Fetch all months in parallel for Wheaton
+    // Fetch all months in parallel — all locations combined for portfolio trend
+    const allUUIDs = (typeof LOCS !== 'undefined' ? LOCS : [
+      { uuid: '11111111-0000-0000-0000-000000000001', vid: '23083' },
+      { uuid: '11111111-0000-0000-0000-000000000002', vid: '27390' },
+      { uuid: '11111111-0000-0000-0000-000000000003', vid: '24356' },
+      { uuid: '11111111-0000-0000-0000-000000000004', vid: '28253' },
+    ]);
+    const trendVidOr  = allUUIDs.map(l => `location_id.eq.${l.vid}`).join(',');
+    const trendUuidOr = allUUIDs.map(l => `location_id.eq.${l.uuid}`).join(',');
+
     const results = await Promise.all(months.map(async m => {
-      const [diRes, revRes] = await Promise.all([
-        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + m.from + '&dispensed_at=lte.' + m.to + '&sku=not.is.null', { headers: HEADERS }),
-        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + m.from + '&date=lte.' + m.to, { headers: HEADERS })
+      const [diRes, revRes, phRes] = await Promise.all([
+        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + m.from + '&dispensed_at=lte.' + m.to + '&or=(' + trendVidOr + ')', { headers: HEADERS }),
+        fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + m.from + '&date=lte.' + m.to + '&or=(' + trendVidOr + ')', { headers: HEADERS }),
+        fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.' + m.from + '&purchased_at=lte.' + m.to + '&or=(' + trendUuidOr + ')', { headers: HEADERS })
       ]);
-      const di  = await diRes.json();
-      const rev = await revRes.json();
-      const spend = Array.isArray(di)  ? di.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
-      const revenue = Array.isArray(rev) ? rev.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
+      const di  = diRes.ok  ? await diRes.json()  : [];
+      const rev = revRes.ok ? await revRes.json() : [];
+      const ph  = phRes.ok  ? await phRes.json()  : [];
+
+      // Build per-location spend: prefer purchase_history if available for that location
+      const phByLoc = {};
+      (Array.isArray(ph) ? ph : []).forEach(r => { phByLoc[r.location_id] = (phByLoc[r.location_id] || 0) + (Number(r.amount) || 0); });
+      const diByLoc = {};
+      (Array.isArray(di) ? di : []).forEach(r => { diByLoc[r.location_id] = (diByLoc[r.location_id] || 0) + (Number(r.unit_cost) || 0) * (Number(r.quantity) || 1); });
+
+      let spend = 0;
+      allUUIDs.forEach(l => {
+        spend += phByLoc[l.uuid] != null ? phByLoc[l.uuid] : (diByLoc[l.vid] || 0);
+      });
+      const revenue = Array.isArray(rev) ? rev.reduce((s,r) => s + (Number(r.revenue) || 0), 0) : 0;
       const pct = revenue > 0 ? spend / revenue * 100 : null;
       return { label: m.label, pct, spend, revenue };
     }));
@@ -1429,13 +1450,17 @@ async function loadCOGSTrend() {
       ];
       const curMon = months[months.length - 1];
       const locResults = await Promise.all(allLocDefs.map(async l => {
-        const [diRes, revRes] = await Promise.all([
-          fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + l.vid + '&dispensed_at=gte.' + curMon.from + '&dispensed_at=lte.' + curMon.to + '&sku=not.is.null', { headers: HEADERS }),
-          fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + l.vid + '&date=gte.' + curMon.from + '&date=lte.' + curMon.to, { headers: HEADERS })
+        const [diRes, revRes, phRes] = await Promise.all([
+          fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + l.vid + '&dispensed_at=gte.' + curMon.from + '&dispensed_at=lte.' + curMon.to, { headers: HEADERS }),
+          fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + l.vid + '&date=gte.' + curMon.from + '&date=lte.' + curMon.to, { headers: HEADERS }),
+          fetch(SUPA_URL + '/rest/v1/purchase_history?select=amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&location_id=eq.' + l.uuid + '&purchased_at=gte.' + curMon.from + '&purchased_at=lte.' + curMon.to, { headers: HEADERS })
         ]);
-        const di  = await diRes.json();
-        const rev = await revRes.json();
-        const spend   = Array.isArray(di)  ? di.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
+        const di  = diRes.ok  ? await diRes.json()  : [];
+        const rev = revRes.ok ? await revRes.json() : [];
+        const ph  = phRes.ok  ? await phRes.json()  : [];
+        const phSpend = Array.isArray(ph) ? ph.reduce((s,r) => s + (Number(r.amount) || 0), 0) : 0;
+        const diSpend = Array.isArray(di) ? di.reduce((s,r) => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
+        const spend   = phSpend > 0 ? phSpend : diSpend;
         const revenue = Array.isArray(rev) ? rev.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
         const pct = revenue > 0 ? spend / revenue * 100 : null;
         return { name: l.name, pct };
