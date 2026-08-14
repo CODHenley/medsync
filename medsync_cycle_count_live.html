@@ -910,7 +910,7 @@ function closeSuccess() {
     switchTab(nextCat);
   } else {
     // All due categories done
-    try { window.parent.postMessage({ type: 'cycleCountDone', location: currentLocation }, '*'); } catch(e) {}
+    try { window.parent.postMessage({ type: 'cycleCountDone', location: currentLocation }, window.location.origin); } catch(e) {}
     resetCount();
   }
   updateSubmitButton();
@@ -1573,7 +1573,7 @@ function pcClearCard() {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

@@ -526,6 +526,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let state = {
   locationId: null, locationName: null,
@@ -639,7 +640,7 @@ async function loadOrders() {
   grid.innerHTML = entries.map(([key, g], idx) => `
     <div class="po-card${g.isOverdue ? ' overdue' : ''}" onclick="selectPOGroup(${idx})">
       <div class="po-ref">
-        ${g.vendor || 'Vendor'} · ${g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}
+        ${esc(g.vendor || 'Vendor')} · ${g.week_start ? new Date(g.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}
         ${g.isOverdue ? `<span class="overdue-tag">⚠ ${g.daysAgo}d overdue</span>` : ''}
       </div>
       <div class="po-meta">$${g.total.toFixed(2)} · ${g.items.length} SKUs · Submitted</div>
@@ -727,10 +728,10 @@ function renderItems() {
     const lossExpanded = state.activeGoodsLine === i;
     return `<div style="border-bottom:0.5px solid #F4F4F4;">
       <div class="item-row ${l.status === 'lost' ? 'lost' : l.status}" id="item-row-${i}" style="border-bottom:none;">
-        <div><div class="item-name" style="${l.status==='lost'?'text-decoration:line-through;color:var(--mist);':''}">${l.name}</div><div class="item-ndc">${l.ndc}</div></div>
+        <div><div class="item-name" style="${l.status==='lost'?'text-decoration:line-through;color:var(--mist);':''}">${esc(l.name)}</div><div class="item-ndc">${esc(l.ndc)}</div></div>
         <div style="font-size:12px;">${l.qtyOrdered}</div>
         <div style="font-size:12px;font-weight:${l.qtyReceived?'500':'400'};color:${l.qtyReceived?'var(--navy)':'var(--mist)'};">${l.qtyReceived || '—'}</div>
-        <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--mist);">${l.lotNum ? '#'+l.lotNum+'<br>Exp '+l.expDate : '—'}</div>
+        <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--mist);">${l.lotNum ? '#'+esc(l.lotNum)+'<br>Exp '+esc(l.expDate) : '—'}</div>
         <div style="display:flex;align-items:center;">
           ${l.status !== 'lost' ? statusBadge : '<span class="badge" style="background:#FEF3E2;color:#A06020;border-color:#E0C080;">⚠ Lost</span>'}
           ${l.status !== 'lost' ? `<button class="loss-btn" onclick="showReceivingLoss(${i})">⚠ Loss</button>` : ''}
@@ -739,7 +740,7 @@ function renderItems() {
       ${lossExpanded ? `
         <div class="loss-expand">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <span style="font-size:12px;font-weight:600;color:var(--amber);">⚠ Report loss — ${l.name}</span>
+            <span style="font-size:12px;font-weight:600;color:var(--amber);">⚠ Report loss — ${esc(l.name)}</span>
             <span style="font-size:11px;color:var(--mist);">Unit price: $${l.unitPrice.toFixed(2)}</span>
           </div>
           <div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-end;">

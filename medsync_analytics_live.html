@@ -1673,7 +1673,7 @@ function ovRefresh() {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }
@@ -1702,13 +1702,13 @@ window.addEventListener('message', function(e) {
       }
     }
     window.scrollTo(0,0);
-    if (e.source) e.source.postMessage({type:'panelSwitched'}, '*');
+    if (e.source) e.source.postMessage({type:'panelSwitched'}, window.location.origin);
   }
   if (e.data.type === 'setLocation') {
     var sel = document.getElementById('loc');
     if (sel) { sel.value = e.data.loc; if(typeof refresh==='function') refresh(); }
     window.scrollTo(0,0);
-    if (e.source) e.source.postMessage({type:'locationSet'}, '*');
+    if (e.source) e.source.postMessage({type:'locationSet'}, window.location.origin);
   }
   if (e.data.type === 'settings_synced') {
     // Update localStorage with the freshly-saved settings so renderCOGSBars sees the new values
