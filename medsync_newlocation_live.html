@@ -1240,7 +1240,7 @@ function startOver() {
 }
 
 function goToPortfolio() {
-  if (window.self !== window.top) window.parent.postMessage({type:'navigate',screen:'portfolio'},'*');
+  if (window.self !== window.top) window.parent.postMessage({type:'navigate',screen:'portfolio'},window.location.origin);
 }
 
 
@@ -1672,7 +1672,7 @@ async function startCheckout() {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

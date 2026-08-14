@@ -943,7 +943,7 @@ function setStep(n){
   });
 }
 function navAnalytics(){
-  if(window.self!==window.top) window.parent.postMessage({type:'navigate',screen:'analytics'},'*');
+  if(window.self!==window.top) window.parent.postMessage({type:'navigate',screen:'analytics'},window.location.origin);
   else window.location.href='medsync_analytics_live.html';
 }
 function showToast(msg){

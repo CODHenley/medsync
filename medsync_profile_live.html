@@ -273,7 +273,7 @@ input[type="file"] { display: none; }
 
 <!-- Nav -->
 <nav class="pf-nav">
-  <a href="medsync_portfolio_live.html" class="pf-nav-back">
+  <a href="javascript:void(0)" onclick="(function(){if(window.self!==window.top){window.parent.postMessage({type:'navigate',screen:'portfolio'},window.location.origin);}else{window.location.href='medsync_portfolio_live.html';}})()" class="pf-nav-back">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M10 12L6 8l4-4"/>
     </svg>
@@ -555,14 +555,7 @@ input[type="file"] { display: none; }
           <div class="pf-row">
             <div class="pf-field">
               <label>Role</label>
-              <select id="pf-role-select" style="width:100%;padding:8px 10px;border:1px solid #DDD9EC;border-radius:8px;font-size:14px;color:#1C2B4A;background:#fff;">
-                <option value="medsync_superadmin">Superadmin</option>
-                <option value="admin">Admin</option>
-                <option value="manager">Hospital Director</option>
-                <option value="hospital_manager">Hospital Manager</option>
-                <option value="inventory_lead">Inventory Lead</option>
-                <option value="receiver">Receiver</option>
-              </select>
+              <input type="text" id="pf-role-select" readonly class="readonly" style="width:100%;padding:8px 10px;border:1px solid #DDD9EC;border-radius:8px;font-size:14px;color:#1C2B4A;background:#F7F6FB;" title="Role is assigned by an administrator and cannot be changed here.">
             </div>
             <div class="pf-field">
               <label>Location</label>
@@ -606,7 +599,8 @@ input[type="file"] { display: none; }
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+const _profileToken = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}').access_token || SUPA_KEY; } catch(e) { return SUPA_KEY; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _profileToken, 'Content-Type': 'application/json' };
 
 function getUserInfo() {
   // Try medsync_user first (used by portfolio/main app), then medsync_session fallback
@@ -781,15 +775,14 @@ async function loadProfile() {
   document.getElementById('pf-email').value = user.email || '';
   document.getElementById('pf-location').value = locationName;
 
+  const ROLE_LABELS = {
+    medsync_superadmin: 'Superadmin', admin: 'Admin', manager: 'Hospital Director',
+    hospital_manager: 'Hospital Manager', inventory_lead: 'Inventory Lead', receiver: 'Receiver'
+  };
+  const roleLabel = ROLE_LABELS[role] || role.replace(/_/g, ' ');
   const roleSelect = document.getElementById('pf-role-select');
-  if (roleSelect) roleSelect.value = role;
-  document.getElementById('pf-display-role').textContent =
-    role === 'medsync_superadmin' ? 'Superadmin' :
-    role === 'admin' ? 'Admin' :
-    role === 'manager' ? 'Hospital Director' :
-    role === 'hospital_manager' ? 'Hospital Manager' :
-    role === 'inventory_lead' ? 'Inventory Lead' :
-    role === 'receiver' ? 'Receiver' : role.replace(/_/g, ' ');
+  if (roleSelect) roleSelect.value = roleLabel;
+  document.getElementById('pf-display-role').textContent = roleLabel;
 
   // Show initials by default
   const parts = name.split(' ');
@@ -855,9 +848,6 @@ async function saveProfile() {
   const lastName = document.getElementById('pf-last-name').value.trim();
   const phone = document.getElementById('pf-phone').value.trim();
   const email = document.getElementById('pf-email').value.trim();
-  const roleSelect = document.getElementById('pf-role-select');
-  const role = roleSelect ? roleSelect.value : null;
-
   const payload = {
     user_id: userId,
     first_name: firstName,

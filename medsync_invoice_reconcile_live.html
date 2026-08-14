@@ -151,7 +151,8 @@ tr:hover td { background:#fafafa; }
 // ── Config ────────────────────────────────────────────────────────────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+const _irTok = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session') || '{}').access_token || SUPA_KEY; } catch(e) { return SUPA_KEY; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _irTok, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -899,7 +900,7 @@ window.addEventListener('message', e => {
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({type:'navigate',screen:'portfolio'},'*');
+    window.parent.postMessage({type:'navigate',screen:'portfolio'},window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

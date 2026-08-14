@@ -231,6 +231,14 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
 
   <!-- Upload toolbar -->
   <div class="comp-toolbar">
+    <label>Location:</label>
+    <select id="comp-loc-select" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--navy);background:#fff;">
+      <option value="">All locations</option>
+      <option value="Lincoln Park">Lincoln Park</option>
+      <option value="Old Orchard">Old Orchard</option>
+      <option value="West Loop">West Loop</option>
+      <option value="Wheaton">Wheaton</option>
+    </select>
     <label>Compare invoice:</label>
     <label class="upload-btn" for="csv-upload">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -1621,6 +1629,7 @@ async function flagForAudit(btn) {
   const vspid    = btn.dataset.vspid || null;
   const sku      = btn.dataset.sku   || null;
   const flaggedBy = (_sess && _sess.user && _sess.user.email) || 'unknown';
+  const locationName = (document.getElementById('comp-loc-select') || {}).value || null;
 
   btn.textContent = 'Flagging…';
   btn.disabled = true;
@@ -1634,6 +1643,7 @@ async function flagForAudit(btn) {
       invoice_cost:        vcPrice,
       drift_pct:           drift,
       flagged_by:          flaggedBy,
+      location_name:       locationName || undefined,
       status:              'pending',
     };
     const res = await fetch(SUPA_URL + '/rest/v1/price_review_flags', {
@@ -1694,6 +1704,7 @@ async function flagAllVisible() {
   btn.style.pointerEvents = 'none';
 
   const flaggedBy = (_sess && _sess.user && _sess.user.email) || 'unknown';
+  const locationName = (document.getElementById('comp-loc-select') || {}).value || null;
   let done = 0;
   // Batch inserts of 10
   for (let i = 0; i < rows.length; i += 10) {
@@ -1705,6 +1716,7 @@ async function flagAllVisible() {
       invoice_cost: d.vc_latest,
       drift_pct: d.drift_pct,
       flagged_by: flaggedBy,
+      location_name: locationName || undefined,
       status: 'pending',
     }));
     try {
@@ -2170,7 +2182,7 @@ function showToast(msg, dur) {
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => { t.style.opacity = '0'; }, dur || 3200);
 }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 function fmt2(v) { return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}); }
 function fmtDate(s) {
   if (!s) return '—';
