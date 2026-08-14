@@ -102,8 +102,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
           <div class="field"><label>Organization name</label><input id="org-name" type="text" value="Scout Veterinary Urgent Care"></div>
         </div>
         <div class="profile-row">
-          <div class="field"><label>Primary contact</label><input type="text" value="Megan Henley"></div>
-          <div class="field"><label>Contact email</label><input type="email" value="mhenley@scoutcare.com"></div>
+          <div class="field"><label>Primary contact</label><input id="settings-contact-name" type="text" value="Megan Henley"></div>
+          <div class="field"><label>Contact email</label><input id="settings-contact-email" type="email" value="mhenley@scoutcare.com"></div>
         </div>
         <div class="profile-row">
           <div class="field"><label>Platform URL</label><input type="text" value="medsync.vet" readonly style="background:#F4F4F4;color:var(--mist);"></div>
@@ -1180,11 +1180,11 @@ function showToast(msg) {
     if (sub) sub.textContent = 'Admin Settings' + (u.full_name ? ' · ' + u.full_name : '');
     // Populate profile fields from logged-in user
     if (u.full_name) {
-      var pc = document.querySelector('input[value="Megan Henley"]');
+      var pc = document.getElementById('settings-contact-name');
       if (pc) pc.value = u.full_name;
     }
     if (u.email) {
-      var em = document.querySelector('input[type="email"][value="mhenley@scoutcare.com"]');
+      var em = document.getElementById('settings-contact-email');
       if (em) em.value = u.email;
     }
   } catch(e) {}

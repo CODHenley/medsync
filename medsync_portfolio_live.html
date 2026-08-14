@@ -62,7 +62,7 @@ function showScreen(name) {
           locAttempts++;
           var locIframe = document.querySelector(locSel);
           if (locIframe && locIframe.contentWindow) {
-            locIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName }, '*');
+            locIframe.contentWindow.postMessage({ type: 'setLocation', loc: locName }, window.location.origin);
           }
           if (locAttempts >= 10) clearInterval(locTimer);
         }, 300);
@@ -833,6 +833,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Handle navigate messages from iframe screens (e.g. Settings quick links)
 window.addEventListener('message', function(e) {
   if (!e.data) return;
+  if (e.origin !== window.location.origin) return;
   if (e.data.type === 'navigate') { showScreen(e.data.screen); }
 
   // Cycle count complete → switch to weekly order + notify it to highlight below-par items
@@ -840,7 +841,7 @@ window.addEventListener('message', function(e) {
   if (e.data.type === 'settings_synced') {
     var analyticsFrame = document.querySelector('#ms-analytics iframe');
     if (analyticsFrame && analyticsFrame.contentWindow) {
-      analyticsFrame.contentWindow.postMessage(e.data, '*');
+      analyticsFrame.contentWindow.postMessage(e.data, window.location.origin);
     }
   }
 
@@ -853,7 +854,7 @@ window.addEventListener('message', function(e) {
         orderFrame.contentWindow.postMessage({
           type: 'cycleCountComplete',
           location: e.data.location
-        }, '*');
+        }, window.location.origin);
       }
     }, 800);
     // Show a brief toast-style banner
@@ -965,10 +966,10 @@ function switchAnalyticsTab(tab) {
 }
 
 function signOut() {
-  localStorage.removeItem('medsync_session');
-  localStorage.removeItem('medsync_user');
-  sessionStorage.removeItem('medsync_session');
-  sessionStorage.removeItem('medsync_user');
+  ['medsync_session','medsync_user','medsync_settings','medsync_analytics_loc','medsync_splash_shown'].forEach(function(k){
+    localStorage.removeItem(k);
+    sessionStorage.removeItem(k);
+  });
   window.location.href = 'medsync_login.html';
 }
 
@@ -988,7 +989,7 @@ function dbNav(panel) {
     attempts++;
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, '*');
+      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, window.location.origin);
     }
     if (attempts < 15) setTimeout(tryPost, 200);
   }
@@ -1011,7 +1012,7 @@ function deepDiveLoc(locCode) {
     attempts++;
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, '*');
+      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, window.location.origin);
     }
     if (attempts < 15) setTimeout(tryPost, 200);
   }
@@ -1555,13 +1556,13 @@ function deepDiveLoc(locCode) {
 
 /* ── FINAL: all screens clear the fixed nav ──────────────────── */
 @media (max-width: 768px) {
-  /* Iframe screens: push container down via margin */
-  #ms-analytics, #ms-lifecycle, #ms-actlog {
+  /* All screens clear the fixed nav on mobile */
+  .ms-screen {
     margin-top: 48px !important;
   }
-  /* Inline screens: pad content down */
-  #ms-portfolio, #ms-order, #ms-receiving, #ms-goods, #ms-users, #ms-newlocation, #ms-regions, #ms-settings {
-    padding-top: 48px !important;
+  /* Inline screens need box-sizing so padding doesn't cause overflow */
+  #ms-portfolio, #ms-order {
+    padding-top: 0 !important;
     box-sizing: border-box !important;
   }
 }
@@ -2512,7 +2513,7 @@ document.addEventListener('DOMContentLoaded', function() { setTimeout(loadData, 
 
 
 // ── Supabase config ──────────────────────────────────────────
-const TODAY = new Date('2026-05-29T00:00:00');
+const TODAY = new Date();
 
 // All lots loaded from Supabase — kept in memory for filtering/search
 let ALL_LOTS = [];
@@ -2978,7 +2979,10 @@ function getFiltered() {
   const search = (document.getElementById('ev-search')?.value || '').toLowerCase();
   const loc    = document.getElementById('loc-filter')?.value || 'all';
   const date   = document.getElementById('date-filter')?.value || '';
-  const today  = '2026-05-29';
+  const _now = new Date();
+  const today  = _now.toISOString().slice(0,10);
+  const weekStart = new Date(_now); weekStart.setDate(_now.getDate() - _now.getDay() + 1); const weekStartStr = weekStart.toISOString().slice(0,10);
+  const monthStart = _now.getFullYear() + '-' + String(_now.getMonth()+1).padStart(2,'0') + '-01';
 
   return ALL_EVENTS.filter(e => {
     if (currentRole==='manager' && e.loc!=='Old Orchard' && e.loc!=='All locations') return false;
@@ -2991,8 +2995,8 @@ function getFiltered() {
         !e.detail.toLowerCase().includes(search)) return false;
     const ts = e.ts.slice(0,10);
     if (date==='today' && ts !== today) return false;
-    if (date==='week'  && ts < '2026-05-25') return false;
-    if (date==='month' && ts < '2026-05-01') return false;
+    if (date==='week'  && ts < weekStartStr) return false;
+    if (date==='month' && ts < monthStart) return false;
     return true;
   });
 }
@@ -3011,7 +3015,8 @@ function renderTable() {
   const tblCount = document.getElementById('tbl-count');
   const tblSub   = document.getElementById('tbl-sub');
   if (tblCount) tblCount.textContent = sorted.length + ' event' + (sorted.length!==1?'s':'');
-  if (tblSub)   tblSub.textContent   = 'May 2026 · ' + locLabel;
+  const _nowLabel = new Date(); const _mo = _nowLabel.toLocaleString('en-US',{month:'long'})+' '+_nowLabel.getFullYear();
+  if (tblSub)   tblSub.textContent   = _mo + ' · ' + locLabel;
 
   const tbody = document.getElementById('ev-tbody');
   const empty = document.getElementById('ev-empty');
@@ -3344,7 +3349,7 @@ function deepDiveLoc(locCode) {
   setTimeout(function() {
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, '*');
+      iframe.contentWindow.postMessage({ type: 'setLocation', loc: locCode }, window.location.origin);
     }
   }, 600);
 }
@@ -3367,7 +3372,7 @@ function dbNav(panel) {
     attempts++;
     var iframe = document.querySelector('#ms-analytics iframe');
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, '*');
+      iframe.contentWindow.postMessage({ type: 'switchPanel', panel: panel }, window.location.origin);
     }
     if (attempts < 15) setTimeout(tryPost, 200);
   }
@@ -4262,7 +4267,7 @@ function renderTrainingStaffCards(rows) {
         localStorage.setItem('medsync_analytics_loc', _loc2);
         var _aIframe = document.querySelector('#ms-analytics iframe');
         if (_aIframe && _aIframe.contentWindow) {
-          setTimeout(function(){ _aIframe.contentWindow.postMessage({ type: 'setLocation', loc: _loc2 }, '*'); }, 800);
+          setTimeout(function(){ _aIframe.contentWindow.postMessage({ type: 'setLocation', loc: _loc2 }, window.location.origin); }, 800);
         }
       }
     }
