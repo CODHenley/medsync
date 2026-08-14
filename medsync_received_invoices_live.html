@@ -200,6 +200,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e){ return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let allRecords = [];
 let filtered = [];
@@ -366,7 +367,7 @@ function renderList() {
     const badgeTxt = status === 'uploaded' ? '✓ Invoice' : status === 'flagged' ? '⚠ Flagged' : '○ No invoice';
     return `<div class="inv-row${inv.id===activeId?' active':''}" onclick="selectInvoice(${JSON.stringify(inv.id)})">
       <div class="inv-row-top">
-        <div class="inv-row-vendor">${inv.vendor || '—'}</div>
+        <div class="inv-row-vendor">${esc(inv.vendor || '—')}</div>
         <div class="inv-row-amount">${fmtAmt(inv.total_amount)}</div>
       </div>
       <div class="inv-row-meta">${locName(inv.location_id)} · ${fmtDate(inv.received_date)}</div>
@@ -445,7 +446,7 @@ function renderDetail(inv, lines) {
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         ${inv.has_discrepancy ? '<span class="badge b-flagged">⚠ Discrepancy</span>' : '<span class="badge b-ok">✓ Received</span>'}
-        ${hasFile ? `<a href="${inv.invoice_url}" target="_blank" style="padding:6px 12px;background:var(--navy);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">↗ Open PDF</a>` : `<button onclick="triggerUpload(${JSON.stringify(inv.id)})" style="padding:6px 12px;background:#f1f0f7;color:var(--navy);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">📎 Upload Invoice</button>`}
+        ${hasFile && /^https?:\/\//i.test(inv.invoice_url) ? `<a href="${esc(inv.invoice_url)}" target="_blank" rel="noopener noreferrer" style="padding:6px 12px;background:var(--navy);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">↗ Open PDF</a>` : hasFile ? '' : `<button onclick="triggerUpload(${JSON.stringify(inv.id)})" style="padding:6px 12px;background:#f1f0f7;color:var(--navy);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">📎 Upload Invoice</button>`}
       </div>
     </div>
 
