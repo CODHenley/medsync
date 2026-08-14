@@ -216,8 +216,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
     <div class="info-banner amber" id="dup-alert" style="display:none;">
       <div class="ib-icon">⚠</div>
       <div class="ib-body">
-        <div class="ib-title">Duplicate orders auto-skipped</div>
+        <div class="ib-title">Duplicate line items auto-skipped</div>
         <div id="dup-alert-body"></div>
+        <div style="font-size:11px;color:#92400e;margin-top:4px;opacity:.8;">Matched by Vetcove Item ID — same product ordered again in a new order will never be skipped.</div>
       </div>
     </div>
 
@@ -434,9 +435,11 @@ async function loadPriorImports(){
     const rows = await res.json();
     if (!Array.isArray(rows) || !rows.length) return;
     rows.forEach(r => {
-      // Match both old order-level VIDs and new item-level VIDs (VID:123 or VID:123_45)
-      const m = (r.note || '').match(/VID:([\d_]+)/);
-      if (m) _priorVIDs.add(m[1]);
+      // Extract the dedup key stored after VID: — can be numeric (Vetcove Item ID)
+      // or a content fingerprint (date|order#|name|qty) for rows without a Vetcove Item ID.
+      // Capture everything up to the next ` · ` separator or end of string.
+      const m = (r.note || '').match(/VID:([^\s·][^·]*?)(?:\s*·|$)/);
+      if (m) _priorVIDs.add(m[1].trim());
     });
     const dates = rows.map(r => r.purchased_at ? r.purchased_at.slice(0,10) : null).filter(Boolean).sort();
     _priorRange = { min: dates[0], max: dates[dates.length-1], count: rows.length };
@@ -579,8 +582,11 @@ async function startParse(){
     const quantity      = parseFloat(getByIdx(row,_idxQty,'quantity'))||0;
     const status        = getByIdx(row,_idxItemStatus,'item status');
     const primaryCat    = colVal(row,'primary category');
-    // Use vetcove item id as dedup key; fall back to order+item combo
-    const dedupKey      = vetcoveItemId || (vetcoveId + '_' + i);
+    // Dedup key: Vetcove Item ID (unique per line item per order).
+    // A new order of the same product gets a NEW Vetcove Item ID — never a false positive.
+    // Fallback when Vetcove Item ID is absent: date + order# + item name + qty (content fingerprint).
+    const _dedupFallback = [date||'', orderNum||'', (itemName||'').toLowerCase().slice(0,40), String(quantity)].join('|');
+    const dedupKey      = vetcoveItemId || _dedupFallback;
     const loc           = resolveLocation(hospital)||fallbackLoc;
     const sLower        = status.toLowerCase();
     const excluded      = (SKIP_STATUSES.has(sLower)||totalPrice===0)
