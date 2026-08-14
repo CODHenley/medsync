@@ -1715,6 +1715,7 @@ function handleOverlayClick(e) {
 // ─────────────────────────────────────────────────────────────
 
 window.addEventListener('message', function(e) {
+  if (e.origin !== window.location.origin) return;
   if (!e.data || e.data.type !== 'setLocation') return;
   window._pendingLocation = e.data.loc;
   var sel = document.getElementById('loc-select');

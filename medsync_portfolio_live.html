@@ -337,7 +337,7 @@ async function loadLocationCards() {
   const now = new Date();
   const monthStart = localIso(new Date(now.getFullYear(), now.getMonth(), 1));
   const today = localIso(now);
-  const _H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+  const _H = H;
 
   const vidFilter  = LOCS.map(function(l){ return 'location_id.eq.' + l.vid; }).join(',');
   const uuidFilter = LOCS.map(function(l){ return 'location_id.eq.' + l.uuid; }).join(',');
@@ -884,8 +884,9 @@ async function loadRegionFilter() {
   try {
     var SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
     var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+    var _tok = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}').access_token || SUPA_KEY; } catch(e) { return SUPA_KEY; } })();
     var res = await fetch(SUPA_URL+'/rest/v1/regions?select=id,name&order=name', {
-      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY}
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer '+_tok}
     });
     var regions = await res.json();
     var sel = document.getElementById('region-filter');
@@ -2064,7 +2065,8 @@ function deepDiveLoc(locCode) {
 // ── Master Supabase config (single declaration) ───────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+const _portTok = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}').access_token || SUPA_KEY; } catch(e) { return SUPA_KEY; } })();
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + _portTok };
 
 function showToast(msg) {
   var t = document.getElementById('ms-toast');
@@ -2078,7 +2080,7 @@ function showToast(msg) {
 // ── Supabase config ──────────────────────────────────────────
 const HEADERS = {
   'apikey': SUPA_KEY,
-  'Authorization': 'Bearer ' + SUPA_KEY,
+  'Authorization': 'Bearer ' + _portTok,
   'Content-Type': 'application/json'
 };
 
@@ -2279,7 +2281,7 @@ async function loadLiveCOGs(loc, from, to) {
   const _s = (function(){ try { return JSON.parse(localStorage.getItem('medsync_settings') || '{}'); } catch(e) { return {}; } })();
   const COGS_MAX = parseFloat(_s.cogs_max) || 10.0;
   const COGS_MIN = parseFloat(_s.cogs_min) || 8.0;
-  const H2 = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+  const H2 = H;
   // Ensure plain date strings (YYYY-MM-DD) for DATE column comparisons
   const fromD = from.split('T')[0];
   const toD   = to.split('T')[0];

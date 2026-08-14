@@ -679,7 +679,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _settSess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
-const _settH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+const _settH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_settSess.access_token||SUPA_KEY),'Content-Type':'application/json'};
 let _settOrgId = null;
 
 function _sGetMu(){ try{return JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');}catch(e){return{};} }
@@ -864,8 +864,7 @@ function _billingLockDaysLeft(billing_updated_at) {
 async function initiateBillingSave() {
   if (!_settOrgId) { showToast('No organization linked to this account'); return; }
   // Re-check lock status
-  const _anonH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
-  const checkRes = await fetch(SUPA_URL+'/rest/v1/organizations?select=billing_updated_at&id=eq.'+_settOrgId, {headers:_anonH});
+  const checkRes = await fetch(SUPA_URL+'/rest/v1/organizations?select=billing_updated_at&id=eq.'+_settOrgId, {headers:_settH});
   const checkData = await checkRes.json();
   const buAt = Array.isArray(checkData) && checkData[0] ? checkData[0].billing_updated_at : null;
   if (_isBillingLocked(buAt)) {
@@ -1282,6 +1281,7 @@ document.getElementById('min-stock-enabled').addEventListener('change', function
 
 // Handle postMessage nav from parent
 window.addEventListener('message', function(e) {
+  if (e.origin !== window.location.origin) return;
   if (e.data && e.data.type === 'navigate' && window.self === window.top) {
     // If loaded directly, ignore
   }
