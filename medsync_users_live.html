@@ -140,6 +140,7 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
 .msg{padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:12px;display:none;}
 .msg.success{background:var(--green-bg);color:var(--green);border:0.5px solid #B0D8C0;display:block;}
 .msg.error{background:var(--red-bg);color:var(--red);border:0.5px solid #F0AAAA;display:block;}
+.msg.warning{background:#FFF8EC;color:#92610B;border:0.5px solid #F0D8A0;display:block;}
 .empty{color:var(--mist);font-size:12px;padding:12px 0;text-align:center;}
 .nav{display:none;}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s;}
@@ -678,7 +679,7 @@ async function deleteUser(id, name) {
 async function sendWelcomeEmail(name, email, pass, role) {
   const firstName = name.split(' ')[0];
   const roleLabel = ROLE_LABELS[role] || role;
-  const loginUrl  = 'https://medsync.vet/medsync_login_v2.html';
+  const loginUrl  = 'https://medsync.vet/medsync_login.html';
 
   const NAVY   = '#1B2A4A';
   const GOLD   = '#C9A84C';
@@ -849,7 +850,7 @@ boot();
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }

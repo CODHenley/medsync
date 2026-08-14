@@ -394,7 +394,7 @@ if (window.self !== window.top) {
           <button class="rt-opt active" id="rt-admin" onclick="setRole('admin')">Admin view</button>
           <button class="rt-opt" id="rt-mgr" onclick="setRole('manager')">Manager view</button>
         </div>
-        <button class="btn" onclick="showToast('✓ Activity log exported as CSV')">↓ Export CSV</button>
+        <button class="btn" onclick="exportCSV()">↓ Export CSV</button>
       </div>
     </div>
 
@@ -529,6 +529,7 @@ const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY) };
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 // All events in memory after load
 let ALL_EVENTS = [];
@@ -554,13 +555,14 @@ async function loadEvents() {
   setLoading(true);
   try {
     const res = await fetch(
-      SUPA_URL + '/rest/v1/activity_log?select=*,users(full_name,role),locations(name)&order=created_at.desc&limit=200',
+      SUPA_URL + '/rest/v1/activity_log?select=*,users(full_name,role),locations(name)&order=created_at.desc&limit=1000',
       { headers: H }
     );
     if (!res.ok) { setLoading(false); showToast('⚠ Could not load activity log'); return; }
     const rows = await res.json();
     if (!Array.isArray(rows)) { setLoading(false); showToast('⚠ Could not load activity log'); return; }
 
+    if (rows.length >= 1000) showToast('⚠ Results capped at 1,000 rows — use date filters to narrow further');
     ALL_EVENTS = rows.map((r, i) => ({
       id:      'EVT-' + String(1000 + rows.length - i).padStart(4,'0'),
       dbId:    r.id,
@@ -590,16 +592,12 @@ async function loadEvents() {
 
 // ── Summary cards ─────────────────────────────────────────────
 function updateSummaryCards() {
-  var _mu = {}; try { _mu = JSON.parse(localStorage.getItem('medsync_user') || '{}'); } catch(e2) {}
-  const mgrLoc = _mu.location_name || '';
-  const scoped = currentRole === 'manager'
-    ? ALL_EVENTS.filter(e => !mgrLoc || e.loc === mgrLoc || e.loc === 'All locations')
-    : ALL_EVENTS;
-  document.getElementById('s-orders').textContent   = scoped.filter(e=>e.type==='order').length;
-  document.getElementById('s-receives').textContent = scoped.filter(e=>e.type==='receive').length;
-  document.getElementById('s-goods').textContent    = scoped.filter(e=>e.type==='goods').length;
-  document.getElementById('s-lots').textContent     = scoped.filter(e=>e.type==='lot').length;
-  document.getElementById('s-users').textContent    = scoped.filter(e=>e.type==='user').length;
+  const filtered = getFiltered();
+  document.getElementById('s-orders').textContent   = filtered.filter(e=>e.type==='order').length;
+  document.getElementById('s-receives').textContent = filtered.filter(e=>e.type==='receive').length;
+  document.getElementById('s-goods').textContent    = filtered.filter(e=>e.type==='goods').length;
+  document.getElementById('s-lots').textContent     = filtered.filter(e=>e.type==='lot').length;
+  document.getElementById('s-users').textContent    = filtered.filter(e=>e.type==='user').length;
 }
 
 // ── Role toggle ───────────────────────────────────────────────
@@ -653,7 +651,7 @@ function getFiltered() {
     const _fmgrLoc = _fu.location_name || '';
     if (currentRole==='manager' && _fmgrLoc && e.loc!==_fmgrLoc && e.loc!=='All locations') return false;
     if (typeFilter!=='all' && e.type!==typeFilter) return false;
-    if (loc!=='all' && e.loc!==loc && e.loc!=='All locations') return false;
+    if (loc && loc!=='all' && e.loc!==loc && e.loc!=='All locations') return false;
     if (search && !e.desc.toLowerCase().includes(search) &&
         !e.user.toLowerCase().includes(search) &&
         !e.loc.toLowerCase().includes(search) &&
@@ -697,11 +695,12 @@ function onRegionFilterAl(region) {
     if (opt.value === 'all') { opt.hidden = false; return; }
     opt.hidden = region !== 'all' && !locs.includes(opt.value);
   });
-  if (region !== 'all') sel.value = 'all';
+  if (region !== 'all') sel.value = '';
   renderTable();
 }
 
 function renderTable() {
+  updateSummaryCards();
   const filtered = getFiltered();
   const sorted = [...filtered].sort((a,b) => {
     const key = sortCol==='desc'?'desc':sortCol==='loc'?'loc':sortCol==='user'?'user':
@@ -743,13 +742,13 @@ function renderTable() {
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${typeBadge}${flagBadge}</div>
             <span class="ts" style="font-size:10px;">${fmtTs(e.ts)}</span>
           </div>
-          <div class="ev-desc" style="margin:4px 0 2px;">${e.desc}</div>
+          <div class="ev-desc" style="margin:4px 0 2px;">${esc(e.desc)}</div>
           <div class="ev-card-meta">
             <div class="user-chip">
-              <div class="user-dot" style="background:${userColor(e.user)};width:18px;height:18px;font-size:9px;">${initials(e.user)}</div>
-              <span style="font-size:11px;">${e.user}</span>
+              <div class="user-dot" style="background:${userColor(e.user)};width:18px;height:18px;font-size:9px;">${esc(initials(e.user))}</div>
+              <span style="font-size:11px;">${esc(e.user)}</span>
             </div>
-            <span style="font-size:11px;color:var(--mist);">${e.loc}</span>
+            <span style="font-size:11px;color:var(--mist);">${esc(e.loc)}</span>
           </div>
         </div>
       </td></tr>`;
@@ -763,14 +762,14 @@ function renderTable() {
       return `<tr class="ev-row" onclick="openDetail('${e.dbId}')">
         <td><span class="ev-id">${e.id}</span></td>
         <td>${typeBadge}</td>
-        <td><div class="ev-desc">${e.desc}</div><div class="ev-meta">${e.detail}</div></td>
+        <td><div class="ev-desc">${esc(e.desc)}</div><div class="ev-meta">${esc(e.detail)}</div></td>
         <td><div class="user-chip">
           ${e.avatar
-            ? `<img src="${e.avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="${e.user}">`
-            : `<div class="user-dot" style="background:${userColor(e.user)};">${initials(e.user)}</div>`}
-          <span style="font-size:11px;">${e.user}</span>
+            ? `<img src="${esc(e.avatar)}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="${esc(e.user)}">`
+            : `<div class="user-dot" style="background:${userColor(e.user)};">${esc(initials(e.user))}</div>`}
+          <span style="font-size:11px;">${esc(e.user)}</span>
         </div></td>
-        <td style="font-size:11px;">${e.loc}</td>
+        <td style="font-size:11px;">${esc(e.loc)}</td>
         <td><span class="ts">${fmtTs(e.ts)}</span></td>
         <td>${flagBadge}</td>
       </tr>`;
@@ -805,8 +804,8 @@ function openDetail(dbId) {
   if (entries.length) {
     cb.innerHTML = entries.map(([k,v]) =>
       `<div class="change-row">
-        <span class="change-k">${k}</span>
-        <span class="change-to">${v}</span>
+        <span class="change-k">${esc(k)}</span>
+        <span class="change-to">${esc(v)}</span>
       </div>`
     ).join('');
     document.getElementById('m-changes-section').style.display = '';
@@ -857,7 +856,7 @@ function exportCSV() {
   const filtered = getFiltered();
   const rows = [['Event ID','Type','Description','User','Location','Timestamp','Flag']];
   filtered.forEach(e => rows.push([e.id, typeLabel(e.type), e.desc, e.user, e.loc, e.ts, e.flag]));
-  const csv = rows.map(r => r.map(c => '"' + c + '"').join(',')).join('\n');
+  const csv = rows.map(r => r.map(c => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'medsync_activity_log.csv';
@@ -893,15 +892,12 @@ async function loadLocationFilter() {
   }
 })();
 document.querySelector('th[data-col="ts"]').classList.add('sort-desc');
-// Wire export button
-document.querySelector('.btn[onclick*="CSV"]') &&
-  document.querySelector('.btn[onclick*="CSV"]').setAttribute('onclick','exportCSV()');
 loadLocationFilter();
 loadEvents();
 
 function navHome() {
   if (window.self !== window.top) {
-    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, '*');
+    window.parent.postMessage({ type: 'navigate', screen: 'portfolio' }, window.location.origin);
   } else {
     window.location.href = 'medsync_portfolio_live.html';
   }
