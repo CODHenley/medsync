@@ -633,10 +633,10 @@ function showResults(results) {
 
   document.getElementById('result-list').innerHTML =
     ok.slice(0,8).map(r => `<div class="result-row">
-      <span>${r.name||'—'}</span><span style="color:var(--green);font-weight:500;">$${(r.value||0).toFixed(2)} ✓</span>
+      <span>${esc(r.name||'—')}</span><span style="color:var(--green);font-weight:500;">$${(r.value||0).toFixed(2)} ✓</span>
     </div>`).join('') +
     (ok.length > 8 ? `<div class="result-row"><span>…and ${ok.length-8} more</span><span style="color:var(--green);">✓</span></div>` : '') +
-    err.map(r => `<div class="result-row error"><span>${r.name||'—'}</span><span style="color:var(--red);">${r.reason}</span></div>`).join('');
+    err.map(r => `<div class="result-row error"><span>${esc(r.name||'—')}</span><span style="color:var(--red);">${esc(r.reason)}</span></div>`).join('');
 
   goStep3();
 }
