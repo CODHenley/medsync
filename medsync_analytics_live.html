@@ -1870,7 +1870,7 @@ window.addEventListener('message', function(e) {
             headers.forEach((h, i) => { obj[h] = String(row[i] == null ? '' : row[i]).trim(); });
             return obj;
           });
-          glParseObjects(headers, dataRows, sessionAtStart);
+          glParseObjects(headers, dataRows, sessionAtStart).catch(err => glShowStatus('Parse error: ' + err.message, '#C0392B', '#fdf0ef'));
         } catch(err) {
           glShowStatus('Could not read Excel file: ' + err.message, '#C0392B', '#fdf0ef');
         }
@@ -1905,11 +1905,11 @@ window.addEventListener('message', function(e) {
       headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
       return obj;
     });
-    glParseObjects(headers, dataRows, session);
+    glParseObjects(headers, dataRows, session).catch(err => glShowStatus('Parse error: ' + err.message, '#C0392B', '#fdf0ef'));
   }
 
   // Shared row processor used by both CSV and Excel paths
-  function glParseObjects(headers, dataRows, session) {
+  async function glParseObjects(headers, dataRows, session) {
     if (session !== undefined && session !== _importSession) return;
     // Require date, product_name, category — value_lost is optional (defaults to 0)
     const need = ['date','product_name','category'];
@@ -1967,10 +1967,64 @@ window.addEventListener('message', function(e) {
       return;
     }
 
-    _parsedRows = rows;
-    glShowPreview(rows, headers);
-    const warn = errors.length ? ' (' + errors.length + ' rows skipped)' : '';
-    glShowStatus('✓ ' + rows.length + ' rows ready to import' + warn, '#2E7D32', '#f0faf2');
+    // --- Client-side dedup: query existing rows for this date range ---
+    glShowStatus('Checking for duplicates…', '#555', '#f7f7f7');
+    const dates = rows.map(r => r.created_at.slice(0,10)).sort();
+    const minDate = dates[0];
+    const maxDate = dates[dates.length - 1];
+
+    // fingerprint: date|product_name_lower|category_lower|location_id
+    function glFingerprint(isoDateOrTs, product, category, locId) {
+      return isoDateOrTs.slice(0,10) + '|' + (product||'').toLowerCase().trim() + '|' + (category||'').toLowerCase().trim() + '|' + (locId||'');
+    }
+
+    const existingFingerprints = new Set();
+    try {
+      // Fetch all existing rows for the overlapping date range (created_at stores as YYYY-MM-DDT12:00:00)
+      const exRes = await fetch(
+        window.SUPA_URL + '/rest/v1/goods_lost?select=created_at,product_name,category,location_id' +
+        '&created_at=gte.' + minDate + 'T00:00:00' +
+        '&created_at=lte.' + maxDate + 'T23:59:59' +
+        '&limit=5000',
+        { headers: window.HEADERS }
+      );
+      if (exRes.ok) {
+        const existing = await exRes.json();
+        (Array.isArray(existing) ? existing : []).forEach(r => {
+          existingFingerprints.add(glFingerprint(r.created_at, r.product_name, r.category, r.location_id));
+        });
+      }
+    } catch(e) {
+      console.warn('GL dedup prefetch failed — importing without dedup check:', e);
+    }
+
+    // Guard against stale session after async prefetch
+    if (session !== undefined && session !== _importSession) return;
+
+    const fresh = [];
+    const dups  = [];
+    rows.forEach(r => {
+      const fp = glFingerprint(r.created_at, r.product_name, r.category, r.location_id);
+      if (existingFingerprints.has(fp)) { dups.push(r); }
+      else { fresh.push(r); }
+    });
+
+    if (fresh.length === 0) {
+      glShowStatus(
+        '⚠ All ' + rows.length + ' rows already exist in the database for ' + minDate + ' – ' + maxDate + '. Nothing to import.',
+        '#7B4F00', '#fffbe6'
+      );
+      document.getElementById('gl-import-submit').disabled = true;
+      document.getElementById('gl-import-submit').style.opacity = '.45';
+      return;
+    }
+
+    _parsedRows = fresh;
+    glShowPreview(fresh, headers);
+    const dupNote  = dups.length  ? ' · ' + dups.length  + ' duplicate' + (dups.length  > 1 ? 's' : '') + ' skipped' : '';
+    const errNote  = errors.length ? ' · ' + errors.length + ' parse error' + (errors.length > 1 ? 's' : '') + ' skipped' : '';
+    const dateNote = dups.length  ? ' (date range ' + minDate + ' – ' + maxDate + ')' : '';
+    glShowStatus('✓ ' + fresh.length + ' rows ready to import' + dupNote + errNote + dateNote, '#2E7D32', '#f0faf2');
     document.getElementById('gl-import-submit').disabled = false;
     document.getElementById('gl-import-submit').style.opacity = '1';
   }
