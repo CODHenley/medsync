@@ -115,6 +115,30 @@ def main():
     for t in all_targets:
         dump_type_fields(args.token, t)
 
+    # 4. Argument signatures for the specific root query fields the actual clinical sync
+    # will call — field names alone aren't enough to write working queries, and guessing
+    # args wrong here means a wasted CI run same as the earlier auth-header mistake.
+    sync_targets = [
+        'encountersUpdatedSince', 'encounters', 'listEncounters',
+        'patients', 'patient', 'clients', 'client',
+        'providers', 'provider', 'appointments', 'countNewClients',
+        'clientReferralSources',
+    ]
+    print('=== Args for the query fields the clinical sync will call ===')
+    r = gql(args.token, '{ __schema { queryType { fields { name args { name type { name kind ofType { name kind ofType { name } } } } } } } }')
+    fields = (r.get('data') or {}).get('__schema', {}).get('queryType', {}).get('fields', [])
+    by_name = {f['name']: f for f in fields}
+    for name in sync_targets:
+        f = by_name.get(name)
+        if not f:
+            print(f'  (query field "{name}" not found)')
+            continue
+        arg_strs = []
+        for a in f.get('args', []):
+            arg_strs.append(f"{a['name']}: {type_name(a['type'])}")
+        print(f"  {name}({', '.join(arg_strs) if arg_strs else '(no args)'})")
+    print()
+
 
 if __name__ == '__main__':
     main()
