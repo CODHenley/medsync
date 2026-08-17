@@ -1,0 +1,27 @@
+name: Vetspire Clinical Sync
+
+# Populates ScoutSync's Clinical Operations tables (encounters, providers,
+# clients, patients, referral_relationships, records_release_log).
+#
+# Manual trigger only for now, deliberately — this hasn't run against
+# production data yet. Once a manual run is validated (row counts look
+# sane, no errors, spot-checked against Vetspire), add a `schedule:` trigger
+# matching the other sync workflows (e.g. every 4 hours like nightly_sync.yml).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire clinical sync
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_clinical_sync.py
