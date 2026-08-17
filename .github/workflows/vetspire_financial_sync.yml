@@ -1,0 +1,28 @@
+name: Vetspire Financial Sync
+
+# Populates ScoutSync's invoice_line_items (Revenue by Source, Revenue per
+# Veterinarian) from Vetspire's salesReport, broken down by provider +
+# product category at day-level granularity.
+#
+# Manual trigger only for now, deliberately — hasn't run against production
+# data yet. Once a manual run is validated (row counts look sane, revenue
+# reconciles against the existing daily_revenue baseline), add a `schedule:`
+# trigger matching vetspire_clinical_sync.yml (every 4 hours).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire financial sync
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_financial_sync.py
