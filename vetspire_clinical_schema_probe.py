@@ -29,10 +29,11 @@ KEYWORDS = [
 
 def gql(token, query, variables=None):
     payload = json.dumps({'query': query, 'variables': variables or {}}).encode()
-    auth = token if token.lower().startswith('bearer ') else f'Bearer {token}'
+    # The permanent API key (VETSPIRE_API_TOKEN) goes in raw, no "Bearer " prefix —
+    # same auth pattern as wheaton_lot_sync.py / nightly_revenue_sync.py.
     req = urllib.request.Request(
         VETSPIRE_URL, data=payload,
-        headers={'Content-Type': 'application/json', 'Authorization': auth},
+        headers={'Content-Type': 'application/json', 'Authorization': token},
     )
     with urllib.request.urlopen(req, timeout=20) as r:
         return json.loads(r.read())
@@ -69,6 +70,7 @@ def main():
     if not args.token:
         print('ERROR: provide --token or --token-file')
         raise SystemExit(1)
+    args.token = args.token.strip().removeprefix('Bearer ').strip()
 
     print('=== Connection test ===')
     try:
