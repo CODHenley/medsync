@@ -1,0 +1,23 @@
+name: Vetspire Clinical Schema Probe
+
+# One-off introspection: discovers the real Vetspire GraphQL field/type names for
+# ScoutSync's Clinical Operations section (encounter-start, referral, records-release,
+# provider/staff) — see vetspire_clinical_schema_probe.py. Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire clinical schema probe
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_clinical_schema_probe.py --token "$VETSPIRE_API_TOKEN"
