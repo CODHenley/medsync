@@ -199,6 +199,40 @@ def main():
         print('  (no breakdown arg found on salesReport — skipping live test)')
     print()
 
+    # 6. The prior live test returned "date":"2026-08" (month-level) for a single-day
+    # query — checking the `segment` arg's real enum values before assuming daily
+    # financial granularity is even possible, rather than guessing DAY/DAILY as a string.
+    print('=== ReportSegment enum values + live test with segment set ===')
+    segment_arg_name = next((a for a in sr_args if 'segment' in a.lower()), None)
+    if segment_arg_name:
+        seg_type = sr_args[segment_arg_name]
+        r = gql(args.token, f'{{ __type(name: "{seg_type}") {{ name enumValues {{ name }} }} }}')
+        data = (r.get('data') or {}).get('__type')
+        seg_values = [v['name'] for v in (data or {}).get('enumValues', [])] if data else []
+        print(f"  {seg_type}: {seg_values}")
+        day_val = next((v for v in seg_values if 'DAY' in v), None)
+        if day_val and breakdown_arg_name and breakdown_enum_values:
+            enum_type = sr_args[breakdown_arg_name]
+            values = breakdown_enum_values.get(enum_type, [])
+            provider_val = next((v for v in values if 'PROVIDER' in v), None)
+            test_breakdown = [v for v in (provider_val,) if v] or values[:1]
+            test_query = f'''
+            query($lids:[ID!], $s:Date, $e:Date, $bd:[{enum_type}!], $seg:{seg_type}){{
+                salesReport(locationIds:$lids, startDate:$s, endDate:$e, {breakdown_arg_name}:$bd, {segment_arg_name}:$seg)
+            }}
+            '''
+            r2 = gql(args.token, test_query, {
+                'lids': ['28253'], 's': yesterday, 'e': yesterday,
+                'bd': test_breakdown, 'seg': day_val,
+            })
+            print(f'  segment used: {day_val}, breakdown used: {test_breakdown}')
+            print(f'  result: {json.dumps(r2)[:2000]}')
+        else:
+            print('  (no DAY-like segment value found, or no breakdown to pair it with)')
+    else:
+        print('  (no segment arg found on salesReport)')
+    print()
+
 
 if __name__ == '__main__':
     main()
