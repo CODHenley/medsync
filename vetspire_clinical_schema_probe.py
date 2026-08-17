@@ -139,6 +139,66 @@ def main():
         print(f"  {name}({', '.join(arg_strs) if arg_strs else '(no args)'})")
     print()
 
+    # 5. salesReport/salesTypedReport args + their breakdown enum's real values, then a
+    # live test call built ONLY from what was just introspected (no hardcoded enum
+    # value guesses) — today's revenue sync calls salesReport with no breakdown arg at
+    # all and gets one row per location/date (just `total`); Financial KPIs (ATC,
+    # Revenue by Source, Revenue per Vet) need the row-level detail breakdown unlocks.
+    print('=== salesReport / salesTypedReport args ===')
+    sales_arg_types = {}  # field_name -> {arg_name: type_name}
+    for name in ['salesReport', 'salesTypedReport']:
+        f = by_name.get(name)
+        if not f:
+            print(f'  (query field "{name}" not found)')
+            continue
+        sales_arg_types[name] = {}
+        for a in f.get('args', []):
+            tname = type_name(a['type'])
+            sales_arg_types[name][a['name']] = tname
+            print(f"  {name}.{a['name']}: {tname}")
+    print()
+
+    print('=== Breakdown enum values ===')
+    breakdown_enum_values = {}  # arg_type_name -> [values]
+    for field_name, arg_types in sales_arg_types.items():
+        for arg_name, tname in arg_types.items():
+            if 'breakdown' not in arg_name.lower() or tname in breakdown_enum_values:
+                continue
+            r = gql(args.token, f'{{ __type(name: "{tname}") {{ name enumValues {{ name }} }} }}')
+            data = (r.get('data') or {}).get('__type')
+            if not data:
+                print(f'  (type "{tname}" not found)')
+                continue
+            values = [v['name'] for v in (data.get('enumValues') or [])]
+            breakdown_enum_values[tname] = values
+            print(f"  {tname}: {values}")
+    print()
+
+    print('=== Live salesReport test w/ breakdown (built from the above, not guessed) ===')
+    sr_args = sales_arg_types.get('salesReport', {})
+    breakdown_arg_name = next((a for a in sr_args if 'breakdown' in a.lower()), None)
+    if breakdown_arg_name and breakdown_enum_values:
+        enum_type = sr_args[breakdown_arg_name]
+        values = breakdown_enum_values.get(enum_type, [])
+        provider_val = next((v for v in values if 'PROVIDER' in v), None)
+        category_val = next((v for v in values if 'CATEGORY' in v), None)
+        test_breakdown = [v for v in (provider_val, category_val) if v] or values[:2]
+        from datetime import date, timedelta
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        test_query = f'''
+        query($lids:[ID!], $s:Date, $e:Date, $bd:[{enum_type}!]){{
+            salesReport(locationIds:$lids, startDate:$s, endDate:$e, {breakdown_arg_name}:$bd)
+        }}
+        '''
+        r = gql(args.token, test_query, {
+            'lids': ['28253'], 's': yesterday, 'e': yesterday, 'bd': test_breakdown,
+        })
+        print(f'  breakdown used: {test_breakdown}')
+        print(f'  result: {json.dumps(r)[:3000]}')
+    else:
+        print('  (no breakdown arg found on salesReport — skipping live test)')
+    print()
+
 
 if __name__ == '__main__':
     main()
