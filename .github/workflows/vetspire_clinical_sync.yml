@@ -3,12 +3,14 @@ name: Vetspire Clinical Sync
 # Populates ScoutSync's Clinical Operations tables (encounters, providers,
 # clients, patients, referral_relationships, records_release_log).
 #
-# Manual trigger only for now, deliberately — this hasn't run against
-# production data yet. Once a manual run is validated (row counts look
-# sane, no errors, spot-checked against Vetspire), add a `schedule:` trigger
-# matching the other sync workflows (e.g. every 4 hours like nightly_sync.yml).
+# Validated via manual dispatch against production data (214 encounters,
+# 181 clients, 186 patients, 11 providers, 223 referral relationships,
+# no errors) before this schedule was added — same 4-hour cadence as
+# nightly_sync.yml, since this is core Vetspire data of the same kind.
 
 on:
+  schedule:
+    - cron: '0 */4 * * *'
   workflow_dispatch:
 
 jobs:
