@@ -275,8 +275,11 @@ function selectedLocation() {
 function selectedRangeDays() { return parseInt(document.getElementById('range-select').value, 10); }
 
 // Exact row count via Prefer: count=exact + a 0-row range, no data transferred.
+// select=* (not select=id) — several MedSync tables (e.g. daily_revenue) have no
+// "id" column, and a bad column name here silently drops the Content-Range header,
+// which previously made populated tables read back as 0 rows.
 async function countRows(table, filter = '') {
-  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?select=id&${filter}`, {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?select=*&${filter}`, {
     headers: { ...HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' }
   });
   const cr = res.headers.get('content-range'); // "0-0/123"
@@ -294,14 +297,14 @@ async function mostRecent(table, col) {
   } catch { return null; }
 }
 
-function statusFor(count, mostRecentVal, expectEmpty) {
+function statusFor(count, mostRecentVal, expectEmpty, staleDays = 3) {
   if (count === null) return { level: 'neutral', label: 'unreachable' };
   if (count === 0) return expectEmpty
     ? { level: 'neutral', label: 'not syncing yet' }
     : { level: 'critical', label: 'unexpectedly empty' };
   if (!mostRecentVal) return { level: 'warning', label: 'no timestamp' };
   const ageDays = (Date.now() - new Date(mostRecentVal).getTime()) / 86400000;
-  if (ageDays > 3) return { level: 'warning', label: `stale (${Math.round(ageDays)}d)` };
+  if (ageDays > staleDays) return { level: 'warning', label: `stale (${Math.round(ageDays)}d)` };
   return { level: 'good', label: 'fresh' };
 }
 
@@ -312,14 +315,14 @@ async function nullRatePct(table, col, total) {
   return Math.round((nullCount / total) * 1000) / 10;
 }
 
-async function renderQaRow(tbody, table, keyCol, expectEmpty) {
+async function renderQaRow(tbody, table, keyCol, expectEmpty, staleDays = 3) {
   const tr = document.createElement('tr');
   tr.innerHTML = `<td>${esc(table)}</td><td>…</td><td>…</td><td>…</td><td>…</td>`;
   tbody.appendChild(tr);
   const count = await countRows(table);
   const recent = count ? await mostRecent(table, keyCol) : null;
   const nullPct = count ? await nullRatePct(table, keyCol, count) : null;
-  const st = statusFor(count, recent, expectEmpty);
+  const st = statusFor(count, recent, expectEmpty, staleDays);
   tr.innerHTML = `
     <td>${esc(table)}</td>
     <td>${fmtN(count)}</td>
@@ -345,7 +348,9 @@ async function loadValidation() {
   await Promise.all([
     renderQaRow(financialBody, 'invoice_line_items', 'service_date', true),
     renderQaRow(financialBody, 'daily_revenue', 'date', false),
-    renderQaRow(financialBody, 'purchase_history', 'purchased_at', false),
+    // purchase_history is fed by manual Vetcove CSV import (COGS Import screen), not an
+    // hourly automated sync — a multi-day gap is normal, so it gets a looser staleness bar.
+    renderQaRow(financialBody, 'purchase_history', 'purchased_at', false, 14),
   ]);
 
   await Promise.all([
