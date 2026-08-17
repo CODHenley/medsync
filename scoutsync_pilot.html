@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ScoutSync — Data Platform (Pilot)</title>
+<style>
+:root {
+  --navy:      #1C2B4A;
+  --navy-md:   #2A3F6A;
+  --navy-lt:   #E8EDF5;
+  --orange:    #C83803;
+  --orange-lt: #FFF0EB;
+  --border:    #C5CDD8;
+  --muted:     #6B7A99;
+  --surface:   #FCFCFB;
+  --card:      #FFFFFF;
+  --text:      #1C2B4A;
+
+  /* categorical — validated: node scripts/validate_palette.js
+     "#2B6CB0,#C83803,#3C5A99" --mode light → ALL CHECKS PASS */
+  --c-clinical:   #2B6CB0;
+  --c-financial:  #C83803;
+  --c-facilities: #3C5A99;
+
+  /* status — reserved, never reused as categorical */
+  --s-good:     #1C7C54;
+  --s-warning:  #B7791F;
+  --s-critical: #B42318;
+  --s-neutral:  #8A93A6;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--surface); color: var(--text);
+}
+.pilot-banner {
+  background: var(--orange); color: #fff; text-align: center;
+  font-size: 13px; font-weight: 700; letter-spacing: .3px;
+  padding: 7px 12px;
+}
+header.top {
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 24px;
+}
+header.top img.logo { height: 32px; width: auto; border-radius: 6px; }
+header.top .word { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; }
+header.top .word span { color: var(--orange); }
+header.top .tagline { font-size: 12px; color: rgba(255,255,255,.6); margin-left: 2px; }
+header.top .spacer { flex: 1; }
+.loc-filter select, .range-filter select {
+  background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px; padding: 6px 10px; font-size: 13px;
+}
+.loc-filter select option, .range-filter select option { color: #1C2B4A; }
+
+nav.tabs {
+  display: flex; gap: 4px; background: #fff; border-bottom: 1px solid var(--border);
+  padding: 0 24px; overflow-x: auto;
+}
+nav.tabs button {
+  border: none; background: none; font-size: 13.5px; font-weight: 600;
+  color: var(--muted); padding: 13px 16px; cursor: pointer; border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+nav.tabs button.active { color: var(--text); border-bottom-color: var(--dot, var(--navy)); }
+nav.tabs button[data-tab="validation"].active { --dot: var(--s-warning); }
+nav.tabs button[data-tab="clinical"].active   { --dot: var(--c-clinical); }
+nav.tabs button[data-tab="financial"].active  { --dot: var(--c-financial); }
+nav.tabs button[data-tab="facilities"].active { --dot: var(--c-facilities); }
+
+main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.section-head {
+  display: flex; align-items: baseline; gap: 10px; margin: 26px 0 12px;
+}
+.section-head .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.section-head h2 { font-size: 15px; margin: 0; letter-spacing: .2px; }
+.section-head .sub { font-size: 12.5px; color: var(--muted); }
+.section-head:first-child { margin-top: 4px; }
+
+.tile-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.tile {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px;
+}
+.tile .l { font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+.tile .v { font-size: 24px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .n { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.tile .v.empty { color: var(--s-neutral); font-size: 15px; font-weight: 700; }
+
+table.qa { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+table.qa th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .3px;
+  color: var(--muted); background: var(--navy-lt); padding: 9px 12px; font-weight: 700;
+}
+table.qa td { padding: 10px 12px; font-size: 13px; border-top: 1px solid var(--border); }
+table.qa tr:hover td { background: #FAFBFD; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
+.badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+.badge.good .dot { background: var(--s-good); }
+.badge.good { color: var(--s-good); }
+.badge.warning .dot { background: var(--s-warning); }
+.badge.warning { color: var(--s-warning); }
+.badge.critical .dot { background: var(--s-critical); }
+.badge.critical { color: var(--s-critical); }
+.badge.neutral .dot { background: var(--s-neutral); }
+.badge.neutral { color: var(--s-neutral); }
+
+.empty-note {
+  background: var(--navy-lt); border: 1px dashed var(--border); border-radius: 10px;
+  padding: 16px 18px; font-size: 13px; color: var(--navy-md); line-height: 1.5;
+}
+.empty-note code { background: rgba(28,43,74,.08); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+.reconcile-row { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.reconcile-row:first-child { border-top: none; }
+.reconcile-row .lbl { flex: 1; color: var(--muted); }
+.foot-note { font-size: 12px; color: var(--muted); margin-top: 30px; border-top: 1px solid var(--border); padding-top: 14px; }
+</style>
+</head>
+<body>
+
+<div class="pilot-banner">
+  🔒 PILOT — INTERNAL USE ONLY — NOT LINKED FROM MEDSYNC — DATA UNDER VALIDATION, NOT YET LIVE
+</div>
+
+<header class="top">
+  <img class="logo" src="Scout Logo.png" alt="Scout" onerror="this.style.display='none'">
+  <div>
+    <div class="word">Scout<span>Sync</span></div>
+    <div class="tagline">Clinical · Financial · Facilities data platform</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="loc-filter">
+    <select id="loc-select">
+      <option value="">All Locations</option>
+      <option value="lp">Lincoln Park</option>
+      <option value="oo">Old Orchard</option>
+      <option value="wl">West Loop</option>
+      <option value="wh">Wheaton</option>
+    </select>
+  </div>
+  <div class="range-filter">
+    <select id="range-select">
+      <option value="30">Trailing 30 days</option>
+      <option value="7">Trailing 7 days</option>
+      <option value="90">Trailing 90 days</option>
+      <option value="365">Trailing 365 days</option>
+    </select>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="validation">Data Validation</button>
+  <button data-tab="clinical">Clinical Operations</button>
+  <button data-tab="financial">Financial</button>
+  <button data-tab="facilities">Facilities Operations</button>
+</nav>
+
+<main>
+
+  <!-- ══════════════════ DATA VALIDATION ══════════════════ -->
+  <section class="panel active" id="panel-validation">
+    <div class="empty-note" style="margin-bottom:20px;">
+      Before anything here goes live, every table below should show a row count you recognize, a recent
+      timestamp, and a low null rate on its key fields. <b>Empty is expected</b> for the Clinical Operations
+      tables until the Vetspire sync jobs are built (see <code>vetspire_clinical_schema_probe.py</code> and
+      <code>supabase/migrations/scoutsync_clinical_financial_schema.sql</code>) — that's a "not wired up yet"
+      signal, not a bug. A <span style="color:var(--s-critical); font-weight:700;">critical</span> badge on a
+      table that should have data is the actual bug to chase.
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Clinical Operations tables</h2><span class="sub">new — awaiting sync</span></div>
+    <table class="qa" id="qa-clinical"><thead><tr>
+      <th>Table</th><th>Row count</th><th>Most recent record</th><th>Key-field null rate</th><th>Status</th>
+    </tr></thead><tbody></tbody></table>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-financial)"></div>
+      <h2>Financial tables</h2><span class="sub">daily_revenue live · invoice_line_items awaiting sync</span></div>
+    <table class="qa" id="qa-financial"><thead><tr>
+      <th>Table</th><th>Row count</th><th>Most recent record</th><th>Key-field null rate</th><th>Status</th>
+    </tr></thead><tbody></tbody></table>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Facilities Operations tables</h2><span class="sub">already live in MedSync</span></div>
+    <table class="qa" id="qa-facilities"><thead><tr>
+      <th>Table</th><th>Row count</th><th>Most recent record</th><th>Key-field null rate</th><th>Status</th>
+    </tr></thead><tbody></tbody></table>
+
+    <div class="section-head"><div class="dot" style="background:var(--s-warning)"></div>
+      <h2>Reconciliation checks</h2><span class="sub">new pipeline vs. known-good baseline</span></div>
+    <div class="tile" id="reconcile-box">
+      <div class="l">Invoice line items (new) vs. daily_revenue (existing) — per location, trailing range</div>
+      <div id="reconcile-body" style="margin-top:8px;">Loading…</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ CLINICAL OPERATIONS ══════════════════ -->
+  <section class="panel" id="panel-clinical">
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Visit Volume & Flow</h2></div>
+    <div class="tile-row" id="clinical-flow-tiles"></div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Provider Productivity</h2></div>
+    <div class="tile-row" id="clinical-provider-tiles"></div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Client Loyalty & Competitive Position</h2>
+      <span class="sub">records-released-to-competitor signal</span></div>
+    <div class="tile-row" id="clinical-loyalty-tiles"></div>
+    <div id="clinical-empty" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- ══════════════════ FINANCIAL ══════════════════ -->
+  <section class="panel" id="panel-financial">
+    <div class="section-head"><div class="dot" style="background:var(--c-financial)"></div>
+      <h2>Revenue Performance</h2>
+      <span class="sub" id="financial-source-note"></span></div>
+    <div class="tile-row" id="financial-revenue-tiles"></div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-financial)"></div>
+      <h2>Cost & Margin</h2></div>
+    <div class="tile-row" id="financial-cost-tiles"></div>
+    <div id="financial-empty" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- ══════════════════ FACILITIES OPERATIONS ══════════════════ -->
+  <section class="panel" id="panel-facilities">
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Inventory Health</h2></div>
+    <div class="tile-row" id="facilities-health-tiles"></div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Procurement</h2></div>
+    <div class="tile-row" id="facilities-procurement-tiles"></div>
+  </section>
+
+  <div class="foot-note">
+    ScoutSync pilot — reads the same Supabase project MedSync already uses (RLS-scoped anon access, same as
+    every other MedSync screen). Not linked from <code>index.html</code> or the MedSync portfolio shell.
+    Reachable only by direct URL for internal review.
+  </div>
+</main>
+
+<script>
+// ── Supabase config (same project + anon key as the rest of MedSync — RLS-scoped) ──
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const HEADERS = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+
+const LOCATIONS = [
+  { key: 'lp', name: 'Lincoln Park', uuid: '11111111-0000-0000-0000-000000000001', vid: '23083' },
+  { key: 'oo', name: 'Old Orchard',  uuid: '11111111-0000-0000-0000-000000000002', vid: '27390' },
+  { key: 'wl', name: 'West Loop',    uuid: '11111111-0000-0000-0000-000000000003', vid: '24356' },
+  { key: 'wh', name: 'Wheaton',      uuid: '11111111-0000-0000-0000-000000000004', vid: '28253' },
+];
+
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt$(n) { return n === null || n === undefined ? '$0' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+function fmtN(n) { return n === null || n === undefined ? '0' : Number(n).toLocaleString('en-US'); }
+function daysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+
+function selectedLocation() {
+  const key = document.getElementById('loc-select').value;
+  return LOCATIONS.find(l => l.key === key) || null;
+}
+function selectedRangeDays() { return parseInt(document.getElementById('range-select').value, 10); }
+
+// Exact row count via Prefer: count=exact + a 0-row range, no data transferred.
+async function countRows(table, filter = '') {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?select=id&${filter}`, {
+    headers: { ...HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' }
+  });
+  const cr = res.headers.get('content-range'); // "0-0/123"
+  if (!cr) return 0;
+  const total = cr.split('/')[1];
+  return total === '*' ? null : parseInt(total, 10);
+}
+
+async function mostRecent(table, col) {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?select=${col}&order=${col}.desc.nullslast&limit=1`, { headers: HEADERS });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows[0] ? rows[0][col] : null;
+  } catch { return null; }
+}
+
+function statusFor(count, mostRecentVal, expectEmpty) {
+  if (count === null) return { level: 'neutral', label: 'unreachable' };
+  if (count === 0) return expectEmpty
+    ? { level: 'neutral', label: 'not syncing yet' }
+    : { level: 'critical', label: 'unexpectedly empty' };
+  if (!mostRecentVal) return { level: 'warning', label: 'no timestamp' };
+  const ageDays = (Date.now() - new Date(mostRecentVal).getTime()) / 86400000;
+  if (ageDays > 3) return { level: 'warning', label: `stale (${Math.round(ageDays)}d)` };
+  return { level: 'good', label: 'fresh' };
+}
+
+async function nullRatePct(table, col, total) {
+  if (!total) return null;
+  const nullCount = await countRows(table, `${col}=is.null`);
+  if (nullCount === null) return null;
+  return Math.round((nullCount / total) * 1000) / 10;
+}
+
+async function renderQaRow(tbody, table, keyCol, expectEmpty) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${esc(table)}</td><td>…</td><td>…</td><td>…</td><td>…</td>`;
+  tbody.appendChild(tr);
+  const count = await countRows(table);
+  const recent = count ? await mostRecent(table, keyCol) : null;
+  const nullPct = count ? await nullRatePct(table, keyCol, count) : null;
+  const st = statusFor(count, recent, expectEmpty);
+  tr.innerHTML = `
+    <td>${esc(table)}</td>
+    <td>${fmtN(count)}</td>
+    <td>${recent ? esc(new Date(recent).toLocaleString()) : '—'}</td>
+    <td>${nullPct === null ? '—' : nullPct + '%'}</td>
+    <td><span class="badge ${st.level}"><span class="dot"></span>${st.label}</span></td>`;
+}
+
+async function loadValidation() {
+  const clinicalBody = document.querySelector('#qa-clinical tbody');
+  const financialBody = document.querySelector('#qa-financial tbody');
+  const facilitiesBody = document.querySelector('#qa-facilities tbody');
+
+  await Promise.all([
+    renderQaRow(clinicalBody, 'encounters', 'started_at', true),
+    renderQaRow(clinicalBody, 'providers', 'created_at', true),
+    renderQaRow(clinicalBody, 'clients', 'created_at', true),
+    renderQaRow(clinicalBody, 'patients', 'created_at', true),
+    renderQaRow(clinicalBody, 'referral_relationships', 'listed_at', true),
+    renderQaRow(clinicalBody, 'records_release_log', 'released_at', true),
+  ]);
+
+  await Promise.all([
+    renderQaRow(financialBody, 'invoice_line_items', 'service_date', true),
+    renderQaRow(financialBody, 'daily_revenue', 'date', false),
+    renderQaRow(financialBody, 'purchase_history', 'purchased_at', false),
+  ]);
+
+  await Promise.all([
+    renderQaRow(facilitiesBody, 'lots', 'created_at', false),
+    renderQaRow(facilitiesBody, 'po_items', 'created_at', false),
+    renderQaRow(facilitiesBody, 'goods_lost', 'created_at', false),
+    renderQaRow(facilitiesBody, 'inventory_snapshots', 'created_at', false),
+    renderQaRow(facilitiesBody, 'dispensed_items', 'created_at', false),
+  ]);
+
+  await loadReconciliation();
+}
+
+async function loadReconciliation() {
+  const box = document.getElementById('reconcile-body');
+  const ilCount = await countRows('invoice_line_items');
+  if (!ilCount) {
+    box.innerHTML = `<div class="empty-note">
+      <code>invoice_line_items</code> has 0 rows — the sync job hasn't been built yet, so there's nothing to
+      reconcile against <code>daily_revenue</code> yet. This check will start comparing the two automatically
+      once that pipeline lands; a variance beyond 2% on any location/day will be flagged here before ScoutSync
+      is trusted as a source of truth.
+    </div>`;
+    return;
+  }
+  const from = daysAgo(selectedRangeDays());
+  const rows = [];
+  for (const loc of LOCATIONS) {
+    const [ilRes, drRes] = await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/invoice_line_items?select=amount&location_id=eq.${loc.uuid}&service_date=gte.${from}`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=revenue&location_id=eq.${loc.vid}&date=gte.${from}`, { headers: HEADERS }),
+    ]);
+    const ilRows = ilRes.ok ? await ilRes.json() : [];
+    const drRows = drRes.ok ? await drRes.json() : [];
+    const ilSum = ilRows.reduce((a, r) => a + Number(r.amount || 0), 0);
+    const drSum = drRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+    const variancePct = drSum ? Math.round(Math.abs(ilSum - drSum) / drSum * 1000) / 10 : null;
+    rows.push({ loc: loc.name, ilSum, drSum, variancePct });
+  }
+  box.innerHTML = rows.map(r => {
+    const level = r.variancePct === null ? 'neutral' : r.variancePct <= 2 ? 'good' : r.variancePct <= 5 ? 'warning' : 'critical';
+    const label = r.variancePct === null ? 'no baseline' : `${r.variancePct}% variance`;
+    return `<div class="reconcile-row">
+      <span class="lbl">${esc(r.loc)}</span>
+      <span>${fmt$(r.ilSum)} new vs ${fmt$(r.drSum)} baseline</span>
+      <span class="badge ${level}"><span class="dot"></span>${label}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Clinical Operations tab ──────────────────────────────────
+async function loadClinical() {
+  const count = await countRows('encounters');
+  const flow = document.getElementById('clinical-flow-tiles');
+  const prov = document.getElementById('clinical-provider-tiles');
+  const loyalty = document.getElementById('clinical-loyalty-tiles');
+  const emptyBox = document.getElementById('clinical-empty');
+
+  if (!count) {
+    flow.innerHTML = prov.innerHTML = loyalty.innerHTML = '';
+    emptyBox.innerHTML = `<div class="empty-note">
+      No encounters synced yet. Clinical Operations goes live once the Vetspire encounter-start ("arrived")
+      sync is built and <code>encounters</code> / <code>referral_relationships</code> /
+      <code>records_release_log</code> start filling in — see the Data Validation tab for live sync status.
+    </div>`;
+    return;
+  }
+  emptyBox.innerHTML = '';
+
+  const from = daysAgo(selectedRangeDays());
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const res = await fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=*&visit_date=gte.${from}${locFilter}`, { headers: HEADERS });
+  const rows = res.ok ? await res.json() : [];
+
+  const totalVisits = rows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
+  const newClients = rows.reduce((a, r) => a + Number(r.new_client_count || 0), 0);
+  const avgWait = rows.length ? rows.reduce((a, r) => a + Number(r.avg_wait_minutes || 0), 0) / rows.length : null;
+  const avgDur = rows.length ? rows.reduce((a, r) => a + Number(r.avg_encounter_minutes || 0), 0) / rows.length : null;
+
+  flow.innerHTML = `
+    <div class="tile"><div class="l">Total visits</div><div class="v">${fmtN(totalVisits)}</div></div>
+    <div class="tile"><div class="l">New clients</div><div class="v">${fmtN(newClients)}</div></div>
+    <div class="tile"><div class="l">Avg wait (check-in → start)</div><div class="v">${avgWait ? Math.round(avgWait) + ' min' : '—'}</div></div>
+    <div class="tile"><div class="l">Avg encounter length</div><div class="v">${avgDur ? Math.round(avgDur) + ' min' : '—'}</div></div>`;
+
+  const byProvider = {};
+  rows.forEach(r => { byProvider[r.provider_id] = (byProvider[r.provider_id] || 0) + Number(r.encounter_count || 0); });
+  const providerCount = Object.keys(byProvider).length;
+  prov.innerHTML = `
+    <div class="tile"><div class="l">Active providers</div><div class="v">${fmtN(providerCount)}</div></div>
+    <div class="tile"><div class="l">Visits / provider (avg)</div><div class="v">${providerCount ? Math.round(totalVisits / providerCount) : '—'}</div></div>`;
+
+  const sigRes = await fetch(`${SUPA_URL}/rest/v1/v_competitor_use_signal?select=*`, { headers: HEADERS });
+  const sigRows = sigRes.ok ? await sigRes.json() : [];
+  const uniqueClients = new Set(sigRows.map(r => r.client_id)).size;
+  loyalty.innerHTML = `
+    <div class="tile"><div class="l">Clients flagged for competitor use</div><div class="v">${fmtN(uniqueClients)}</div>
+      <div class="n">referral listed + records released to it</div></div>
+    <div class="tile"><div class="l">Records-release events (competitor)</div><div class="v">${fmtN(sigRows.length)}</div></div>`;
+}
+
+// ── Financial tab ─────────────────────────────────────────────
+async function loadFinancial() {
+  const ilCount = await countRows('invoice_line_items');
+  const revenueTiles = document.getElementById('financial-revenue-tiles');
+  const costTiles = document.getElementById('financial-cost-tiles');
+  const note = document.getElementById('financial-source-note');
+  const emptyBox = document.getElementById('financial-empty');
+
+  const from = daysAgo(selectedRangeDays());
+  const loc = selectedLocation();
+
+  if (ilCount) {
+    note.textContent = 'source: invoice_line_items';
+    const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+    const res = await fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS });
+    const rows = res.ok ? await res.json() : [];
+    const revenue = rows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+    const invoices = rows.reduce((a, r) => a + Number(r.invoice_count || 0), 0);
+    const atc = invoices ? revenue / invoices : null;
+    const byCategory = {};
+    rows.forEach(r => { byCategory[r.category] = (byCategory[r.category] || 0) + Number(r.revenue || 0); });
+    revenueTiles.innerHTML = `
+      <div class="tile"><div class="l">Total revenue</div><div class="v">${fmt$(revenue)}</div></div>
+      <div class="tile"><div class="l">Avg transaction charge</div><div class="v">${atc ? fmt$(atc) : '—'}</div></div>
+      ${Object.entries(byCategory).map(([cat, amt]) => `<div class="tile"><div class="l">${esc(cat.replace(/_/g,' '))}</div><div class="v">${fmt$(amt)}</div></div>`).join('')}`;
+    emptyBox.innerHTML = '';
+  } else {
+    note.textContent = 'interim — daily_revenue aggregate, pre line-item sync';
+    let revenue = 0;
+    for (const l of (loc ? [loc] : LOCATIONS)) {
+      const res = await fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=revenue&location_id=eq.${l.vid}&date=gte.${from}`, { headers: HEADERS });
+      const rows = res.ok ? await res.json() : [];
+      revenue += rows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+    }
+    revenueTiles.innerHTML = `
+      <div class="tile"><div class="l">Total revenue (interim)</div><div class="v">${fmt$(revenue)}</div>
+        <div class="n">daily aggregate only — no ATC or category breakdown until invoice_line_items syncs</div></div>`;
+    emptyBox.innerHTML = `<div class="empty-note">
+      Average Transaction Charge and Revenue by Source need line-item detail
+      (<code>invoice_line_items</code>), which isn't syncing yet — this section is showing the existing
+      daily-aggregate <code>daily_revenue</code> number as an interim baseline instead.
+    </div>`;
+  }
+
+  const ogRes = await fetch(`${SUPA_URL}/rest/v1/organization_settings?id=eq.1&select=settings_json&limit=1`, { headers: HEADERS });
+  const ogRows = ogRes.ok ? await ogRes.json() : [];
+  const cogsMin = ogRows[0]?.settings_json?.cogs_min;
+  const cogsMax = ogRows[0]?.settings_json?.cogs_max;
+  costTiles.innerHTML = `
+    <div class="tile"><div class="l">COGS target range</div><div class="v">${cogsMin && cogsMax ? cogsMin + '–' + cogsMax + '%' : '—'}</div></div>
+    <div class="tile"><div class="l">Staff cost %</div><div class="v empty">awaiting Rippling</div></div>`;
+}
+
+// ── Facilities Operations tab ────────────────────────────────
+async function loadFacilities() {
+  const from = daysAgo(selectedRangeDays());
+  const loc = selectedLocation();
+  const locFilterUuid = loc ? `&location_id=eq.${loc.uuid}` : '';
+
+  const [glRes, lotsRes] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/goods_lost?select=value_lost&created_at=gte.${from}${locFilterUuid}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/lots?select=expiration_date,qty_remaining&status=neq.Disposed${locFilterUuid}`, { headers: HEADERS }),
+  ]);
+  const glRows = glRes.ok ? await glRes.json() : [];
+  const lotRows = lotsRes.ok ? await lotsRes.json() : [];
+  const goodsLost = glRows.reduce((a, r) => a + Number(r.value_lost || 0), 0);
+  const today = new Date();
+  const in30 = new Date(); in30.setDate(today.getDate() + 30);
+  const expiringSoon = lotRows.filter(l => l.expiration_date && new Date(l.expiration_date) <= in30 && Number(l.qty_remaining) > 0).length;
+
+  let revenue = 0;
+  for (const l of (loc ? [loc] : LOCATIONS)) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=revenue&location_id=eq.${l.vid}&date=gte.${from}`, { headers: HEADERS });
+    const rows = res.ok ? await res.json() : [];
+    revenue += rows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+  }
+  const phRes = await fetch(`${SUPA_URL}/rest/v1/purchase_history?select=amount&purchased_at=gte.${from}${locFilterUuid}`, { headers: HEADERS });
+  const phRows = phRes.ok ? await phRes.json() : [];
+  const spend = phRows.reduce((a, r) => a + Number(r.amount || 0), 0);
+  const cogsPct = revenue ? Math.round((spend / revenue) * 1000) / 10 : null;
+
+  document.getElementById('facilities-health-tiles').innerHTML = `
+    <div class="tile"><div class="l">COGS %</div><div class="v">${cogsPct !== null ? cogsPct + '%' : '—'}</div></div>
+    <div class="tile"><div class="l">Goods lost $</div><div class="v">${fmt$(goodsLost)}</div></div>
+    <div class="tile"><div class="l">Lots expiring ≤30 days</div><div class="v">${fmtN(expiringSoon)}</div></div>`;
+
+  document.getElementById('facilities-procurement-tiles').innerHTML = `
+    <div class="tile"><div class="l">Purchase spend</div><div class="v">${fmt$(spend)}</div></div>`;
+}
+
+// ── Tabs + filters ────────────────────────────────────────────
+const loaders = { validation: loadValidation, clinical: loadClinical, financial: loadFinancial, facilities: loadFacilities };
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    loaders[btn.dataset.tab]();
+  });
+});
+document.getElementById('loc-select').addEventListener('change', () => {
+  const active = document.querySelector('nav.tabs button.active').dataset.tab;
+  loaders[active]();
+});
+document.getElementById('range-select').addEventListener('change', () => {
+  const active = document.querySelector('nav.tabs button.active').dataset.tab;
+  loaders[active]();
+});
+
+loadValidation();
+</script>
+</body>
+</html>
