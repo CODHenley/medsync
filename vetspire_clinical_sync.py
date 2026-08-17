@@ -150,7 +150,8 @@ def main():
             print(f"  fetched {len(rows)} encounters (offset {offset})")
 
             providers, clients, patients = {}, {}, {}
-            referral_rows, release_rows, encounter_rows = [], [], []
+            referrals, releases = {}, {}
+            encounter_rows = []
 
             for enc in rows:
                 provider = enc.get("provider")
@@ -174,21 +175,25 @@ def main():
                         rdvm = cr.get("rdvm") or {}
                         if not rdvm.get("id"):
                             continue
-                        referral_rows.append({
+                        # Keyed by vetspire id (not appended to a list) — the same
+                        # ClientRdvm/document reappears once per encounter for that
+                        # client, and Postgres's ON CONFLICT DO UPDATE errors out if
+                        # a single upsert call contains the same conflict key twice.
+                        referrals[cr["id"]] = {
                             "vetspire_referral_id": cr["id"],
                             "vetspire_client_id": client["id"],  # resolved to client_id below
                             "referral_name": rdvm.get("name"),
                             "referral_type": "other",  # needs manual classification — see below
                             "listed_at": cr.get("insertedAt"),
-                        })
+                        }
                         for doc in (rdvm.get("documents") or []):
-                            release_rows.append({
+                            releases[doc["id"]] = {
                                 "vetspire_release_id": doc["id"],
                                 "vetspire_client_id": client["id"],
                                 "vetspire_referral_id": cr["id"],
                                 "released_at": doc.get("insertedAt"),
                                 "method": "vetspire_document",
-                            })
+                            }
 
                 if patient.get("id"):
                     patients[patient["id"]] = {
@@ -221,15 +226,15 @@ def main():
             patient_rows = supa_upsert("patients", list(patients.values()), "vetspire_patient_id")
             patient_uuid_by_vs = {r["vetspire_patient_id"]: r["id"] for r in patient_rows}
 
-            for r in referral_rows:
+            for r in referrals.values():
                 r["client_id"] = client_uuid_by_vs.get(r.pop("vetspire_client_id"))
-            referral_out = supa_upsert("referral_relationships", referral_rows, "vetspire_referral_id")
+            referral_out = supa_upsert("referral_relationships", list(referrals.values()), "vetspire_referral_id")
             referral_uuid_by_vs = {r["vetspire_referral_id"]: r["id"] for r in referral_out}
 
-            for r in release_rows:
+            for r in releases.values():
                 r["client_id"] = client_uuid_by_vs.get(r.pop("vetspire_client_id"))
                 r["referral_relationship_id"] = referral_uuid_by_vs.get(r.pop("vetspire_referral_id"))
-            release_out = supa_upsert("records_release_log", release_rows, "vetspire_release_id")
+            release_out = supa_upsert("records_release_log", list(releases.values()), "vetspire_release_id")
 
             # ── Now the encounters themselves, with resolved FKs ──
             for e in encounter_rows:
