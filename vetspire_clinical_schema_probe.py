@@ -296,7 +296,10 @@ def main():
     print(f'  {[v["name"] for v in (data or {}).get("enumValues", [])] if data else "(not found)"}')
     print()
 
-    print('=== Live sample: last 30 days of encounters, visitType/status/completedAt tallies ===')
+    print('=== EncounterType fields ===')
+    dump_type_fields(args.token, 'EncounterType')
+
+    print('=== Live sample: last 30 days of encounters, visitType/status/encounterType/category tallies ===')
     from datetime import date, timedelta
     since = (date.today() - timedelta(days=30)).isoformat() + 'T00:00:00'
     sample_query = '''
@@ -304,7 +307,9 @@ def main():
       encounters(updatedAtStart: $s, limit: $limit) {
         id
         visitType
+        category
         signedDatetime
+        encounterType { id name }
         appointment { status completedAt startedAt }
       }
     }
@@ -315,18 +320,21 @@ def main():
     else:
         rows = (r.get('data') or {}).get('encounters') or []
         print(f'  fetched {len(rows)} encounters')
-        visit_type_counts, status_counts, vt_status_pairs = {}, {}, {}
+        status_counts, category_counts, enctype_counts, signed_counts = {}, {}, {}, {}
         for row in rows:
-            vt = row.get('visitType')
             appt = row.get('appointment') or {}
             st = appt.get('status')
-            visit_type_counts[vt] = visit_type_counts.get(vt, 0) + 1
+            cat = row.get('category')
+            et = (row.get('encounterType') or {}).get('name')
+            signed = row.get('signedDatetime') is not None
             status_counts[st] = status_counts.get(st, 0) + 1
-            pair = (vt, st)
-            vt_status_pairs[pair] = vt_status_pairs.get(pair, 0) + 1
-        print(f'  visitType counts: {visit_type_counts}')
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+            enctype_counts[et] = enctype_counts.get(et, 0) + 1
+            signed_counts[signed] = signed_counts.get(signed, 0) + 1
         print(f'  appointment.status counts: {status_counts}')
-        print(f'  (visitType, status) pair counts: {vt_status_pairs}')
+        print(f'  category counts: {category_counts}')
+        print(f'  encounterType.name counts: {enctype_counts}')
+        print(f'  has signedDatetime counts: {signed_counts}')
     print()
 
 
