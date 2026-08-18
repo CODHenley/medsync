@@ -505,16 +505,33 @@ async function loadFinancial() {
       const key = r.product_category_id === null || r.product_category_id === undefined ? 'uncategorized' : r.product_category_id;
       byCategory[key] = (byCategory[key] || 0) + Number(r.revenue || 0);
     });
+    // No friendly category name is synced from Vetspire yet — leading with the
+    // biggest categories and dropping $0 ones keeps this readable in the
+    // meantime rather than a flat, unsorted wall of numeric IDs.
+    const categoryTiles = Object.entries(byCategory)
+      .filter(([, amt]) => amt > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amt]) => `<div class="tile"><div class="l">${cat === 'uncategorized' ? 'Uncategorized' : 'Category ' + esc(cat)}</div><div class="v">${fmt$(amt)}</div></div>`)
+      .join('');
     revenueTiles.innerHTML = `
       <div class="tile"><div class="l">Total revenue</div><div class="v">${fmt$(revenue)}</div></div>
       <div class="tile"><div class="l">Avg transaction charge</div><div class="v">${atc ? fmt$(atc) : '—'}</div></div>
-      ${Object.entries(byCategory).map(([cat, amt]) => `<div class="tile"><div class="l">${cat === 'uncategorized' ? 'Uncategorized' : 'Category ' + esc(cat)}</div><div class="v">${fmt$(amt)}</div></div>`).join('')}`;
+      ${categoryTiles}`;
 
+    // Vetspire sometimes carries the same real doctor under more than one
+    // provider record (same name, different vetspire_provider_id) — merge by
+    // display name so each doctor shows as one tile with their combined
+    // revenue, instead of splitting across duplicate entries.
     const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
-    providerTiles.innerHTML = provRevRows.length
-      ? provRevRows
-          .sort((a, b) => Number(b.total_revenue) - Number(a.total_revenue))
-          .map(r => `<div class="tile"><div class="l">${esc(nameById[r.provider_id] || 'Unknown provider')}</div><div class="v">${fmt$(r.total_revenue)}</div></div>`)
+    const revenueByName = {};
+    provRevRows.forEach(r => {
+      const name = nameById[r.provider_id] || 'Unknown provider';
+      revenueByName[name] = (revenueByName[name] || 0) + Number(r.total_revenue || 0);
+    });
+    providerTiles.innerHTML = Object.keys(revenueByName).length
+      ? Object.entries(revenueByName)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, amt]) => `<div class="tile"><div class="l">${esc(name)}</div><div class="v">${fmt$(amt)}</div></div>`)
           .join('')
       : `<div class="empty-note">No provider-attributed revenue yet.</div>`;
 
