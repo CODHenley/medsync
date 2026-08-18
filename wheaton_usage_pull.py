@@ -4,6 +4,18 @@ Wheaton Nightly Usage Pull
 Runs at midnight via cron. Pulls today's dispensed products from Vetspire usageReport
 and upserts to Supabase dispensed_items table for true COGS / lot lifecycle tracking.
 
+One row per real Vetspire order item, keyed by (order_item_id, location_id) —
+NOT aggregated by day/product, and never skipped for missing SKU (services,
+diagnostics, and everything else billed on an invoice belongs in COGS too —
+see dispensed_items_backfill.py). This is the single natural key every
+dispensed_items writer in this repo uses (see vetspire_intraday_sync.py,
+backfill_date_range.py, dispensed_items_backfill.py) specifically so that two
+different scripts can never disagree on grouping and double-count the same
+real event. This script previously had NO on_conflict target at all, meaning
+every run inserted a fresh duplicate row keyed by the table's random UUID
+primary key — never reintroduce that; every upsert here must go through
+supa_upsert() below.
+
 Token management:
   - Reads JWT from ~/.vetspire_token (same token as wheaton_revenue_pull.py)
   - Exits with instructions if token is expired
@@ -64,6 +76,7 @@ USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     usageReport(locationIds:$lids, startDate:$s, endDate:$e) {
         orderItems {
+            id
             productId
             product { id name sku unitCost }
             quantity
@@ -95,12 +108,13 @@ def gql(token, query, variables=None):
 
 # ── Supabase REST ─────────────────────────────────────────────────
 def supa_upsert(records):
-    """Upsert records into dispensed_items via Supabase REST API."""
+    """Upsert records into dispensed_items via Supabase REST API, keyed by
+    (order_item_id, location_id) — the sole natural key across every writer."""
     if not records:
         return 0
     payload = json.dumps(records).encode()
     req = urllib.request.Request(
-        SUPA_URL + "/rest/v1/dispensed_items",
+        SUPA_URL + "/rest/v1/dispensed_items?on_conflict=order_item_id,location_id",
         data=payload,
         headers={
             "Content-Type": "application/json",
@@ -131,6 +145,7 @@ def main():
     check_token_expiry(token)
 
     total_inserted = 0
+    errors = 0
 
     for loc in LOCATIONS:
         print(f"\n  Pulling usageReport for {loc['name']} (ID: {loc['id']})...")
@@ -143,10 +158,12 @@ def main():
             })
         except Exception as e:
             print(f"  ERROR querying Vetspire: {e}")
+            errors += 1
             continue
 
         if "errors" in r:
             print(f"  API error: {r['errors'][0]['message'][:200]}")
+            errors += 1
             continue
 
         order_items = r.get("data", {}).get("usageReport", {}).get("orderItems", [])
@@ -156,12 +173,15 @@ def main():
             print(f"  No usage data for today.")
             continue
 
-        # Build Supabase records
+        now_iso = datetime.now(timezone.utc).isoformat()
         records = []
+        skipped = 0
         for item in order_items:
             prod = item.get("product") or {}
             pid  = item.get("productId") or prod.get("id")
-            if not pid:
+            oid  = item.get("id")
+            if not pid or not oid:
+                skipped += 1
                 continue
 
             # Parse dispensed_at from updatedAt
@@ -171,14 +191,9 @@ def main():
                 if "+" not in updated_at and "Z" not in updated_at:
                     updated_at = updated_at + "Z"
             else:
-                updated_at = datetime.now(timezone.utc).isoformat()
+                updated_at = now_iso
 
             unit_cost = prod.get("unitCost")
-            sku       = prod.get("sku")
-
-            # Skip services — only physical inventory items have SKUs
-            if not sku:
-                continue
 
             unit_price_str = item.get("unitPrice", "0")
             try:
@@ -187,7 +202,8 @@ def main():
                 unit_price = 0.0
 
             records.append({
-                "vetspire_product_id":    pid,
+                "order_item_id":          str(oid),
+                "vetspire_product_id":    str(pid),
                 "product_name":           prod.get("name"),
                 "sku":                    prod.get("sku"),
                 "quantity":               float(item.get("quantity") or 0),
@@ -201,17 +217,18 @@ def main():
                 "dispensed_at":           updated_at,
                 "location_id":            loc["id"],
                 "location_name":          loc["name"],
-                "pulled_at":              datetime.now(timezone.utc).isoformat(),
+                "pulled_at":              now_iso,
             })
 
         if records:
-            print(f"  Upserting {len(records)} records to Supabase...")
+            print(f"  Upserting {len(records)} records to Supabase ({skipped} skipped, no product/item id)...")
             status = supa_upsert(records)
             if str(status).startswith("2"):
                 print(f"  ✓ Upserted successfully (HTTP {status})")
                 total_inserted += len(records)
             else:
                 print(f"  ✗ Upsert returned status {status}")
+                errors += 1
 
             # Show top products dispensed today
             by_product = {}
@@ -224,8 +241,10 @@ def main():
             for name, qty in top:
                 print(f"    {qty:>6.1f}  {name}")
 
-    print(f"\n  Total records upserted: {total_inserted}")
+    print(f"\n  Total records upserted: {total_inserted}, {errors} error(s)")
     print("\nDone.\n")
+    if errors:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
