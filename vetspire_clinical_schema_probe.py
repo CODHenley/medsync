@@ -277,6 +277,66 @@ def main():
     print(f'  {r}')
     print()
 
+    # 8. "Visits / Provider" should only count completed visits where an exam was
+    # performed (Megan's explicit correction) — not every encounter row regardless
+    # of type/status. Encounter.visitType is a VisitType enum and Appointment has a
+    # `status: AppointmentStatus` (per the `statuses: AppointmentStatus` arg on the
+    # appointments root field) — need both enums' real values, plus a live sample
+    # of recent encounters showing visitType/status/completedAt together, before
+    # deciding what "completed + exam performed" means in terms of actual data.
+    print('=== VisitType enum values ===')
+    r = gql(args.token, '{ __type(name: "VisitType") { name enumValues { name } } }')
+    data = (r.get('data') or {}).get('__type')
+    print(f'  {[v["name"] for v in (data or {}).get("enumValues", [])] if data else "(not found)"}')
+    print()
+
+    print('=== AppointmentStatus enum values ===')
+    r = gql(args.token, '{ __type(name: "AppointmentStatus") { name enumValues { name } } }')
+    data = (r.get('data') or {}).get('__type')
+    print(f'  {[v["name"] for v in (data or {}).get("enumValues", [])] if data else "(not found)"}')
+    print()
+
+    print('=== EncounterType fields ===')
+    dump_type_fields(args.token, 'EncounterType')
+
+    print('=== Live sample: last 30 days of encounters, visitType/status/encounterType/category tallies ===')
+    from datetime import date, timedelta
+    since = (date.today() - timedelta(days=30)).isoformat() + 'T00:00:00'
+    sample_query = '''
+    query($s: NaiveDateTime, $limit: Int) {
+      encounters(updatedAtStart: $s, limit: $limit) {
+        id
+        visitType
+        category
+        signedDatetime
+        encounterType { id name }
+        appointment { status completedAt startedAt }
+      }
+    }
+    '''
+    r = gql(args.token, sample_query, {'s': since, 'limit': 300})
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('encounters') or []
+        print(f'  fetched {len(rows)} encounters')
+        status_counts, category_counts, enctype_counts, signed_counts = {}, {}, {}, {}
+        for row in rows:
+            appt = row.get('appointment') or {}
+            st = appt.get('status')
+            cat = row.get('category')
+            et = (row.get('encounterType') or {}).get('name')
+            signed = row.get('signedDatetime') is not None
+            status_counts[st] = status_counts.get(st, 0) + 1
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+            enctype_counts[et] = enctype_counts.get(et, 0) + 1
+            signed_counts[signed] = signed_counts.get(signed, 0) + 1
+        print(f'  appointment.status counts: {status_counts}')
+        print(f'  category counts: {category_counts}')
+        print(f'  encounterType.name counts: {enctype_counts}')
+        print(f'  has signedDatetime counts: {signed_counts}')
+    print()
+
 
 if __name__ == '__main__':
     main()
