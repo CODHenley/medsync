@@ -272,6 +272,11 @@ def main():
         print(f'  distinct tag names seen: {sorted(tag_names)}')
     print()
 
+    print('=== Total rdvm count (how big is the classification task) ===')
+    r = gql(args.token, '{ rdvmsCount }')
+    print(f'  {r}')
+    print()
+
 
 if __name__ == '__main__':
     main()
