@@ -3,8 +3,8 @@
 vetspire_financial_sync.py
 Syncs Vetspire's salesReport (day-level, broken down by provider + product
 category) into ScoutSync's invoice_line_items table — backs Revenue by
-Source and Revenue per Veterinarian. Average Transaction Charge is computed
-in the view layer as revenue ÷ encounter count for the same day/location,
+Source and Revenue per Veterinarian. Average Cost per Transaction (ACT) is
+computed in the view layer as revenue ÷ encounter count for the same day/location,
 since salesReport returns pre-aggregated totals, not individual invoices —
 there's no invoice count to divide by directly.
 

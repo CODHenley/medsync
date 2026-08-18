@@ -45,9 +45,10 @@ select
 from public.invoice_line_items
 group by location_id, service_date, product_category_id;
 
--- Average Transaction Charge: salesReport gives revenue totals, not invoice
--- counts, so ATC = revenue ÷ the encounter count already synced for that
--- same location/day.
+-- Average Cost per Transaction (ACT): salesReport gives revenue totals, not
+-- invoice counts, so ACT = revenue ÷ the encounter count already synced for
+-- that same location/day. View name kept as v_avg_transaction_charge_daily
+-- (schema/column names unchanged — this is a display-terminology rename).
 create or replace view public.v_avg_transaction_charge_daily as
 select
   r.location_id,

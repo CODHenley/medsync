@@ -481,7 +481,7 @@ async function loadFinancial() {
   if (ilCount) {
     note.textContent = 'source: invoice_line_items';
     const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
-    const [kpiRes, atcRes, provRevRes, provRes, catRes] = await Promise.all([
+    const [kpiRes, actRes, provRevRes, provRes, catRes] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
       fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
       fetch(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=*&provider_id=neq.${UNATTRIBUTED_PROVIDER}${locFilter}`, { headers: HEADERS }),
@@ -489,19 +489,20 @@ async function loadFinancial() {
       fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
     ]);
     const rows = kpiRes.ok ? await kpiRes.json() : [];
-    const atcRows = atcRes.ok ? await atcRes.json() : [];
+    const actRows = actRes.ok ? await actRes.json() : [];
     const provRevRows = provRevRes.ok ? await provRevRes.json() : [];
     const provRows = provRes.ok ? await provRes.json() : [];
     const catRows = catRes.ok ? await catRes.json() : [];
 
     const revenue = rows.reduce((a, r) => a + Number(r.revenue || 0), 0);
     // v_financial_kpis_daily no longer carries invoice_count/category (dropped in
-    // scoutsync_financial_breakdown.sql) — ATC comes from the dedicated
-    // v_avg_transaction_charge_daily view instead, and the breakdown groups by
-    // product_category_id, joined against product_categories for a real name.
-    const atcRevenue = atcRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
-    const atcVisits = atcRows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
-    const atc = atcVisits ? atcRevenue / atcVisits : null;
+    // scoutsync_financial_breakdown.sql) — ACT (avg cost per transaction) comes
+    // from the dedicated v_avg_transaction_charge_daily view instead, and the
+    // breakdown groups by product_category_id, joined against
+    // product_categories for a real name.
+    const actRevenue = actRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+    const actVisits = actRows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
+    const act = actVisits ? actRevenue / actVisits : null;
     const categoryNameById = Object.fromEntries(catRows.map(c => [c.id, c.name.trim()]));
     const byCategory = {};
     rows.forEach(r => {
@@ -521,7 +522,7 @@ async function loadFinancial() {
       .join('');
     revenueTiles.innerHTML = `
       <div class="tile"><div class="l">Total revenue</div><div class="v">${fmt$(revenue)}</div></div>
-      <div class="tile"><div class="l">Avg transaction charge</div><div class="v">${atc ? fmt$(atc) : '—'}</div></div>
+      <div class="tile"><div class="l">Avg cost per transaction</div><div class="v">${act ? fmt$(act) : '—'}</div></div>
       ${categoryTiles}`;
 
     // Vetspire sometimes carries the same real doctor under more than one
@@ -552,10 +553,10 @@ async function loadFinancial() {
     }
     revenueTiles.innerHTML = `
       <div class="tile"><div class="l">Total revenue (interim)</div><div class="v">${fmt$(revenue)}</div>
-        <div class="n">daily aggregate only — no ATC or category breakdown until invoice_line_items syncs</div></div>`;
+        <div class="n">daily aggregate only — no ACT or category breakdown until invoice_line_items syncs</div></div>`;
     providerTiles.innerHTML = '';
     emptyBox.innerHTML = `<div class="empty-note">
-      Average Transaction Charge and Revenue by Source need line-item detail
+      Average Cost per Transaction and Revenue by Source need line-item detail
       (<code>invoice_line_items</code>), which isn't syncing yet — this section is showing the existing
       daily-aggregate <code>daily_revenue</code> number as an interim baseline instead.
     </div>`;
