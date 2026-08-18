@@ -391,6 +391,30 @@ def main():
             print(f'  - encounter {row["id"]}: {row.get("diagnostics")}')
     print()
 
+    # 10. Real product category names for the Financial tab's "Revenue by Source"
+    # breakdown, currently showing raw numeric product_category_id values
+    # (Category 4949, Category 13598, ...) — checking whether Vetspire exposes a
+    # ProductCategory type/root query with real names before assuming it doesn't.
+    print('=== ProductCategory fields ===')
+    dump_type_fields(args.token, 'ProductCategory')
+
+    print('=== Root query fields matching "categor" ===')
+    r = gql(args.token, '{ __schema { queryType { fields { name description } } } }')
+    fields = (r.get('data') or {}).get('__schema', {}).get('queryType', {}).get('fields', [])
+    for f in fields:
+        if 'categor' in f.get('name', '').lower():
+            print(f'  ★ {f["name"]}: {f.get("description", "")}')
+    print()
+
+    print('=== Live sample: productCategories (if it exists) ===')
+    r = gql(args.token, '{ productCategories(limit: 20) { id name } }')
+    if 'errors' in r:
+        print(f'  ERROR (query field may not exist): {r["errors"]}')
+    else:
+        cats = (r.get('data') or {}).get('productCategories') or []
+        print(f'  fetched {len(cats)} categories: {cats}')
+    print()
+
 
 if __name__ == '__main__':
     main()
