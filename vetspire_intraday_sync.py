@@ -2,9 +2,19 @@
 """
 MedSync — Vetspire Intraday Usage Sync
 -----------------------------------------
-Runs 4x daily (7am, noon, 7pm, midnight CST) via GitHub Actions.
-Pulls today's dispensed products for all active locations and upserts
-to Supabase dispensed_items, enabling the "Today" view in Procurement.
+Runs every 5 min during business hours via GitHub Actions. Pulls today's
+dispensed products for all active locations and upserts to Supabase
+dispensed_items, enabling the "Today" view in Procurement.
+
+One row per real Vetspire order item, keyed by (order_item_id, location_id)
+— NOT aggregated by day/product. This is the single natural key every
+dispensed_items writer in this repo uses (see dispensed_items_backfill.py,
+backfill_date_range.py, wheaton_usage_pull.py) specifically so that two
+different scripts can never disagree on grouping and double-count the same
+real event — that disagreement (day-level vs month-level aggregation) is
+what caused the Aug 2026 double-count incident. Never reintroduce
+aggregation here; if you need per-day/per-month totals, compute them with
+a SQL view over these rows, not by pre-aggregating at write time.
 
 Auth: VETSPIRE_API_TOKEN env var (GitHub Actions secret — raw API token,
       no Bearer prefix needed; confirmed same pattern as vetspire_daily_sync.py)
@@ -73,7 +83,7 @@ def gql(token, query, variables=None):
 def supa_upsert(records):
     if not records:
         return 0
-    conflict = "vetspire_product_id,dispensed_at,location_id"
+    conflict = "order_item_id,location_id"
     payload = json.dumps(records).encode()
     req = urllib.request.Request(
         SUPA_URL + f"/rest/v1/dispensed_items?on_conflict={conflict}",
@@ -130,7 +140,6 @@ def main():
             continue
 
         usage_raw = r.get("data", {}).get("usageReport")
-        print(f"  [DEBUG] usageReport type={type(usage_raw).__name__} value_preview={str(usage_raw)[:200]}")
         # usageReport may return a JSON string (like salesReport) — parse if so
         if isinstance(usage_raw, str):
             try:
@@ -145,19 +154,18 @@ def main():
             order_items = []
         print(f"  {len(order_items)} order items")
 
-        # Aggregate today's items into one row per (product, location).
-        # dispensed_at = today. Vetspire's updatedAt is not a reliable per-transaction
-        # timestamp; using today ensures the intraday sync always writes to a stable,
-        # current key and the procurement "Today" view is accurate.
-        agg = {}
+        # One row per real order item — no aggregation. order_item_id is the
+        # sole natural key (see module docstring for why aggregation is banned
+        # here).
+        records = []
+        skipped = 0
         for item in order_items:
             prod = item.get("product") or {}
             pid  = item.get("productId") or prod.get("id")
-            sku  = prod.get("sku")
-            if not pid:
-                continue  # skip true services with no product ID
-
-            dispensed_at = today + "T00:00:00Z"
+            oid  = item.get("id")
+            if not pid or not oid:
+                skipped += 1
+                continue  # skip true services with no product ID, or malformed rows with no item id
 
             try:
                 unit_price = float(item.get("unitPrice") or 0)
@@ -165,50 +173,45 @@ def main():
                 unit_price = 0.0
 
             unit_cost = prod.get("unitCost")
-            key = (str(pid), dispensed_at, loc["id"])
-            if key in agg:
-                r = agg[key]
-                r["quantity"]               += float(item.get("quantity") or 0)
-                r["quantity_remaining"]     += float(item.get("quantityRemaining") or 0)
-                r["subtotal_cents"]         += int(item.get("subtotalCents") or 0)
-                r["total_before_tax_cents"] += int(item.get("totalBeforeTaxCents") or 0)
-                if bool(item.get("returned", False)):
-                    r["returned"] = True
-                if bool(item.get("refunded", False)):
-                    r["refunded"] = True
-                if sku and not r["sku"]:
-                    r["sku"] = sku
-            else:
-                agg[key] = {
-                    "order_item_id":          None,
-                    "vetspire_product_id":    str(pid),
-                    "product_name":           prod.get("name"),
-                    "sku":                    sku,
-                    "quantity":               float(item.get("quantity") or 0),
-                    "quantity_remaining":     float(item.get("quantityRemaining") or 0),
-                    "unit_price":             unit_price,
-                    "unit_cost":              float(unit_cost) if unit_cost is not None else None,
-                    "subtotal_cents":         int(item.get("subtotalCents") or 0),
-                    "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
-                    "returned":               bool(item.get("returned", False)),
-                    "refunded":               bool(item.get("refunded", False)),
-                    "dispensed_at":           dispensed_at,
-                    "location_id":            loc["id"],
-                    "location_name":          loc["name"],
-                    "pulled_at":              now_utc,
-                }
-        records = list(agg.values())
+            updated_at = item.get("updatedAt")
+            dispensed_at = updated_at if updated_at else now_utc
+            if dispensed_at and "T" in dispensed_at and not dispensed_at.endswith("Z") and "+" not in dispensed_at[10:]:
+                dispensed_at += "Z"  # Vetspire returns naive datetimes — treat as UTC
+
+            records.append({
+                "order_item_id":          str(oid),
+                "vetspire_product_id":    str(pid),
+                "product_name":           prod.get("name"),
+                "sku":                    prod.get("sku"),
+                "quantity":               float(item.get("quantity") or 0),
+                "quantity_remaining":     float(item.get("quantityRemaining") or 0),
+                "unit_price":             unit_price,
+                "unit_cost":              float(unit_cost) if unit_cost is not None else None,
+                "subtotal_cents":         int(item.get("subtotalCents") or 0),
+                "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
+                "returned":               bool(item.get("returned", False)),
+                "refunded":               bool(item.get("refunded", False)),
+                "dispensed_at":           dispensed_at,
+                "location_id":            loc["id"],
+                "location_name":          loc["name"],
+                "pulled_at":              now_utc,
+            })
 
         if records:
             status = supa_upsert(records)
-            print(f"  Upserted {len(records)} records → HTTP {status}")
+            if not str(status).startswith("2"):
+                print(f"  Upsert FAILED → HTTP {status}")
+                errors += 1
+                continue
+            print(f"  Upserted {len(records)} records ({skipped} skipped, no product/item id) → HTTP {status}")
             total += len(records)
         else:
-            print(f"  No physical inventory items today.")
+            print(f"  No physical inventory items today ({skipped} skipped).")
 
     print(f"\n=== Done: {total} records upserted, {errors} location error(s) ===")
-    if errors == len(LOCATIONS):
-        sys.exit(1)  # all locations failed — fail the workflow run
+    if errors:
+        sys.exit(1)  # ANY location failing means incomplete data for that location —
+                      # never treat a partial run as success
 
 if __name__ == "__main__":
     main()

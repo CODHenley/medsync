@@ -5,9 +5,20 @@ One-time backfill for a date range.
 Usage:
     python3 backfill_date_range.py 2026-08-01 2026-08-05
 
-Pulls all dispensed items from Vetspire for each day in the range and
-upserts to Supabase dispensed_items, fixing gaps caused by the intraday
-sync previously skipping items with no SKU (in-house/QC events).
+Pulls dispensed items from Vetspire for the given range (one query per
+location — no day-by-day loop) and upserts to Supabase dispensed_items.
+
+One row per real Vetspire order item, keyed by (order_item_id, location_id)
+— NOT aggregated by day/product. This is the single natural key every
+dispensed_items writer in this repo uses (see vetspire_intraday_sync.py,
+dispensed_items_backfill.py, wheaton_usage_pull.py) specifically so that two
+different scripts can never disagree on grouping and double-count the same
+real event — that disagreement (day-level vs month-level aggregation) is
+what caused the Aug 2026 double-count incident. Never reintroduce
+aggregation here; if you need per-day/per-month totals, compute them with a
+SQL view over these rows, not by pre-aggregating at write time. Re-running
+this script for the same range is always safe/idempotent — the same order
+item always maps to the same row.
 
 Auth: VETSPIRE_API_TOKEN env var.
 """
@@ -17,7 +28,7 @@ import os
 import sys
 import urllib.request
 import urllib.error
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN = "https://scoutcare.vetspire.com"
@@ -54,6 +65,7 @@ query($lids:[ID!], $s:Date, $e:Date){
 }
 """
 
+
 def gql(token, query, variables=None):
     payload = json.dumps({"query": query, "variables": variables or {}}).encode()
     req = urllib.request.Request(
@@ -65,15 +77,16 @@ def gql(token, query, variables=None):
             "Origin":        VETSPIRE_ORIGIN,
         }
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
+
 
 def supa_upsert(records):
     if not records:
         return 0
     payload = json.dumps(records).encode()
     req = urllib.request.Request(
-        SUPA_URL + "/rest/v1/dispensed_items?on_conflict=vetspire_product_id,dispensed_at,location_id",
+        SUPA_URL + "/rest/v1/dispensed_items?on_conflict=order_item_id,location_id",
         data=payload,
         headers={
             "Content-Type":  "application/json",
@@ -90,13 +103,11 @@ def supa_upsert(records):
         print(f"  Supabase error {e.code}: {e.read().decode()[:300]}")
         return e.code
 
-def date_range(start_str, end_str):
-    start = date.fromisoformat(start_str)
-    end   = date.fromisoformat(end_str)
-    d = start
-    while d <= end:
-        yield d.isoformat()
-        d += timedelta(days=1)
+
+def chunks(seq, size):
+    for i in range(0, len(seq), size):
+        yield seq[i:i + size]
+
 
 def main():
     token = os.environ.get("VETSPIRE_API_TOKEN", "").strip()
@@ -117,87 +128,90 @@ def main():
     total_upserted = 0
     total_errors   = 0
 
-    for day in date_range(start_date, end_date):
-        print(f"--- {day} ---")
-        for loc in LOCATIONS:
+    for loc in LOCATIONS:
+        print(f"--- {loc['name']} ---")
+        try:
+            r = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": start_date, "e": end_date})
+        except Exception as e:
+            print(f"  ERROR: {e}")
+            total_errors += 1
+            continue
+
+        if "errors" in r:
+            print(f"  API error: {r['errors'][0]['message'][:200]}")
+            total_errors += 1
+            continue
+
+        usage_raw = r.get("data", {}).get("usageReport")
+        if isinstance(usage_raw, str):
             try:
-                r = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": day, "e": day})
-            except Exception as e:
-                print(f"  [{loc['name']}] ERROR: {e}")
-                total_errors += 1
+                usage_raw = json.loads(usage_raw)
+            except Exception:
+                pass
+        order_items = (usage_raw.get("orderItems", []) if isinstance(usage_raw, dict)
+                       else usage_raw if isinstance(usage_raw, list) else [])
+        print(f"  {len(order_items)} order items returned")
+
+        records = []
+        skipped = 0
+        for item in order_items:
+            prod = item.get("product") or {}
+            pid  = item.get("productId") or prod.get("id")
+            oid  = item.get("id")
+            if not pid or not oid:
+                skipped += 1
                 continue
 
-            if "errors" in r:
-                print(f"  [{loc['name']}] API error: {r['errors'][0]['message'][:200]}")
+            try:
+                unit_price = float(item.get("unitPrice") or 0)
+            except (ValueError, TypeError):
+                unit_price = 0.0
+
+            unit_cost = prod.get("unitCost")
+            updated_at = item.get("updatedAt")
+            dispensed_at = updated_at if updated_at else now_utc
+            if dispensed_at and "T" in dispensed_at and not dispensed_at.endswith("Z") and "+" not in dispensed_at[10:]:
+                dispensed_at += "Z"  # Vetspire returns naive datetimes — treat as UTC
+
+            records.append({
+                "order_item_id":          str(oid),
+                "vetspire_product_id":    str(pid),
+                "product_name":           prod.get("name"),
+                "sku":                    prod.get("sku"),
+                "quantity":               float(item.get("quantity") or 0),
+                "quantity_remaining":     float(item.get("quantityRemaining") or 0),
+                "unit_price":             unit_price,
+                "unit_cost":              float(unit_cost) if unit_cost is not None else None,
+                "subtotal_cents":         int(item.get("subtotalCents") or 0),
+                "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
+                "returned":               bool(item.get("returned", False)),
+                "refunded":               bool(item.get("refunded", False)),
+                "dispensed_at":           dispensed_at,
+                "location_id":            loc["id"],
+                "location_name":          loc["name"],
+                "pulled_at":              now_utc,
+            })
+
+        if not records:
+            print(f"  no items ({skipped} skipped)")
+            continue
+
+        location_ok = True
+        for batch in chunks(records, 500):
+            status = supa_upsert(batch)
+            if not str(status).startswith("2"):
+                print(f"  upsert FAILED for a batch of {len(batch)} → HTTP {status}")
+                location_ok = False
                 total_errors += 1
                 continue
-
-            usage_raw = r.get("data", {}).get("usageReport")
-            if isinstance(usage_raw, str):
-                try:
-                    usage_raw = json.loads(usage_raw)
-                except Exception:
-                    pass
-            order_items = (usage_raw.get("orderItems", []) if isinstance(usage_raw, dict)
-                           else usage_raw if isinstance(usage_raw, list) else [])
-
-            dispensed_at = day + "T00:00:00Z"
-            agg = {}
-            for item in order_items:
-                prod = item.get("product") or {}
-                pid  = item.get("productId") or prod.get("id")
-                sku  = prod.get("sku")
-                if not pid:
-                    continue  # skip true services with no product ID
-
-                try:
-                    unit_price = float(item.get("unitPrice") or 0)
-                except (ValueError, TypeError):
-                    unit_price = 0.0
-
-                unit_cost = prod.get("unitCost")
-                key = (str(pid), dispensed_at, loc["id"])
-                if key in agg:
-                    e = agg[key]
-                    e["quantity"]               += float(item.get("quantity") or 0)
-                    e["quantity_remaining"]     += float(item.get("quantityRemaining") or 0)
-                    e["subtotal_cents"]         += int(item.get("subtotalCents") or 0)
-                    e["total_before_tax_cents"] += int(item.get("totalBeforeTaxCents") or 0)
-                    if bool(item.get("returned", False)):
-                        e["returned"] = True
-                    if bool(item.get("refunded", False)):
-                        e["refunded"] = True
-                    if sku and not e["sku"]:
-                        e["sku"] = sku
-                else:
-                    agg[key] = {
-                        "order_item_id":          None,
-                        "vetspire_product_id":    str(pid),
-                        "product_name":           prod.get("name"),
-                        "sku":                    sku,
-                        "quantity":               float(item.get("quantity") or 0),
-                        "quantity_remaining":     float(item.get("quantityRemaining") or 0),
-                        "unit_price":             unit_price,
-                        "unit_cost":              float(unit_cost) if unit_cost is not None else None,
-                        "subtotal_cents":         int(item.get("subtotalCents") or 0),
-                        "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
-                        "returned":               bool(item.get("returned", False)),
-                        "refunded":               bool(item.get("refunded", False)),
-                        "dispensed_at":           dispensed_at,
-                        "location_id":            loc["id"],
-                        "location_name":          loc["name"],
-                        "pulled_at":              now_utc,
-                    }
-
-            records = list(agg.values())
-            if records:
-                status = supa_upsert(records)
-                print(f"  [{loc['name']}] {len(records)} products → HTTP {status}")
-                total_upserted += len(records)
-            else:
-                print(f"  [{loc['name']}] no items")
+            total_upserted += len(batch)
+        suffix = "" if location_ok else " — WITH FAILURES"
+        print(f"  upserted {len(records)} records ({skipped} skipped, no product/item id){suffix}")
 
     print(f"\n=== Done: {total_upserted} records upserted, {total_errors} error(s) ===\n")
+    if total_errors:
+        sys.exit(1)  # any failure means the range is incompletely backfilled — never report success
+
 
 if __name__ == "__main__":
     main()
