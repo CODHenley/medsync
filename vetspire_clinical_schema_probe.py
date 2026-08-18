@@ -406,13 +406,15 @@ def main():
             print(f'  ★ {f["name"]}: {f.get("description", "")}')
     print()
 
-    print('=== Live sample: productCategories (if it exists) ===')
-    r = gql(args.token, '{ productCategories(limit: 20) { id name } }')
+    print('=== Live sample: productCategories (no args — limit isn\'t a valid arg) ===')
+    r = gql(args.token, '{ productCategories { id name } }')
     if 'errors' in r:
-        print(f'  ERROR (query field may not exist): {r["errors"]}')
+        print(f'  ERROR: {r["errors"]}')
     else:
         cats = (r.get('data') or {}).get('productCategories') or []
-        print(f'  fetched {len(cats)} categories: {cats}')
+        print(f'  fetched {len(cats)} categories')
+        for c in cats:
+            print(f'  - {c}')
     print()
 
 
