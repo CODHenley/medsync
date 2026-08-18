@@ -277,6 +277,58 @@ def main():
     print(f'  {r}')
     print()
 
+    # 8. "Visits / Provider" should only count completed visits where an exam was
+    # performed (Megan's explicit correction) — not every encounter row regardless
+    # of type/status. Encounter.visitType is a VisitType enum and Appointment has a
+    # `status: AppointmentStatus` (per the `statuses: AppointmentStatus` arg on the
+    # appointments root field) — need both enums' real values, plus a live sample
+    # of recent encounters showing visitType/status/completedAt together, before
+    # deciding what "completed + exam performed" means in terms of actual data.
+    print('=== VisitType enum values ===')
+    r = gql(args.token, '{ __type(name: "VisitType") { name enumValues { name } } }')
+    data = (r.get('data') or {}).get('__type')
+    print(f'  {[v["name"] for v in (data or {}).get("enumValues", [])] if data else "(not found)"}')
+    print()
+
+    print('=== AppointmentStatus enum values ===')
+    r = gql(args.token, '{ __type(name: "AppointmentStatus") { name enumValues { name } } }')
+    data = (r.get('data') or {}).get('__type')
+    print(f'  {[v["name"] for v in (data or {}).get("enumValues", [])] if data else "(not found)"}')
+    print()
+
+    print('=== Live sample: last 30 days of encounters, visitType/status/completedAt tallies ===')
+    from datetime import date, timedelta
+    since = (date.today() - timedelta(days=30)).isoformat() + 'T00:00:00'
+    sample_query = '''
+    query($s: NaiveDateTime, $limit: Int) {
+      encounters(updatedAtStart: $s, limit: $limit) {
+        id
+        visitType
+        signedDatetime
+        appointment { status completedAt startedAt }
+      }
+    }
+    '''
+    r = gql(args.token, sample_query, {'s': since, 'limit': 300})
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('encounters') or []
+        print(f'  fetched {len(rows)} encounters')
+        visit_type_counts, status_counts, vt_status_pairs = {}, {}, {}
+        for row in rows:
+            vt = row.get('visitType')
+            appt = row.get('appointment') or {}
+            st = appt.get('status')
+            visit_type_counts[vt] = visit_type_counts.get(vt, 0) + 1
+            status_counts[st] = status_counts.get(st, 0) + 1
+            pair = (vt, st)
+            vt_status_pairs[pair] = vt_status_pairs.get(pair, 0) + 1
+        print(f'  visitType counts: {visit_type_counts}')
+        print(f'  appointment.status counts: {status_counts}')
+        print(f'  (visitType, status) pair counts: {vt_status_pairs}')
+    print()
+
 
 if __name__ == '__main__':
     main()
