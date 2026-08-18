@@ -443,12 +443,14 @@ async function loadClinical() {
     <div class="tile"><div class="l">Avg wait (check-in → start)</div><div class="v">${avgWait ? Math.round(avgWait) + ' min' : '—'}</div></div>
     <div class="tile"><div class="l">Avg encounter length</div><div class="v">${avgDur ? Math.round(avgDur) + ' min' : '—'}</div></div>`;
 
+  const examVisits = rows.reduce((a, r) => a + Number(r.exam_visit_count || 0), 0);
   const byProvider = {};
   rows.forEach(r => { byProvider[r.provider_id] = (byProvider[r.provider_id] || 0) + Number(r.encounter_count || 0); });
   const providerCount = Object.keys(byProvider).length;
   prov.innerHTML = `
     <div class="tile"><div class="l">Active providers</div><div class="v">${fmtN(providerCount)}</div></div>
-    <div class="tile"><div class="l">Visits / provider (avg)</div><div class="v">${providerCount ? Math.round(totalVisits / providerCount) : '—'}</div></div>`;
+    <div class="tile"><div class="l">Visits / provider (avg)</div><div class="v">${providerCount ? Math.round(examVisits / providerCount) : '—'}</div>
+      <div class="n">exam visits only — invoice line item with "Exam" in the name; excludes med refills and other non-exam services</div></div>`;
 
   const sigRes = await fetch(`${SUPA_URL}/rest/v1/v_competitor_use_signal?select=*`, { headers: HEADERS });
   const sigRows = sigRes.ok ? await sigRes.json() : [];

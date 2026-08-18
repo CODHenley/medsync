@@ -45,6 +45,16 @@ def classify_referral_type(rdvm_tags):
     return "rdvm_primary_care"
 
 
+# "Visits / Provider" should only count visits where an exam was actually
+# performed — per Megan, any invoice line item with "Exam" in its name (this
+# excludes med refills, drop-offs, and other non-exam services). Vetspire's
+# Encounter.visitType turned out to be unpopulated in production (confirmed
+# via vetspire_clinical_schema_probe.py — every sampled encounter had
+# visitType=null), so the invoice line items are the only real signal here.
+def had_exam(encounter_products):
+    return any("exam" in (p.get("name") or "").lower() for p in (encounter_products or []))
+
+
 # vetspire_id -> (Supabase locations.id, name) — same 4 locations as every other sync.
 LOCATIONS = {
     "23083": ("11111111-0000-0000-0000-000000000001", "Lincoln Park"),
@@ -91,6 +101,7 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
       startedAt
       completedAt
     }
+    encounterProducts { name }
   }
 }
 """
@@ -234,6 +245,7 @@ def main():
                     "checked_in_at": appt.get("checkedInAt"),
                     "started_at": enc.get("start") or appt.get("startedAt"),
                     "completed_at": appt.get("completedAt") or enc.get("signedDatetime"),
+                    "had_exam": had_exam(enc.get("encounterProducts")),
                 })
 
             # ── Upsert dimension tables first, capture their real Supabase uuids ──
