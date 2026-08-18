@@ -1,0 +1,31 @@
+name: Find Stale Month-Aggregated Dispensed Items Rows
+
+on:
+  workflow_dispatch:
+    inputs:
+      delete:
+        description: "Actually delete the stale rows found (leave false for a dry-run report)"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run stale-row scan
+        run: |
+          if [ "${{ inputs.delete }}" = "true" ]; then
+            python3 find_stale_month_rows.py --delete
+          else
+            python3 find_stale_month_rows.py
+          fi
