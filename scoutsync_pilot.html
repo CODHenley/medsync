@@ -227,6 +227,10 @@ table.qa tr:hover td { background: #FAFBFD; }
     <div class="tile-row" id="financial-revenue-tiles"></div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-financial)"></div>
+      <h2>Revenue per Veterinarian</h2></div>
+    <div class="tile-row" id="financial-provider-tiles"></div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-financial)"></div>
       <h2>Cost & Margin</h2></div>
     <div class="tile-row" id="financial-cost-tiles"></div>
     <div id="financial-empty" style="margin-top:12px;"></div>
@@ -452,7 +456,7 @@ async function loadClinical() {
     <div class="tile"><div class="l">Visits / provider (avg)</div><div class="v">${providerCount ? Math.round(examVisits / providerCount) : '—'}</div>
       <div class="n">exam visits only — invoice line item with "Exam" in the name; excludes med refills and other non-exam services</div></div>`;
 
-  const sigRes = await fetch(`${SUPA_URL}/rest/v1/v_competitor_use_signal?select=*`, { headers: HEADERS });
+  const sigRes = await fetch(`${SUPA_URL}/rest/v1/v_competitor_use_signal?select=*&released_at=gte.${from}${locFilter}`, { headers: HEADERS });
   const sigRows = sigRes.ok ? await sigRes.json() : [];
   const uniqueClients = new Set(sigRows.map(r => r.client_id)).size;
   loyalty.innerHTML = `
@@ -465,27 +469,55 @@ async function loadClinical() {
 async function loadFinancial() {
   const ilCount = await countRows('invoice_line_items');
   const revenueTiles = document.getElementById('financial-revenue-tiles');
+  const providerTiles = document.getElementById('financial-provider-tiles');
   const costTiles = document.getElementById('financial-cost-tiles');
   const note = document.getElementById('financial-source-note');
   const emptyBox = document.getElementById('financial-empty');
 
   const from = daysAgo(selectedRangeDays());
   const loc = selectedLocation();
+  const UNATTRIBUTED_PROVIDER = '00000000-0000-0000-0000-000000000000';
 
   if (ilCount) {
     note.textContent = 'source: invoice_line_items';
     const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
-    const res = await fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS });
-    const rows = res.ok ? await res.json() : [];
+    const [kpiRes, atcRes, provRevRes, provRes] = await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=*&provider_id=neq.${UNATTRIBUTED_PROVIDER}${locFilter}`, { headers: HEADERS }),
+      fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
+    ]);
+    const rows = kpiRes.ok ? await kpiRes.json() : [];
+    const atcRows = atcRes.ok ? await atcRes.json() : [];
+    const provRevRows = provRevRes.ok ? await provRevRes.json() : [];
+    const provRows = provRes.ok ? await provRes.json() : [];
+
     const revenue = rows.reduce((a, r) => a + Number(r.revenue || 0), 0);
-    const invoices = rows.reduce((a, r) => a + Number(r.invoice_count || 0), 0);
-    const atc = invoices ? revenue / invoices : null;
+    // v_financial_kpis_daily no longer carries invoice_count/category (dropped in
+    // scoutsync_financial_breakdown.sql) — ATC comes from the dedicated
+    // v_avg_transaction_charge_daily view instead, and the breakdown groups by
+    // Vetspire's numeric product_category_id (no friendly name synced yet).
+    const atcRevenue = atcRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+    const atcVisits = atcRows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
+    const atc = atcVisits ? atcRevenue / atcVisits : null;
     const byCategory = {};
-    rows.forEach(r => { byCategory[r.category] = (byCategory[r.category] || 0) + Number(r.revenue || 0); });
+    rows.forEach(r => {
+      const key = r.product_category_id === null || r.product_category_id === undefined ? 'uncategorized' : r.product_category_id;
+      byCategory[key] = (byCategory[key] || 0) + Number(r.revenue || 0);
+    });
     revenueTiles.innerHTML = `
       <div class="tile"><div class="l">Total revenue</div><div class="v">${fmt$(revenue)}</div></div>
       <div class="tile"><div class="l">Avg transaction charge</div><div class="v">${atc ? fmt$(atc) : '—'}</div></div>
-      ${Object.entries(byCategory).map(([cat, amt]) => `<div class="tile"><div class="l">${esc(cat.replace(/_/g,' '))}</div><div class="v">${fmt$(amt)}</div></div>`).join('')}`;
+      ${Object.entries(byCategory).map(([cat, amt]) => `<div class="tile"><div class="l">${cat === 'uncategorized' ? 'Uncategorized' : 'Category ' + esc(cat)}</div><div class="v">${fmt$(amt)}</div></div>`).join('')}`;
+
+    const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
+    providerTiles.innerHTML = provRevRows.length
+      ? provRevRows
+          .sort((a, b) => Number(b.total_revenue) - Number(a.total_revenue))
+          .map(r => `<div class="tile"><div class="l">${esc(nameById[r.provider_id] || 'Unknown provider')}</div><div class="v">${fmt$(r.total_revenue)}</div></div>`)
+          .join('')
+      : `<div class="empty-note">No provider-attributed revenue yet.</div>`;
+
     emptyBox.innerHTML = '';
   } else {
     note.textContent = 'interim — daily_revenue aggregate, pre line-item sync';
@@ -498,6 +530,7 @@ async function loadFinancial() {
     revenueTiles.innerHTML = `
       <div class="tile"><div class="l">Total revenue (interim)</div><div class="v">${fmt$(revenue)}</div>
         <div class="n">daily aggregate only — no ATC or category breakdown until invoice_line_items syncs</div></div>`;
+    providerTiles.innerHTML = '';
     emptyBox.innerHTML = `<div class="empty-note">
       Average Transaction Charge and Revenue by Source need line-item detail
       (<code>invoice_line_items</code>), which isn't syncing yet — this section is showing the existing
