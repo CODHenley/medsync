@@ -233,6 +233,45 @@ def main():
         print('  (no segment arg found on salesReport)')
     print()
 
+    # 7. referral_type classification (true rDVM vs. competitor urgent care/ER):
+    # Rdvm.tags: EntityTag was confirmed in a prior run, but EntityTag itself was
+    # never dumped (it doesn't match any KEYWORDS substring), and neither did the
+    # root `rdvms` query field's args. Both needed before designing a classification
+    # sync — plus a live sample of what's actually tagged today, so we design against
+    # real data instead of assuming Megan has (or hasn't) already tagged anything.
+    print('=== EntityTag fields ===')
+    dump_type_fields(args.token, 'EntityTag')
+
+    print('=== rdvms / rdvmsCount / searchRdvms args ===')
+    r = gql(args.token, '{ __schema { queryType { fields { name args { name type { name kind ofType { name kind ofType { name } } } } } } } }')
+    fields = (r.get('data') or {}).get('__schema', {}).get('queryType', {}).get('fields', [])
+    by_name2 = {f['name']: f for f in fields}
+    for name in ['rdvms', 'rdvmsCount', 'searchRdvms']:
+        f = by_name2.get(name)
+        if not f:
+            print(f'  (query field "{name}" not found)')
+            continue
+        arg_strs = [f"{a['name']}: {type_name(a['type'])}" for a in f.get('args', [])]
+        print(f"  {name}({', '.join(arg_strs) if arg_strs else '(no args)'})")
+    print()
+
+    print('=== Live sample: first 50 rdvms with their tags ===')
+    r = gql(args.token, '{ rdvms(limit: 50) { id name isActive tags { id name } } }')
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rdvms = (r.get('data') or {}).get('rdvms') or []
+        print(f'  fetched {len(rdvms)} rdvms')
+        tag_names = set()
+        for rd in rdvms:
+            tags = rd.get('tags') or []
+            if tags:
+                names = [t.get('name') for t in tags]
+                tag_names.update(names)
+                print(f'  - {rd.get("name")!r}: tags={names}')
+        print(f'  distinct tag names seen: {sorted(tag_names)}')
+    print()
+
 
 if __name__ == '__main__':
     main()
