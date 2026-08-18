@@ -1,4 +1,5 @@
 .vetspire_token
+vetspire_token.txt
 *.token
 *.env
 .env*
