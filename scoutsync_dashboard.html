@@ -307,6 +307,7 @@ function fmt$(n) { return n === null || n === undefined ? '$0' : '$' + Number(n)
 function fmt$1(n) { return n === null || n === undefined ? '$0' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
 function fmtN(n) { return n === null || n === undefined ? '0' : Number(n).toLocaleString('en-US'); }
 function fmtDate(s) { const d = new Date(s + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function fmtDateFull(s) { const d = new Date(s + 'T00:00:00'); return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); }
 function isoDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
 
 function selectedLocation() {
@@ -653,7 +654,7 @@ function showDayDetail(date) {
   panel.style.display = 'block';
   panel.innerHTML = `
     <div class="dd-head">
-      <div class="dd-title">${esc(fmtDate(date))}</div>
+      <div class="dd-title">${esc(fmtDateFull(date))}</div>
       <button class="dd-close" title="Close">×</button>
     </div>
     <div class="dd-stats">
