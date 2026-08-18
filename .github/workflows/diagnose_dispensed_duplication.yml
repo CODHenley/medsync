@@ -1,0 +1,41 @@
+name: Diagnose Dispensed Items Duplication
+
+on:
+  workflow_dispatch:
+    inputs:
+      sku:
+        description: "Product SKU to check"
+        required: true
+        default: "98-11003-02"
+      location:
+        description: "Vetspire numeric location id"
+        required: true
+        default: "28253"
+      start_date:
+        description: "Start date (YYYY-MM-DD)"
+        required: true
+        default: "2026-01-01"
+      end_date:
+        description: "End date (YYYY-MM-DD)"
+        required: true
+        default: "2026-08-18"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run duplication diagnostic
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: |
+          python3 diagnose_dispensed_duplication.py \
+            --sku "${{ inputs.sku }}" \
+            --location "${{ inputs.location }}" \
+            --start "${{ inputs.start_date }}" \
+            --end "${{ inputs.end_date }}"
