@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       delete:
-        description: "Actually delete the stale rows found (leave false for a dry-run report)"
+        description: "Delete CONFIRMED duplicate rows only (leave false for a dry-run report)"
         required: true
         default: "false"
         type: choice
