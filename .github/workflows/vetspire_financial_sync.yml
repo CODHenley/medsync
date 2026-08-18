@@ -4,12 +4,13 @@ name: Vetspire Financial Sync
 # Veterinarian) from Vetspire's salesReport, broken down by provider +
 # product category at day-level granularity.
 #
-# Validated against production (130 rows, 4 locations, zero errors), but the
-# first run only covered the default 3-day lookback — the reconciliation
-# check against daily_revenue's full 30-day history showed ~90% "missing"
-# because of that gap, not a data error. Still manual-dispatch-only: use
-# lookback_days to backfill further back once and confirm reconciliation
-# actually closes before adding a schedule trigger.
+# Validated against production: a 30-day backfill (lookback_days=30) upserted
+# 1,295 rows across all 4 locations with zero errors, and the reconciliation
+# check against daily_revenue's 30-day baseline closed to 0-1.6% variance per
+# location (was ~90% "missing" before the backfill, due to the default 3-day
+# lookback only covering 3 of the 30 days being compared). Now scheduled
+# every 4 hours, matching vetspire_clinical_sync.yml — the 3-day default
+# lookback gives a self-healing overlap window for routine runs.
 
 on:
   workflow_dispatch:
@@ -18,6 +19,8 @@ on:
         description: 'Days of history to pull (default 3; use e.g. 30 for a one-time backfill)'
         required: false
         default: '3'
+  schedule:
+    - cron: '0 */4 * * *'
 
 jobs:
   sync:
