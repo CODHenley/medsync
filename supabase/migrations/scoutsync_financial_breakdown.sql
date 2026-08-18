@@ -31,7 +31,12 @@ create unique index if not exists idx_invoice_line_items_natural_key
 -- in salesReport's aggregated rows)
 -- ─────────────────────────────────────────────────────────────
 
-create or replace view public.v_financial_kpis_daily as
+-- CREATE OR REPLACE can't remove columns (category/invoice_count/
+-- avg_transaction_charge existed on the old version of this view) — drop
+-- it outright first.
+drop view if exists public.v_financial_kpis_daily;
+
+create view public.v_financial_kpis_daily as
 select
   location_id,
   service_date,
