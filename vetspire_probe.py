@@ -2,9 +2,11 @@
 """
 Probe Vetspire GraphQL — tries multiple endpoints and auth formats.
 """
-import json, urllib.request, urllib.error
+import json, os, urllib.request, urllib.error
 
-TOKEN = "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ2ZXRzcGlyZSIsImV4cCI6MTc4MTMwMjQ0MiwiaWF0IjoxNzgxMjE2MDQyLCJpc3MiOiJ2ZXRzcGlyZSIsImp0aSI6ImYyZjRhODNlLTZjZjctNGVhOS1hNmEyLWU5M2FmMjJiZGUxNyIsIm5iZiI6MTc4MTIxNjA0MSwicHJvdmlkZXIiOnsiaWQiOjYzODk5OCwiaXNfb3JnX2FkbWluIjp0cnVlLCJpc192ZXRlcmluYXJpYW4iOmZhbHNlLCJvcmdfaWQiOjI3MCwidGVuYW50X2lkIjoiZGVmYXVsdCJ9LCJzdWIiOiJQcm92aWRlcjo2Mzg5OTgiLCJzdXBwb3J0X3VzZXIiOm51bGwsInR5cCI6InRva2VuIn0.CAUpc1XKl9tdCoR88rDBSA3B4FpkEYicnN15STsdauH0pfPtpTFZVVvVh9VIsSiQy5kMR7_Y-CeAUqzJhC6I1w"
+TOKEN = os.environ.get("VETSPIRE_API_TOKEN", "").strip()
+if not TOKEN:
+    raise SystemExit("ERROR: VETSPIRE_API_TOKEN not set")
 ENDPOINT = "https://api.vetspire.com/graphql"
 
 def gql(query, variables=None):
