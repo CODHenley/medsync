@@ -183,6 +183,9 @@ table.dd-table th {
 }
 table.dd-table td { padding: 6px 8px; border-bottom: 1px solid var(--grid); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 table.dd-table td:first-child { color: var(--text); font-weight: 600; font-variant-numeric: normal; }
+.dd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.dd-subtitle { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; }
+@media (max-width: 700px) { .dd-grid { grid-template-columns: 1fr; } }
 
 /* ── Refresh control ── */
 .refresh-control { display: flex; align-items: center; gap: 8px; }
@@ -611,21 +614,31 @@ function renderComparisonChart(el, seriesA, seriesB, opts) {
 let currentRevenueSeries = [], currentVolumeSeries = [];
 let dayDetailByDate = {}; // 'YYYY-MM-DD' -> { revenue, visits, providers: { [providerId]: {name, visits, durationSum, durationCount} } }
 
-function buildDayDetails(revByDate, volByDate, clinicalRows, nameById) {
+function buildDayDetails(revByDate, volByDate, clinicalRows, nameById, diagRows) {
   const details = {};
-  const ensure = date => (details[date] = details[date] || { revenue: 0, visits: 0, providers: {} });
+  const ensure = date => (details[date] = details[date] || { revenue: 0, visits: 0, providers: {}, diagnostics: {} });
+  const ensureProvider = (d, pid) => d.providers[pid] = d.providers[pid] ||
+    { name: nameById[pid] || 'Unattributed', visits: 0, durationSum: 0, durationCount: 0, diagCount: 0 };
   Object.entries(revByDate).forEach(([date, v]) => { ensure(date).revenue = v; });
   Object.entries(volByDate).forEach(([date, v]) => { ensure(date).visits = v; });
   clinicalRows.forEach(r => {
     const d = ensure(r.visit_date);
-    const pid = r.provider_id || 'unattributed';
-    const p = d.providers[pid] = d.providers[pid] || { name: nameById[pid] || 'Unattributed', visits: 0, durationSum: 0, durationCount: 0 };
+    const p = ensureProvider(d, r.provider_id || 'unattributed');
     const visits = Number(r.encounter_count || 0);
     p.visits += visits;
     if (r.avg_encounter_minutes !== null && r.avg_encounter_minutes !== undefined) {
       p.durationSum += Number(r.avg_encounter_minutes) * visits;
       p.durationCount += visits;
     }
+  });
+  // Diagnostics = tests/procedures ordered (Vetspire's Diagnostic type) —
+  // one row per diagnostic, so a plain count per name/provider is exact.
+  (diagRows || []).forEach(r => {
+    const d = ensure(r.service_date);
+    const name = r.name || 'Unspecified';
+    d.diagnostics[name] = (d.diagnostics[name] || 0) + 1;
+    const p = ensureProvider(d, r.provider_id || 'unattributed');
+    p.diagCount += 1;
   });
   return details;
 }
@@ -636,6 +649,7 @@ function showDayDetail(date) {
   if (!d) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
   const act = d.visits ? d.revenue / d.visits : null; // avg cost per transaction, this day only
   const providerRows = Object.values(d.providers).sort((a, b) => b.visits - a.visits);
+  const topDiagnostics = Object.entries(d.diagnostics || {}).sort((a, b) => b[1] - a[1]).slice(0, 5);
   panel.style.display = 'block';
   panel.innerHTML = `
     <div class="dd-head">
@@ -647,11 +661,23 @@ function showDayDetail(date) {
       <div class="dd-stat"><div class="l">Case volume</div><div class="v">${fmtN(d.visits)}</div></div>
       <div class="dd-stat"><div class="l">Avg cost per transaction</div><div class="v">${act ? fmt$(act) : '—'}</div></div>
     </div>
-    ${providerRows.length ? `
-    <table class="dd-table">
-      <thead><tr><th>Provider</th><th>Visits</th><th>Avg case duration</th></tr></thead>
-      <tbody>${providerRows.map(p => `<tr><td>${esc(p.name)}</td><td>${fmtN(p.visits)}</td><td>${p.durationCount ? Math.round(p.durationSum / p.durationCount) + ' min' : '—'}</td></tr>`).join('')}</tbody>
-    </table>` : '<div class="chart-note">No provider-level detail for this day.</div>'}`;
+    <div class="dd-grid">
+      <div>
+        ${providerRows.length ? `
+        <table class="dd-table">
+          <thead><tr><th>Provider</th><th>Visits</th><th>Avg case duration</th><th>Diagnostics</th></tr></thead>
+          <tbody>${providerRows.map(p => `<tr><td>${esc(p.name)}</td><td>${fmtN(p.visits)}</td><td>${p.durationCount ? Math.round(p.durationSum / p.durationCount) + ' min' : '—'}</td><td>${fmtN(p.diagCount || 0)}</td></tr>`).join('')}</tbody>
+        </table>` : '<div class="chart-note">No provider-level detail for this day.</div>'}
+      </div>
+      <div>
+        <div class="dd-subtitle">Top 5 diagnostics ordered</div>
+        ${topDiagnostics.length ? `
+        <table class="dd-table">
+          <thead><tr><th>Diagnostic</th><th>Count</th></tr></thead>
+          <tbody>${topDiagnostics.map(([name, count]) => `<tr><td>${esc(name)}</td><td>${fmtN(count)}</td></tr>`).join('')}</tbody>
+        </table>` : '<div class="chart-note">No diagnostics recorded for this day.</div>'}
+      </div>
+    </div>`;
   panel.querySelector('.dd-close').addEventListener('click', () => { panel.style.display = 'none'; });
 }
 
@@ -778,7 +804,7 @@ async function loadFinancial() {
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
 
-  const [kpiRes, prevKpiRes, actRes, provRevRes, provRes, catRes, clinicalRes] = await Promise.all([
+  const [kpiRes, prevKpiRes, actRes, provRevRes, provRes, catRes, clinicalRes, diagRes] = await Promise.all([
     fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${isoDaysAgo(selectedRangeDays() * 2)}&service_date=lt.${from}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
@@ -786,6 +812,7 @@ async function loadFinancial() {
     fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/encounter_diagnostics?select=service_date,provider_id,name&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
   ]);
   const rows = kpiRes.ok ? await kpiRes.json() : [];
   const prevRows = prevKpiRes.ok ? await prevKpiRes.json() : [];
@@ -794,6 +821,7 @@ async function loadFinancial() {
   const provRows = provRes.ok ? await provRes.json() : [];
   const catRows = catRes.ok ? await catRes.json() : [];
   const clinicalRows = clinicalRes.ok ? await clinicalRes.json() : [];
+  const diagRows = diagRes.ok ? await diagRes.json() : [];
 
   if (!rows.length) {
     document.getElementById('financial-empty').innerHTML = `<div class="empty-note">
@@ -839,7 +867,7 @@ async function loadFinancial() {
   clinicalRows.forEach(r => { volByDate[r.visit_date] = (volByDate[r.visit_date] || 0) + Number(r.encounter_count || 0); });
   currentRevenueSeries = buildDailySeries(revByDate, from, until);
   currentVolumeSeries = buildDailySeries(volByDate, from, until);
-  dayDetailByDate = buildDayDetails(revByDate, volByDate, clinicalRows, nameById);
+  dayDetailByDate = buildDayDetails(revByDate, volByDate, clinicalRows, nameById, diagRows);
   document.getElementById('day-detail-panel').style.display = 'none';
   renderTrendSection();
 
