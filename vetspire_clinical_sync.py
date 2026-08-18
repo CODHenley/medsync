@@ -24,6 +24,27 @@ VETSPIRE_URL = "https://api.vetspire.com/graphql"
 SUPA_URL     = "https://aemkdummdrmxtwrkggjw.supabase.co"
 SUPA_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
 
+# referral_type classification: Vetspire's rdvmsCount showed 1,126 total rDVM
+# records with zero tags applied — tagging all of them by hand isn't practical.
+# Instead this defaults every relationship to 'rdvm_primary_care' (a Vetspire
+# "Rdvm" record is, by definition, a referring vet) and only overrides to a
+# competitor classification when the rDVM carries one of these two exact tag
+# names — so Megan only has to tag the specific competitor urgent cares/ERs
+# she already knows about in Vetspire, not the full list.
+COMPETITOR_TAG_TO_REFERRAL_TYPE = {
+    "competitor - urgent care": "competitor_urgent_care",
+    "competitor - er": "competitor_er",
+}
+
+
+def classify_referral_type(rdvm_tags):
+    for t in (rdvm_tags or []):
+        mapped = COMPETITOR_TAG_TO_REFERRAL_TYPE.get((t.get("name") or "").strip().lower())
+        if mapped:
+            return mapped
+    return "rdvm_primary_care"
+
+
 # vetspire_id -> (Supabase locations.id, name) — same 4 locations as every other sync.
 LOCATIONS = {
     "23083": ("11111111-0000-0000-0000-000000000001", "Lincoln Park"),
@@ -58,6 +79,7 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
           rdvm {
             id
             name
+            tags { name }
             documents { id name insertedAt }
           }
         }
@@ -183,7 +205,7 @@ def main():
                             "vetspire_referral_id": cr["id"],
                             "vetspire_client_id": client["id"],  # resolved to client_id below
                             "referral_name": rdvm.get("name"),
-                            "referral_type": "other",  # needs manual classification — see below
+                            "referral_type": classify_referral_type(rdvm.get("tags")),
                             "listed_at": cr.get("insertedAt"),
                         }
                         for doc in (rdvm.get("documents") or []):
@@ -258,10 +280,11 @@ def main():
     for k, v in totals.items():
         print(f"  {k}: {v}")
     print(
-        "\nNOTE: every referral_relationships row lands with referral_type='other' — "
-        "distinguishing a true rDVM from a competitor urgent care/ER needs a one-time "
-        "human classification pass (e.g. via Rdvm.tags in Vetspire), not something "
-        "this sync can infer on its own."
+        "\nNOTE: referral_type defaults to 'rdvm_primary_care' unless the rDVM in "
+        "Vetspire carries the tag 'Competitor - Urgent Care' or 'Competitor - ER' "
+        "(exact names, case-insensitive) — tag the specific competitor practices "
+        "you know about in Vetspire; everything else is assumed to be a real "
+        "referring vet, since tagging all 1,126 rDVM records by hand isn't practical."
     )
 
 
