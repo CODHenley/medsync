@@ -15,7 +15,10 @@ import os
 import sys
 import urllib.request
 import urllib.error
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+PRACTICE_TZ = ZoneInfo("America/Chicago")  # all 4 Scout locations are Chicago-area
 
 # ── Config ─────────────────────────────────────────────────────────────────
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
@@ -98,9 +101,16 @@ def main():
         print("ERROR: VETSPIRE_API_TOKEN env var not set.")
         sys.exit(1)
 
-    today = date.today().isoformat()
+    # date.today() reads the GitHub Actions runner's UTC clock — during the
+    # Central-time evening (~6pm-midnight CDT/CST), that's already tomorrow's
+    # UTC date while Vetspire still buckets usageReport by the local practice
+    # day. Querying the wrong day drops that evening's dispensing entirely,
+    # since this script never revisits a stale day (confirmed: diagnosed a
+    # 78-vs-71 gap for Catalyst Chem 17 @ Wheaton, all 7 missing units sitting
+    # in the 7pm-CDT hour — see diagnose_dispensed_gap.py).
+    today = datetime.now(PRACTICE_TZ).date().isoformat()
     now_utc = datetime.now(timezone.utc).isoformat()
-    print(f"\n=== Intraday Usage Sync — {today} (run at {now_utc}) ===")
+    print(f"\n=== Intraday Usage Sync — {today} (local practice date; run at {now_utc} UTC) ===")
 
     total = 0
     errors = 0

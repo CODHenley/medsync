@@ -12,7 +12,10 @@ Token management:
 """
 
 import json, urllib.request, urllib.error, os, sys, base64
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+PRACTICE_TZ = ZoneInfo("America/Chicago")
 
 # ── Config ──────────────────────────────────────────────────────
 VETSPIRE_ENDPOINT = "https://api.vetspire.com/graphql"
@@ -117,7 +120,11 @@ def supa_upsert(records):
 
 # ── Main ─────────────────────────────────────────────────────────
 def main():
-    today = date.today().isoformat()
+    # Use the practice's local calendar date, not whatever machine runs this —
+    # Vetspire buckets usageReport by local practice day, and a UTC-clock
+    # runner would query the wrong day during the evening (see
+    # vetspire_intraday_sync.py's fix for the confirmed version of this bug).
+    today = datetime.now(PRACTICE_TZ).date().isoformat()
     print(f"\n=== Wheaton Usage Pull — {today} ===")
 
     token = load_token()
