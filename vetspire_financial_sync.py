@@ -105,8 +105,14 @@ def main():
 
     # Providers are synced independently by vetspire_clinical_sync.py — look
     # up existing ones rather than re-syncing the roster here. A provider_id
-    # this sync hasn't seen yet just lands as unattributed revenue (still
-    # counted, just not resolved to a specific vet).
+    # this sync hasn't seen yet falls back to the fixed UNATTRIBUTED_PROVIDER
+    # sentinel below (still counted, just not resolved to a specific vet) —
+    # never to None/null. Postgres treats NULL != NULL in a unique constraint,
+    # so a null provider_id would never match on ON CONFLICT and every re-run
+    # would insert a fresh duplicate row instead of updating the existing one,
+    # silently multiplying revenue over time. See
+    # scoutsync_financial_unattributed_provider.sql for the sentinel row.
+    UNATTRIBUTED_PROVIDER = "00000000-0000-0000-0000-000000000000"
     provider_uuid_by_vs = {
         p["vetspire_provider_id"]: p["id"]
         for p in supa_get("providers", "select=id,vetspire_provider_id")
@@ -132,9 +138,10 @@ def main():
         line_items = []
         for row in rows:
             provider_vs_id = row.get("provider_id")
+            provider_uuid = provider_uuid_by_vs.get(str(provider_vs_id)) if provider_vs_id else None
             line_items.append({
                 "location_id": loc_uuid,
-                "provider_id": provider_uuid_by_vs.get(str(provider_vs_id)) if provider_vs_id else None,
+                "provider_id": provider_uuid or UNATTRIBUTED_PROVIDER,
                 "product_category_id": row.get("product_category_id") or 0,
                 "amount": float(row.get("total") or 0),
                 "service_date": row.get("date"),
