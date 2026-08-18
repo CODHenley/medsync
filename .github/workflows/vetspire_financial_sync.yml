@@ -4,13 +4,20 @@ name: Vetspire Financial Sync
 # Veterinarian) from Vetspire's salesReport, broken down by provider +
 # product category at day-level granularity.
 #
-# Manual trigger only for now, deliberately — hasn't run against production
-# data yet. Once a manual run is validated (row counts look sane, revenue
-# reconciles against the existing daily_revenue baseline), add a `schedule:`
-# trigger matching vetspire_clinical_sync.yml (every 4 hours).
+# Validated against production (130 rows, 4 locations, zero errors), but the
+# first run only covered the default 3-day lookback — the reconciliation
+# check against daily_revenue's full 30-day history showed ~90% "missing"
+# because of that gap, not a data error. Still manual-dispatch-only: use
+# lookback_days to backfill further back once and confirm reconciliation
+# actually closes before adding a schedule trigger.
 
 on:
   workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: 'Days of history to pull (default 3; use e.g. 30 for a one-time backfill)'
+        required: false
+        default: '3'
 
 jobs:
   sync:
@@ -25,4 +32,5 @@ jobs:
       - name: Run Vetspire financial sync
         env:
           VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days || '3' }}
         run: python3 vetspire_financial_sync.py

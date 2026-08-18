@@ -33,7 +33,12 @@ LOCATIONS = {
     "28253": ("11111111-0000-0000-0000-000000000004", "Wheaton"),
 }
 
-LOOKBACK_DAYS = 3  # overlap window so a missed run gets caught by the next one
+LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "3"))
+# Default 3 = overlap window so a missed scheduled run gets caught by the next
+# one. Override via the LOOKBACK_DAYS env var (or the workflow_dispatch input)
+# for a one-time historical backfill — e.g. 30 to match daily_revenue's
+# existing trailing-30-day history so the reconciliation check has something
+# real to compare against instead of ~3/30 of it.
 
 SALES_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
