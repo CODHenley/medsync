@@ -47,6 +47,12 @@ query($lids:[ID!], $s:Date, $e:Date){
 }
 """
 
+# Small, practice-wide reference list (18 categories, confirmed via
+# vetspire_clinical_schema_probe.py) — real names like "IDEXX In-house" and
+# "Vaccines - Canine" instead of invoice_line_items' raw numeric
+# product_category_id. Synced every run so a rename in Vetspire is picked up.
+CATEGORIES_QUERY = "{ productCategories { id name } }"
+
 
 def gql(token, query, variables=None):
     body = json.dumps({"query": query, "variables": variables or {}}).encode()
@@ -117,6 +123,15 @@ def main():
         p["vetspire_provider_id"]: p["id"]
         for p in supa_get("providers", "select=id,vetspire_provider_id")
     }
+
+    cat_result = gql(token, CATEGORIES_QUERY)
+    if "errors" in cat_result:
+        print(f"  WARNING: productCategories fetch failed: {cat_result['errors']}")
+    else:
+        categories = cat_result.get("data", {}).get("productCategories") or []
+        cat_rows = [{"id": int(c["id"]), "name": c["name"]} for c in categories if c.get("id")]
+        supa_upsert("product_categories", cat_rows, "id")
+        print(f"  synced {len(cat_rows)} product categories")
 
     now = datetime.now(timezone.utc)
     since = (now - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
