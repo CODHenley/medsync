@@ -55,6 +55,10 @@ def had_exam(encounter_products):
     return any("exam" in (p.get("name") or "").lower() for p in (encounter_products or []))
 
 
+def to_date(dt_str):
+    return (dt_str or "")[:10] or None
+
+
 # vetspire_id -> (Supabase locations.id, name) — same 4 locations as every other sync.
 LOCATIONS = {
     "23083": ("11111111-0000-0000-0000-000000000001", "Lincoln Park"),
@@ -112,6 +116,7 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
       completedAt
     }
     encounterProducts { name }
+    diagnostics { id name providerId }
   }
 }
 """
@@ -171,7 +176,8 @@ def main():
     until = now.strftime("%Y-%m-%dT%H:%M:%S")
 
     totals = {"encounters": 0, "clients": 0, "patients": 0, "providers": 0,
-              "referral_relationships": 0, "records_release_log": 0}
+              "referral_relationships": 0, "records_release_log": 0,
+              "encounter_diagnostics": 0}
 
     for vetspire_loc_id, (loc_uuid, loc_name) in LOCATIONS.items():
         print(f"\n=== {loc_name} ({vetspire_loc_id}) ===")
@@ -193,7 +199,7 @@ def main():
             print(f"  fetched {len(rows)} encounters (offset {offset})")
 
             providers, clients, patients = {}, {}, {}
-            referrals, releases = {}, {}
+            referrals, releases, diagnostics = {}, {}, {}
             encounter_rows = []
 
             for enc in rows:
@@ -258,6 +264,23 @@ def main():
                     "had_exam": had_exam(enc.get("encounterProducts")),
                 })
 
+                # Diagnostics = tests/procedures ordered this encounter (Vetspire's
+                # Diagnostic type — not a clinical diagnosis/condition, confirmed via
+                # the schema probe). Keyed by vetspire id, same dedup reasoning as
+                # referrals/releases above. encounter_id/provider_id resolved below
+                # once encounter_uuid_by_vs exists.
+                for diag in (enc.get("diagnostics") or []):
+                    if not diag.get("id"):
+                        continue
+                    diagnostics[diag["id"]] = {
+                        "vetspire_diagnostic_id": diag["id"],
+                        "vetspire_encounter_id": enc["id"],
+                        "location_id": loc_uuid,
+                        "vetspire_provider_id": diag.get("providerId"),
+                        "name": diag.get("name"),
+                        "service_date": to_date(enc.get("start") or appt.get("startedAt")),
+                    }
+
             # ── Upsert dimension tables first, capture their real Supabase uuids ──
             provider_rows = supa_upsert("providers", list(providers.values()), "vetspire_provider_id")
             provider_uuid_by_vs = {r["vetspire_provider_id"]: r["id"] for r in provider_rows}
@@ -286,6 +309,13 @@ def main():
                 e["client_id"] = client_uuid_by_vs.get(e.pop("vetspire_client_id"))
                 e["patient_id"] = patient_uuid_by_vs.get(e.pop("vetspire_patient_id"))
             encounter_out = supa_upsert("encounters", encounter_rows, "vetspire_encounter_id")
+            encounter_uuid_by_vs = {r["vetspire_encounter_id"]: r["id"] for r in encounter_out}
+
+            for d in diagnostics.values():
+                vs_provider_id = d.pop("vetspire_provider_id")
+                d["provider_id"] = provider_uuid_by_vs.get(str(vs_provider_id)) if vs_provider_id else None
+                d["encounter_id"] = encounter_uuid_by_vs.get(d.pop("vetspire_encounter_id"))
+            diagnostic_out = supa_upsert("encounter_diagnostics", list(diagnostics.values()), "vetspire_diagnostic_id")
 
             totals["providers"] += len(provider_rows)
             totals["clients"] += len(client_rows)
@@ -293,6 +323,7 @@ def main():
             totals["referral_relationships"] += len(referral_out)
             totals["records_release_log"] += len(release_out)
             totals["encounters"] += len(encounter_out)
+            totals["encounter_diagnostics"] += len(diagnostic_out)
 
             if len(rows) < 100:
                 break
