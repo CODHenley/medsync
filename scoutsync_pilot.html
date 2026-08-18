@@ -335,6 +335,12 @@ async function loadValidation() {
   const clinicalBody = document.querySelector('#qa-clinical tbody');
   const financialBody = document.querySelector('#qa-financial tbody');
   const facilitiesBody = document.querySelector('#qa-facilities tbody');
+  // renderQaRow appends rows rather than replacing them — clear old rows first,
+  // or every re-run (tab switch, location/range filter change) stacks another
+  // full set on top of the last one instead of refreshing in place.
+  clinicalBody.innerHTML = '';
+  financialBody.innerHTML = '';
+  facilitiesBody.innerHTML = '';
 
   await Promise.all([
     renderQaRow(clinicalBody, 'encounters', 'started_at', true),
