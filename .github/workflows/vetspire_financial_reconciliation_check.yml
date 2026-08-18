@@ -1,0 +1,32 @@
+name: Vetspire Financial Reconciliation Check
+
+# Read-only: pulls fresh totals straight from Vetspire's salesReport and
+# compares them against what's stored in Supabase's invoice_line_items for
+# the same window (excludes today, which is still accumulating) — confirms
+# the Financial tab's numbers actually mirror Vetspire, not just that the
+# sync ran without errors. See vetspire_financial_reconciliation_check.py.
+# Manual trigger only — nothing here writes any data.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reconcile_days:
+        description: 'How many fully-elapsed days back to check (default 7)'
+        required: false
+        default: '7'
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire financial reconciliation check
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+          RECONCILE_DAYS: ${{ inputs.reconcile_days || '7' }}
+        run: python3 vetspire_financial_reconciliation_check.py
