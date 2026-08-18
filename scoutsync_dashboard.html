@@ -162,6 +162,28 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
 .foot-note { margin-top: 40px; font-size: 11.5px; color: var(--ink-3); border-top: 1px solid var(--border); padding-top: 14px; }
 .foot-note code { background: var(--navy-lt); padding: 1px 5px; border-radius: 4px; }
 
+/* ── Day drill-down panel ── */
+#day-detail-panel {
+  display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--grid);
+}
+.dd-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dd-title { font-size: 14px; font-weight: 800; color: var(--text); }
+.dd-close {
+  border: none; background: var(--navy-lt); color: var(--muted); width: 24px; height: 24px;
+  border-radius: 6px; cursor: pointer; font-size: 14px; line-height: 1;
+}
+.dd-close:hover { background: var(--border); }
+.dd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.dd-stat .l { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+.dd-stat .v { font-size: 19px; font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
+table.dd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.dd-table th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .3px;
+  color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--grid); font-weight: 700;
+}
+table.dd-table td { padding: 6px 8px; border-bottom: 1px solid var(--grid); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+table.dd-table td:first-child { color: var(--text); font-weight: 600; font-variant-numeric: normal; }
+
 /* ── Refresh control ── */
 .refresh-control { display: flex; align-items: center; gap: 8px; }
 .refresh-control .last-updated { font-size: 11.5px; color: rgba(255,255,255,.55); white-space: nowrap; }
@@ -228,8 +250,9 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
     <div class="chart-card">
       <label class="chart-toggle"><input type="checkbox" id="overlay-toggle"> Overlay case volume (indexed)</label>
       <div class="chart-title">Revenue trend</div>
-      <div class="chart-note" id="trend-note">Daily revenue, selected range</div>
+      <div class="chart-note" id="trend-note">Daily revenue, selected range — click any point for the full day</div>
       <div id="trend-chart"></div>
+      <div id="day-detail-panel"></div>
     </div>
 
     <div class="section-head"><div class="dot"></div><h2>Revenue by Source</h2></div>
@@ -376,16 +399,21 @@ function renderLineChart(el, points, opts) {
   hitRect.setAttribute('x', PAD_L); hitRect.setAttribute('y', PAD_T);
   hitRect.setAttribute('width', plotW); hitRect.setAttribute('height', plotH);
   hitRect.setAttribute('fill', 'transparent');
+  hitRect.style.cursor = 'pointer';
   svg.appendChild(hitRect);
 
   el.appendChild(svg);
   const tt = makeTooltip(el);
 
-  hitRect.addEventListener('mousemove', e => {
+  const idxAt = clientX => {
     const rect = svg.getBoundingClientRect();
-    const relX = (e.clientX - rect.left) / rect.width * W;
+    const relX = (clientX - rect.left) / rect.width * W;
     let idx = Math.round(((relX - PAD_L) / plotW) * (points.length - 1));
-    idx = Math.max(0, Math.min(points.length - 1, idx));
+    return Math.max(0, Math.min(points.length - 1, idx));
+  };
+  hitRect.addEventListener('mousemove', e => {
+    const idx = idxAt(e.clientX);
+    const rect = svg.getBoundingClientRect();
     const p = points[idx];
     crosshair.setAttribute('x1', xAt(idx)); crosshair.setAttribute('x2', xAt(idx));
     crosshair.style.opacity = '1';
@@ -399,6 +427,7 @@ function renderLineChart(el, points, opts) {
   hitRect.addEventListener('mouseleave', () => {
     crosshair.style.opacity = '0'; dot.style.opacity = '0'; tt.style.opacity = '0';
   });
+  hitRect.addEventListener('click', e => { showDayDetail(points[idxAt(e.clientX)].x); });
 }
 
 function renderBarChart(el, rows, opts) {
@@ -539,6 +568,7 @@ function renderComparisonChart(el, seriesA, seriesB, opts) {
   hitRect.setAttribute('x', PAD_L); hitRect.setAttribute('y', PAD_T);
   hitRect.setAttribute('width', plotW); hitRect.setAttribute('height', plotH);
   hitRect.setAttribute('fill', 'transparent');
+  hitRect.style.cursor = 'pointer';
   svg.appendChild(hitRect);
 
   el.appendChild(svg);
@@ -550,11 +580,15 @@ function renderComparisonChart(el, seriesA, seriesB, opts) {
   el.appendChild(legend);
   const tt = makeTooltip(el);
 
-  hitRect.addEventListener('mousemove', e => {
+  const idxAt2 = clientX => {
     const rect = svg.getBoundingClientRect();
-    const relX = (e.clientX - rect.left) / rect.width * W;
+    const relX = (clientX - rect.left) / rect.width * W;
     let idx = Math.round(((relX - PAD_L) / plotW) * (n - 1));
-    idx = Math.max(0, Math.min(n - 1, idx));
+    return Math.max(0, Math.min(n - 1, idx));
+  };
+  hitRect.addEventListener('mousemove', e => {
+    const idx = idxAt2(e.clientX);
+    const rect = svg.getBoundingClientRect();
     const pa = seriesA[idx], pb = seriesB[idx];
     crosshair.setAttribute('x1', xAt(idx)); crosshair.setAttribute('x2', xAt(idx)); crosshair.style.opacity = '1';
     dotA.setAttribute('cx', xAt(idx)); dotA.setAttribute('cy', yAt(pa.y)); dotA.style.opacity = '1';
@@ -570,10 +604,56 @@ function renderComparisonChart(el, seriesA, seriesB, opts) {
   hitRect.addEventListener('mouseleave', () => {
     crosshair.style.opacity = '0'; dotA.style.opacity = '0'; dotB.style.opacity = '0'; tt.style.opacity = '0';
   });
+  hitRect.addEventListener('click', e => { showDayDetail(seriesA[idxAt2(e.clientX)].x); });
 }
 
 // Module-level so the overlay toggle can re-render instantly without a re-fetch.
 let currentRevenueSeries = [], currentVolumeSeries = [];
+let dayDetailByDate = {}; // 'YYYY-MM-DD' -> { revenue, visits, providers: { [providerId]: {name, visits, durationSum, durationCount} } }
+
+function buildDayDetails(revByDate, volByDate, clinicalRows, nameById) {
+  const details = {};
+  const ensure = date => (details[date] = details[date] || { revenue: 0, visits: 0, providers: {} });
+  Object.entries(revByDate).forEach(([date, v]) => { ensure(date).revenue = v; });
+  Object.entries(volByDate).forEach(([date, v]) => { ensure(date).visits = v; });
+  clinicalRows.forEach(r => {
+    const d = ensure(r.visit_date);
+    const pid = r.provider_id || 'unattributed';
+    const p = d.providers[pid] = d.providers[pid] || { name: nameById[pid] || 'Unattributed', visits: 0, durationSum: 0, durationCount: 0 };
+    const visits = Number(r.encounter_count || 0);
+    p.visits += visits;
+    if (r.avg_encounter_minutes !== null && r.avg_encounter_minutes !== undefined) {
+      p.durationSum += Number(r.avg_encounter_minutes) * visits;
+      p.durationCount += visits;
+    }
+  });
+  return details;
+}
+
+function showDayDetail(date) {
+  const panel = document.getElementById('day-detail-panel');
+  const d = dayDetailByDate[date];
+  if (!d) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
+  const act = d.visits ? d.revenue / d.visits : null; // avg cost per transaction, this day only
+  const providerRows = Object.values(d.providers).sort((a, b) => b.visits - a.visits);
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div class="dd-head">
+      <div class="dd-title">${esc(fmtDate(date))}</div>
+      <button class="dd-close" title="Close">×</button>
+    </div>
+    <div class="dd-stats">
+      <div class="dd-stat"><div class="l">Revenue</div><div class="v">${fmt$(d.revenue)}</div></div>
+      <div class="dd-stat"><div class="l">Case volume</div><div class="v">${fmtN(d.visits)}</div></div>
+      <div class="dd-stat"><div class="l">Avg cost per transaction</div><div class="v">${act ? fmt$(act) : '—'}</div></div>
+    </div>
+    ${providerRows.length ? `
+    <table class="dd-table">
+      <thead><tr><th>Provider</th><th>Visits</th><th>Avg case duration</th></tr></thead>
+      <tbody>${providerRows.map(p => `<tr><td>${esc(p.name)}</td><td>${fmtN(p.visits)}</td><td>${p.durationCount ? Math.round(p.durationSum / p.durationCount) + ' min' : '—'}</td></tr>`).join('')}</tbody>
+    </table>` : '<div class="chart-note">No provider-level detail for this day.</div>'}`;
+  panel.querySelector('.dd-close').addEventListener('click', () => { panel.style.display = 'none'; });
+}
 
 function renderTrendSection() {
   const overlayOn = document.getElementById('overlay-toggle').checked;
@@ -656,20 +736,20 @@ function renderInsights(revenueSeries, volumeSeries, revenueByName) {
   const secondHalf = revenueSeries.slice(Math.floor(revenueSeries.length / 2));
   const volFirstHalf = volumeSeries.slice(0, Math.floor(volumeSeries.length / 2));
   const volSecondHalf = volumeSeries.slice(Math.floor(volumeSeries.length / 2));
-  const atcHalf = (rev, vol) => {
+  const actHalf = (rev, vol) => {
     const r = rev.reduce((a, p) => a + p.y, 0), v = vol.reduce((a, p) => a + p.y, 0);
     return v ? r / v : null;
   };
-  const atc1 = atcHalf(firstHalf, volFirstHalf), atc2 = atcHalf(secondHalf, volSecondHalf);
-  const atcChangePct = (atc1 && atc2) ? ((atc2 - atc1) / atc1) * 100 : null;
+  const act1 = actHalf(firstHalf, volFirstHalf), act2 = actHalf(secondHalf, volSecondHalf);
+  const actChangePct = (act1 && act2) ? ((act2 - act1) / act1) * 100 : null;
   const topPctForRec = provEntries.length && provTotal > 0 ? (provEntries[0][1] / provTotal) * 100 : 0;
 
   let recBody;
   if (topPctForRec >= 35) {
     recBody = `Reduce reliance on <b>${esc(provEntries[0][0])}</b> — cross-train another provider on their highest-revenue
       service lines, or build a coverage plan so a single schedule gap doesn’t swing total revenue.`;
-  } else if (atcChangePct !== null && atcChangePct < -5) {
-    recBody = `Average revenue per visit fell <b>${Math.abs(atcChangePct).toFixed(0)}%</b> from the first half of this range to the second,
+  } else if (actChangePct !== null && actChangePct < -5) {
+    recBody = `Average cost per transaction fell <b>${Math.abs(actChangePct).toFixed(0)}%</b> from the first half of this range to the second,
       even though volume didn’t drop proportionally. Focus on transaction value — compliance-driven add-ons
       (diagnostics, prevention) — rather than just driving more visits.`;
   } else if (corr !== null && corr >= 0.5) {
@@ -698,18 +778,18 @@ async function loadFinancial() {
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
 
-  const [kpiRes, prevKpiRes, atcRes, provRevRes, provRes, catRes, clinicalRes] = await Promise.all([
+  const [kpiRes, prevKpiRes, actRes, provRevRes, provRes, catRes, clinicalRes] = await Promise.all([
     fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${isoDaysAgo(selectedRangeDays() * 2)}&service_date=lt.${from}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=*&provider_id=neq.${UNATTRIBUTED_PROVIDER}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,encounter_count&visit_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}${locFilter}`, { headers: HEADERS }),
   ]);
   const rows = kpiRes.ok ? await kpiRes.json() : [];
   const prevRows = prevKpiRes.ok ? await prevKpiRes.json() : [];
-  const atcRows = atcRes.ok ? await atcRes.json() : [];
+  const actRows = actRes.ok ? await actRes.json() : [];
   const provRevRows = provRevRes.ok ? await provRevRes.json() : [];
   const provRows = provRes.ok ? await provRes.json() : [];
   const catRows = catRes.ok ? await catRes.json() : [];
@@ -730,13 +810,13 @@ async function loadFinancial() {
   }
   document.getElementById('financial-empty').innerHTML = '';
 
-  // ── Hero stats: total revenue + vs-previous-period delta, ATC ──
+  // ── Hero stats: total revenue + vs-previous-period delta, ACT ──
   const revenue = rows.reduce((a, r) => a + Number(r.revenue || 0), 0);
   const prevRevenue = prevRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
   const deltaPct = prevRevenue ? ((revenue - prevRevenue) / prevRevenue) * 100 : null;
-  const atcRevenue = atcRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
-  const atcVisits = atcRows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
-  const atc = atcVisits ? atcRevenue / atcVisits : null;
+  const actRevenue = actRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+  const actVisits = actRows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
+  const act = actVisits ? actRevenue / actVisits : null;
 
   document.getElementById('hero-note').textContent = loc ? loc.name : 'All locations';
   document.getElementById('hero-tiles').innerHTML = `
@@ -746,18 +826,21 @@ async function loadFinancial() {
       ${deltaPct === null ? '' : `<div class="delta ${deltaPct >= 0 ? 'up' : 'down'}">${deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(deltaPct).toFixed(1)}% <span class="vs">vs. previous period</span></div>`}
     </div>
     <div class="hero-tile">
-      <div class="l">Avg transaction charge</div>
-      <div class="v">${atc ? fmt$(atc) : '—'}</div>
+      <div class="l">Avg cost per transaction</div>
+      <div class="v">${act ? fmt$(act) : '—'}</div>
     </div>`;
 
   // ── Revenue trend + case volume: daily totals, 0-filled across the whole
   // range (a day with no data is a real $0/0-visit day, not a gap to skip) ──
+  const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
   const revByDate = {};
   rows.forEach(r => { revByDate[r.service_date] = (revByDate[r.service_date] || 0) + Number(r.revenue || 0); });
   const volByDate = {};
   clinicalRows.forEach(r => { volByDate[r.visit_date] = (volByDate[r.visit_date] || 0) + Number(r.encounter_count || 0); });
   currentRevenueSeries = buildDailySeries(revByDate, from, until);
   currentVolumeSeries = buildDailySeries(volByDate, from, until);
+  dayDetailByDate = buildDayDetails(revByDate, volByDate, clinicalRows, nameById);
+  document.getElementById('day-detail-panel').style.display = 'none';
   renderTrendSection();
 
   // ── Revenue by category: top 6 + Other, real names, categorical palette ──
@@ -780,7 +863,6 @@ async function loadFinancial() {
   renderBarChart(document.getElementById('category-chart'), catRowsForChart, {});
 
   // ── Revenue per veterinarian: merge duplicate provider records by name ──
-  const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
   const revenueByName = {};
   provRevRows.forEach(r => {
     const name = nameById[r.provider_id] || 'Unknown provider';
