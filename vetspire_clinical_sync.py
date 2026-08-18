@@ -63,7 +63,17 @@ LOCATIONS = {
     "28253": ("11111111-0000-0000-0000-000000000004", "Wheaton"),
 }
 
-LOOKBACK_DAYS = 3  # overlap window so a missed run gets caught by the next one
+LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "3"))
+# Default 3 = overlap window so a missed scheduled run gets caught by the next
+# one. Override via the LOOKBACK_DAYS env var (or the workflow_dispatch input)
+# for a one-time historical backfill — this sync has only ever run with the
+# default 3-day window since it went live, so encounters (and everything
+# built on it, like v_clinical_kpis_daily) has real data for only the last
+# few days; anything wider (e.g. a 30-day chart) is mostly zeros before a
+# backfill closes the gap. Filters on updatedAt, not the visit date itself,
+# but for already-closed/signed encounters the two are normally close
+# together, so widening this window does capture real historical visits —
+# same mechanism the routine 4-hour sync already relies on.
 
 ENCOUNTERS_QUERY = """
 query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateTime, $limit: Int, $offset: Int) {
