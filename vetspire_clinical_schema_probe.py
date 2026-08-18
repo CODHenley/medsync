@@ -337,6 +337,60 @@ def main():
         print(f'  has signedDatetime counts: {signed_counts}')
     print()
 
+    # 9. Geospatial mapping (illness/appointment/client maps) + Compliance Rate KPI:
+    # Client.addresses: Address and Encounter.diagnostics: Diagnostic were both
+    # confirmed to exist in a prior run, but neither Address nor Diagnostic itself
+    # has ever been dumped (they don't match any KEYWORDS substring). Also found
+    # PatientCompliance (productProtocols / protocolRemindersByProtocol) in passing
+    # — that's the unconfirmed data source for the Compliance Rate KPI. Dumping all
+    # three plus a live sample before designing anything geospatial or protocol-based.
+    print('=== Address fields ===')
+    dump_type_fields(args.token, 'Address')
+
+    print('=== Diagnostic fields ===')
+    dump_type_fields(args.token, 'Diagnostic')
+
+    print('=== PatientCompliance fields ===')
+    dump_type_fields(args.token, 'PatientCompliance')
+
+    print('=== PatientProtocol fields ===')
+    dump_type_fields(args.token, 'PatientProtocol')
+
+    print('=== Live sample: first 20 clients with addresses ===')
+    r = gql(args.token, '{ clients(limit: 20) { id name addresses { id line1 line2 city state postalCode country } } }')
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        clients = (r.get('data') or {}).get('clients') or []
+        print(f'  fetched {len(clients)} clients')
+        with_addr = [c for c in clients if c.get('addresses')]
+        print(f'  {len(with_addr)}/{len(clients)} have at least one address')
+        for c in with_addr[:5]:
+            print(f'  - {c.get("name")!r}: {c.get("addresses")}')
+    print()
+
+    print('=== Live sample: last 30 days of encounters, diagnostics detail ===')
+    from datetime import date, timedelta
+    since = (date.today() - timedelta(days=30)).isoformat() + 'T00:00:00'
+    diag_query = '''
+    query($s: NaiveDateTime, $limit: Int) {
+      encounters(updatedAtStart: $s, limit: $limit) {
+        id
+        diagnostics { id name }
+      }
+    }
+    '''
+    r = gql(args.token, diag_query, {'s': since, 'limit': 100})
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('encounters') or []
+        with_diag = [row for row in rows if row.get('diagnostics')]
+        print(f'  fetched {len(rows)} encounters, {len(with_diag)} have diagnostics')
+        for row in with_diag[:8]:
+            print(f'  - encounter {row["id"]}: {row.get("diagnostics")}')
+    print()
+
 
 if __name__ == '__main__':
     main()
