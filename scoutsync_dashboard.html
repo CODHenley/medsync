@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ScoutSync — Executive Dashboard</title>
+<style>
+:root {
+  --navy:      #1C2B4A;
+  --navy-md:   #2A3F6A;
+  --navy-lt:   #E8EDF5;
+  --orange:    #C83803;
+  --orange-lt: #FFF0EB;
+  --border:    #C5CDD8;
+  --muted:     #6B7A99;
+  --surface:   #F9F9F7;
+  --card:      #FCFCFB;
+  --text:      #1C2B4A;
+
+  /* section identity — validated: node scripts/validate_palette.js
+     "#2B6CB0,#C83803,#3C5A99" --mode light → ALL CHECKS PASS */
+  --c-clinical:   #2B6CB0;
+  --c-financial:  #C83803;
+  --c-facilities: #3C5A99;
+
+  /* categorical (Revenue by Source) — dataviz skill default 8-hue theme,
+     first 6 slots — validated: node scripts/validate_palette.js
+     "#2a78d6,#eb6834,#1baf7a,#eda100,#e87ba4,#008300" --mode light
+     --surface "#fcfcfb" → ALL CHECKS PASS (3 slots WARN sub-3:1 contrast —
+     relief satisfied here via always-visible direct labels) */
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a;
+  --cat-4: #eda100; --cat-5: #e87ba4; --cat-6: #008300;
+  --cat-other: #898781;
+
+  /* status — reserved, never reused as categorical */
+  --s-good:     #006300;
+  --s-critical: #B42318;
+  --s-neutral:  #8A93A6;
+
+  --grid:   #E1E0D9;
+  --axis:   #C3C2B7;
+  --ink-2:  #52514E;
+  --ink-3:  #898781;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--surface); color: var(--text);
+}
+header.top {
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 24px;
+}
+header.top img.logo { height: 32px; width: auto; border-radius: 6px; }
+header.top .word { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; }
+header.top .word span { color: var(--orange); }
+header.top .tagline { font-size: 12px; color: rgba(255,255,255,.6); margin-left: 2px; }
+header.top .spacer { flex: 1; }
+.loc-filter select, .range-filter select {
+  background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px; padding: 6px 10px; font-size: 13px;
+}
+.loc-filter select option, .range-filter select option { color: #1C2B4A; }
+
+nav.tabs {
+  display: flex; gap: 4px; background: #fff; border-bottom: 1px solid var(--border);
+  padding: 0 24px; overflow-x: auto;
+}
+nav.tabs button {
+  border: none; background: none; font-size: 13.5px; font-weight: 600;
+  color: var(--muted); padding: 13px 16px; cursor: pointer; border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+nav.tabs button.active { color: var(--text); border-bottom-color: var(--c-financial); }
+nav.tabs button.soon { color: var(--ink-3); cursor: default; }
+nav.tabs button.soon .tag {
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  background: var(--navy-lt); color: var(--muted); border-radius: 100px; padding: 2px 6px; margin-left: 6px;
+}
+
+main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
+
+.section-head { display: flex; align-items: baseline; gap: 10px; margin: 30px 0 12px; }
+.section-head .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; background: var(--c-financial); }
+.section-head h2 { font-size: 15.5px; margin: 0; letter-spacing: .2px; }
+.section-head .sub { font-size: 12.5px; color: var(--muted); }
+.section-head:first-child { margin-top: 4px; }
+
+/* ── Hero stats ── */
+.hero-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.hero-tile {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px 20px;
+}
+.hero-tile .l { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+.hero-tile .v { font-size: 32px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.hero-tile .delta { font-size: 13px; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+.hero-tile .delta.up { color: var(--s-good); }
+.hero-tile .delta.down { color: var(--s-critical); }
+.hero-tile .delta .vs { color: var(--muted); font-weight: 500; }
+
+/* ── Chart cards ── */
+.chart-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px 20px 12px;
+}
+.chart-card + .chart-card { margin-top: 12px; }
+.chart-card .chart-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.chart-card .chart-note { font-size: 11.5px; color: var(--ink-3); margin-bottom: 10px; }
+
+.viz-tooltip {
+  position: absolute; pointer-events: none; background: var(--navy); color: #fff;
+  font-size: 12px; padding: 6px 10px; border-radius: 6px; white-space: nowrap;
+  transform: translate(-50%, -120%); opacity: 0; transition: opacity .1s; z-index: 5;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+}
+.viz-tooltip .tt-label { color: rgba(255,255,255,.65); font-size: 10.5px; margin-bottom: 1px; }
+.viz-tooltip .tt-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ── Bar chart ── */
+.bar-chart-wrap { position: relative; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 90px; align-items: center; gap: 10px; padding: 5px 0; }
+.bar-row .b-name { font-size: 12.5px; color: var(--ink-2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { position: relative; height: 22px; background: transparent; }
+.bar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 0 5px 5px 0; transition: filter .1s; }
+.bar-fill:hover { filter: brightness(0.92); }
+.bar-row .b-value { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+
+.legend-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--grid); }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-2); }
+.legend-swatch { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+.empty-note {
+  background: var(--navy-lt); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; font-size: 13px; color: var(--muted); line-height: 1.5;
+}
+.foot-note { margin-top: 40px; font-size: 11.5px; color: var(--ink-3); border-top: 1px solid var(--border); padding-top: 14px; }
+.foot-note code { background: var(--navy-lt); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <img class="logo" src="Scout Logo.png" alt="Scout" onerror="this.style.display='none'">
+  <div>
+    <div class="word">Scout<span>Sync</span></div>
+    <div class="tagline">Executive dashboard</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="loc-filter">
+    <select id="loc-select">
+      <option value="">All Locations</option>
+      <option value="lp">Lincoln Park</option>
+      <option value="oo">Old Orchard</option>
+      <option value="wl">West Loop</option>
+      <option value="wh">Wheaton</option>
+    </select>
+  </div>
+  <div class="range-filter">
+    <select id="range-select">
+      <option value="30">Trailing 30 days</option>
+      <option value="7">Trailing 7 days</option>
+      <option value="90">Trailing 90 days</option>
+      <option value="365">Trailing 365 days</option>
+    </select>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="financial">Financial</button>
+  <button class="soon" disabled>Clinical Operations<span class="tag">Soon</span></button>
+  <button class="soon" disabled>Facilities Operations<span class="tag">Soon</span></button>
+</nav>
+
+<main>
+
+  <section class="panel active" id="panel-financial">
+
+    <div class="section-head"><div class="dot"></div>
+      <h2>Revenue Performance</h2><span class="sub" id="hero-note"></span></div>
+    <div class="hero-row" id="hero-tiles"></div>
+
+    <div class="chart-card">
+      <div class="chart-title">Revenue trend</div>
+      <div class="chart-note" id="trend-note">Daily revenue, selected range</div>
+      <div id="trend-chart"></div>
+    </div>
+
+    <div class="section-head"><div class="dot"></div><h2>Revenue by Source</h2></div>
+    <div class="chart-card">
+      <div class="chart-title">By product category</div>
+      <div class="chart-note">Top 6 categories by revenue; the rest grouped as Other</div>
+      <div id="category-chart" class="bar-chart-wrap"></div>
+    </div>
+
+    <div class="section-head"><div class="dot"></div><h2>Revenue per Veterinarian</h2></div>
+    <div class="chart-card">
+      <div class="chart-title">Ranked by total revenue</div>
+      <div class="chart-note">Same-name providers already merged</div>
+      <div id="provider-chart" class="bar-chart-wrap"></div>
+    </div>
+
+    <div id="financial-empty"></div>
+  </section>
+
+  <div class="foot-note">
+    ScoutSync Executive Dashboard — reads the same Supabase project MedSync already uses (RLS-scoped anon
+    access). Numbers cross-checked live against Vetspire via <code>vetspire_financial_reconciliation_check.py</code>.
+    Clinical Operations and Facilities Operations sections are next.
+  </div>
+</main>
+
+<script>
+// ── Supabase config (same project + anon key as the rest of MedSync — RLS-scoped) ──
+const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+const HEADERS = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+const UNATTRIBUTED_PROVIDER = '00000000-0000-0000-0000-000000000000';
+
+const LOCATIONS = [
+  { key: 'lp', name: 'Lincoln Park', uuid: '11111111-0000-0000-0000-000000000001', vid: '23083' },
+  { key: 'oo', name: 'Old Orchard',  uuid: '11111111-0000-0000-0000-000000000002', vid: '27390' },
+  { key: 'wl', name: 'West Loop',    uuid: '11111111-0000-0000-0000-000000000003', vid: '24356' },
+  { key: 'wh', name: 'Wheaton',      uuid: '11111111-0000-0000-0000-000000000004', vid: '28253' },
+];
+
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt$(n) { return n === null || n === undefined ? '$0' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+function fmt$1(n) { return n === null || n === undefined ? '$0' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+function fmtN(n) { return n === null || n === undefined ? '0' : Number(n).toLocaleString('en-US'); }
+function fmtDate(s) { const d = new Date(s + 'T00:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function isoDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+
+function selectedLocation() {
+  const key = document.getElementById('loc-select').value;
+  return LOCATIONS.find(l => l.key === key) || null;
+}
+function selectedRangeDays() { return parseInt(document.getElementById('range-select').value, 10); }
+
+// ── Tiny reusable SVG chart builders (per dataviz skill: thin marks, 2px
+// lines, rounded bar ends, recessive grid, hover crosshair/tooltip) ──
+
+function makeTooltip(container) {
+  const tt = document.createElement('div');
+  tt.className = 'viz-tooltip';
+  container.style.position = 'relative';
+  container.appendChild(tt);
+  return tt;
+}
+
+function renderLineChart(el, points, opts) {
+  // points: [{x: 'YYYY-MM-DD', y: number}], sorted ascending by date
+  el.innerHTML = '';
+  if (!points.length) { el.innerHTML = '<div class="chart-note">No data in this range.</div>'; return; }
+  const W = 900, H = 220, PAD_L = 54, PAD_R = 16, PAD_T = 14, PAD_B = 28;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const maxY = Math.max(...points.map(p => p.y), 1);
+  const niceMax = Math.ceil(maxY / 4) * 4 || 1;
+  const xAt = i => PAD_L + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
+  const yAt = v => PAD_T + plotH - (v / niceMax) * plotH;
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.width = '100%'; svg.style.height = 'auto'; svg.style.display = 'block';
+
+  // gridlines + y labels (3 lines)
+  for (let g = 0; g <= 3; g++) {
+    const v = (niceMax / 3) * g;
+    const y = yAt(v);
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', PAD_L); line.setAttribute('x2', W - PAD_R);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'var(--grid)'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', PAD_L - 8); label.setAttribute('y', y + 4);
+    label.setAttribute('text-anchor', 'end'); label.setAttribute('font-size', '10.5');
+    label.setAttribute('fill', 'var(--ink-3)');
+    label.textContent = '$' + Math.round(v).toLocaleString('en-US');
+    svg.appendChild(label);
+  }
+
+  // x labels — first, middle, last only, to stay uncluttered
+  const tickIdxs = points.length > 1 ? [0, Math.floor((points.length - 1) / 2), points.length - 1] : [0];
+  [...new Set(tickIdxs)].forEach(i => {
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', xAt(i)); label.setAttribute('y', H - 8);
+    label.setAttribute('text-anchor', i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle');
+    label.setAttribute('font-size', '10.5'); label.setAttribute('fill', 'var(--ink-3)');
+    label.textContent = fmtDate(points[i].x);
+    svg.appendChild(label);
+  });
+
+  // area fill
+  const areaPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(p.y)}`).join(' ')
+    + ` L ${xAt(points.length - 1)} ${yAt(0)} L ${xAt(0)} ${yAt(0)} Z`;
+  const area = document.createElementNS(svgNS, 'path');
+  area.setAttribute('d', areaPath);
+  area.setAttribute('fill', opts.color); area.setAttribute('opacity', '0.10');
+  svg.appendChild(area);
+
+  // line
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(p.y)}`).join(' ');
+  const line = document.createElementNS(svgNS, 'path');
+  line.setAttribute('d', linePath); line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', opts.color); line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-linejoin', 'round'); line.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(line);
+
+  // hover crosshair + dot
+  const crosshair = document.createElementNS(svgNS, 'line');
+  crosshair.setAttribute('y1', PAD_T); crosshair.setAttribute('y2', H - PAD_B);
+  crosshair.setAttribute('stroke', 'var(--axis)'); crosshair.setAttribute('stroke-width', '1');
+  crosshair.style.opacity = '0';
+  svg.appendChild(crosshair);
+  const dot = document.createElementNS(svgNS, 'circle');
+  dot.setAttribute('r', '4'); dot.setAttribute('fill', opts.color);
+  dot.setAttribute('stroke', 'var(--card)'); dot.setAttribute('stroke-width', '2');
+  dot.style.opacity = '0';
+  svg.appendChild(dot);
+
+  const hitRect = document.createElementNS(svgNS, 'rect');
+  hitRect.setAttribute('x', PAD_L); hitRect.setAttribute('y', PAD_T);
+  hitRect.setAttribute('width', plotW); hitRect.setAttribute('height', plotH);
+  hitRect.setAttribute('fill', 'transparent');
+  svg.appendChild(hitRect);
+
+  el.appendChild(svg);
+  const tt = makeTooltip(el);
+
+  hitRect.addEventListener('mousemove', e => {
+    const rect = svg.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width * W;
+    let idx = Math.round(((relX - PAD_L) / plotW) * (points.length - 1));
+    idx = Math.max(0, Math.min(points.length - 1, idx));
+    const p = points[idx];
+    crosshair.setAttribute('x1', xAt(idx)); crosshair.setAttribute('x2', xAt(idx));
+    crosshair.style.opacity = '1';
+    dot.setAttribute('cx', xAt(idx)); dot.setAttribute('cy', yAt(p.y));
+    dot.style.opacity = '1';
+    const px = (xAt(idx) / W) * rect.width;
+    const py = (yAt(p.y) / H) * rect.height;
+    tt.style.left = px + 'px'; tt.style.top = py + 'px'; tt.style.opacity = '1';
+    tt.innerHTML = `<div class="tt-label">${esc(fmtDate(p.x))}</div><div class="tt-value">${esc(fmt$(p.y))}</div>`;
+  });
+  hitRect.addEventListener('mouseleave', () => {
+    crosshair.style.opacity = '0'; dot.style.opacity = '0'; tt.style.opacity = '0';
+  });
+}
+
+function renderBarChart(el, rows, opts) {
+  // rows: [{label, value, color}], pre-sorted descending
+  el.innerHTML = '';
+  if (!rows.length) { el.innerHTML = '<div class="chart-note">No data in this range.</div>'; return; }
+  const max = Math.max(...rows.map(r => r.value), 1);
+  const tt = makeTooltip(el);
+
+  rows.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    const pct = Math.max((r.value / max) * 100, 1.5);
+    row.innerHTML = `
+      <div class="b-name" title="${esc(r.label)}">${esc(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${r.color};"></div></div>
+      <div class="b-value">${esc(fmt$(r.value))}</div>`;
+    const fill = row.querySelector('.bar-fill');
+    fill.addEventListener('mousemove', e => {
+      const rect = el.getBoundingClientRect();
+      tt.style.left = (e.clientX - rect.left) + 'px';
+      tt.style.top = (e.clientY - rect.top) + 'px';
+      tt.style.opacity = '1';
+      tt.innerHTML = `<div class="tt-label">${esc(r.label)}</div><div class="tt-value">${esc(fmt$(r.value))}</div>`;
+    });
+    fill.addEventListener('mouseleave', () => { tt.style.opacity = '0'; });
+    el.appendChild(row);
+  });
+}
+
+// ── Financial data + rendering ──
+async function loadFinancial() {
+  const from = isoDaysAgo(selectedRangeDays());
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+
+  const [kpiRes, prevKpiRes, atcRes, provRevRes, provRes, catRes] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${isoDaysAgo(selectedRangeDays() * 2)}&service_date=lt.${from}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=*&provider_id=neq.${UNATTRIBUTED_PROVIDER}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
+  ]);
+  const rows = kpiRes.ok ? await kpiRes.json() : [];
+  const prevRows = prevKpiRes.ok ? await prevKpiRes.json() : [];
+  const atcRows = atcRes.ok ? await atcRes.json() : [];
+  const provRevRows = provRevRes.ok ? await provRevRes.json() : [];
+  const provRows = provRes.ok ? await provRes.json() : [];
+  const catRows = catRes.ok ? await catRes.json() : [];
+
+  if (!rows.length) {
+    document.getElementById('financial-empty').innerHTML = `<div class="empty-note">
+      No <code>invoice_line_items</code> in this range yet — nothing to chart.
+    </div>`;
+    document.getElementById('hero-tiles').innerHTML = '';
+    document.getElementById('trend-chart').innerHTML = '';
+    document.getElementById('category-chart').innerHTML = '';
+    document.getElementById('provider-chart').innerHTML = '';
+    return;
+  }
+  document.getElementById('financial-empty').innerHTML = '';
+
+  // ── Hero stats: total revenue + vs-previous-period delta, ATC ──
+  const revenue = rows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+  const prevRevenue = prevRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+  const deltaPct = prevRevenue ? ((revenue - prevRevenue) / prevRevenue) * 100 : null;
+  const atcRevenue = atcRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+  const atcVisits = atcRows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
+  const atc = atcVisits ? atcRevenue / atcVisits : null;
+
+  document.getElementById('hero-note').textContent = loc ? loc.name : 'All locations';
+  document.getElementById('hero-tiles').innerHTML = `
+    <div class="hero-tile">
+      <div class="l">Total revenue</div>
+      <div class="v">${fmt$(revenue)}</div>
+      ${deltaPct === null ? '' : `<div class="delta ${deltaPct >= 0 ? 'up' : 'down'}">${deltaPct >= 0 ? '▲' : '▼'} ${Math.abs(deltaPct).toFixed(1)}% <span class="vs">vs. previous period</span></div>`}
+    </div>
+    <div class="hero-tile">
+      <div class="l">Avg transaction charge</div>
+      <div class="v">${atc ? fmt$(atc) : '—'}</div>
+    </div>`;
+
+  // ── Revenue trend: daily total across categories, sorted ──
+  const byDate = {};
+  rows.forEach(r => { byDate[r.service_date] = (byDate[r.service_date] || 0) + Number(r.revenue || 0); });
+  const trendPoints = Object.entries(byDate).sort((a, b) => a[0].localeCompare(b[0])).map(([x, y]) => ({ x, y }));
+  const financialColor = getComputedStyle(document.documentElement).getPropertyValue('--c-financial').trim() || '#C83803';
+  renderLineChart(document.getElementById('trend-chart'), trendPoints, { color: financialColor });
+
+  // ── Revenue by category: top 6 + Other, real names, categorical palette ──
+  const categoryNameById = Object.fromEntries(catRows.map(c => [c.id, c.name.trim()]));
+  const byCategory = {};
+  rows.forEach(r => {
+    const key = r.product_category_id === null || r.product_category_id === undefined ? 'uncategorized' : r.product_category_id;
+    byCategory[key] = (byCategory[key] || 0) + Number(r.revenue || 0);
+  });
+  const catEntries = Object.entries(byCategory).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const CAT_COLORS = ['var(--cat-1)', 'var(--cat-2)', 'var(--cat-3)', 'var(--cat-4)', 'var(--cat-5)', 'var(--cat-6)'];
+  const top6 = catEntries.slice(0, 6);
+  const rest = catEntries.slice(6);
+  const otherTotal = rest.reduce((a, [, v]) => a + v, 0);
+  const catRowsForChart = top6.map(([id, v], i) => ({
+    label: id === 'uncategorized' ? 'Uncategorized' : (categoryNameById[id] || `Category ${id}`),
+    value: v, color: CAT_COLORS[i],
+  }));
+  if (otherTotal > 0) catRowsForChart.push({ label: 'Other', value: otherTotal, color: 'var(--cat-other)' });
+  renderBarChart(document.getElementById('category-chart'), catRowsForChart, {});
+
+  // ── Revenue per veterinarian: merge duplicate provider records by name ──
+  const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
+  const revenueByName = {};
+  provRevRows.forEach(r => {
+    const name = nameById[r.provider_id] || 'Unknown provider';
+    revenueByName[name] = (revenueByName[name] || 0) + Number(r.total_revenue || 0);
+  });
+  const provChartRows = Object.entries(revenueByName)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, value]) => ({ label, value, color: 'var(--cat-1)' }));
+  renderBarChart(document.getElementById('provider-chart'), provChartRows, {});
+}
+
+document.getElementById('loc-select').addEventListener('change', loadFinancial);
+document.getElementById('range-select').addEventListener('change', loadFinancial);
+loadFinancial();
+</script>
+
+</body>
+</html>
