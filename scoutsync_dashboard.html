@@ -161,6 +161,20 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
 }
 .foot-note { margin-top: 40px; font-size: 11.5px; color: var(--ink-3); border-top: 1px solid var(--border); padding-top: 14px; }
 .foot-note code { background: var(--navy-lt); padding: 1px 5px; border-radius: 4px; }
+
+/* ── Refresh control ── */
+.refresh-control { display: flex; align-items: center; gap: 8px; }
+.refresh-control .last-updated { font-size: 11.5px; color: rgba(255,255,255,.55); white-space: nowrap; }
+#refresh-btn {
+  display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.1);
+  color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
+  padding: 6px 12px; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+#refresh-btn:hover { background: rgba(255,255,255,.18); }
+#refresh-btn:disabled { opacity: .6; cursor: default; }
+#refresh-btn .spin { display: inline-block; transition: transform .5s ease; }
+#refresh-btn.loading .spin { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -188,6 +202,12 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
       <option value="90">Trailing 90 days</option>
       <option value="365">Trailing 365 days</option>
     </select>
+  </div>
+  <div class="refresh-control">
+    <span class="last-updated" id="last-updated"></span>
+    <button id="refresh-btn" title="Pull fresh data and recompute everything now">
+      <span class="spin">↻</span> Refresh
+    </button>
   </div>
 </header>
 
@@ -704,6 +724,8 @@ async function loadFinancial() {
     document.getElementById('category-chart').innerHTML = '';
     document.getElementById('provider-chart').innerHTML = '';
     document.getElementById('insights-panel').innerHTML = '';
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     return;
   }
   document.getElementById('financial-empty').innerHTML = '';
@@ -778,11 +800,31 @@ async function loadFinancial() {
     completeVolumeSeries.length ? completeVolumeSeries : currentVolumeSeries,
     revenueByName
   );
+
+  document.getElementById('last-updated').textContent =
+    'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+// Manual refresh — pulls fresh data and recomputes hero stats, all three
+// charts, and every insight. Button shows a spin + disables itself mid-fetch
+// so a second click can't stack a duplicate in-flight request.
+async function refreshNow() {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true; btn.classList.add('loading');
+  try { await loadFinancial(); }
+  finally { btn.disabled = false; btn.classList.remove('loading'); }
 }
 
 document.getElementById('loc-select').addEventListener('change', loadFinancial);
 document.getElementById('range-select').addEventListener('change', loadFinancial);
 document.getElementById('overlay-toggle').addEventListener('change', renderTrendSection);
+document.getElementById('refresh-btn').addEventListener('click', refreshNow);
+
+// Auto-refresh twice a day (every 12h) so insights stay current on a tab left
+// open on a screen — the underlying Vetspire syncs run every 4 hours, this is
+// just how often this open page re-polls and recomputes against them.
+setInterval(loadFinancial, 12 * 60 * 60 * 1000);
+
 loadFinancial();
 </script>
 
