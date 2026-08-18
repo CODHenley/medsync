@@ -6,14 +6,16 @@ month-aggregated rows left over from an old dispensed_items_backfill.py run
 (pre-dating this session) that are now duplicated by the day-level rows the
 2026-08-18 backfill_date_range.py runs added for the same underlying events.
 
-A "stale month row" = dispensed_at is exactly a month-start timestamp
-(day=01, time=00:00:00) AND pulled_at is before STALE_CUTOFF (i.e. it
-predates today's backfill activity, so it cannot itself be a legitimate
-day-level row that just happens to fall on the 1st).
+IMPORTANT: not every month-start row is a duplicate. Jan-Apr was only ever
+backfilled at month granularity and never re-run at day level, so those
+rows are the SOLE copy of that data. --delete only ever removes rows that
+have a CONFIRMED same-month day-level replacement (i.e. genuinely
+superseded duplicates) — a month row with no day-level counterpart is
+always left untouched, no matter how "stale-pattern" it looks.
 
 Usage:
   python3 find_stale_month_rows.py                # report only, no writes
-  python3 find_stale_month_rows.py --delete        # actually delete the stale rows found
+  python3 find_stale_month_rows.py --delete        # delete CONFIRMED duplicates only
 """
 import argparse, json, urllib.request, urllib.error
 from collections import defaultdict
@@ -94,48 +96,57 @@ def main():
     print(f"  {len(rows)} total rows fetched")
 
     stale = [r for r in rows if is_month_start(r.get("dispensed_at")) and (r.get("pulled_at") or "") < STALE_CUTOFF]
-    print(f"\n=== Stale month-aggregated rows found: {len(stale)} ===")
+    print(f"\n=== Stale-pattern rows (month-start + old pulled_at): {len(stale)} ===")
+    print("(this includes legitimate Jan-Apr month rows with no day-level replacement — NOT safe to delete on its own)")
 
-    by_loc = defaultdict(lambda: {"count": 0, "qty": 0.0})
-    by_month = defaultdict(lambda: {"count": 0, "qty": 0.0})
-    for r in stale:
-        loc = LOCATIONS.get(r.get("location_id"), r.get("location_id"))
-        by_loc[loc]["count"] += 1
-        by_loc[loc]["qty"] += float(r.get("quantity") or 0)
-        month = (r.get("dispensed_at") or "")[:7]
-        by_month[month]["count"] += 1
-        by_month[month]["qty"] += float(r.get("quantity") or 0)
-
-    print("\nBy location:")
-    for loc, d in sorted(by_loc.items()):
-        print(f"  {loc:15s}  {d['count']:4d} rows   {d['qty']:10.1f} total qty")
-
-    print("\nBy month:")
-    for month, d in sorted(by_month.items()):
-        print(f"  {month}  {d['count']:4d} rows   {d['qty']:10.1f} total qty")
-
-    total_qty = sum(float(r.get("quantity") or 0) for r in stale)
-    print(f"\nTotal stale rows: {len(stale)}   Total stale quantity: {total_qty}")
-
-    # Sanity check: how many of these stale rows now have an overlapping day-level
-    # row for the same (location, product) at day-level granularity from today's backfill?
+    # Only a row with a confirmed same-month day-level replacement (from today's
+    # backfill_date_range.py runs) is an actual duplicate. A month row with no
+    # day-level counterpart (e.g. Jan-Apr, never re-backfilled at day level) is
+    # the ONLY copy of that data and must never be touched.
     fresh_keys = set()
     for r in rows:
         if (r.get("pulled_at") or "") >= STALE_CUTOFF and not is_month_start(r.get("dispensed_at")):
             fresh_keys.add((r.get("location_id"), r.get("vetspire_product_id"), (r.get("dispensed_at") or "")[:7]))
-    overlapping = 0
-    for r in stale:
-        key = (r.get("location_id"), r.get("vetspire_product_id"), (r.get("dispensed_at") or "")[:7])
-        if key in fresh_keys:
-            overlapping += 1
-    print(f"Stale rows with a confirmed overlapping day-level replacement this month: {overlapping} / {len(stale)}")
+    confirmed = [
+        r for r in stale
+        if (r.get("location_id"), r.get("vetspire_product_id"), (r.get("dispensed_at") or "")[:7]) in fresh_keys
+    ]
+    print(f"Confirmed duplicates (safe to delete — have a same-month day-level replacement): {len(confirmed)} / {len(stale)}")
+
+    def summarize(label, records):
+        by_loc = defaultdict(lambda: {"count": 0, "qty": 0.0})
+        by_month = defaultdict(lambda: {"count": 0, "qty": 0.0})
+        for r in records:
+            loc = LOCATIONS.get(r.get("location_id"), r.get("location_id"))
+            by_loc[loc]["count"] += 1
+            by_loc[loc]["qty"] += float(r.get("quantity") or 0)
+            month = (r.get("dispensed_at") or "")[:7]
+            by_month[month]["count"] += 1
+            by_month[month]["qty"] += float(r.get("quantity") or 0)
+        print(f"\n--- {label}: {len(records)} rows ---")
+        print("By location:")
+        for loc, d in sorted(by_loc.items()):
+            print(f"  {loc:15s}  {d['count']:4d} rows   {d['qty']:10.1f} total qty")
+        print("By month:")
+        for month, d in sorted(by_month.items()):
+            print(f"  {month}  {d['count']:4d} rows   {d['qty']:10.1f} total qty")
+        total = sum(float(r.get("quantity") or 0) for r in records)
+        print(f"Total quantity: {total}")
+        return total
+
+    summarize("ALL stale-pattern rows (for context only)", stale)
+    confirmed_total = summarize("CONFIRMED duplicates (the only ones --delete removes)", confirmed)
+
+    not_confirmed = len(stale) - len(confirmed)
+    if not_confirmed:
+        print(f"\n{not_confirmed} stale-pattern rows have NO day-level replacement — left untouched (likely Jan-Apr, sole copy of that data).")
 
     if args.delete:
-        print(f"\n=== DELETING {len(stale)} stale rows ===")
-        supa_delete_by_ids([r["id"] for r in stale])
+        print(f"\n=== DELETING {len(confirmed)} confirmed-duplicate rows (qty {confirmed_total}) ===")
+        supa_delete_by_ids([r["id"] for r in confirmed])
         print("Done.")
     else:
-        print("\n(dry run — pass --delete to actually remove these rows)")
+        print("\n(dry run — pass --delete to actually remove the CONFIRMED duplicate rows only)")
 
 
 if __name__ == "__main__":
