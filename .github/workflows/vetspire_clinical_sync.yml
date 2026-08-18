@@ -12,6 +12,11 @@ on:
   schedule:
     - cron: '0 */4 * * *'
   workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: 'Days of history to pull (default 3; use e.g. 30 for a one-time backfill)'
+        required: false
+        default: '3'
 
 jobs:
   sync:
@@ -26,4 +31,5 @@ jobs:
       - name: Run Vetspire clinical sync
         env:
           VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days || '3' }}
         run: python3 vetspire_clinical_sync.py
