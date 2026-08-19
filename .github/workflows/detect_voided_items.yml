@@ -1,0 +1,41 @@
+name: Detect Voided Vetspire Items
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily — report only, fails (red X) if voided qty exceeds tolerance
+  workflow_dispatch:
+    inputs:
+      delete:
+        description: "Type 'yes' to actually delete confirmed-voided rows (report-only otherwise)"
+        required: true
+        default: "no"
+      days:
+        description: "Rolling trailing window in days"
+        required: true
+        default: "90"
+      qty_tolerance:
+        description: "Allowed voided quantity per location before failing (report-only mode)"
+        required: true
+        default: "5"
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run detection
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            python3 detect_voided_items.py --days 90 --qty-tolerance 5
+          elif [ "${{ inputs.delete }}" = "yes" ]; then
+            python3 detect_voided_items.py --days "${{ inputs.days }}" --qty-tolerance "${{ inputs.qty_tolerance }}" --delete
+          else
+            python3 detect_voided_items.py --days "${{ inputs.days }}" --qty-tolerance "${{ inputs.qty_tolerance }}"
+          fi
