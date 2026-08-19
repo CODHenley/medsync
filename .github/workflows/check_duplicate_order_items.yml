@@ -1,0 +1,34 @@
+name: Check Duplicate Order Items
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: "Vetspire numeric location id"
+        required: true
+        default: "27390"
+      start_date:
+        description: "Start date (YYYY-MM-DD)"
+        required: true
+        default: "2026-08-04"
+      end_date:
+        description: "End date (YYYY-MM-DD)"
+        required: true
+        default: "2026-08-17"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run check
+        run: |
+          python3 check_duplicate_order_items.py \
+            --location "${{ inputs.location }}" \
+            --start "${{ inputs.start_date }}" \
+            --end "${{ inputs.end_date }}"
