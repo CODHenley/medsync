@@ -1,0 +1,27 @@
+name: Delete Legacy Rows
+
+on:
+  workflow_dispatch:
+    inputs:
+      delete:
+        description: "Type 'yes' to actually delete (anything else = dry run/report only)"
+        required: true
+        default: "no"
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run
+        run: |
+          if [ "${{ inputs.delete }}" = "yes" ]; then
+            python3 delete_legacy_rows.py --delete
+          else
+            python3 delete_legacy_rows.py
+          fi
