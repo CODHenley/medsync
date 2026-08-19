@@ -102,10 +102,15 @@ def main():
     stale = 0
     still_current = 0
     not_found_at_all = 0
+    not_found_qty = 0.0
     for oid, row in supa_ids.items():
         vit = vet_by_id.get(oid)
         if not vit:
             not_found_at_all += 1
+            qty = float(row.get("quantity") or 0)
+            not_found_qty += qty
+            print(f"  NOT_FOUND  order_item_id={oid}  stored_dispensed_at={row.get('dispensed_at')}  "
+                  f"pulled_at={row.get('pulled_at')}  qty={qty}")
             continue
         current_updated = (vit.get("updatedAt") or "")[:10]
         if args.start <= current_updated <= args.end:
@@ -119,7 +124,7 @@ def main():
     print(f"\n=== Summary ===")
     print(f"  Still current (updatedAt still in window): {still_current}")
     print(f"  STALE (updatedAt has moved outside window): {stale}")
-    print(f"  Not found at all in wide-range query:       {not_found_at_all}")
+    print(f"  Not found at all in wide-range query:       {not_found_at_all}  (total qty: {not_found_qty})")
 
 
 if __name__ == "__main__":
