@@ -13,11 +13,24 @@ This exists because the Aug 2026 double-count/undercount incidents were both
 only found because a human happened to ask "why doesn't this add up" — this
 makes that check continuous instead of depending on someone noticing.
 
+Vetspire's usageReport also returns non-inventory line items (exam fees,
+consult charges, etc.) that have no productId/product record at all — they
+were never real dispensed products and dispensed_items writers correctly
+never capture them (see backfill_date_range.py's skip-if-no-product-id
+logic). vetspire_total() below excludes them the same way, otherwise this
+check would permanently report a false ~3-4% variance and train everyone to
+ignore its red X — which defeats the entire point of a continuous safety
+net.
+
 Usage:
   VETSPIRE_API_TOKEN="..." python3 reconcile_dispensed_items.py [--days 14] [--tolerance-pct 0.5]
 """
 import argparse, json, os, sys, urllib.request, urllib.error
-from datetime import date, timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+PRACTICE_TZ = ZoneInfo("America/Chicago")  # never use bare date.today() — GitHub Actions runners are UTC,
+                                            # and usageReport buckets by the practice's local calendar day
 
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN = "https://scoutcare.vetspire.com"
@@ -34,7 +47,7 @@ LOCATIONS = [
 USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     usageReport(locationIds:$lids, startDate:$s, endDate:$e) {
-        orderItems { quantity returned refunded }
+        orderItems { productId product { id } quantity returned refunded }
     }
 }
 """
@@ -93,7 +106,8 @@ def vetspire_total(token, loc_id, start, end):
         usage_raw = json.loads(usage_raw)
     items = usage_raw.get("orderItems", []) if isinstance(usage_raw, dict) else (usage_raw or [])
     return sum(float(it.get("quantity") or 0) for it in items
-               if not it.get("returned") and not it.get("refunded"))
+               if not it.get("returned") and not it.get("refunded")
+               and (it.get("productId") or (it.get("product") or {}).get("id")))
 
 
 def supabase_total(loc_id, start, end):
@@ -113,7 +127,7 @@ def main():
     args = ap.parse_args()
 
     token = load_token()
-    end = date.today()
+    end = datetime.now(PRACTICE_TZ).date()
     start = end - timedelta(days=args.days)
     print(f"\n=== Reconciling dispensed_items: trailing {args.days} days ({start} → {end}) ===")
     print(f"    Excludes today (still-accumulating partial day, not a real variance)\n")
