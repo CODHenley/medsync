@@ -37,7 +37,7 @@ WINDOWS = [
 USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     usageReport(locationIds:$lids, startDate:$s, endDate:$e) {
-        orderItems { quantity returned refunded }
+        orderItems { productId product { id } quantity returned refunded }
     }
 }
 """
@@ -69,8 +69,13 @@ def vetspire_total(token, loc_id, start, end):
     if isinstance(usage_raw, str):
         usage_raw = json.loads(usage_raw)
     items = usage_raw.get("orderItems", []) if isinstance(usage_raw, dict) else (usage_raw or [])
+    # Exclude non-inventory line items (exam fees, consult charges) that have
+    # no productId/product record — dispensed_items writers never capture
+    # these (see backfill_date_range.py), so including them here would
+    # compare against a baseline the backfill was never meant to match.
     return sum(float(it.get("quantity") or 0) for it in items
-               if not it.get("returned") and not it.get("refunded"))
+               if not it.get("returned") and not it.get("refunded")
+               and (it.get("productId") or (it.get("product") or {}).get("id")))
 
 
 def supa_get_all(path, params, page_size=1000):
