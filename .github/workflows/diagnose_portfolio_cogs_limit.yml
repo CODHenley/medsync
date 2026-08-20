@@ -1,0 +1,21 @@
+name: Diagnose Portfolio COGS Row Limit
+
+# Read-only, one-off: checks whether the dispensed_items row counts behind
+# the Portfolio/Analytics Drug COGS figures exceed those screens' hardcoded
+# limit=5000, which would silently truncate results with no pagination.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run diagnostic
+        run: python3 diagnose_portfolio_cogs_limit.py
