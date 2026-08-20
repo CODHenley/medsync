@@ -62,7 +62,7 @@ LOCATIONS = [
 USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     usageReport(locationIds:$lids, startDate:$s, endDate:$e) {
-        orderItems { productId product { id } quantity returned refunded updatedAt }
+        orderItems { id productId product { id } quantity returned refunded updatedAt }
     }
 }
 """
@@ -121,8 +121,9 @@ def vetspire_total(token, loc_id, start, end):
     if isinstance(usage_raw, str):
         usage_raw = json.loads(usage_raw)
     items = usage_raw.get("orderItems", []) if isinstance(usage_raw, dict) else (usage_raw or [])
+    by_id = {str(it.get("id")): it for it in items}  # dedupe — the wide range can otherwise double-count
     total = 0.0
-    for it in items:
+    for it in by_id.values():
         if it.get("returned") or it.get("refunded"):
             continue
         if not (it.get("productId") or (it.get("product") or {}).get("id")):
