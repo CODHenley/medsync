@@ -618,7 +618,14 @@ async function query(table, params) {
   return res.json();
 }
 
-// Paginated fetch — loops until all rows are returned
+// Paginated fetch — loops until all rows are returned. Callers MUST sort
+// by a column with no ties (or add a unique tiebreaker like ",id") — with
+// many rows sharing the same dispensed_at, offset pagination on a tied sort
+// column isn't guaranteed stable, and a row can be skipped or duplicated
+// across page fetches. Confirmed root cause of a real Vetspire-vs-MedSync
+// quantity mismatch (Catalyst Chem 17 showing 21 here vs. Vetspire's 22 for
+// the same week) — same bug already fixed in the backend reconciliation
+// scripts by appending &order=id.
 async function queryAll(table, baseParams, pageSize = 1000) {
   const all = [];
   let offset = 0;
@@ -645,7 +652,7 @@ async function reload() {
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
       `&returned=eq.false&refunded=eq.false` +
       locFilter +
-      `&order=dispensed_at.desc`
+      `&order=dispensed_at.desc,id`
     );
 
     // Aggregate by product + location
@@ -720,7 +727,7 @@ async function reload() {
       `&dispensed_at=gte.${start}T00:00:00Z&dispensed_at=lte.${end}T23:59:59Z` +
       `&returned=eq.false&refunded=eq.false` +
       locFilter +
-      `&order=dispensed_at.desc`
+      `&order=dispensed_at.desc,id`
     );
 
     // Aggregate by day + location
