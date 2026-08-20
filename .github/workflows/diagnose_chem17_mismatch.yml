@@ -1,0 +1,26 @@
+name: Diagnose Catalyst Chem 17 Mismatch
+
+# Read-only, one-off: MedSync's Procurement screen showed 131 units for
+# Catalyst Chem 17 (SKU 98-11003-02) across all 4 locations for
+# 2026-08-01..2026-08-20 while Vetspire's own Usage Report for the same
+# range/locations showed 130. Checks Supabase's stored rows for exact
+# duplicates and cross-checks every stored order_item_id against a fresh
+# Vetspire pull to localize the discrepancy.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run diagnostic
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 diagnose_chem17_mismatch.py
