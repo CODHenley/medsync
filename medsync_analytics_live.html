@@ -773,14 +773,18 @@ function getDateRange(dr) {
   let from, to = new Date(now);
   to.setHours(23, 59, 59);
   switch(dr) {
-    case 'today':   from = new Date(now); break;
-    case 't7':      from = new Date(now); from.setDate(now.getDate() - 7); break;
-    case 't30':     from = new Date(now); from.setDate(now.getDate() - 30); break;
+    // These all reset to midnight — otherwise "from" carries forward
+    // the current clock time, silently excluding everything before that
+    // time-of-day on the earliest day (and making "today" show only
+    // data from right now onward, i.e. effectively nothing).
+    case 'today':   from = new Date(now); from.setHours(0,0,0,0); break;
+    case 't7':      from = new Date(now); from.setDate(now.getDate() - 7);  from.setHours(0,0,0,0); break;
+    case 't30':     from = new Date(now); from.setDate(now.getDate() - 30); from.setHours(0,0,0,0); break;
     case 'lm':      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                     to   = new Date(now.getFullYear(), now.getMonth(), 0); break;
-    case 't90':     from = new Date(now); from.setDate(now.getDate() - 90); break;
-    case 't180':    from = new Date(now); from.setDate(now.getDate() - 180); break;
-    case 'ly':      from = new Date(now); from.setFullYear(now.getFullYear() - 1); break;
+    case 't90':     from = new Date(now); from.setDate(now.getDate() - 90);  from.setHours(0,0,0,0); break;
+    case 't180':    from = new Date(now); from.setDate(now.getDate() - 180); from.setHours(0,0,0,0); break;
+    case 'ly':      from = new Date(now); from.setFullYear(now.getFullYear() - 1); from.setHours(0,0,0,0); break;
     case 'ytd':     from = new Date(now.getFullYear(), 0, 1); break;
     case 'py':      from = new Date(now.getFullYear()-1, 0, 1);
                     to   = new Date(now.getFullYear()-1, 11, 31); break;
@@ -902,9 +906,8 @@ async function loadData() {
     const poFull = await query('po_items',
       `select=product_name,vendor,qty_ordered,unit_price,gpo_price&week_start=gte.${from}&week_start=lte.${to}&status=in.(submitted,received)${locFilter}&limit=5000`
     );
-    renderProcSidebar(poFull, from, to);
+    const totalSav = renderProcSidebar(poFull, from, to);
     renderWgSidebar(poFull);
-    const totalSav = 0;
 
     var _el;
 
@@ -934,13 +937,12 @@ async function loadData() {
     if (kwgs) kwgs.textContent = expiring.length > 0 ? 'expiring or expired' : 'All lots current';
 
     // ── 4. Live COGs for Wheaton from daily_revenue + dispensed_items ──────
-    const [diRes, revRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID
-            + '&dispensed_at=gte.' + from + '&dispensed_at=lte.' + to + '&sku=not.is.null&limit=5000', { headers: HEADERS }),
+    const [diRows, revRes] = await Promise.all([
+      supaGetAllAnalytics('dispensed_items', 'select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID
+            + '&dispensed_at=gte.' + from + '&dispensed_at=lte.' + to + '&sku=not.is.null'),
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue,date&location_id=eq.' + WHEATON_VID
             + '&date=gte.' + from.split('T')[0] + '&date=lte.' + to.split('T')[0] + '&limit=5000', { headers: HEADERS }),
     ]);
-    const diRows  = await diRes.json();
     const revRows = await revRes.json();
     const whCOGS  = Array.isArray(diRows)  ? diRows.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
     const whRev   = Array.isArray(revRows) ? revRows.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
@@ -956,13 +958,12 @@ async function loadData() {
     const ksav  = document.getElementById('k-sav');
     const ksavs = document.getElementById('k-sav-s');
     if (loc === 'wh' || loc === 'all') {
-      const [pDiRes, pRevRes] = await Promise.all([
-        fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + WHEATON_VID
-              + '&dispensed_at=gte.' + pFromStr + '&dispensed_at=lte.' + pToStr + '&sku=not.is.null&limit=5000', { headers: HEADERS }),
+      const [pDiRows, pRevRes] = await Promise.all([
+        supaGetAllAnalytics('dispensed_items', 'select=unit_cost,quantity&location_id=eq.' + WHEATON_VID
+              + '&dispensed_at=gte.' + pFromStr + '&dispensed_at=lte.' + pToStr + '&sku=not.is.null'),
         fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID
               + '&date=gte.' + pFromDate + '&date=lte.' + pToDate + '&limit=5000', { headers: HEADERS }),
       ]);
-      const pDiRows  = await pDiRes.json();
       const pRevRows = await pRevRes.json();
       const priorCOGS = Array.isArray(pDiRows)  ? pDiRows.reduce((s,r) => s+(Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
       const priorRev  = Array.isArray(pRevRows) ? pRevRows.reduce((s,r) => s+(Number(r.revenue)||0), 0) : 0;
@@ -1293,7 +1294,7 @@ function renderProcSidebar(poItems, from, to) {
   if (!body) return;
   if (!Array.isArray(poItems) || poItems.length === 0) {
     body.innerHTML = `<div style="color:var(--mist);font-size:12px;padding:8px 0;">No order data for this period.</div>`;
-    return;
+    return 0;
   }
   // Compute actual savings: gpo_price < unit_price per line item
   let totalSavings = 0, totalSpend = 0, topByProduct = {}, topByVendor = {};
@@ -1322,7 +1323,7 @@ function renderProcSidebar(poItems, from, to) {
   }
   if (totalSavings === 0) {
     body.innerHTML = `<div style="color:var(--mist);font-size:12px;padding:8px 0;">GPO savings will appear once <code>gpo_price</code> differs from <code>unit_price</code> on PO items.</div>`;
-    return;
+    return 0;
   }
   const periodDays = from && to ? Math.max(1,(new Date(to)-new Date(from))/864e5+1) : 30;
   const pace = totalSavings / periodDays * 365;
@@ -1334,6 +1335,7 @@ function renderProcSidebar(poItems, from, to) {
     ${topVendor  ? `<div class="mrow"><span class="mk">Top vendor</span><span class="mv">${topVendor[0]}</span></div>` : ''}
     <div class="ins"><div class="ins-l">⚡ Procurement insight</div>
     <div class="ins-t">GPO pricing saved ${fmt(totalSavings)} vs. list this period${pace>1000?' · on pace for '+fmt(pace)+'/yr':''}.${topProduct?' '+topProduct[0]+' was the top savings driver.':''}</div></div>`;
+  return totalSavings;
 }
 
 // ── White goods sidebar ───────────────────────────────────────
