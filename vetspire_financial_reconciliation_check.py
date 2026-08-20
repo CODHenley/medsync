@@ -68,7 +68,7 @@ def gql(token, query, variables=None):
 
 def supa_get(path, params):
     req = urllib.request.Request(
-        f"{SUPA_URL}/rest/v1/{path}?{params}",
+        f"{SUPA_URL}/rest/v1/{path}?{params}&order=id",
         headers={"apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}"},
     )
     with urllib.request.urlopen(req, timeout=20) as r:
