@@ -725,6 +725,28 @@ async function query(table, params = '') {
   return res.json();
 }
 
+// Fetches every row via Range-header pagination instead of a single
+// limit=N request — dispensed_items volume per location has already come
+// within range of 5000/month (1918 in Aug 2026) and a plain limit=5000
+// fetch would silently truncate results with no error once it's exceeded.
+// &order=id keeps page boundaries stable under concurrent writes (the
+// intraday sync upserts this table every 5 minutes).
+async function supaGetAllAnalytics(table, params, pageSize = 1000) {
+  const out = [];
+  let offset = 0;
+  while (true) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}&order=id`, {
+      headers: { ...HEADERS, 'Range': `${offset}-${offset + pageSize - 1}` },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const chunk = await res.json();
+    out.push(...chunk);
+    if (chunk.length < pageSize) break;
+    offset += pageSize;
+  }
+  return out;
+}
+
 function fmt$(n) {
   if (n === null || n === undefined) return '$0';
   return '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -1108,11 +1130,10 @@ async function renderCOGSBars(glRows, loc, fromArg, toArg) {
 
   try {
     const locData = await Promise.all(targetLocs.map(async l => {
-      const [diRes, revRes] = await Promise.all([
-        fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.${l.vid}&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59&limit=5000`, { headers: HEADERS }),
+      const [di, revRes] = await Promise.all([
+        supaGetAllAnalytics('dispensed_items', `select=unit_cost,quantity&location_id=eq.${l.vid}&dispensed_at=gte.${from}T00:00:00&dispensed_at=lte.${to}T23:59:59`),
         fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=revenue&location_id=eq.${l.vid}&date=gte.${from}&date=lte.${to}&limit=5000`, { headers: HEADERS }),
       ]);
-      const di  = diRes.ok  ? await diRes.json()  : [];
       const rev = revRes.ok ? await revRes.json() : [];
       const spend   = Array.isArray(di)  ? di.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
       const revenue = Array.isArray(rev) ? rev.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
@@ -1386,11 +1407,10 @@ async function loadCOGSTrend() {
     // Query each location separately per month to avoid multi-value filter inconsistency
     const results = await Promise.all(months.map(async m => {
       const locResults = await Promise.all(allUUIDs.map(async l => {
-        const [diRes, revRes] = await Promise.all([
-          fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + l.vid + '&dispensed_at=gte.' + m.from + '&dispensed_at=lte.' + m.to + '&limit=5000', { headers: HEADERS }),
+        const [di, revRes] = await Promise.all([
+          supaGetAllAnalytics('dispensed_items', 'select=unit_cost,quantity&location_id=eq.' + l.vid + '&dispensed_at=gte.' + m.from + '&dispensed_at=lte.' + m.to),
           fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + l.vid + '&date=gte.' + m.from + '&date=lte.' + m.to + '&limit=5000', { headers: HEADERS }),
         ]);
-        const di  = diRes.ok  ? await diRes.json()  : [];
         const rev = revRes.ok ? await revRes.json() : [];
         return {
           spend:   Array.isArray(di)  ? di.reduce((s,r)  => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0,
@@ -1426,11 +1446,10 @@ async function loadCOGSTrend() {
       ];
       const curMon = months[months.length - 1];
       const locResults = await Promise.all(allLocDefs.map(async l => {
-        const [diRes, revRes] = await Promise.all([
-          fetch(SUPA_URL + '/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.' + l.vid + '&dispensed_at=gte.' + curMon.from + '&dispensed_at=lte.' + curMon.to + '&limit=5000', { headers: HEADERS }),
+        const [di, revRes] = await Promise.all([
+          supaGetAllAnalytics('dispensed_items', 'select=unit_cost,quantity&location_id=eq.' + l.vid + '&dispensed_at=gte.' + curMon.from + '&dispensed_at=lte.' + curMon.to),
           fetch(SUPA_URL + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + l.vid + '&date=gte.' + curMon.from + '&date=lte.' + curMon.to + '&limit=5000', { headers: HEADERS }),
         ]);
-        const di  = diRes.ok  ? await diRes.json()  : [];
         const rev = revRes.ok ? await revRes.json() : [];
         const spend = Array.isArray(di) ? di.reduce((s,r) => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
         const revenue = Array.isArray(rev) ? rev.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
