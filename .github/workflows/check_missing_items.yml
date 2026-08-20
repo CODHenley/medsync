@@ -1,0 +1,37 @@
+name: Check Missing Vetspire Items
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: "Vetspire numeric location id"
+        required: true
+      start_date:
+        description: "Start date (YYYY-MM-DD)"
+        required: true
+      end_date:
+        description: "End date (YYYY-MM-DD)"
+        required: true
+      sku:
+        description: "SKU to inspect"
+        required: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run check
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: |
+          python3 check_missing_items.py \
+            --location "${{ inputs.location }}" \
+            --start "${{ inputs.start_date }}" \
+            --end "${{ inputs.end_date }}" \
+            --sku "${{ inputs.sku }}"
