@@ -22,6 +22,19 @@ check would permanently report a false ~3-4% variance and train everyone to
 ignore its red X — which defeats the entire point of a continuous safety
 net.
 
+Vetspire's own startDate/endDate windowing on usageReport is unreliable —
+confirmed via row-by-row cross-check (Aug 2026 Wheaton incident): an order
+item whose updatedAt falls squarely inside a requested window was silently
+missing from that window's result set, while a direct/wide-range query for
+the same item returned it correctly every time, and the same windowed query
+has been observed returning different totals seconds apart. Trusting that
+call's own date filter turns this safety net into a false-alarm generator —
+the same ~70-unit Wheaton variance flipped sign (Vetspire over then under
+Supabase) on back-to-back scheduled runs with no real data change. So
+vetspire_total() never asks Vetspire to filter by date: it fetches a wide,
+generously-padded range and filters by updatedAt on our side, matching the
+method that has matched Supabase exactly in every diagnostic this session.
+
 Usage:
   VETSPIRE_API_TOKEN="..." python3 reconcile_dispensed_items.py [--days 14] [--tolerance-pct 0.5]
 """
@@ -31,6 +44,8 @@ from zoneinfo import ZoneInfo
 
 PRACTICE_TZ = ZoneInfo("America/Chicago")  # never use bare date.today() — GitHub Actions runners are UTC,
                                             # and usageReport buckets by the practice's local calendar day
+
+WIDE_LOOKBACK_DAYS = 180  # padding before `start` so the wide query safely covers the trailing window
 
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN = "https://scoutcare.vetspire.com"
@@ -47,7 +62,7 @@ LOCATIONS = [
 USAGE_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     usageReport(locationIds:$lids, startDate:$s, endDate:$e) {
-        orderItems { productId product { id } quantity returned refunded }
+        orderItems { productId product { id } quantity returned refunded updatedAt }
     }
 }
 """
@@ -98,16 +113,25 @@ def supa_get_all(path, params, page_size=1000):
 
 
 def vetspire_total(token, loc_id, start, end):
-    result = gql(token, USAGE_QUERY, {"lids": [loc_id], "s": start, "e": end})
+    wide_start = (datetime.strptime(start, "%Y-%m-%d").date() - timedelta(days=WIDE_LOOKBACK_DAYS)).isoformat()
+    result = gql(token, USAGE_QUERY, {"lids": [loc_id], "s": wide_start, "e": end})
     if "errors" in result:
         raise RuntimeError(result["errors"][0]["message"][:200])
     usage_raw = result.get("data", {}).get("usageReport")
     if isinstance(usage_raw, str):
         usage_raw = json.loads(usage_raw)
     items = usage_raw.get("orderItems", []) if isinstance(usage_raw, dict) else (usage_raw or [])
-    return sum(float(it.get("quantity") or 0) for it in items
-               if not it.get("returned") and not it.get("refunded")
-               and (it.get("productId") or (it.get("product") or {}).get("id")))
+    total = 0.0
+    for it in items:
+        if it.get("returned") or it.get("refunded"):
+            continue
+        if not (it.get("productId") or (it.get("product") or {}).get("id")):
+            continue
+        updated = (it.get("updatedAt") or "")[:10]
+        if not (start <= updated <= end):
+            continue
+        total += float(it.get("quantity") or 0)
+    return total
 
 
 def supabase_total(loc_id, start, end):
