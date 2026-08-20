@@ -346,24 +346,26 @@ async function loadLocationCards() {
   renderLocationCards(null, null, null, null);
 
   try {
-    const [revRes, phRes, diRes, glRes, cycleRes, poRes] = await Promise.all([
+    const [revRes, diRes, glRes, cycleRes, poRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&' + vidFilter + '&limit=5000', { headers: _H }),
-      fetch(SUPA_URL + '/rest/v1/purchase_history?select=location_id,amount&source=in.(vetcove,vetcove_weekly,vetcove_import)&purchased_at=gte.' + monthStart + '&purchased_at=lte.' + today + '&' + uuidFilter + '&limit=5000', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&' + vidFilter + '&limit=5000', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,value_lost&created_at=gte.' + monthStart + 'T00:00:00&' + uuidFilter, { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + monthStart + '&' + uuidFilter + '&order=created_at.desc', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/po_items?select=location_id,status&submitted_at=gte.' + monthStart + '&' + uuidFilter + '&order=submitted_at.desc', { headers: _H }),
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
-    const phRows    = phRes.ok    ? await phRes.json()    : [];
     const diRows    = diRes.ok    ? await diRes.json()    : [];
     const glRows    = glRes.ok    ? await glRes.json()    : [];
     const cycleRows = cycleRes.ok ? await cycleRes.json() : [];
     const poRows    = poRes.ok    ? await poRes.json()    : [];
 
-    const revByVid = {}, phByUuid = {}, diByVid = {}, glByUuid = {};
+    // Drug COGS is always dispensed_items unit_cost * quantity — matches
+    // loadLiveCOGs() and the Analytics screen's renderCOGSBars(). This used
+    // to override with purchase_history (vendor invoice totals) whenever
+    // Vetcove import rows existed, causing these cards to disagree with
+    // Analytics for the same location/period.
+    const revByVid = {}, diByVid = {}, glByUuid = {};
     (Array.isArray(revRows) ? revRows : []).forEach(function(r) { revByVid[r.location_id]  = (revByVid[r.location_id]  || 0) + (Number(r.revenue)    || 0); });
-    (Array.isArray(phRows)  ? phRows  : []).forEach(function(r) { phByUuid[r.location_id]  = (phByUuid[r.location_id]  || 0) + (Number(r.amount)     || 0); });
     (Array.isArray(diRows)  ? diRows  : []).forEach(function(r) { diByVid[r.location_id]   = (diByVid[r.location_id]   || 0) + (Number(r.unit_cost)  || 0) * (Number(r.quantity) || 1); });
     (Array.isArray(glRows)  ? glRows  : []).forEach(function(r) { glByUuid[r.location_id]  = (glByUuid[r.location_id]  || 0) + (Number(r.value_lost) || 0); });
 
@@ -384,7 +386,7 @@ async function loadLocationCards() {
 
     LOCS.forEach(function(l) {
       const rev   = revByVid[l.vid]  || 0;
-      const spend = phByUuid[l.uuid] ? phByUuid[l.uuid] : (diByVid[l.vid] || 0);
+      const spend = diByVid[l.vid] || 0;
       const lost  = glByUuid[l.uuid] || 0;
 
       const cogsEl = document.getElementById('lc-' + l.key + '-cogs');
