@@ -18,6 +18,18 @@ voided. Reports by default; --delete actually removes the confirmed-voided
 rows (see .github/workflows/detect_voided_items.yml for both the scheduled
 report-only run and the manual delete dispatch).
 
+A single Vetspire query is not reliable enough to delete on: the same
+flakiness that made reconcile_dispensed_items.py wrongly fail (a real
+in-window item silently missing from one usageReport call — see that
+script's docstring) can just as easily make a real, non-voided item look
+voided here. That's not theoretical — it happened: a delete dispatch
+removed order_item_id 4028939709 (Lincoln Park), which had been directly
+confirmed real minutes earlier (present in Vetspire, captured in
+Supabase). So before deleting anything, every candidate is re-checked
+against a SECOND, independent Vetspire query, and only deleted if it's
+absent from both. A row absent from one call but present in the other is
+left alone and reported as unconfirmed, never deleted.
+
 Usage:
   python3 detect_voided_items.py                        # report only
   python3 detect_voided_items.py --delete                # remove confirmed-voided rows
@@ -147,9 +159,37 @@ def main():
         vetspire_ids = {str(it.get("id")) for it in order_items}
         print(f"  {len(vetspire_ids)} distinct order items currently live in Vetspire")
 
-        voided = [r for oid, r in supa_by_oid.items() if oid not in vetspire_ids]
+        candidates = [r for oid, r in supa_by_oid.items() if oid not in vetspire_ids]
+
+        voided = []
+        if candidates:
+            # Default to "confirmed present" (i.e. NOT voided) for every candidate unless the second
+            # query both succeeds AND independently fails to find it. Any failure mode here must
+            # fail safe toward deleting nothing.
+            confirmed_present = {r["order_item_id"] for r in candidates}
+            try:
+                result2 = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": start.isoformat(), "e": end.isoformat()})
+                if "errors" in result2:
+                    print(f"  VETSPIRE CONFIRMATION API ERROR: {result2['errors'][0]['message'][:200]} — treating all candidates as unconfirmed")
+                else:
+                    usage_raw_2 = result2.get("data", {}).get("usageReport")
+                    if isinstance(usage_raw_2, str):
+                        usage_raw_2 = json.loads(usage_raw_2)
+                    order_items_2 = usage_raw_2.get("orderItems", []) if isinstance(usage_raw_2, dict) else (usage_raw_2 or [])
+                    vetspire_ids_2 = {str(it.get("id")) for it in order_items_2}
+                    confirmed_present = confirmed_present & vetspire_ids_2
+            except Exception as e:
+                print(f"  VETSPIRE CONFIRMATION QUERY FAILED: {e} — treating all candidates as unconfirmed")
+
+            voided = [r for r in candidates if r["order_item_id"] not in confirmed_present]
+            unconfirmed = len(candidates) - len(voided)
+            if unconfirmed:
+                print(f"  {unconfirmed} candidate(s) missing from the first query but present in a second "
+                      f"independent query — not deleting (this is the exact flakiness pattern that wrongly "
+                      f"deleted order_item_id 4028939709 previously)")
+
         voided_qty = sum(float(r.get("quantity") or 0) for r in voided)
-        print(f"  {len(voided)} voided (no longer exist in Vetspire), total qty {voided_qty:.2f}")
+        print(f"  {len(voided)} voided (confirmed absent in two independent queries), total qty {voided_qty:.2f}")
 
         if voided_qty > args.qty_tolerance:
             failures.append((loc["name"], f"{voided_qty:.2f} qty voided but still stored"))
