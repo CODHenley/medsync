@@ -2,9 +2,25 @@
 """
 MedSync — Vetspire Intraday Usage Sync
 -----------------------------------------
-Runs every 5 min during business hours via GitHub Actions. Pulls today's
-dispensed products for all active locations and upserts to Supabase
-dispensed_items, enabling the "Today" view in Procurement.
+Runs every 5 min during business hours via GitHub Actions. Pulls dispensed
+products for all active locations and upserts to Supabase dispensed_items,
+enabling the "Today" view in Procurement.
+
+Vetspire's usageReport(startDate,endDate) windowing is unreliable — it has
+been confirmed to silently omit a real order item that squarely falls
+inside the requested window (see reconcile_dispensed_items.py's module
+docstring). Because this script previously queried s=today, e=today and
+NEVER revisited a day once it passed, a single dropped poll meant that
+item was gone for good — no scheduled process ever re-checked it (the only
+retroactive tool, backfill_date_range.py, is workflow_dispatch-only, i.e.
+a human has to notice and run it by hand). This is exactly how two real
+dispenses (Lincoln Park order_item_id 4028939709, Old Orchard 4098962168)
+went permanently uncaptured for over a week. So this script now queries a
+rolling WIDE_LOOKBACK_DAYS window and re-upserts every item in it on every
+5-minute run — upserts are idempotent by (order_item_id, location_id), so
+re-touching recent days constantly is safe, and it means any single-poll
+drop self-heals on the very next run instead of requiring a human to catch
+it via the reconcile red X and manually backfill.
 
 One row per real Vetspire order item, keyed by (order_item_id, location_id)
 — NOT aggregated by day/product. This is the single natural key every
@@ -25,10 +41,14 @@ import os
 import sys
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 PRACTICE_TZ = ZoneInfo("America/Chicago")  # all 4 Scout locations are Chicago-area
+
+WIDE_LOOKBACK_DAYS = 7  # rolling window re-upserted every run; small enough to keep a
+                        # 5-minute-cadence query cheap, wide enough to self-heal any
+                        # single-poll drop well before a human would notice via reconcile
 
 # ── Config ─────────────────────────────────────────────────────────────────
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
@@ -104,6 +124,11 @@ def supa_upsert(records):
         print(f"  Supabase error {e.code}: {body[:300]}")
         return e.code
 
+
+def chunks(seq, size):
+    for i in range(0, len(seq), size):
+        yield seq[i:i + size]
+
 # ── Main ────────────────────────────────────────────────────────────────────
 def main():
     token = os.environ.get("VETSPIRE_API_TOKEN", "").strip()
@@ -114,13 +139,16 @@ def main():
     # date.today() reads the GitHub Actions runner's UTC clock — during the
     # Central-time evening (~6pm-midnight CDT/CST), that's already tomorrow's
     # UTC date while Vetspire still buckets usageReport by the local practice
-    # day. Querying the wrong day drops that evening's dispensing entirely,
-    # since this script never revisits a stale day (confirmed: diagnosed a
-    # 78-vs-71 gap for Catalyst Chem 17 @ Wheaton, all 7 missing units sitting
-    # in the 7pm-CDT hour — see diagnose_dispensed_gap.py).
-    today = datetime.now(PRACTICE_TZ).date().isoformat()
+    # day. Querying the wrong day drops that evening's dispensing entirely
+    # (confirmed: diagnosed a 78-vs-71 gap for Catalyst Chem 17 @ Wheaton, all
+    # 7 missing units sitting in the 7pm-CDT hour — see diagnose_dispensed_gap.py).
+    # The rolling wide-range query below also protects against this: even if
+    # one run reads the wrong day, the next run's window still covers it.
+    today = datetime.now(PRACTICE_TZ).date()
+    wide_start = (today - timedelta(days=WIDE_LOOKBACK_DAYS)).isoformat()
+    today_iso = today.isoformat()
     now_utc = datetime.now(timezone.utc).isoformat()
-    print(f"\n=== Intraday Usage Sync — {today} (local practice date; run at {now_utc} UTC) ===")
+    print(f"\n=== Intraday Usage Sync — rolling {wide_start} → {today_iso} (run at {now_utc} UTC) ===")
 
     total = 0
     errors = 0
@@ -128,7 +156,7 @@ def main():
     for loc in LOCATIONS:
         print(f"\n  [{loc['name']}] pulling usageReport...")
         try:
-            r = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": today, "e": today})
+            r = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": wide_start, "e": today_iso})
         except Exception as e:
             print(f"  ERROR: {e}")
             errors += 1
@@ -152,7 +180,8 @@ def main():
             order_items = usage_raw.get("orderItems", [])
         else:
             order_items = []
-        print(f"  {len(order_items)} order items")
+        order_items = list({str(it.get("id")): it for it in order_items}.values())  # dedupe by id
+        print(f"  {len(order_items)} order items in the {WIDE_LOOKBACK_DAYS}-day rolling window")
 
         # One row per real order item — no aggregation. order_item_id is the
         # sole natural key (see module docstring for why aggregation is banned
@@ -198,15 +227,19 @@ def main():
             })
 
         if records:
-            status = supa_upsert(records)
-            if not str(status).startswith("2"):
-                print(f"  Upsert FAILED → HTTP {status}")
-                errors += 1
-                continue
-            print(f"  Upserted {len(records)} records ({skipped} skipped, no product/item id) → HTTP {status}")
-            total += len(records)
+            location_ok = True
+            for batch in chunks(records, 500):
+                status = supa_upsert(batch)
+                if not str(status).startswith("2"):
+                    print(f"  Upsert FAILED for a batch of {len(batch)} → HTTP {status}")
+                    location_ok = False
+                    errors += 1
+                    continue
+                total += len(batch)
+            suffix = "" if location_ok else " — WITH FAILURES"
+            print(f"  Upserted {len(records)} records ({skipped} skipped, no product/item id){suffix}")
         else:
-            print(f"  No physical inventory items today ({skipped} skipped).")
+            print(f"  No physical inventory items in window ({skipped} skipped).")
 
     print(f"\n=== Done: {total} records upserted, {errors} location error(s) ===")
     if errors:
