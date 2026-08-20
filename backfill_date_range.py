@@ -20,6 +20,17 @@ SQL view over these rows, not by pre-aggregating at write time. Re-running
 this script for the same range is always safe/idempotent — the same order
 item always maps to the same row.
 
+Vetspire's usageReport(startDate,endDate) windowing is unreliable — it has
+been confirmed to silently omit a real order item that squarely falls
+inside the requested window (see reconcile_dispensed_items.py's module
+docstring). This bit this exact script: a manual dispatch for 2026-08-06 to
+2026-08-09, run specifically to capture a known-missing Lincoln Park item
+(order_item_id 4028939709), completed with 0 errors and STILL didn't
+capture it — re-verified missing immediately after. So this script now
+queries a wide, padded range and filters by updatedAt on our side instead
+of trusting Vetspire's own date filter, matching the fix already applied
+to reconcile_dispensed_items.py and vetspire_intraday_sync.py.
+
 Auth: VETSPIRE_API_TOKEN env var.
 """
 
@@ -28,7 +39,9 @@ import os
 import sys
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+WIDE_LOOKBACK_DAYS = 180
 
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN = "https://scoutcare.vetspire.com"
@@ -128,10 +141,12 @@ def main():
     total_upserted = 0
     total_errors   = 0
 
+    wide_start = (datetime.strptime(start_date, "%Y-%m-%d").date() - timedelta(days=WIDE_LOOKBACK_DAYS)).isoformat()
+
     for loc in LOCATIONS:
         print(f"--- {loc['name']} ---")
         try:
-            r = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": start_date, "e": end_date})
+            r = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": wide_start, "e": end_date})
         except Exception as e:
             print(f"  ERROR: {e}")
             total_errors += 1
@@ -150,7 +165,9 @@ def main():
                 pass
         order_items = (usage_raw.get("orderItems", []) if isinstance(usage_raw, dict)
                        else usage_raw if isinstance(usage_raw, list) else [])
-        print(f"  {len(order_items)} order items returned")
+        order_items = list({str(it.get("id")): it for it in order_items}.values())  # dedupe by id
+        order_items = [it for it in order_items if start_date <= (it.get("updatedAt") or "")[:10] <= end_date]
+        print(f"  {len(order_items)} order items in {start_date}..{end_date} (via wide-range query)")
 
         records = []
         skipped = 0
