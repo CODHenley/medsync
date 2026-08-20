@@ -346,15 +346,15 @@ async function loadLocationCards() {
   renderLocationCards(null, null, null, null);
 
   try {
-    const [revRes, diRes, glRes, cycleRes, poRes] = await Promise.all([
+    const [revRes, diRows, glRes, cycleRes, poRes] = await Promise.all([
       fetch(SUPA_URL + '/rest/v1/daily_revenue?select=location_id,revenue&date=gte.' + monthStart + '&date=lte.' + today + '&' + vidFilter + '&limit=5000', { headers: _H }),
-      fetch(SUPA_URL + '/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&' + vidFilter + '&limit=5000', { headers: _H }),
+      supaGetAllPortfolio('dispensed_items',
+        'select=location_id,unit_cost,quantity&dispensed_at=gte.' + monthStart + 'T00:00:00&dispensed_at=lte.' + today + 'T23:59:59&' + vidFilter, _H),
       fetch(SUPA_URL + '/rest/v1/goods_lost?select=location_id,value_lost&created_at=gte.' + monthStart + 'T00:00:00&' + uuidFilter, { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/cycle_counts?select=location_id,status&created_at=gte.' + monthStart + '&' + uuidFilter + '&order=created_at.desc', { headers: _H }),
       fetch(SUPA_URL + '/rest/v1/po_items?select=location_id,status&submitted_at=gte.' + monthStart + '&' + uuidFilter + '&order=submitted_at.desc', { headers: _H }),
     ]);
     const revRows   = revRes.ok   ? await revRes.json()   : [];
-    const diRows    = diRes.ok    ? await diRes.json()    : [];
     const glRows    = glRes.ok    ? await glRes.json()    : [];
     const cycleRows = cycleRes.ok ? await cycleRes.json() : [];
     const poRows    = poRes.ok    ? await poRes.json()    : [];
@@ -424,16 +424,16 @@ async function loadWheatonInsights() {
   const in60       = localIso(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 60));
 
   try {
-    const [lotsRes, glRes, cogsRes, revRes] = await Promise.all([
+    const [lotsRes, glRes, diRows, revRes] = await Promise.all([
       fetch(_SUPA + '/rest/v1/lots?select=lot_number,expiration_date,qty_remaining,products(name)&location_id=eq.' + WHEATON_UUID + '&expiration_date=lte.' + in60 + '&expiration_date=gte.' + today + '&status=neq.Disposed&qty_remaining=gt.0&order=expiration_date.asc', { headers: _H }),
       fetch(_SUPA + '/rest/v1/goods_lost?select=value_lost,product_name,created_at&location_id=eq.' + WHEATON_UUID + '&created_at=gte.' + monthStart + '&created_at=lte.' + today + '&product_name=neq.Monthly Summary Import&limit=500', { headers: _H }),
-      fetch(_SUPA + '/rest/v1/dispensed_items?select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&returned=eq.false&refunded=eq.false&limit=5000', { headers: _H }),
+      supaGetAllPortfolio('dispensed_items',
+        'select=unit_cost,quantity,product_name&location_id=eq.' + WHEATON_VID + '&dispensed_at=gte.' + monthStart + '&dispensed_at=lte.' + today + 'T23:59:59&returned=eq.false&refunded=eq.false', _H),
       fetch(_SUPA + '/rest/v1/daily_revenue?select=revenue&location_id=eq.' + WHEATON_VID + '&date=gte.' + monthStart + '&date=lte.' + today + '&limit=5000', { headers: _H }),
     ]);
 
     const lotsJson = await lotsRes.json();  const lots    = Array.isArray(lotsJson)  ? lotsJson  : [];
     const glJson   = await glRes.json();    const glRows  = Array.isArray(glJson)    ? glJson    : [];
-    const diJson   = await cogsRes.json();  const diRows  = Array.isArray(diJson)    ? diJson    : [];
     const revJson  = await revRes.json();   const revRows = Array.isArray(revJson)   ? revJson   : [];
 
     const cards = [];
@@ -2087,6 +2087,30 @@ const HEADERS = {
 };
 
 // ── Helpers ──────────────────────────────────────────────────
+// Fetches every row for a query via Range-header pagination instead of a
+// single limit=N request. dispensed_items MTD volume across all 4 locations
+// has already exceeded 5000 rows (confirmed 6026 in Aug 2026), so a plain
+// limit=5000 fetch silently truncates ~17% of rows with no error — this is
+// what caused Portfolio's Drug COGS to undercount vs. Analytics, which
+// queries one location at a time and stays under the cap by luck, not
+// design. &order=id keeps page boundaries stable under concurrent writes
+// (the intraday sync upserts this table every 5 minutes).
+async function supaGetAllPortfolio(table, params, headers, pageSize = 1000) {
+  const out = [];
+  let offset = 0;
+  while (true) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}&order=id`, {
+      headers: { ...headers, 'Range': `${offset}-${offset + pageSize - 1}` },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const chunk = await res.json();
+    out.push(...chunk);
+    if (chunk.length < pageSize) break;
+    offset += pageSize;
+  }
+  return out;
+}
+
 async function query(table, params = '') {
   const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, { headers: HEADERS });
   if (!res.ok) throw new Error(await res.text());
@@ -2288,12 +2312,12 @@ async function loadLiveCOGs(loc, from, to) {
   const toD   = to.split('T')[0];
 
   try {
-    const [revRes, spendRes] = await Promise.all([
+    const [revRes, spendRows] = await Promise.all([
       fetch(`${SUPA_URL}/rest/v1/daily_revenue?select=location_id,revenue&date=gte.${fromD}&date=lte.${toD}&${vidFilter}&limit=5000`, { headers: H2 }),
-      fetch(`${SUPA_URL}/rest/v1/dispensed_items?select=location_id,unit_cost,quantity&dispensed_at=gte.${fromD}T00:00:00&dispensed_at=lte.${toD}T23:59:59&${vidFilter}&limit=5000`, { headers: H2 })
+      supaGetAllPortfolio('dispensed_items',
+        `select=location_id,unit_cost,quantity&dispensed_at=gte.${fromD}T00:00:00&dispensed_at=lte.${toD}T23:59:59&${vidFilter}`, H2)
     ]);
-    const revRows   = revRes.ok   ? await revRes.json()   : [];
-    const spendRows = spendRes.ok ? await spendRes.json() : [];
+    const revRows = revRes.ok ? await revRes.json() : [];
 
     // Aggregate — revenue and dispensed_items keyed by VID.
     // Drug COGS is always dispensed_items unit_cost * quantity, matching the
