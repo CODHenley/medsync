@@ -22,13 +22,32 @@ A single Vetspire query is not reliable enough to delete on: the same
 flakiness that made reconcile_dispensed_items.py wrongly fail (a real
 in-window item silently missing from one usageReport call — see that
 script's docstring) can just as easily make a real, non-voided item look
-voided here. That's not theoretical — it happened: a delete dispatch
-removed order_item_id 4028939709 (Lincoln Park), which had been directly
-confirmed real minutes earlier (present in Vetspire, captured in
-Supabase). So before deleting anything, every candidate is re-checked
-against a SECOND, independent Vetspire query, and only deleted if it's
-absent from both. A row absent from one call but present in the other is
-left alone and reported as unconfirmed, never deleted.
+voided here. That's not theoretical — it happened twice:
+
+1. A delete dispatch removed order_item_id 4028939709 (Lincoln Park),
+   which had been directly confirmed real minutes earlier. The fix at
+   the time added a second confirmation query before deleting anything.
+2. That "fix" still wrongly deleted real data on its very next use —
+   because the second query used the exact same unreliable method as
+   the first (trusting Vetspire's own startDate/endDate filter). That's
+   not independent confirmation: the flakiness isn't random noise, it's
+   a systematic quirk of Vetspire's own date-range windowing, so asking
+   the same flaky question twice can (and did) get the same wrong answer
+   both times. Proof: right after a delete dispatch, Lincoln Park and
+   West Loop — both a clean 0.00% match moments earlier — showed real
+   mismatches (0.57% and 1.63%, Vetspire *ahead* of Supabase), and Old
+   Orchard got worse instead of better. That's the signature of deleting
+   real, currently-live items, not voided ones.
+
+So both existence checks now use the wide-range method already proven
+reliable in reconcile_dispensed_items.py and backfill_date_range.py:
+query a much wider date range than the window being checked (padding
+before AND after), and treat an id as "seen" if it appears ANYWHERE in
+that wide result — no client-side date filtering, since existence is
+all that matters here, not which day Vetspire attributes the item to.
+A candidate is only deleted if it's absent from two independent wide-range
+existence checks. A row absent from one but present in the other is left
+alone and reported as unconfirmed, never deleted.
 
 Usage:
   python3 detect_voided_items.py                        # report only
@@ -37,6 +56,9 @@ Usage:
 """
 import argparse, json, os, sys, urllib.request, urllib.error
 from datetime import date, timedelta
+
+WIDE_LOOKBACK_DAYS = 180  # padding before AND after the checked window; existence-only, no date filtering
+WIDE_LOOKAHEAD_DAYS = 7
 
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN = "https://scoutcare.vetspire.com"
@@ -97,6 +119,22 @@ def supa_get_all(path, params, page_size=1000):
     return out
 
 
+def fetch_vetspire_ids(token, loc_id, start, end):
+    """Wide-range existence check: does this id show up ANYWHERE in a generously padded
+    query? No client-side date filtering — a real item can be attributed to a slightly
+    different day by Vetspire's own bucketing, and existence is all that matters here."""
+    wide_start = (start - timedelta(days=WIDE_LOOKBACK_DAYS)).isoformat()
+    wide_end = (end + timedelta(days=WIDE_LOOKAHEAD_DAYS)).isoformat()
+    result = gql(token, USAGE_QUERY, {"lids": [loc_id], "s": wide_start, "e": wide_end})
+    if "errors" in result:
+        raise RuntimeError(result["errors"][0]["message"][:200])
+    usage_raw = result.get("data", {}).get("usageReport")
+    if isinstance(usage_raw, str):
+        usage_raw = json.loads(usage_raw)
+    order_items = usage_raw.get("orderItems", []) if isinstance(usage_raw, dict) else (usage_raw or [])
+    return {str(it.get("id")) for it in order_items}
+
+
 def supa_delete_by_ids(ids):
     for i in range(0, len(ids), 200):
         chunk = ids[i:i + 200]
@@ -143,50 +181,32 @@ def main():
         print(f"  {len(supa_by_oid)} order_item_ids stored in window")
 
         try:
-            result = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": start.isoformat(), "e": end.isoformat()})
+            vetspire_ids = fetch_vetspire_ids(token, loc["id"], start, end)
         except Exception as e:
             print(f"  VETSPIRE QUERY FAILED: {e}")
             failures.append((loc["name"], "query failed"))
             continue
-        if "errors" in result:
-            print(f"  VETSPIRE API ERROR: {result['errors'][0]['message'][:200]}")
-            failures.append((loc["name"], "API error"))
-            continue
-        usage_raw = result.get("data", {}).get("usageReport")
-        if isinstance(usage_raw, str):
-            usage_raw = json.loads(usage_raw)
-        order_items = usage_raw.get("orderItems", []) if isinstance(usage_raw, dict) else (usage_raw or [])
-        vetspire_ids = {str(it.get("id")) for it in order_items}
-        print(f"  {len(vetspire_ids)} distinct order items currently live in Vetspire")
+        print(f"  {len(vetspire_ids)} distinct order items currently live in Vetspire (wide-range check)")
 
         candidates = [r for oid, r in supa_by_oid.items() if oid not in vetspire_ids]
 
         voided = []
         if candidates:
             # Default to "confirmed present" (i.e. NOT voided) for every candidate unless the second
-            # query both succeeds AND independently fails to find it. Any failure mode here must
-            # fail safe toward deleting nothing.
+            # wide-range query both succeeds AND independently fails to find it. Any failure mode here
+            # must fail safe toward deleting nothing.
             confirmed_present = {r["order_item_id"] for r in candidates}
             try:
-                result2 = gql(token, USAGE_QUERY, {"lids": [loc["id"]], "s": start.isoformat(), "e": end.isoformat()})
-                if "errors" in result2:
-                    print(f"  VETSPIRE CONFIRMATION API ERROR: {result2['errors'][0]['message'][:200]} — treating all candidates as unconfirmed")
-                else:
-                    usage_raw_2 = result2.get("data", {}).get("usageReport")
-                    if isinstance(usage_raw_2, str):
-                        usage_raw_2 = json.loads(usage_raw_2)
-                    order_items_2 = usage_raw_2.get("orderItems", []) if isinstance(usage_raw_2, dict) else (usage_raw_2 or [])
-                    vetspire_ids_2 = {str(it.get("id")) for it in order_items_2}
-                    confirmed_present = confirmed_present & vetspire_ids_2
+                vetspire_ids_2 = fetch_vetspire_ids(token, loc["id"], start, end)
+                confirmed_present = confirmed_present & vetspire_ids_2
             except Exception as e:
                 print(f"  VETSPIRE CONFIRMATION QUERY FAILED: {e} — treating all candidates as unconfirmed")
 
             voided = [r for r in candidates if r["order_item_id"] not in confirmed_present]
             unconfirmed = len(candidates) - len(voided)
             if unconfirmed:
-                print(f"  {unconfirmed} candidate(s) missing from the first query but present in a second "
-                      f"independent query — not deleting (this is the exact flakiness pattern that wrongly "
-                      f"deleted order_item_id 4028939709 previously)")
+                print(f"  {unconfirmed} candidate(s) missing from the first wide-range query but present in a "
+                      f"second independent wide-range query — not deleting (unconfirmed)")
 
         voided_qty = sum(float(r.get("quantity") or 0) for r in voided)
         print(f"  {len(voided)} voided (confirmed absent in two independent queries), total qty {voided_qty:.2f}")
