@@ -51,7 +51,7 @@ def supa_get_all(path, params, page_size=1000):
     offset = 0
     while True:
         req = urllib.request.Request(
-            f"{SUPA_URL}/rest/v1/{path}?{params}",
+            f"{SUPA_URL}/rest/v1/{path}?{params}&order=id",
             headers={
                 "apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}",
                 "Range": f"{offset}-{offset + page_size - 1}",
