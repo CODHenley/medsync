@@ -244,8 +244,8 @@ tr:last-child td{border-bottom:none;}
         <div class="kpi-l">Remaining Inventory</div><div class="kpi-v cg" id="kv-remaining">—</div><div class="kpi-s cm">snapshot minus period COGS</div>
       </div>
       <div class="kpi">
-        <div class="kpi-tip">Total practice revenue for the selected period — includes all services, diagnostics, and products. Pulled from the daily revenue sync, not just pharmacy items.</div>
-        <div class="kpi-l">Total Revenue</div><div class="kpi-v" id="kv-totalrev" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-totalrev">from practice P&amp;L</div>
+        <div class="kpi-tip">Total practice revenue collected for the selected period — includes all services, diagnostics, and products. Pulled from the daily revenue sync (paid/collected amounts), not just pharmacy items. Excludes open and due invoices that haven't been paid yet, so this will read lower than Vetspire's Invoices screen total, which includes those.</div>
+        <div class="kpi-l">Total Revenue (Collected)</div><div class="kpi-v" id="kv-totalrev" style="color:var(--navy);">—</div><div class="kpi-s cm" id="ks-totalrev">from practice P&amp;L</div>
       </div>
       <div class="kpi">
         <div class="kpi-tip">Drug Cost Ratio — what percentage of pharmacy revenue went to purchasing drugs. Lower is better. Industry average is 18–25%. Above 25% means drug costs are running high relative to what you charge.</div>
@@ -1376,7 +1376,7 @@ function exportCSV() {
     ['True COGS',        g('kv-cogs')],
     ['Dispense Events',  g('ks-cogs')],
     ['Remaining Inventory', g('kv-remaining')],
-    ['Total Revenue',    g('kv-totalrev')],
+    ['Total Revenue (Collected)', g('kv-totalrev')],
     ['COGS % Revenue',   g('kv-cogspc')],
     ['Pharmacy Margin',  g('kv-pharmamargin')],
     [],
@@ -1488,7 +1488,7 @@ function printReport() {
     <div class="kpi"><div class="kpi-label">Purchase Value</div><div class="kpi-val">${purchaseVal}</div><div class="kpi-sub">from receiving log</div></div>
     <div class="kpi"><div class="kpi-label">True COGS</div><div class="kpi-val">$${fmt(totalCOGS)}</div><div class="kpi-sub">${totalItems} dispense events</div></div>
     <div class="kpi"><div class="kpi-label">Remaining Inventory</div><div class="kpi-val">${invVal}</div><div class="kpi-sub">estimated on-hand value</div></div>
-    <div class="kpi"><div class="kpi-label">Total Revenue</div><div class="kpi-val">${totalRevVal}</div><div class="kpi-sub">practice P&amp;L</div></div>
+    <div class="kpi"><div class="kpi-label">Total Revenue (Collected)</div><div class="kpi-val">${totalRevVal}</div><div class="kpi-sub">practice P&amp;L, cash collected</div></div>
     <div class="kpi"><div class="kpi-label">COGS % Revenue</div><div class="kpi-val">${cogsPC}</div><div class="kpi-sub">pharmacy cost vs total rev</div></div>
     <div class="kpi"><div class="kpi-label">Pharmacy Margin</div><div class="kpi-val">${pharmaMargin}</div><div class="kpi-sub">$${fmt(pharmacyRev)} pharmacy rev</div></div>
     <div class="kpi"><div class="kpi-label">Items Dispensed</div><div class="kpi-val">${fmtQty(totalQty)}</div><div class="kpi-sub">${ALL_PRODUCTS.length} unique products</div></div>
