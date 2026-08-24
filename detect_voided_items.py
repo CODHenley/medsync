@@ -49,13 +49,47 @@ A candidate is only deleted if it's absent from two independent wide-range
 existence checks. A row absent from one but present in the other is left
 alone and reported as unconfirmed, never deleted.
 
+Every HTTP call retries on transient failures (5xx, connection resets,
+timeouts) with backoff. This workflow's run history showed it failing on
+plain infra flakiness — a Supabase HTTP 500, a dropped connection — roughly
+half the time, far more than other scripts hitting the same APIs, because
+nothing here ever retried; one bad response killed the whole run and needed
+a manual re-dispatch. 4xx errors still fail immediately, since retrying a
+bad request doesn't help.
+
 Usage:
   python3 detect_voided_items.py                        # report only
   python3 detect_voided_items.py --delete                # remove confirmed-voided rows
   python3 detect_voided_items.py --days 90 --qty-tolerance 5
 """
-import argparse, json, os, sys, urllib.request, urllib.error
+import argparse, json, os, sys, time, urllib.request, urllib.error
 from datetime import date, timedelta
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately — retrying a bad request won't help.
+    This is what was missing when a plain Supabase HTTP 500 or a TLS connection
+    reset killed the whole run outright instead of just costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 WIDE_LOOKBACK_DAYS = 180  # padding before AND after the checked window; existence-only, no date filtering
 WIDE_LOOKAHEAD_DAYS = 7
@@ -95,8 +129,8 @@ def gql(token, query, variables=None):
         "Authorization": token,
         "Origin":        VETSPIRE_ORIGIN,
     })
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=60)
+    return json.loads(body)
 
 
 def supa_get_all(path, params, page_size=1000):
@@ -110,8 +144,8 @@ def supa_get_all(path, params, page_size=1000):
                 "Range": f"{offset}-{offset + page_size - 1}",
             },
         )
-        with urllib.request.urlopen(req, timeout=60) as r:
-            chunk = json.loads(r.read())
+        body, _ = _urlopen_with_retry(req, timeout=60)
+        chunk = json.loads(body)
         out.extend(chunk)
         if len(chunk) < page_size:
             break
@@ -148,8 +182,8 @@ def supa_delete_by_ids(ids):
         )
         req.get_method = lambda: "DELETE"
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
-                print(f"    deleted chunk of {len(chunk)} — HTTP {r.status}")
+            _, status = _urlopen_with_retry(req, timeout=30)
+            print(f"    deleted chunk of {len(chunk)} — HTTP {status}")
         except urllib.error.HTTPError as e:
             print(f"    ERROR deleting chunk: {e.code} {e.read().decode()[:300]}")
 
