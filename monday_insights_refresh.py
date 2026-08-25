@@ -6,8 +6,35 @@ updates the MANAGED-INSIGHTS block in index.html, then commits and pushes.
 Runs via GitHub Actions every Monday at 8am CT.
 """
 
-import json, urllib.request, urllib.error, sys
+import json, time, urllib.request, urllib.error, sys
 from datetime import date, timedelta
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
+
 
 SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
 SUPA_KEY = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3"
@@ -33,9 +60,9 @@ today_str  = today.isoformat()
 def supa_get(path):
     req = urllib.request.Request(SUPA_URL + path, headers=H)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = json.loads(r.read())
-            return data if isinstance(data, list) else []
+        body, _ = _urlopen_with_retry(req, timeout=30)
+        data = json.loads(body)
+        return data if isinstance(data, list) else []
     except urllib.error.HTTPError as e:
         print(f"  Supabase error {e.code} on {path[:80]}: {e.read().decode()[:120]}")
         return []
@@ -198,8 +225,8 @@ def save_insights(cards):
     )
     req.get_method = lambda: "POST"
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            print(f"  Saved {len(cards)} insight card(s) to Supabase (HTTP {r.status})")
+        _, status = _urlopen_with_retry(req, timeout=30)
+        print(f"  Saved {len(cards)} insight card(s) to Supabase (HTTP {status})")
     except urllib.error.HTTPError as e:
         print(f"  Warning: could not save to Supabase ({e.code}) — insights still generated for email")
 

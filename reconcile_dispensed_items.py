@@ -38,9 +38,35 @@ method that has matched Supabase exactly in every diagnostic this session.
 Usage:
   VETSPIRE_API_TOKEN="..." python3 reconcile_dispensed_items.py [--days 14] [--tolerance-pct 0.5]
 """
-import argparse, json, os, sys, urllib.request, urllib.error
+import argparse, json, os, sys, time, urllib.request, urllib.error
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 PRACTICE_TZ = ZoneInfo("America/Chicago")  # never use bare date.today() — GitHub Actions runners are UTC,
                                             # and usageReport buckets by the practice's local calendar day
@@ -88,8 +114,8 @@ def gql(token, query, variables=None):
         "Authorization": token,
         "Origin":        VETSPIRE_ORIGIN,
     })
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=60)
+    return json.loads(body)
 
 
 def supa_get_all(path, params, page_size=1000):
@@ -103,8 +129,8 @@ def supa_get_all(path, params, page_size=1000):
                 "Range": f"{offset}-{offset + page_size - 1}",
             },
         )
-        with urllib.request.urlopen(req, timeout=60) as r:
-            chunk = json.loads(r.read())
+        body, _ = _urlopen_with_retry(req, timeout=60)
+        chunk = json.loads(body)
         out.extend(chunk)
         if len(chunk) < page_size:
             break

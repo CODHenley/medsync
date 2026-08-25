@@ -11,12 +11,38 @@ Usage:
   VETSPIRE_API_TOKEN="..." python3 nightly_revenue_sync.py
 """
 
-import json, urllib.request, urllib.error, os, sys
+import json, urllib.request, urllib.error, os, sys, time
 from datetime import date, timedelta, datetime, timezone
 
 VETSPIRE_URL = "https://api.vetspire.com/graphql"
 SUPA_URL     = "https://aemkdummdrmxtwrkggjw.supabase.co"
 SUPA_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 LOCATIONS = {
     "Lincoln Park": "23083",
@@ -38,8 +64,8 @@ def gql(token, query, variables=None):
         "Authorization": token,   # API key — no Bearer prefix (same as lot sync)
     })
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return json.loads(r.read())
+        body, _ = _urlopen_with_retry(req, timeout=30)
+        return json.loads(body)
     except urllib.error.HTTPError as e:
         print(f"  Vetspire HTTP {e.code}: {e.read().decode()[:200]}")
         return {"errors": [{"message": f"HTTP {e.code}"}]}
@@ -61,8 +87,8 @@ def supa_upsert(records):
     )
     req.get_method = lambda: "POST"
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            return r.status
+        _, status = _urlopen_with_retry(req, timeout=15)
+        return status
     except urllib.error.HTTPError as e:
         print(f"  Supabase error {e.code}: {e.read().decode()[:200]}")
         return e.code

@@ -13,7 +13,7 @@ Usage:
     python3 wheaton_lot_sync.py
     (reads ~/.vetspire_token)
 """
-import sys, json, os, urllib.request, urllib.parse
+import sys, json, os, time, urllib.request, urllib.parse, urllib.error
 from datetime import date, datetime
 
 TOKEN_FILE = os.path.expanduser("~/.vetspire_token")
@@ -25,6 +25,33 @@ SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 WHEATON_VETSPIRE_ID = "28253"
 WHEATON_UUID = "11111111-0000-0000-0000-000000000004"
 
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
+
+
 token = open(TOKEN_FILE).read().strip().removeprefix("Bearer ").strip()
 print(f"Token: {token[:20]}...")
 
@@ -35,8 +62,8 @@ def gql(query, variables=None):
         "Authorization": token,
         "Origin": VETSPIRE_ORIGIN,
     })
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=60)
+    return json.loads(body)
 
 def supa_req(method, path, body=None, prefer="return=minimal"):
     data = json.dumps(body).encode() if body is not None else None
@@ -47,9 +74,8 @@ def supa_req(method, path, body=None, prefer="return=minimal"):
         "Prefer": prefer,
     }
     req = urllib.request.Request(SUPA_URL + path, data=data, method=method, headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        body_out = r.read()
-        return r.status, body_out
+    body, status = _urlopen_with_retry(req, timeout=30)
+    return status, body
 
 def supa_get(path):
     headers = {
@@ -57,8 +83,8 @@ def supa_get(path):
         "Authorization": f"Bearer {SUPA_KEY}",
     }
     req = urllib.request.Request(SUPA_URL + path, headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=30)
+    return json.loads(body)
 
 def get_or_create_product_id(name):
     """Look up product by name in Supabase products table; create if missing."""

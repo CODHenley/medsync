@@ -35,9 +35,36 @@ import math
 import datetime
 import argparse
 import os
+import time
 import urllib.request
 import urllib.error
 import urllib.parse
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 # ── Config ────────────────────────────────────────────────────────────────────
 VETSPIRE_URL = 'https://api.vetspire.com/graphql'
@@ -76,8 +103,8 @@ def vs_gql(token, query, variables=None):
         }
     )
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            return json.loads(resp.read())
+        body_bytes, _ = _urlopen_with_retry(req, timeout=20)
+        return json.loads(body_bytes)
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f'  Vetspire HTTP {e.code}: {body[:200]}')
@@ -201,9 +228,8 @@ def supa_request(method, path, body=None):
         'Prefer':        'return=minimal',
     })
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw = resp.read()
-            return json.loads(raw) if raw else []
+        raw, _ = _urlopen_with_retry(req, timeout=10)
+        return json.loads(raw) if raw else []
     except urllib.error.HTTPError as e:
         print(f'  Supabase {method} {path} → HTTP {e.code}: {e.read().decode()[:200]}')
         return None

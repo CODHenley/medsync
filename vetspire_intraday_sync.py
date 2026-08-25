@@ -39,12 +39,39 @@ Auth: VETSPIRE_API_TOKEN env var (GitHub Actions secret — raw API token,
 import json
 import os
 import sys
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 PRACTICE_TZ = ZoneInfo("America/Chicago")  # all 4 Scout locations are Chicago-area
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 WIDE_LOOKBACK_DAYS = 7  # rolling window re-upserted every run; small enough to keep a
                         # 5-minute-cadence query cheap, wide enough to self-heal any
@@ -96,8 +123,8 @@ def gql(token, query, variables=None):
             "Origin":        VETSPIRE_ORIGIN,
         }
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=30)
+    return json.loads(body)
 
 # ── Supabase ────────────────────────────────────────────────────────────────
 def supa_upsert(records):
@@ -117,8 +144,8 @@ def supa_upsert(records):
     )
     req.get_method = lambda: "POST"
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return r.status
+        _, status = _urlopen_with_retry(req, timeout=30)
+        return status
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f"  Supabase error {e.code}: {body[:300]}")
