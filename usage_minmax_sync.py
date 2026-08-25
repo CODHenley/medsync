@@ -16,9 +16,35 @@ Run: python3 usage_minmax_sync.py [--dry-run]
 GitHub Actions: daily at midnight CT (06:00 UTC)
 """
 
-import json, math, os, sys, urllib.request, urllib.error, urllib.parse, argparse
+import json, math, os, sys, time, urllib.request, urllib.error, urllib.parse, argparse
 from datetime import date, timedelta
 from collections import defaultdict
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
@@ -59,8 +85,8 @@ def supa_get(path: str) -> list:
             "Accept": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=30)
+    return json.loads(body)
 
 
 def supa_patch(path: str, body: dict) -> bool:
@@ -77,8 +103,8 @@ def supa_patch(path: str, body: dict) -> bool:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            return r.status < 300
+        _, status = _urlopen_with_retry(req, timeout=15)
+        return status < 300
     except urllib.error.HTTPError as e:
         print(f"    Supabase PATCH error {e.code}: {e.read().decode()[:200]}")
         return False
@@ -96,8 +122,8 @@ def gql(token: str, query: str, variables: dict = None) -> dict:
             "Origin": VETSPIRE_ORIGIN,
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=30)
+    return json.loads(body)
 
 
 UPSERT_MUTATION = """

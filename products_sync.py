@@ -18,13 +18,39 @@ Usage:
     python3 products_sync.py
     (reads VETSPIRE_API_TOKEN env var, or ~/.vetspire_token)
 """
-import sys, json, os, urllib.request, urllib.parse
+import sys, json, os, time, urllib.request, urllib.parse, urllib.error
 from datetime import date, timezone, datetime
 
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN = "https://scoutcare.vetspire.com"
 SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
 SUPA_KEY = os.environ.get("SUPA_SERVICE_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, a single Supabase HTTP 500 or a dropped TLS connection killed
+    the whole run outright instead of costing a few seconds."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 # All Scout location IDs in Vetspire
 LOCATION_IDS = ["28250", "28251", "28252", "28253"]
@@ -50,8 +76,8 @@ def gql(query, variables=None):
         "Authorization": token,
         "Origin": VETSPIRE_ORIGIN,
     })
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=60)
+    return json.loads(body)
 
 def supa_req(method, path, body=None, prefer="return=minimal"):
     data = json.dumps(body).encode() if body is not None else None
@@ -62,8 +88,8 @@ def supa_req(method, path, body=None, prefer="return=minimal"):
         "Prefer": prefer,
     }
     req = urllib.request.Request(SUPA_URL + path, data=data, method=method, headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return r.status, r.read()
+    body_bytes, status = _urlopen_with_retry(req, timeout=30)
+    return status, body_bytes
 
 def supa_get(path):
     headers = {
@@ -72,8 +98,8 @@ def supa_get(path):
         "Accept": "application/json",
     }
     req = urllib.request.Request(SUPA_URL + path, headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=30)
+    return json.loads(body)
 
 # ── Vetspire products query ───────────────────────────────────────────────────
 PRODUCTS_QUERY = """
