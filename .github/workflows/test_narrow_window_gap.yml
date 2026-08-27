@@ -1,0 +1,29 @@
+name: Test Narrow-Window Query Gap
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: "Vetspire numeric location id"
+        required: true
+      order_item_id:
+        description: "Order item id known to be missing from Supabase"
+        required: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run test
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: |
+          python3 test_narrow_window_gap.py \
+            --location "${{ inputs.location }}" \
+            --order-item-id "${{ inputs.order_item_id }}"
