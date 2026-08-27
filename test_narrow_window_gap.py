@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
 test_narrow_window_gap.py
-Read-only, one-off. Tests whether a specific known-missing Vetspire order
-item appears in a NARROW usageReport query (the exact window shape
-vetspire_intraday_sync.py actually sends: s=today-WIDE_LOOKBACK_DAYS,
-e=today) versus a WIDE query (180-day lookback, the shape
-reconcile_dispensed_items.py / diagnose_gap_wide_range.py use).
+Read-only, one-off. Confirmed (first pass, 7d vs 180d, 3 repeats each):
+order_item_id 4181884522 (Old Orchard, SKU GABAPESUS0066VC, qty 30,
+updatedAt 2026-08-24) is DETERMINISTICALLY absent from every narrow
+(7-day) usageReport query and DETERMINISTICALLY present in every wide
+(180-day) query -- not random flakiness, a real query-width threshold
+effect. This is a new failure mode: every previously-diagnosed Vetspire
+windowing bug in this repo assumed flakiness was independent of query
+width (same window, different call, different result).
 
-Old Orchard order_item_id 4181884522 (SKU GABAPESUS0066VC, qty 30,
-updatedAt 2026-08-24) has been confirmed present in every wide-range
-query this session, yet was never captured by intraday sync despite
-being well inside its rolling 7-day window for 3+ days and hundreds of
-sync runs. Every previously-diagnosed Vetspire windowing bug in this
-repo assumed the flakiness was independent of query width. This checks
-whether query width itself is a factor: if the item is reliably missing
-from narrow queries specifically, that's a new, distinct failure mode
-from the ones already fixed.
+This sweeps intermediate widths (7/14/21/30/45/60/90/120/150/180 days,
+all ending "today") to find roughly where the item starts reliably
+appearing, so vetspire_intraday_sync.py's WIDE_LOOKBACK_DAYS can be set
+to a value proven sufficient instead of guessed -- going straight to
+180 would mean re-upserting ~17k rows every 5 minutes, so the goal is
+the smallest width that reliably works, not the largest that's safe.
 """
 import argparse, json, os, sys, urllib.request
 from datetime import date, timedelta
@@ -73,20 +73,12 @@ def main():
     token = load_token()
     today = date.today()
 
-    print(f"=== Testing query-width sensitivity for order_item_id={args.order_item_id} at location={args.location} ===\n")
+    print(f"=== Sweeping query width for order_item_id={args.order_item_id} at location={args.location} ===\n")
 
-    # Run each width 3x back-to-back -- if it's plain non-determinism, presence should
-    # flip between runs; if it's width-correlated, presence should be consistent per width.
-    for run in range(1, 4):
-        print(f"--- Run {run} ---")
-        narrow_s = (today - timedelta(days=7)).isoformat()
-        narrow_e = today.isoformat()
-        check(token, args.location, narrow_s, narrow_e, "NARROW (7d, intraday-sync shape)", args.order_item_id)
-
-        wide_s = (today - timedelta(days=180)).isoformat()
-        wide_e = today.isoformat()
-        check(token, args.location, wide_s, wide_e, "WIDE (180d, reconcile shape)", args.order_item_id)
-        print()
+    for days in (7, 14, 21, 30, 45, 60, 90, 120, 150, 180):
+        s = (today - timedelta(days=days)).isoformat()
+        e = today.isoformat()
+        check(token, args.location, s, e, f"{days:>3d}d", args.order_item_id)
 
 
 if __name__ == "__main__":
