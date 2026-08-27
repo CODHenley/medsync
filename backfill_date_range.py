@@ -37,9 +37,39 @@ Auth: VETSPIRE_API_TOKEN env var.
 import json
 import os
 import sys
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    This script previously had none of this (unlike every scheduled script in
+    this repo) since workflow_dispatch-only jobs were missed by the "cron:"
+    grep used to find which scripts needed it -- a dispatch that stalled on a
+    single slow/dropped Vetspire or Supabase call had no way to recover short
+    of a human noticing and re-dispatching by hand."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 WIDE_LOOKBACK_DAYS = 180
 
@@ -90,8 +120,8 @@ def gql(token, query, variables=None):
             "Origin":        VETSPIRE_ORIGIN,
         }
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())
+    body, _ = _urlopen_with_retry(req, timeout=60)
+    return json.loads(body)
 
 
 def supa_upsert(records):
@@ -110,10 +140,11 @@ def supa_upsert(records):
     )
     req.get_method = lambda: "POST"
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return r.status
+        _, status = _urlopen_with_retry(req, timeout=30)
+        return status
     except urllib.error.HTTPError as e:
-        print(f"  Supabase error {e.code}: {e.read().decode()[:300]}")
+        body = e.read().decode()
+        print(f"  Supabase error {e.code}: {body[:300]}")
         return e.code
 
 
