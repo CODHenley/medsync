@@ -22,6 +22,20 @@ re-touching recent days constantly is safe, and it means any single-poll
 drop self-heals on the very next run instead of requiring a human to catch
 it via the reconcile red X and manually backfill.
 
+That self-healing assumed the flakiness was independent of query WIDTH,
+not just which date range gets requested. Confirmed false: Old Orchard
+order_item_id 4181884522 (Aug 24 dispense) sat inside this script's 7-day
+window for 3+ days and hundreds of runs and was NEVER captured, yet a
+direct side-by-side test (see test_narrow_window_gap.py) showed it's
+DETERMINISTICALLY absent from every 7-day-wide query and DETERMINISTICALLY
+present in every 14-day-or-wider query, run back to back with identical
+parameters otherwise. A rolling window has to actually be wide enough to
+cross whatever internal threshold causes this, not just wide enough to
+contain the target date — 7 days demonstrably isn't, no matter how many
+times it's re-run. WIDE_LOOKBACK_DAYS is 21 (1.5x the empirically-confirmed
+14-day minimum) to leave margin without paying 180-day query/upsert cost
+every 5 minutes.
+
 One row per real Vetspire order item, keyed by (order_item_id, location_id)
 — NOT aggregated by day/product. This is the single natural key every
 dispensed_items writer in this repo uses (see dispensed_items_backfill.py,
@@ -73,9 +87,10 @@ def _urlopen_with_retry(req, timeout):
             time.sleep(wait)
     raise last_err
 
-WIDE_LOOKBACK_DAYS = 7  # rolling window re-upserted every run; small enough to keep a
-                        # 5-minute-cadence query cheap, wide enough to self-heal any
-                        # single-poll drop well before a human would notice via reconcile
+WIDE_LOOKBACK_DAYS = 21  # rolling window re-upserted every run. 7d demonstrably let a real
+                         # item slip through every single run for 3+ days straight (see
+                         # module docstring) -- 14d is the confirmed minimum that reliably
+                         # captures it, so this is that plus 1.5x margin, not just "wider"
 
 # ── Config ─────────────────────────────────────────────────────────────────
 VETSPIRE_URL    = "https://api.vetspire.com/graphql"
