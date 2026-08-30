@@ -505,6 +505,33 @@ def main():
             print(f'  - patient {row["id"]} ({row.get("species")}): {row.get("problems")}')
     print()
 
+    # 14. Problem (the chronic problem-list feature) is confirmed completely
+    # unused: 0/300 encounters over 180 days, 0/20 patients sampled. But
+    # Patient exposes a SEPARATE field, patientDiagnoses: PatientDiagnosis,
+    # never checked -- likely the actual day-to-day diagnosis record staff
+    # enter per visit, distinct from the optional long-term Problem tracker
+    # many practices skip. Also dumping Diagnosis (referenced by
+    # Problem.diagnosis) since it may be the same underlying illness-name
+    # type reused there.
+    print('=== PatientDiagnosis fields ===')
+    dump_type_fields(args.token, 'PatientDiagnosis')
+
+    print('=== Diagnosis fields ===')
+    dump_type_fields(args.token, 'Diagnosis')
+
+    print('=== Live sample: first 20 patients, patientDiagnoses ===')
+    pd_query = '{ patients(limit: 20) { id species patientDiagnoses { id } } }'
+    r = gql(args.token, pd_query)
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('patients') or []
+        with_pd = [row for row in rows if row.get('patientDiagnoses')]
+        print(f'  fetched {len(rows)} patients, {len(with_pd)} have patientDiagnoses')
+        for row in with_pd[:10]:
+            print(f'  - patient {row["id"]} ({row.get("species")}): {row.get("patientDiagnoses")}')
+    print()
+
 
 if __name__ == '__main__':
     main()
