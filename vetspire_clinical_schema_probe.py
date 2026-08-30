@@ -585,6 +585,55 @@ def main():
                   f'category_id={(appt.get("reasonCategory") or {}).get("id")!r} title={row.get("title")!r}')
     print()
 
+    # 16. The case-dollar-value heatmap (scoutsync_case_maps_and_heatmaps.sql's
+    # v_case_heatmap) turned out to always compute case_value=0 in production:
+    # invoice_line_items is written by vetspire_financial_sync.py from
+    # salesReport, which only returns day-level totals broken down by
+    # provider/product-category -- encounter_id is never set on those rows
+    # because salesReport has no per-encounter granularity, so the view's
+    # `join invoice_line_items on encounter_id = encounters.id` never matches
+    # anything. ReportBreakdown's enum (dumped in an earlier run) includes
+    # APPOINTMENT_TIME -- checking here whether that breakdown actually
+    # returns a real per-appointment timestamp (which would let the dashboard
+    # compute day-of-week/hour-of-day directly from salesReport, no encounter
+    # join needed) or just another coarse bucket like the DAY segment did.
+    print('=== salesReport with APPOINTMENT_TIME breakdown (real row shape, not guessed) ===')
+    at_query = '''
+    query($lids:[ID!], $s:Date, $e:Date){
+        salesReport(locationIds:$lids, startDate:$s, endDate:$e,
+                    breakdowns:[APPOINTMENT_TIME])
+    }
+    '''
+    week_ago = (date.today() - timedelta(days=7)).isoformat()
+    r = gql(args.token, at_query, {'lids': ['28253'], 's': week_ago, 'e': yesterday})
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        raw = r.get('data', {}).get('salesReport', '[]')
+        rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        print(f'  {len(rows)} rows over {week_ago}..{yesterday}')
+        for row in rows[:10]:
+            print(f'  - {row}')
+    print()
+
+    print('=== salesReport with APPOINTMENT_TIME + PROVIDER_ID breakdown (paired, for comparison) ===')
+    at2_query = '''
+    query($lids:[ID!], $s:Date, $e:Date){
+        salesReport(locationIds:$lids, startDate:$s, endDate:$e,
+                    breakdowns:[APPOINTMENT_TIME, PROVIDER_ID])
+    }
+    '''
+    r2 = gql(args.token, at2_query, {'lids': ['28253'], 's': week_ago, 'e': yesterday})
+    if 'errors' in r2:
+        print(f'  ERROR: {r2["errors"]}')
+    else:
+        raw2 = r2.get('data', {}).get('salesReport', '[]')
+        rows2 = json.loads(raw2) if isinstance(raw2, str) else (raw2 or [])
+        print(f'  {len(rows2)} rows over {week_ago}..{yesterday}')
+        for row in rows2[:10]:
+            print(f'  - {row}')
+    print()
+
 
 if __name__ == '__main__':
     main()
