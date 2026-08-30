@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>ScoutSync — Executive Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
   --navy:      #1C2B4A;
@@ -200,6 +202,34 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 #refresh-btn .spin { display: inline-block; transition: transform .5s ease; }
 #refresh-btn.loading .spin { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Panel switching ── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Heatmap grid (case volume / case dollar value) ── */
+.heatmap-wrap { display: flex; gap: 6px; }
+.heatmap-hourlabels { display: grid; grid-auto-rows: 15px; gap: 2px; padding-top: 20px; width: 32px; flex-shrink: 0; }
+.heatmap-hourlabels span { font-size: 9.5px; color: var(--ink-3); line-height: 15px; text-align: right; }
+.heatmap-grid-outer { flex: 1; overflow-x: auto; }
+.heatmap-daylabels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; height: 16px; margin-bottom: 4px; }
+.heatmap-daylabels span { font-size: 10.5px; color: var(--ink-3); text-align: center; font-weight: 600; }
+.heatmap-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 15px; gap: 2px; min-width: 340px; }
+.heatmap-cell { border-radius: 2px; cursor: default; }
+.heatmap-legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 11px; color: var(--muted); }
+.heatmap-legend-scale { display: flex; height: 10px; width: 120px; border-radius: 3px; overflow: hidden; }
+.heatmap-legend-scale span { flex: 1; }
+
+/* ── Chicagoland map ── */
+#chicago-map { height: 480px; border-radius: 10px; z-index: 0; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 11.5px; color: var(--ink-2); }
+.map-legend .legend-item .legend-swatch { border-radius: 50%; }
+.zip-popup { font-size: 12.5px; min-width: 190px; }
+.zip-popup .zp-title { font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.zip-popup .zp-count { color: var(--muted); margin-bottom: 6px; }
+.zip-popup table { width: 100%; border-collapse: collapse; }
+.zip-popup td { padding: 2px 0; font-size: 11.5px; color: var(--ink-2); }
+.zip-popup td:last-child { text-align: right; font-weight: 700; color: var(--text); }
 </style>
 </head>
 <body>
@@ -238,7 +268,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 
 <nav class="tabs">
   <button class="active" data-tab="financial">Financial</button>
-  <button class="soon" disabled>Clinical Operations<span class="tag">Soon</span></button>
+  <button data-tab="clinical">Clinical Operations</button>
   <button class="soon" disabled>Facilities Operations<span class="tag">Soon</span></button>
 </nav>
 
@@ -281,6 +311,39 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div id="financial-empty"></div>
   </section>
 
+  <section class="panel" id="panel-clinical">
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Case Volume Heatmap</h2><span class="sub">"Case" = an encounter where an exam was performed</span></div>
+    <div class="chart-card">
+      <div class="chart-title">Cases by day of week &amp; hour of day</div>
+      <div class="chart-note">Darker = more cases started in that hour, selected range</div>
+      <div id="volume-heatmap"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Case Dollar-Value Heatmap</h2></div>
+    <div class="chart-card">
+      <div class="chart-title">Revenue from cases by day of week &amp; hour of day</div>
+      <div class="chart-note">Darker = more dollar value from cases started in that hour — invoice line items joined back through each case's start time</div>
+      <div id="value-heatmap"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Chicagoland Case Map</h2>
+      <span class="sub">Practice locations + case density by client ZIP code</span></div>
+    <div class="chart-card">
+      <div class="chart-note" id="geo-note">Circle size = case count in that ZIP. Click a circle for its top reasons for visit (free-text, not a coded diagnosis).</div>
+      <div id="chicago-map"></div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="legend-swatch" style="width:12px;height:12px;background:var(--c-financial)"></span>Practice location</div>
+        <div class="legend-item"><span class="legend-swatch" style="width:12px;height:12px;background:var(--c-clinical);opacity:.55"></span>Client ZIP (sized by case count)</div>
+      </div>
+    </div>
+
+    <div id="clinical-empty"></div>
+  </section>
+
   <div class="foot-note">
     ScoutSync Executive Dashboard — reads the same Supabase project MedSync already uses (RLS-scoped anon
     access). Numbers cross-checked live against Vetspire via <code>vetspire_financial_reconciliation_check.py</code>.
@@ -301,6 +364,126 @@ const LOCATIONS = [
   { key: 'wl', name: 'West Loop',    uuid: '11111111-0000-0000-0000-000000000003', vid: '24356' },
   { key: 'wh', name: 'Wheaton',      uuid: '11111111-0000-0000-0000-000000000004', vid: '28253' },
 ];
+
+let activeTab = 'financial';
+
+// Approximate neighborhood/downtown coords for each practice location — real
+// street addresses aren't stored anywhere client-facing (matches the
+// existing lean-client-data convention), so these are landmark-level, not
+// exact building coordinates.
+const PRACTICE_LOCATIONS = [
+  { name: 'Lincoln Park', lat: 41.9214, lng: -87.6513 },
+  { name: 'Old Orchard',  lat: 42.0451, lng: -87.7392 },
+  { name: 'West Loop',    lat: 41.8827, lng: -87.6478 },
+  { name: 'Wheaton',      lat: 41.8661, lng: -88.1070 },
+];
+
+// RGB triplets matching --c-clinical (#2B6CB0) / --c-financial (#C83803) so
+// the heatmap cells can vary opacity via rgba() — CSS custom properties
+// can't be decomposed into components at runtime.
+const CLINICAL_RGB = '43,108,176';
+const FINANCIAL_RGB = '200,56,3';
+
+// Chicagoland ZIP -> approximate centroid, covering Chicago proper plus the
+// North Shore and near-west suburbs around the 4 practice locations. A
+// client ZIP outside this table simply isn't plotted (see the coverage
+// note built in renderChicagoMap) rather than guessing a coordinate.
+const ZIP_CENTROIDS = {
+  '60601': { lat: 41.8858, lng: -87.6229, city: 'Chicago (Loop)' },
+  '60602': { lat: 41.8830, lng: -87.6298, city: 'Chicago (Loop)' },
+  '60603': { lat: 41.8805, lng: -87.6251, city: 'Chicago (Loop)' },
+  '60604': { lat: 41.8788, lng: -87.6298, city: 'Chicago (Loop)' },
+  '60605': { lat: 41.8721, lng: -87.6242, city: 'Chicago (South Loop)' },
+  '60606': { lat: 41.8830, lng: -87.6367, city: 'Chicago (Loop)' },
+  '60607': { lat: 41.8745, lng: -87.6534, city: 'Chicago (West Loop)' },
+  '60608': { lat: 41.8540, lng: -87.6690, city: 'Chicago (Pilsen)' },
+  '60609': { lat: 41.8112, lng: -87.6520, city: 'Chicago (New City)' },
+  '60610': { lat: 41.9030, lng: -87.6360, city: 'Chicago (Near North)' },
+  '60611': { lat: 41.8950, lng: -87.6205, city: 'Chicago (Streeterville)' },
+  '60612': { lat: 41.8801, lng: -87.6779, city: 'Chicago (Near West Side)' },
+  '60613': { lat: 41.9472, lng: -87.6608, city: 'Chicago (Lakeview)' },
+  '60614': { lat: 41.9214, lng: -87.6513, city: 'Chicago (Lincoln Park)' },
+  '60615': { lat: 41.8010, lng: -87.6011, city: 'Chicago (Hyde Park)' },
+  '60616': { lat: 41.8484, lng: -87.6318, city: 'Chicago (Chinatown)' },
+  '60617': { lat: 41.7280, lng: -87.5570, city: 'Chicago (South Chicago)' },
+  '60618': { lat: 41.9470, lng: -87.7020, city: 'Chicago (Avondale)' },
+  '60619': { lat: 41.7440, lng: -87.6060, city: 'Chicago (Chatham)' },
+  '60620': { lat: 41.7420, lng: -87.6580, city: 'Chicago (Auburn Gresham)' },
+  '60621': { lat: 41.7790, lng: -87.6440, city: 'Chicago (Englewood)' },
+  '60622': { lat: 41.9020, lng: -87.6770, city: 'Chicago (Wicker Park)' },
+  '60623': { lat: 41.8480, lng: -87.7150, city: 'Chicago (Little Village)' },
+  '60624': { lat: 41.8800, lng: -87.7140, city: 'Chicago (East Garfield Park)' },
+  '60625': { lat: 41.9700, lng: -87.7080, city: 'Chicago (Albany Park)' },
+  '60626': { lat: 42.0090, lng: -87.6690, city: 'Chicago (Rogers Park)' },
+  '60628': { lat: 41.6910, lng: -87.6210, city: 'Chicago (Roseland)' },
+  '60629': { lat: 41.7780, lng: -87.7040, city: 'Chicago (Gage Park)' },
+  '60630': { lat: 41.9670, lng: -87.7590, city: 'Chicago (Jefferson Park)' },
+  '60631': { lat: 42.0060, lng: -87.8130, city: 'Chicago (Edison Park)' },
+  '60632': { lat: 41.8130, lng: -87.7020, city: 'Chicago (Brighton Park)' },
+  '60633': { lat: 41.6540, lng: -87.5480, city: 'Chicago (Hegewisch)' },
+  '60634': { lat: 41.9440, lng: -87.7660, city: 'Chicago (Portage Park)' },
+  '60636': { lat: 41.7780, lng: -87.6650, city: 'Chicago (West Englewood)' },
+  '60637': { lat: 41.7790, lng: -87.6010, city: 'Chicago (Woodlawn)' },
+  '60638': { lat: 41.7850, lng: -87.7530, city: 'Chicago (Garfield Ridge)' },
+  '60639': { lat: 41.9210, lng: -87.7590, city: 'Chicago (Belmont Cragin)' },
+  '60640': { lat: 41.9700, lng: -87.6600, city: 'Chicago (Uptown)' },
+  '60641': { lat: 41.9440, lng: -87.7440, city: 'Chicago (Belmont Central)' },
+  '60642': { lat: 41.9010, lng: -87.6630, city: 'Chicago (Noble Square)' },
+  '60643': { lat: 41.7000, lng: -87.6680, city: 'Chicago (Beverly)' },
+  '60644': { lat: 41.8830, lng: -87.7630, city: 'Chicago (Austin)' },
+  '60645': { lat: 42.0080, lng: -87.6900, city: 'Chicago (West Ridge)' },
+  '60646': { lat: 41.9910, lng: -87.7480, city: 'Chicago (Sauganash)' },
+  '60647': { lat: 41.9210, lng: -87.7020, city: 'Chicago (Logan Square)' },
+  '60649': { lat: 41.7650, lng: -87.5720, city: 'Chicago (South Shore)' },
+  '60651': { lat: 41.8990, lng: -87.7350, city: 'Chicago (Humboldt Park)' },
+  '60652': { lat: 41.7460, lng: -87.7100, city: 'Chicago (Ashburn)' },
+  '60653': { lat: 41.8280, lng: -87.6110, city: 'Chicago (Bronzeville)' },
+  '60654': { lat: 41.8930, lng: -87.6350, city: 'Chicago (River North)' },
+  '60655': { lat: 41.6960, lng: -87.7120, city: 'Chicago (Mount Greenwood)' },
+  '60656': { lat: 41.9800, lng: -87.8060, city: 'Chicago (Norwood Park)' },
+  '60657': { lat: 41.9400, lng: -87.6540, city: 'Chicago (Lakeview)' },
+  '60659': { lat: 41.9950, lng: -87.6960, city: 'Chicago (Peterson Park)' },
+  '60660': { lat: 41.9920, lng: -87.6600, city: 'Chicago (Edgewater)' },
+  '60661': { lat: 41.8830, lng: -87.6420, city: 'Chicago (Near West Side)' },
+  '60076': { lat: 42.0339, lng: -87.7503, city: 'Skokie' },
+  '60077': { lat: 42.0400, lng: -87.7370, city: 'Skokie' },
+  '60091': { lat: 42.0700, lng: -87.7237, city: 'Wilmette' },
+  '60093': { lat: 42.1350, lng: -87.7590, city: 'Glencoe' },
+  '60062': { lat: 42.1275, lng: -87.8203, city: 'Northbrook' },
+  '60025': { lat: 42.0700, lng: -87.7873, city: 'Glenview' },
+  '60026': { lat: 42.0850, lng: -87.8010, city: 'Glenview' },
+  '60053': { lat: 42.0400, lng: -87.7830, city: 'Morton Grove' },
+  '60714': { lat: 42.0190, lng: -87.7920, city: 'Niles' },
+  '60712': { lat: 42.0060, lng: -87.7330, city: 'Lincolnwood' },
+  '60035': { lat: 42.1815, lng: -87.8000, city: 'Highland Park' },
+  '60015': { lat: 42.1700, lng: -87.8450, city: 'Deerfield' },
+  '60201': { lat: 42.0451, lng: -87.6877, city: 'Evanston' },
+  '60202': { lat: 42.0350, lng: -87.6980, city: 'Evanston' },
+  '60203': { lat: 42.0500, lng: -87.7150, city: 'Evanston' },
+  '60068': { lat: 42.0111, lng: -87.8406, city: 'Park Ridge' },
+  '60016': { lat: 42.0334, lng: -87.8834, city: 'Des Plaines' },
+  '60018': { lat: 42.0000, lng: -87.8570, city: 'Des Plaines' },
+  '60706': { lat: 41.9630, lng: -87.8140, city: 'Norridge' },
+  '60187': { lat: 41.8661, lng: -88.1070, city: 'Wheaton' },
+  '60189': { lat: 41.8580, lng: -88.1470, city: 'Wheaton' },
+  '60137': { lat: 41.8770, lng: -88.0670, city: 'Glen Ellyn' },
+  '60148': { lat: 41.8800, lng: -88.0084, city: 'Lombard' },
+  '60181': { lat: 41.8892, lng: -87.9787, city: 'Villa Park' },
+  '60126': { lat: 41.8994, lng: -87.9403, city: 'Elmhurst' },
+  '60190': { lat: 41.8720, lng: -88.1500, city: 'Winfield' },
+  '60188': { lat: 41.9120, lng: -88.1340, city: 'Carol Stream' },
+  '60101': { lat: 41.9319, lng: -88.0084, city: 'Addison' },
+  '60108': { lat: 41.9530, lng: -88.0870, city: 'Bloomingdale' },
+  '60185': { lat: 41.8880, lng: -88.2020, city: 'West Chicago' },
+  '60540': { lat: 41.7508, lng: -88.1535, city: 'Naperville' },
+  '60563': { lat: 41.7770, lng: -88.1470, city: 'Naperville' },
+  '60564': { lat: 41.7250, lng: -88.1620, city: 'Naperville' },
+  '60565': { lat: 41.7590, lng: -88.1290, city: 'Naperville' },
+  '60515': { lat: 41.8090, lng: -88.0120, city: 'Downers Grove' },
+  '60516': { lat: 41.7890, lng: -87.9930, city: 'Downers Grove' },
+  '60523': { lat: 41.8390, lng: -87.9530, city: 'Oak Brook' },
+  '60559': { lat: 41.7960, lng: -87.9720, city: 'Westmont' },
+};
 
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmt$(n) { return n === null || n === undefined ? '$0' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
@@ -916,25 +1099,234 @@ async function loadFinancial() {
     'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+// ── Case heatmaps (day-of-week x hour-of-day) ──
+function hourLabelShort(h) {
+  const period = h < 12 ? 'a' : 'p';
+  let hh = h % 12; if (hh === 0) hh = 12;
+  return hh + period;
+}
+function hourLabelFull(h) {
+  const fmt = x => { const period = x < 12 ? 'AM' : 'PM'; let d = x % 12; if (d === 0) d = 12; return d + ':00 ' + period; };
+  return `${fmt(h)}–${fmt((h + 1) % 24)}`;
+}
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// rows: one per case (v_case_heatmap), each with day_of_week (0=Sun..6=Sat),
+// hour_of_day (0-23), case_value — aggregated here, not pre-aggregated in
+// SQL, so both the volume and dollar-value grids come from a single fetch.
+function buildHeatmapMatrices(rows) {
+  const volume = Array.from({ length: 7 }, () => Array(24).fill(0));
+  const value = Array.from({ length: 7 }, () => Array(24).fill(0));
+  rows.forEach(r => {
+    const d = Number(r.day_of_week), h = Number(r.hour_of_day);
+    if (Number.isNaN(d) || Number.isNaN(h) || d < 0 || d > 6 || h < 0 || h > 23) return;
+    volume[d][h] += 1;
+    value[d][h] += Number(r.case_value || 0);
+  });
+  return { volume, value };
+}
+
+// matrix[day][hour] = numeric value. A cell with 0 activity is rendered
+// near-invisible rather than skipped — same "0 is real data" philosophy as
+// the revenue trend chart's 0-filled days.
+function renderHeatmapGrid(el, matrix, opts) {
+  el.innerHTML = '';
+  const max = Math.max(...matrix.flat(), 0);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'heatmap-wrap';
+
+  const hourLabels = document.createElement('div');
+  hourLabels.className = 'heatmap-hourlabels';
+  for (let h = 0; h < 24; h++) {
+    const span = document.createElement('span');
+    if (h % 3 === 0) span.textContent = hourLabelShort(h);
+    hourLabels.appendChild(span);
+  }
+  wrap.appendChild(hourLabels);
+
+  const outer = document.createElement('div');
+  outer.className = 'heatmap-grid-outer';
+
+  const dayLabels = document.createElement('div');
+  dayLabels.className = 'heatmap-daylabels';
+  ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
+    const span = document.createElement('span'); span.textContent = d; dayLabels.appendChild(span);
+  });
+  outer.appendChild(dayLabels);
+
+  const grid = document.createElement('div');
+  grid.className = 'heatmap-grid';
+  for (let h = 0; h < 24; h++) {
+    for (let d = 0; d < 7; d++) {
+      const v = matrix[d][h] || 0;
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      const alpha = max > 0 && v > 0 ? 0.08 + 0.84 * (v / max) : 0.04;
+      cell.style.background = `rgba(${opts.rgb}, ${alpha.toFixed(2)})`;
+      cell.title = `${DAY_NAMES[d]}, ${hourLabelFull(h)}: ${opts.formatValue(v)}`;
+      grid.appendChild(cell);
+    }
+  }
+  outer.appendChild(grid);
+  wrap.appendChild(outer);
+  el.appendChild(wrap);
+
+  if (max > 0) {
+    const legend = document.createElement('div');
+    legend.className = 'heatmap-legend';
+    legend.innerHTML = `<span>Less</span><div class="heatmap-legend-scale">${
+      [0.08, 0.3, 0.5, 0.7, 0.92].map(a => `<span style="background:rgba(${opts.rgb},${a})"></span>`).join('')
+    }</div><span>More</span>`;
+    el.appendChild(legend);
+  }
+}
+
+// ── Chicagoland case map ──
+let chicagoMap = null;
+let mapMarkersLayer = null;
+
+function initChicagoMap() {
+  if (chicagoMap) return;
+  chicagoMap = L.map('chicago-map', { scrollWheelZoom: false }).setView([41.95, -87.85], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18,
+  }).addTo(chicagoMap);
+  PRACTICE_LOCATIONS.forEach(loc => {
+    L.circleMarker([loc.lat, loc.lng], {
+      radius: 8, color: '#C83803', fillColor: '#C83803', fillOpacity: 1, weight: 2,
+    }).bindTooltip(loc.name, { direction: 'top' }).addTo(chicagoMap);
+  });
+  mapMarkersLayer = L.layerGroup().addTo(chicagoMap);
+}
+
+// geoRows: one per case (v_case_geo) with postal_code/city/state/chief_complaint.
+function renderChicagoMap(geoRows) {
+  initChicagoMap();
+  mapMarkersLayer.clearLayers();
+
+  const byZip = {};
+  geoRows.forEach(r => {
+    const zip = (r.postal_code || '').trim();
+    if (!zip) return;
+    const b = byZip[zip] = byZip[zip] || { count: 0, reasons: {}, city: r.city };
+    b.count += 1;
+    const reason = (r.chief_complaint || '').trim();
+    if (reason) b.reasons[reason] = (b.reasons[reason] || 0) + 1;
+  });
+
+  const zipEntries = Object.entries(byZip);
+  const known = zipEntries.filter(([zip]) => ZIP_CENTROIDS[zip]);
+  const unknown = zipEntries.filter(([zip]) => !ZIP_CENTROIDS[zip]);
+  const maxCount = Math.max(...known.map(([, b]) => b.count), 1);
+
+  known.forEach(([zip, b]) => {
+    const c = ZIP_CENTROIDS[zip];
+    const radius = 4 + Math.sqrt(b.count / maxCount) * 22;
+    const topReasons = Object.entries(b.reasons).sort((a, b2) => b2[1] - a[1]).slice(0, 5);
+    L.circleMarker([c.lat, c.lng], {
+      radius, color: '#2B6CB0', fillColor: '#2B6CB0', fillOpacity: 0.45, weight: 1,
+    }).bindPopup(`
+      <div class="zip-popup">
+        <div class="zp-title">${esc(zip)} — ${esc(c.city)}</div>
+        <div class="zp-count">${fmtN(b.count)} case${b.count === 1 ? '' : 's'}</div>
+        ${topReasons.length
+          ? `<table>${topReasons.map(([r, n]) => `<tr><td>${esc(r)}</td><td>${fmtN(n)}</td></tr>`).join('')}</table>`
+          : `<div style="color:var(--ink-3)">No reason-for-visit on file</div>`}
+      </div>`).addTo(mapMarkersLayer);
+  });
+
+  const note = document.getElementById('geo-note');
+  const mappedCount = known.reduce((a, [, b]) => a + b.count, 0);
+  const totalCount = zipEntries.reduce((a, [, b]) => a + b.count, 0);
+  const unknownCount = unknown.reduce((a, [, b]) => a + b.count, 0);
+  note.textContent = `Circle size = case count in that ZIP (${fmtN(mappedCount)} of ${fmtN(totalCount)} ZIP-coded cases mapped` +
+    (unknownCount ? `; ${fmtN(unknownCount)} in ZIP codes outside this map's coverage area` : '') +
+    `). Click a circle for its top reasons for visit (free-text, not a coded diagnosis).`;
+}
+
+// ── Clinical Operations (heatmaps + geo map) data + rendering ──
+async function loadClinicalGeo() {
+  const from = isoDaysAgo(selectedRangeDays());
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+
+  // Both views are per-encounter grain (not pre-aggregated) — explicit high
+  // limits so a wide 365-day range across 4 locations can't get silently
+  // truncated at whatever this Supabase project's default row cap is.
+  const [heatRes, geoRes] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,case_value&started_at=gte.${from}${locFilter}&limit=20000`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_case_geo?select=postal_code,city,state,chief_complaint&visit_date=gte.${from}${locFilter}&limit=20000`, { headers: HEADERS }),
+  ]);
+
+  if (!heatRes.ok || !geoRes.ok) {
+    document.getElementById('clinical-empty').innerHTML = `<div class="empty-note">
+      Couldn't load <code>v_case_heatmap</code> / <code>v_case_geo</code> — run
+      <code>scoutsync_case_maps_and_heatmaps.sql</code> in the Supabase SQL editor if you haven't yet.
+    </div>`;
+    document.getElementById('volume-heatmap').innerHTML = '';
+    document.getElementById('value-heatmap').innerHTML = '';
+    return;
+  }
+  document.getElementById('clinical-empty').innerHTML = '';
+
+  const heatRows = await heatRes.json();
+  const geoRows = await geoRes.json();
+
+  if (!heatRows.length) {
+    document.getElementById('volume-heatmap').innerHTML = '<div class="chart-note">No cases in this range.</div>';
+    document.getElementById('value-heatmap').innerHTML = '<div class="chart-note">No cases in this range.</div>';
+  } else {
+    const { volume, value } = buildHeatmapMatrices(heatRows);
+    renderHeatmapGrid(document.getElementById('volume-heatmap'), volume, {
+      rgb: CLINICAL_RGB, formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases'),
+    });
+    renderHeatmapGrid(document.getElementById('value-heatmap'), value, {
+      rgb: FINANCIAL_RGB, formatValue: v => fmt$(v),
+    });
+  }
+
+  renderChicagoMap(geoRows);
+}
+
 // Manual refresh — pulls fresh data and recomputes hero stats, all three
 // charts, and every insight. Button shows a spin + disables itself mid-fetch
 // so a second click can't stack a duplicate in-flight request.
+function loadActiveTab() {
+  return activeTab === 'clinical' ? loadClinicalGeo() : loadFinancial();
+}
+
 async function refreshNow() {
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true; btn.classList.add('loading');
-  try { await loadFinancial(); }
+  try { await loadActiveTab(); }
   finally { btn.disabled = false; btn.classList.remove('loading'); }
 }
 
-document.getElementById('loc-select').addEventListener('change', loadFinancial);
-document.getElementById('range-select').addEventListener('change', loadFinancial);
+document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('active')) return;
+    document.querySelectorAll('nav.tabs button[data-tab]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('main > .panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    activeTab = btn.dataset.tab;
+    loadActiveTab();
+    // Leaflet sizes itself off the container's layout at init time — if that
+    // happened while the panel was still display:none this recovers it.
+    if (activeTab === 'clinical' && chicagoMap) setTimeout(() => chicagoMap.invalidateSize(), 0);
+  });
+});
+
+document.getElementById('loc-select').addEventListener('change', loadActiveTab);
+document.getElementById('range-select').addEventListener('change', loadActiveTab);
 document.getElementById('overlay-toggle').addEventListener('change', renderTrendSection);
 document.getElementById('refresh-btn').addEventListener('click', refreshNow);
 
 // Auto-refresh twice a day (every 12h) so insights stay current on a tab left
 // open on a screen — the underlying Vetspire syncs run every 4 hours, this is
 // just how often this open page re-polls and recomputes against them.
-setInterval(loadFinancial, 12 * 60 * 60 * 1000);
+setInterval(loadActiveTab, 12 * 60 * 60 * 1000);
 
 loadFinancial();
 </script>
