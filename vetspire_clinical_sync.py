@@ -81,6 +81,32 @@ def had_exam(encounter_products):
     return any("exam" in (p.get("name") or "").lower() for p in (encounter_products or []))
 
 
+# Estimated dollar value of a case, for the case-value heatmap. There's no
+# real per-encounter revenue source in Vetspire: invoice_line_items is
+# populated from salesReport, which only breaks down by day/provider/
+# category (confirmed via vetspire_clinical_schema_probe.py -- it has no
+# encounter-level grain and never sets encounter_id, and salesReport
+# outright rejects an APPOINTMENT_TIME breakdown despite it appearing in
+# ReportBreakdown's own enum). This sums quantity * product.unitPrice
+# across the encounter's own encounterProducts instead -- confirmed
+# populated and real (e.g. "Exam - Urgent Care" at $135.00). It's the
+# catalog list price, not the final invoiced/collected total, so it won't
+# reflect discounts, membership pricing, taxes, or refunds -- labeled as
+# "estimated" everywhere it's shown, same treatment as chief_complaint
+# being labeled reason-for-visit rather than diagnosis.
+def estimated_case_value(encounter_products):
+    total = 0.0
+    for p in (encounter_products or []):
+        product = p.get("product") or {}
+        try:
+            unit_price = float(product.get("unitPrice") or 0)
+            quantity = float(p.get("quantity") or 0)
+        except (TypeError, ValueError):
+            continue
+        total += unit_price * quantity
+    return round(total, 2)
+
+
 def to_date(dt_str):
     return (dt_str or "")[:10] or None
 
@@ -157,7 +183,7 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
       completedAt
       reason
     }
-    encounterProducts { name }
+    encounterProducts { name quantity product { unitPrice } }
     diagnostics { id name providerId }
   }
 }
@@ -309,6 +335,7 @@ def main():
                     "completed_at": appt.get("completedAt") or enc.get("signedDatetime"),
                     "had_exam": had_exam(enc.get("encounterProducts")),
                     "chief_complaint": appt.get("reason"),
+                    "estimated_case_value": estimated_case_value(enc.get("encounterProducts")),
                 })
 
                 # Diagnostics = tests/procedures ordered this encounter (Vetspire's
