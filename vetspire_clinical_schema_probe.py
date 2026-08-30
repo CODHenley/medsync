@@ -652,10 +652,19 @@ def main():
     print('=== Live sample: encounterProducts with product pricing (field name from the dump above) ===')
     r = gql(args.token, '{ __type(name: "Product") { fields { name type { name kind ofType { name } } } } }')
     prod_fields = {f['name']: f for f in ((r.get('data') or {}).get('__type') or {}).get('fields', [])}
-    price_field = next((n for n in prod_fields if n.lower() in
-                        ('price', 'unitprice', 'retailprice', 'saleprice', 'sellprice', 'listprice')), None)
+    # `price` also matched but is a ProductPrice object needing its own subfield
+    # selection (confirmed by the previous run's error) -- only consider
+    # scalar-typed candidates so the live query below doesn't need a second
+    # guess-and-fix round. unitPrice ranks first since it's the most literal
+    # per-unit price name.
+    by_lower = {n.lower(): n for n in prod_fields}
+    scalar_price_names = ['unitprice', 'unitfixedprice', 'retailprice', 'saleprice', 'sellprice', 'listprice']
+    price_field = next(
+        (by_lower[want] for want in scalar_price_names
+         if want in by_lower and prod_fields[by_lower[want]]['type'].get('name') not in (None, 'ProductPrice')),
+        None)
     if not price_field:
-        print(f'  (no obvious price field on Product -- got: {sorted(prod_fields)})')
+        print(f'  (no obvious scalar price field on Product -- got: {sorted(prod_fields)})')
     else:
         print(f'  using product.{price_field}')
         ep_query = f'''
