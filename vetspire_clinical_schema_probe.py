@@ -468,6 +468,43 @@ def main():
             print(f'  - encounter {row["id"]}: {row.get("problems")}')
     print()
 
+    # 13. 0/100 recent encounters had any problems attached via
+    # encounter.problems -- before concluding the Problem list feature is
+    # simply unused at this practice, check two other explanations: (a) a
+    # much wider window (180d) in case problems attach only to older,
+    # already-resolved conditions, not this month's visits, and (b) Patient
+    # itself might expose problems as the patient's whole-chart problem
+    # list, independent of any one encounter, which the encounter-scoped
+    # query above would never surface.
+    print('=== Patient fields ===')
+    dump_type_fields(args.token, 'Patient')
+
+    print('=== Live sample: last 180 days of encounters, problems detail ===')
+    since_180 = (date.today() - timedelta(days=180)).isoformat() + 'T00:00:00'
+    r = gql(args.token, problem_query, {'s': since_180, 'limit': 300})
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('encounters') or []
+        with_problems = [row for row in rows if row.get('problems')]
+        print(f'  fetched {len(rows)} encounters, {len(with_problems)} have problems')
+        for row in with_problems[:15]:
+            print(f'  - encounter {row["id"]}: {row.get("problems")}')
+    print()
+
+    print('=== Live sample: first 20 patients, problems via patient (not encounter) ===')
+    patient_query = '{ patients(limit: 20) { id species problems { id name isActive onsetDate } } }'
+    r = gql(args.token, patient_query)
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('patients') or []
+        with_problems = [row for row in rows if row.get('problems')]
+        print(f'  fetched {len(rows)} patients, {len(with_problems)} have problems')
+        for row in with_problems[:10]:
+            print(f'  - patient {row["id"]} ({row.get("species")}): {row.get("problems")}')
+    print()
+
 
 if __name__ == '__main__':
     main()
