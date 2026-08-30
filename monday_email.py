@@ -11,8 +11,35 @@ Runs via GitHub Actions every Monday at 8:07am CT.
 Requires: RESEND_API_KEY GitHub Actions secret.
 """
 
-import json, os, sys, urllib.request, urllib.error
+import json, os, sys, time, urllib.request, urllib.error
 from datetime import date, timedelta
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    Without this, supa_get()'s broad except-and-return-[] swallowed a transient
+    error the same as "no rows", silently sending an incomplete insights email
+    instead of a job failure or a retried, complete one."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 SUPA_URL     = "https://aemkdummdrmxtwrkggjw.supabase.co"
 SUPA_KEY     = (
@@ -54,9 +81,9 @@ MIST = "#8A93A8"
 def supa_get(path):
     req = urllib.request.Request(SUPA_URL + path, headers=H)
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = json.loads(r.read())
-            return data if isinstance(data, list) else []
+        body, _ = _urlopen_with_retry(req, timeout=30)
+        data = json.loads(body)
+        return data if isinstance(data, list) else []
     except urllib.error.HTTPError as e:
         print(f"  Supabase {e.code} on {path[:80]}: {e.read().decode()[:120]}")
         return []
@@ -628,10 +655,10 @@ def send_email(resend_key, to_email, subject, html):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            result = json.loads(r.read())
-            print(f"  ✓ {to_email} (id: {result.get('id','')})")
-            return True
+        body, _ = _urlopen_with_retry(req, timeout=30)
+        result = json.loads(body)
+        print(f"  ✓ {to_email} (id: {result.get('id','')})")
+        return True
     except urllib.error.HTTPError as e:
         print(f"  ✗ {to_email}: {e.code} {e.read().decode()[:200]}")
         return False
