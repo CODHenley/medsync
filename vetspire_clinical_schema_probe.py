@@ -532,6 +532,48 @@ def main():
             print(f'  - patient {row["id"]} ({row.get("species")}): {row.get("patientDiagnoses")}')
     print()
 
+    # 15. encounters.chief_complaint has been a column in the schema since
+    # the original migration but has NEVER actually been populated by any
+    # sync -- no field in vetspire_clinical_sync.py or this probe's own
+    # Encounter field dump maps to it (Encounter has no chiefComplaint
+    # field at all). appointmentReasonCategories turned up earlier as a
+    # root query field matching "categor" -- checking Appointment's own
+    # fields (never dumped) plus root fields matching "reason" to find
+    # where reason-for-visit data actually lives before building anything
+    # on chief_complaint as populated data it never was.
+    print('=== Appointment fields ===')
+    dump_type_fields(args.token, 'Appointment')
+
+    print('=== Root query fields matching "reason" ===')
+    r = gql(args.token, '{ __schema { queryType { fields { name description } } } }')
+    fields = (r.get('data') or {}).get('__schema', {}).get('queryType', {}).get('fields', [])
+    for f in fields:
+        if 'reason' in f.get('name', '').lower():
+            print(f'  ★ {f["name"]}: {f.get("description", "")}')
+    print()
+
+    print('=== Live sample: last 30 days of encounters, appointment reason detail ===')
+    from datetime import date, timedelta
+    since = (date.today() - timedelta(days=30)).isoformat() + 'T00:00:00'
+    reason_query = '''
+    query($s: NaiveDateTime, $limit: Int) {
+      encounters(updatedAtStart: $s, limit: $limit) {
+        id
+        title
+        appointment { id reason { id name } }
+      }
+    }
+    '''
+    r = gql(args.token, reason_query, {'s': since, 'limit': 30})
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('encounters') or []
+        print(f'  fetched {len(rows)} encounters')
+        for row in rows[:15]:
+            print(f'  - encounter {row["id"]}: title={row.get("title")!r} appointment={row.get("appointment")}')
+    print()
+
 
 if __name__ == '__main__':
     main()
