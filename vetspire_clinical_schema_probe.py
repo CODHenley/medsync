@@ -634,6 +634,50 @@ def main():
             print(f'  - {row}')
     print()
 
+    # 17. salesReport flatly rejects APPOINTMENT_TIME despite it appearing in
+    # ReportBreakdown's enum values (confirmed: 'unprocessable_entity', only
+    # LOCATION_ID/PROVIDER_ID/REVENUE_CENTER_ID/PRODUCT_TYPE_ID/
+    # PRODUCT_CATEGORY_ID/PRODUCT_ID/DEPARTMENT_ID/CLIENT_ID/PAYROLL_ID/
+    # RDVM_ID are actually supported) -- and ReportSegment's smallest unit is
+    # DAY (confirmed in an earlier run), so salesReport has no time-of-day
+    # dimension at all, full stop. The only other candidate for a real
+    # per-encounter dollar figure is Encounter.encounterProducts.product --
+    # EncounterProduct itself has no price field, only `quantity` and a
+    # nested `product`, so checking Product's fields for whatever the real
+    # sale-price field is called (unitCost, dumped previously for inventory
+    # tracking, is cost basis, not what a client is charged).
+    print('=== Product fields ===')
+    dump_type_fields(args.token, 'Product')
+
+    print('=== Live sample: encounterProducts with product pricing (field name from the dump above) ===')
+    r = gql(args.token, '{ __type(name: "Product") { fields { name type { name kind ofType { name } } } } }')
+    prod_fields = {f['name']: f for f in ((r.get('data') or {}).get('__type') or {}).get('fields', [])}
+    price_field = next((n for n in prod_fields if n.lower() in
+                        ('price', 'unitprice', 'retailprice', 'saleprice', 'sellprice', 'listprice')), None)
+    if not price_field:
+        print(f'  (no obvious price field on Product -- got: {sorted(prod_fields)})')
+    else:
+        print(f'  using product.{price_field}')
+        ep_query = f'''
+        query($s: NaiveDateTime, $limit: Int) {{
+          encounters(updatedAtStart: $s, limit: $limit) {{
+            id
+            start
+            encounterProducts {{ name quantity product {{ id name {price_field} }} }}
+          }}
+        }}
+        '''
+        r2 = gql(args.token, ep_query, {'s': week_ago + 'T00:00:00', 'limit': 30})
+        if 'errors' in r2:
+            print(f'  ERROR: {r2["errors"]}')
+        else:
+            rows3 = (r2.get('data') or {}).get('encounters') or []
+            with_products = [row for row in rows3 if row.get('encounterProducts')]
+            print(f'  fetched {len(rows3)} encounters, {len(with_products)} have encounterProducts')
+            for row in with_products[:8]:
+                print(f'  - encounter {row["id"]} ({row.get("start")}): {row.get("encounterProducts")}')
+    print()
+
 
 if __name__ == '__main__':
     main()
