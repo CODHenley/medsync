@@ -85,6 +85,20 @@ def to_date(dt_str):
     return (dt_str or "")[:10] or None
 
 
+# Client.addresses is confirmed sparse (2/20 sampled clients had any address
+# on file) and a client can have more than one -- prefer the one flagged
+# isPrimary, else just take the first, and only keep it if it actually has a
+# postal_code (some records return address rows with every field blank).
+def pick_address(addresses):
+    addresses = [a for a in (addresses or []) if a.get("postalCode")]
+    if not addresses:
+        return None
+    for a in addresses:
+        if a.get("isPrimary"):
+            return a
+    return addresses[0]
+
+
 # vetspire_id -> (Supabase locations.id, name) — same 4 locations as every other sync.
 LOCATIONS = {
     "23083": ("11111111-0000-0000-0000-000000000001", "Lincoln Park"),
@@ -133,6 +147,7 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
             documents { id name insertedAt }
           }
         }
+        addresses { id city state postalCode isPrimary }
       }
     }
     appointment {
@@ -140,6 +155,7 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
       checkedInAt
       startedAt
       completedAt
+      reason
     }
     encounterProducts { name }
     diagnostics { id name providerId }
@@ -242,9 +258,13 @@ def main():
                     }
 
                 if client.get("id"):
+                    addr = pick_address(client.get("addresses"))
                     clients[client["id"]] = {
                         "vetspire_client_id": client["id"],
                         "location_id": loc_uuid,
+                        "city": (addr or {}).get("city"),
+                        "state": (addr or {}).get("state"),
+                        "postal_code": (addr or {}).get("postalCode"),
                     }
                     for cr in (client.get("clientRdvms") or []):
                         rdvm = cr.get("rdvm") or {}
@@ -288,6 +308,7 @@ def main():
                     "started_at": enc.get("start") or appt.get("startedAt"),
                     "completed_at": appt.get("completedAt") or enc.get("signedDatetime"),
                     "had_exam": had_exam(enc.get("encounterProducts")),
+                    "chief_complaint": appt.get("reason"),
                 })
 
                 # Diagnostics = tests/procedures ordered this encounter (Vetspire's
