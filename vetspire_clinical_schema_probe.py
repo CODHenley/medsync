@@ -438,6 +438,36 @@ def main():
     print('=== Encounter fields (the visit record itself, not EncounterType) ===')
     dump_type_fields(args.token, 'Encounter')
 
+    # 12. Encounter.problems: Problem is a direct field on the encounter record
+    # (distinct from diagnostics: Diagnostic, confirmed tests/procedures ordered)
+    # -- most likely candidate for the actual clinical diagnosis/illness this
+    # gets asked for over and over (geo-illness map, "determined illness").
+    # Dumping Problem's own fields plus a live sample before assuming its shape.
+    print('=== Problem fields ===')
+    dump_type_fields(args.token, 'Problem')
+
+    print('=== Live sample: last 30 days of encounters, problems detail ===')
+    from datetime import date, timedelta
+    since = (date.today() - timedelta(days=30)).isoformat() + 'T00:00:00'
+    problem_query = '''
+    query($s: NaiveDateTime, $limit: Int) {
+      encounters(updatedAtStart: $s, limit: $limit) {
+        id
+        problems { id name }
+      }
+    }
+    '''
+    r = gql(args.token, problem_query, {'s': since, 'limit': 100})
+    if 'errors' in r:
+        print(f'  ERROR: {r["errors"]}')
+    else:
+        rows = (r.get('data') or {}).get('encounters') or []
+        with_problems = [row for row in rows if row.get('problems')]
+        print(f'  fetched {len(rows)} encounters, {len(with_problems)} have problems')
+        for row in with_problems[:15]:
+            print(f'  - encounter {row["id"]}: {row.get("problems")}')
+    print()
+
 
 if __name__ == '__main__':
     main()
