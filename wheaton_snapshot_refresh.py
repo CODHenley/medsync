@@ -9,8 +9,36 @@ Usage:
     python3 ~/Desktop/medsync_deploy/wheaton_snapshot_refresh.py
 """
 
-import json, urllib.request, urllib.error, os, sys
+import json, time, urllib.request, urllib.error, os, sys
 from datetime import date, datetime, timezone
+
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2  # 2s, 4s between attempts
+
+
+def _urlopen_with_retry(req, timeout):
+    """Retries transient failures (5xx, connection resets, timeouts) with backoff.
+    4xx errors are raised immediately -- retrying a bad request won't help.
+    This script ran inside lot_sync.yml alongside wheaton_lot_sync.py but was
+    missed when retry logic was added to every other scheduled script -- it
+    failed on a plain Vetspire read timeout with no recovery, needing a
+    manual re-dispatch same as the others did before their fix."""
+    last_err = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), r.status
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last_err = e
+        except (urllib.error.URLError, ConnectionResetError, TimeoutError, OSError) as e:
+            last_err = e
+        if attempt < RETRY_ATTEMPTS:
+            wait = RETRY_BACKOFF_SECONDS * attempt
+            print(f"    transient error ({last_err}) — retrying in {wait}s (attempt {attempt}/{RETRY_ATTEMPTS})...")
+            time.sleep(wait)
+    raise last_err
 
 VETSPIRE_ENDPOINT = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN   = "https://scoutcare.vetspire.com"
@@ -31,8 +59,8 @@ def gql(query, variables=None):
         "Origin":        VETSPIRE_ORIGIN,
     })
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return json.loads(r.read())
+        body, _ = _urlopen_with_retry(req, timeout=60)
+        return json.loads(body)
     except urllib.error.HTTPError as e:
         print(f"  Vetspire HTTP {e.code}: {e.read().decode()[:300]}")
         sys.exit(1)
@@ -104,8 +132,8 @@ existing_url = SUPA_URL + f"/rest/v1/inventory_snapshots?select=vetspire_product
 existing_req = urllib.request.Request(existing_url, headers={
     "apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}"
 })
-with urllib.request.urlopen(existing_req, timeout=30) as r:
-    existing = {row["vetspire_product_id"] for row in json.loads(r.read())}
+existing_body, _ = _urlopen_with_retry(existing_req, timeout=30)
+existing = {row["vetspire_product_id"] for row in json.loads(existing_body)}
 print(f"  {len(existing)} products already in DB for today")
 
 to_insert = [r for r in records if r["vetspire_product_id"] not in existing]
@@ -129,8 +157,8 @@ for i in range(0, len(to_insert), BATCH):
     )
     req.get_method = lambda: "POST"
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            inserted += len(batch)
+        _urlopen_with_retry(req, timeout=30)
+        inserted += len(batch)
     except urllib.error.HTTPError as e:
         print(f"  Insert error: {e.read().decode()[:300]}")
         sys.exit(1)
@@ -152,8 +180,8 @@ for rec in to_update:
     )
     req.get_method = lambda: "PATCH"
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            updated += 1
+        _urlopen_with_retry(req, timeout=15)
+        updated += 1
     except urllib.error.HTTPError as e:
         print(f"  Update error for {pid}: {e.read().decode()[:200]}")
 
