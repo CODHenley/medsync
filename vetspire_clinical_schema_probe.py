@@ -544,6 +544,9 @@ def main():
     print('=== Appointment fields ===')
     dump_type_fields(args.token, 'Appointment')
 
+    print('=== AppointmentReasonCategory fields ===')
+    dump_type_fields(args.token, 'AppointmentReasonCategory')
+
     print('=== Root query fields matching "reason" ===')
     r = gql(args.token, '{ __schema { queryType { fields { name description } } } }')
     fields = (r.get('data') or {}).get('__schema', {}).get('queryType', {}).get('fields', [])
@@ -555,12 +558,15 @@ def main():
     print('=== Live sample: last 30 days of encounters, appointment reason detail ===')
     from datetime import date, timedelta
     since = (date.today() - timedelta(days=30)).isoformat() + 'T00:00:00'
+    # reasonCategory's field names are unknown until the dump above runs --
+    # only request "id" here (present on virtually every GraphQL object
+    # type) rather than guessing at "name" again.
     reason_query = '''
     query($s: NaiveDateTime, $limit: Int) {
       encounters(updatedAtStart: $s, limit: $limit) {
         id
         title
-        appointment { id reason reasonCategory { id name } }
+        appointment { id reason reasonCategory { id } }
       }
     }
     '''
@@ -576,7 +582,7 @@ def main():
         for row in with_reason[:20]:
             appt = row.get('appointment') or {}
             print(f'  - encounter {row["id"]}: reason={appt.get("reason")!r} '
-                  f'category={(appt.get("reasonCategory") or {}).get("name")!r} title={row.get("title")!r}')
+                  f'category_id={(appt.get("reasonCategory") or {}).get("id")!r} title={row.get("title")!r}')
     print()
 
 
