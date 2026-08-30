@@ -65,6 +65,12 @@ header.top .spacer { flex: 1; }
   border-radius: 6px; padding: 6px 10px; font-size: 13px;
 }
 .loc-filter select option, .range-filter select option { color: #1C2B4A; }
+.custom-range { display: flex; align-items: center; gap: 5px; }
+.custom-range span { color: rgba(255,255,255,.5); font-size: 12px; }
+.custom-range input[type="date"] {
+  background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px; padding: 5px 8px; font-size: 12.5px; color-scheme: dark;
+}
 
 nav.tabs {
   display: flex; gap: 4px; background: #fff; border-bottom: 1px solid var(--border);
@@ -256,7 +262,13 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <option value="7">Trailing 7 days</option>
       <option value="90">Trailing 90 days</option>
       <option value="365">Trailing 365 days</option>
+      <option value="custom">Custom range</option>
     </select>
+  </div>
+  <div class="custom-range" id="custom-range" hidden>
+    <input type="date" id="custom-from">
+    <span>–</span>
+    <input type="date" id="custom-to">
   </div>
   <div class="refresh-control">
     <span class="last-updated" id="last-updated"></span>
@@ -498,6 +510,25 @@ function selectedLocation() {
   return LOCATIONS.find(l => l.key === key) || null;
 }
 function selectedRangeDays() { return parseInt(document.getElementById('range-select').value, 10); }
+
+function isCustomRange() { return document.getElementById('range-select').value === 'custom'; }
+
+// { from, until, days } for whichever range is selected — a preset (days
+// back from today) or the two custom date inputs. Falls back to the 30-day
+// default if a custom range is selected but incomplete, so every caller
+// always gets a usable range rather than having to special-case "not set yet".
+function selectedDateRange() {
+  if (isCustomRange()) {
+    const from = document.getElementById('custom-from').value;
+    const until = document.getElementById('custom-to').value;
+    if (from && until && from <= until) {
+      const days = Math.round((new Date(until) - new Date(from)) / 86400000) + 1;
+      return { from, until, days };
+    }
+  }
+  const days = isCustomRange() ? 30 : selectedRangeDays();
+  return { from: isoDaysAgo(days), until: isoDaysAgo(0), days };
+}
 
 // ── Tiny reusable SVG chart builders (per dataviz skill: thin marks, 2px
 // lines, rounded bar ends, recessive grid, hover crosshair/tooltip) ──
@@ -983,20 +1014,26 @@ function renderInsights(revenueSeries, volumeSeries, revenueByName) {
 
 // ── Financial data + rendering ──
 async function loadFinancial() {
-  const from = isoDaysAgo(selectedRangeDays());
-  const until = isoDaysAgo(0);
+  const { from, until, days } = selectedDateRange();
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  // Previous period = the same number of days immediately before `from`,
+  // so the "vs. previous period" comparison stays meaningful for a custom
+  // range too, not just the fixed-day presets it was built for originally.
+  const prevUntil = from;
+  const prevFromDate = new Date(from + 'T00:00:00');
+  prevFromDate.setDate(prevFromDate.getDate() - days);
+  const prevFrom = prevFromDate.toISOString().slice(0, 10);
 
   const [kpiRes, prevKpiRes, actRes, provRevRes, provRes, catRes, clinicalRes, diagRes] = await Promise.all([
-    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${isoDaysAgo(selectedRangeDays() * 2)}&service_date=lt.${from}${locFilter}`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${prevFrom}&service_date=lt.${prevUntil}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=*&provider_id=neq.${UNATTRIBUTED_PROVIDER}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}${locFilter}`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/encounter_diagnostics?select=service_date,provider_id,name&service_date=gte.${from}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/encounter_diagnostics?select=service_date,provider_id,name&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
   ]);
   const rows = kpiRes.ok ? await kpiRes.json() : [];
   const prevRows = prevKpiRes.ok ? await prevKpiRes.json() : [];
@@ -1247,16 +1284,17 @@ function renderChicagoMap(geoRows) {
 
 // ── Clinical Operations (heatmaps + geo map) data + rendering ──
 async function loadClinicalGeo() {
-  const from = isoDaysAgo(selectedRangeDays());
+  const { from, until } = selectedDateRange();
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const untilEndOfDay = until + 'T23:59:59';
 
   // Both views are per-encounter grain (not pre-aggregated) — explicit high
   // limits so a wide 365-day range across 4 locations can't get silently
   // truncated at whatever this Supabase project's default row cap is.
   const [heatRes, geoRes] = await Promise.all([
-    fetch(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,case_value&started_at=gte.${from}${locFilter}&limit=20000`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_case_geo?select=postal_code,city,state,chief_complaint&visit_date=gte.${from}${locFilter}&limit=20000`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,case_value&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&limit=20000`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_case_geo?select=postal_code,city,state,chief_complaint&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}&limit=20000`, { headers: HEADERS }),
   ]);
 
   if (!heatRes.ok || !geoRes.ok) {
@@ -1319,7 +1357,20 @@ document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn => {
 });
 
 document.getElementById('loc-select').addEventListener('change', loadActiveTab);
-document.getElementById('range-select').addEventListener('change', loadActiveTab);
+document.getElementById('range-select').addEventListener('change', () => {
+  const custom = isCustomRange();
+  document.getElementById('custom-range').hidden = !custom;
+  const fromInput = document.getElementById('custom-from'), toInput = document.getElementById('custom-to');
+  if (custom && !fromInput.value && !toInput.value) {
+    // Prefill from whatever preset was active, so switching to Custom starts
+    // from the range already on screen instead of two blank date pickers.
+    toInput.value = isoDaysAgo(0);
+    fromInput.value = isoDaysAgo(30);
+  }
+  if (!custom || (fromInput.value && toInput.value)) loadActiveTab();
+});
+document.getElementById('custom-from').addEventListener('change', () => { if (isCustomRange()) loadActiveTab(); });
+document.getElementById('custom-to').addEventListener('change', () => { if (isCustomRange()) loadActiveTab(); });
 document.getElementById('overlay-toggle').addEventListener('change', renderTrendSection);
 document.getElementById('refresh-btn').addEventListener('click', refreshNow);
 
@@ -1327,6 +1378,8 @@ document.getElementById('refresh-btn').addEventListener('click', refreshNow);
 // open on a screen — the underlying Vetspire syncs run every 4 hours, this is
 // just how often this open page re-polls and recomputes against them.
 setInterval(loadActiveTab, 12 * 60 * 60 * 1000);
+
+document.getElementById('custom-from').max = document.getElementById('custom-to').max = isoDaysAgo(0);
 
 loadFinancial();
 </script>
