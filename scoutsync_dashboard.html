@@ -328,7 +328,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Case Volume Heatmap</h2><span class="sub">"Case" = an encounter where an exam was performed</span></div>
     <div class="chart-card">
-      <div class="chart-title">Cases by day of week &amp; hour of day</div>
+      <div class="chart-title">Cases by day of week &amp; hour of day (9am–11pm, Central)</div>
       <div class="chart-note">Darker = more cases started in that hour, selected range</div>
       <div id="volume-heatmap"></div>
     </div>
@@ -336,7 +336,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Case Dollar-Value Heatmap</h2><span class="sub">Estimated</span></div>
     <div class="chart-card">
-      <div class="chart-title">Estimated case value by day of week &amp; hour of day</div>
+      <div class="chart-title">Estimated case value by day of week &amp; hour of day (9am–11pm, Central)</div>
       <div class="chart-note">Darker = more estimated dollar value from cases started in that hour — catalog list price × quantity per case, not the final invoiced/collected total (doesn't reflect discounts, membership pricing, taxes, or refunds)</div>
       <div id="value-heatmap"></div>
     </div>
@@ -390,10 +390,15 @@ const PRACTICE_LOCATIONS = [
   { name: 'Wheaton',      lat: 41.8661, lng: -88.1070 },
 ];
 
-// RGB triplets matching --c-clinical (#2B6CB0) / --c-financial (#C83803) so
-// the heatmap cells can vary opacity via rgba() — CSS custom properties
-// can't be decomposed into components at runtime.
-const CLINICAL_RGB = '43,108,176';
+// Heatmap ramp colors, as RGB triplets so cells can vary opacity via
+// rgba() (CSS custom properties can't be decomposed into components at
+// runtime). Case volume uses Scout's own brand green, sampled directly
+// from "Scout Logo.png" (#1E5C51); case dollar-value keeps the dashboard's
+// existing hot/warm orange (--c-financial, #C83803) already used for
+// revenue elsewhere. Deliberately NOT tied to --c-clinical (blue) — that
+// variable is still used unchanged by the Financial tab's case-volume
+// overlay line and the Chicagoland map's ZIP circles.
+const SCOUT_GREEN_RGB = '30,92,81';
 const FINANCIAL_RGB = '200,56,3';
 
 // Chicagoland ZIP -> approximate centroid, covering Chicago proper plus the
@@ -1148,6 +1153,13 @@ function hourLabelFull(h) {
 }
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// Scout is open 10am–9pm CST; cases occasionally check out as early as 9am
+// or as late as 11pm. The heatmap grid only needs to span that real
+// operating window, not the full 24 hours — hour 22 = the 10pm-11pm slot,
+// the last one within the 9am-11pm range.
+const HEATMAP_HOUR_START = 9;
+const HEATMAP_HOUR_END = 22;
+
 // rows: one per case (v_case_heatmap), each with day_of_week (0=Sun..6=Sat),
 // hour_of_day (0-23), case_value — aggregated here, not pre-aggregated in
 // SQL, so both the volume and dollar-value grids come from a single fetch.
@@ -1168,16 +1180,22 @@ function buildHeatmapMatrices(rows) {
 // the revenue trend chart's 0-filled days.
 function renderHeatmapGrid(el, matrix, opts) {
   el.innerHTML = '';
-  const max = Math.max(...matrix.flat(), 0);
+  // Scale off the visible window only — a stray outside-hours case (rare,
+  // per Scout's actual hours) shouldn't wash out the color scale for the
+  // hours that are actually shown.
+  let max = 0;
+  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
+    for (let d = 0; d < 7; d++) max = Math.max(max, matrix[d][h] || 0);
+  }
 
   const wrap = document.createElement('div');
   wrap.className = 'heatmap-wrap';
 
   const hourLabels = document.createElement('div');
   hourLabels.className = 'heatmap-hourlabels';
-  for (let h = 0; h < 24; h++) {
+  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
     const span = document.createElement('span');
-    if (h % 3 === 0) span.textContent = hourLabelShort(h);
+    if ((h - HEATMAP_HOUR_START) % 3 === 0) span.textContent = hourLabelShort(h);
     hourLabels.appendChild(span);
   }
   wrap.appendChild(hourLabels);
@@ -1194,7 +1212,7 @@ function renderHeatmapGrid(el, matrix, opts) {
 
   const grid = document.createElement('div');
   grid.className = 'heatmap-grid';
-  for (let h = 0; h < 24; h++) {
+  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
     for (let d = 0; d < 7; d++) {
       const v = matrix[d][h] || 0;
       const cell = document.createElement('div');
@@ -1317,7 +1335,7 @@ async function loadClinicalGeo() {
   } else {
     const { volume, value } = buildHeatmapMatrices(heatRows);
     renderHeatmapGrid(document.getElementById('volume-heatmap'), volume, {
-      rgb: CLINICAL_RGB, formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases'),
+      rgb: SCOUT_GREEN_RGB, formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases'),
     });
     renderHeatmapGrid(document.getElementById('value-heatmap'), value, {
       rgb: FINANCIAL_RGB, formatValue: v => fmt$(v),
