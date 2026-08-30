@@ -195,6 +195,12 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .dd-subtitle { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; }
 @media (max-width: 700px) { .dd-grid { grid-template-columns: 1fr; } }
 
+/* ── Heatmap cell drill-down panel (reuses .dd-* above) ── */
+.cell-detail-panel:empty { display: none; }
+.cell-detail-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--grid); }
+.cell-detail-caselist { max-height: 220px; overflow-y: auto; }
+.cell-detail-caselist table.dd-table td:first-child { font-weight: 500; color: var(--ink-2); }
+
 /* ── Refresh control ── */
 .refresh-control { display: flex; align-items: center; gap: 8px; }
 .refresh-control .last-updated { font-size: 11.5px; color: rgba(255,255,255,.55); white-space: nowrap; }
@@ -221,7 +227,9 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .heatmap-daylabels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; height: 16px; margin-bottom: 4px; }
 .heatmap-daylabels span { font-size: 10.5px; color: var(--ink-3); text-align: center; font-weight: 600; }
 .heatmap-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 15px; gap: 2px; min-width: 340px; }
-.heatmap-cell { border-radius: 2px; cursor: default; }
+.heatmap-cell { border-radius: 2px; cursor: pointer; }
+.heatmap-cell:hover { outline: 1.5px solid var(--axis); outline-offset: -1.5px; }
+.heatmap-cell.selected { outline: 2px solid var(--text); outline-offset: -2px; }
 .heatmap-legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 11px; color: var(--muted); }
 .heatmap-legend-scale { display: flex; height: 10px; width: 120px; border-radius: 3px; overflow: hidden; }
 .heatmap-legend-scale span { flex: 1; }
@@ -329,16 +337,18 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <h2>Case Volume Heatmap</h2><span class="sub">"Case" = an encounter where an exam was performed</span></div>
     <div class="chart-card">
       <div class="chart-title">Cases by day of week &amp; hour of day (9am–11pm, Central)</div>
-      <div class="chart-note">Darker = more cases started in that hour, selected range</div>
+      <div class="chart-note">Darker = more cases started in that hour, selected range — click any cell for detail</div>
       <div id="volume-heatmap"></div>
+      <div id="volume-cell-detail" class="cell-detail-panel"></div>
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Case Dollar-Value Heatmap</h2><span class="sub">Estimated</span></div>
     <div class="chart-card">
       <div class="chart-title">Estimated case value by day of week &amp; hour of day (9am–11pm, Central)</div>
-      <div class="chart-note">Darker = more estimated dollar value from cases started in that hour — catalog list price × quantity per case, not the final invoiced/collected total (doesn't reflect discounts, membership pricing, taxes, or refunds)</div>
+      <div class="chart-note">Darker = more estimated dollar value from cases started in that hour — catalog list price × quantity per case, not the final invoiced/collected total (doesn't reflect discounts, membership pricing, taxes, or refunds) — click any cell for detail</div>
       <div id="value-heatmap"></div>
+      <div id="value-cell-detail" class="cell-detail-panel"></div>
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
@@ -1175,6 +1185,104 @@ function buildHeatmapMatrices(rows) {
   return { volume, value };
 }
 
+// Same rows, indexed by [day][hour] instead of aggregated — backs the
+// click-to-drill-down panel so a cell can list its actual cases instead of
+// just the number that got baked into the grid's color.
+function buildCellIndex(rows) {
+  const index = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => []));
+  rows.forEach(r => {
+    const d = Number(r.day_of_week), h = Number(r.hour_of_day);
+    if (Number.isNaN(d) || Number.isNaN(h) || d < 0 || d > 6 || h < 0 || h > 23) return;
+    index[d][h].push(r);
+  });
+  return index;
+}
+
+let heatmapCellIndex = null;
+
+// started_at is a timestamptz (real UTC instant) — display it in the same
+// America/Chicago local time the heatmap buckets themselves now use
+// (scoutsync_case_heatmap_local_time.sql), not raw UTC, so a case doesn't
+// appear to fall on the wrong calendar date/hour here.
+function fmtDateTimeCentral(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', {
+    timeZone: 'America/Chicago', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  });
+}
+
+// panelEl: the .cell-detail-panel next to the grid that was clicked.
+function showCellDetail(panelEl, day, hour) {
+  const rows = (heatmapCellIndex && heatmapCellIndex[day] && heatmapCellIndex[day][hour]) || [];
+  const count = rows.length;
+  const closeBtn = () => `<button class="dd-close" title="Close">×</button>`;
+  const head = `<div class="dd-head"><div class="dd-title">${esc(DAY_NAMES[day])}, ${esc(hourLabelFull(hour))}</div>${closeBtn()}</div>`;
+
+  if (!count) {
+    panelEl.innerHTML = `${head}<div class="chart-note">No cases in this slot, selected range.</div>`;
+  } else {
+    const totalValue = rows.reduce((a, r) => a + Number(r.case_value || 0), 0);
+    const avgValue = totalValue / count;
+
+    const byLocation = {};
+    rows.forEach(r => {
+      const loc = LOCATIONS.find(l => l.uuid === r.location_id);
+      const name = loc ? loc.name : 'Unattributed';
+      byLocation[name] = (byLocation[name] || 0) + 1;
+    });
+    const locEntries = Object.entries(byLocation).sort((a, b) => b[1] - a[1]);
+
+    const byReason = {};
+    rows.forEach(r => {
+      const reason = (r.chief_complaint || '').trim();
+      if (reason) byReason[reason] = (byReason[reason] || 0) + 1;
+    });
+    const topReasons = Object.entries(byReason).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+    const sortedRows = rows.slice().sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+
+    panelEl.innerHTML = `
+      ${head}
+      <div class="dd-stats">
+        <div class="dd-stat"><div class="l">Cases</div><div class="v">${fmtN(count)}</div></div>
+        <div class="dd-stat"><div class="l">Total est. value</div><div class="v">${fmt$(totalValue)}</div></div>
+        <div class="dd-stat"><div class="l">Avg est. value / case</div><div class="v">${fmt$(avgValue)}</div></div>
+      </div>
+      <div class="dd-grid">
+        <div>
+          <div class="dd-subtitle">Individual cases (${fmtN(count)})</div>
+          <div class="cell-detail-caselist">
+            <table class="dd-table">
+              <thead><tr><th>Date</th><th>Location</th><th>Est. value</th></tr></thead>
+              <tbody>${sortedRows.map(r => `<tr><td>${esc(fmtDateTimeCentral(r.started_at))}</td><td>${esc((LOCATIONS.find(l => l.uuid === r.location_id) || {}).name || 'Unattributed')}</td><td>${fmt$(r.case_value)}</td></tr>`).join('')}</tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="dd-subtitle">Top reasons for visit</div>
+          ${topReasons.length ? `
+          <table class="dd-table">
+            <thead><tr><th>Reason</th><th>Count</th></tr></thead>
+            <tbody>${topReasons.map(([r, n]) => `<tr><td>${esc(r)}</td><td>${fmtN(n)}</td></tr>`).join('')}</tbody>
+          </table>` : '<div class="chart-note">No reason-for-visit on file for these cases.</div>'}
+          ${locEntries.length > 1 ? `
+          <div class="dd-subtitle" style="margin-top:14px">By location</div>
+          <table class="dd-table">
+            <thead><tr><th>Location</th><th>Cases</th></tr></thead>
+            <tbody>${locEntries.map(([n, c]) => `<tr><td>${esc(n)}</td><td>${fmtN(c)}</td></tr>`).join('')}</tbody>
+          </table>` : ''}
+        </div>
+      </div>`;
+  }
+
+  panelEl.querySelector('.dd-close').addEventListener('click', () => {
+    panelEl.innerHTML = '';
+    const card = panelEl.closest('.chart-card');
+    if (card) card.querySelectorAll('.heatmap-cell.selected').forEach(c => c.classList.remove('selected'));
+  });
+}
+
 // matrix[day][hour] = numeric value. A cell with 0 activity is rendered
 // near-invisible rather than skipped — same "0 is real data" philosophy as
 // the revenue trend chart's 0-filled days.
@@ -1219,7 +1327,14 @@ function renderHeatmapGrid(el, matrix, opts) {
       cell.className = 'heatmap-cell';
       const alpha = max > 0 && v > 0 ? 0.08 + 0.84 * (v / max) : 0.04;
       cell.style.background = `rgba(${opts.rgb}, ${alpha.toFixed(2)})`;
-      cell.title = `${DAY_NAMES[d]}, ${hourLabelFull(h)}: ${opts.formatValue(v)}`;
+      cell.title = `${DAY_NAMES[d]}, ${hourLabelFull(h)}: ${opts.formatValue(v)} — click for detail`;
+      if (opts.detailPanel) {
+        cell.addEventListener('click', () => {
+          grid.querySelectorAll('.heatmap-cell.selected').forEach(c => c.classList.remove('selected'));
+          cell.classList.add('selected');
+          showCellDetail(opts.detailPanel, d, h);
+        });
+      }
       grid.appendChild(cell);
     }
   }
@@ -1311,9 +1426,16 @@ async function loadClinicalGeo() {
   // limits so a wide 365-day range across 4 locations can't get silently
   // truncated at whatever this Supabase project's default row cap is.
   const [heatRes, geoRes] = await Promise.all([
-    fetch(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,case_value&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&limit=20000`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,case_value,started_at,location_id,chief_complaint&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&limit=20000`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_case_geo?select=postal_code,city,state,chief_complaint&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}&limit=20000`, { headers: HEADERS }),
   ]);
+
+  // Reloading data (filter change, refresh) invalidates whatever cell was
+  // drilled into — a stale open panel would otherwise show detail for the
+  // old filter selection.
+  document.getElementById('volume-cell-detail').innerHTML = '';
+  document.getElementById('value-cell-detail').innerHTML = '';
+  heatmapCellIndex = null;
 
   if (!heatRes.ok || !geoRes.ok) {
     document.getElementById('clinical-empty').innerHTML = `<div class="empty-note">
@@ -1334,11 +1456,14 @@ async function loadClinicalGeo() {
     document.getElementById('value-heatmap').innerHTML = '<div class="chart-note">No cases in this range.</div>';
   } else {
     const { volume, value } = buildHeatmapMatrices(heatRows);
+    heatmapCellIndex = buildCellIndex(heatRows);
     renderHeatmapGrid(document.getElementById('volume-heatmap'), volume, {
       rgb: SCOUT_GREEN_RGB, formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases'),
+      detailPanel: document.getElementById('volume-cell-detail'),
     });
     renderHeatmapGrid(document.getElementById('value-heatmap'), value, {
       rgb: FINANCIAL_RGB, formatValue: v => fmt$(v),
+      detailPanel: document.getElementById('value-cell-detail'),
     });
   }
 
