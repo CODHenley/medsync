@@ -417,6 +417,27 @@ def main():
             print(f'  - {c}')
     print()
 
+    # 11. Geo-illness map: encounter_diagnostics/Diagnostic is confirmed to be
+    # tests/procedures ORDERED, not a clinical diagnosis/condition — so before
+    # assuming there's no structured illness data at all, scan every object
+    # type name for diagnosis/problem/assessment/condition/soap-note vocabulary
+    # (KEYWORDS above never included these), and dump the full Encounter type's
+    # own fields (only EncounterType, the template, has been dumped so far —
+    # not Encounter, the actual visit record).
+    print('=== Object type names matching illness/diagnosis vocabulary ===')
+    ILLNESS_KEYWORDS = ['diagnos', 'assess', 'problem', 'condition', 'illness', 'soap', 'note', 'medical', 'history']
+    r = gql(args.token, '{ __schema { types { name kind } } }')
+    types = (r.get('data') or {}).get('__schema', {}).get('types', [])
+    matches = [t for t in types if t['kind'] == 'OBJECT' and any(k in t['name'].lower() for k in ILLNESS_KEYWORDS)]
+    for t in matches:
+        print(f'  ★ {t["name"]}')
+    if not matches:
+        print('  (none)')
+    print()
+
+    print('=== Encounter fields (the visit record itself, not EncounterType) ===')
+    dump_type_fields(args.token, 'Encounter')
+
 
 if __name__ == '__main__':
     main()
