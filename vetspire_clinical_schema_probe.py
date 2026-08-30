@@ -560,18 +560,23 @@ def main():
       encounters(updatedAtStart: $s, limit: $limit) {
         id
         title
-        appointment { id reason { id name } }
+        appointment { id reason reasonCategory { id name } }
       }
     }
     '''
-    r = gql(args.token, reason_query, {'s': since, 'limit': 30})
+    r = gql(args.token, reason_query, {'s': since, 'limit': 300})
     if 'errors' in r:
         print(f'  ERROR: {r["errors"]}')
     else:
         rows = (r.get('data') or {}).get('encounters') or []
-        print(f'  fetched {len(rows)} encounters')
-        for row in rows[:15]:
-            print(f'  - encounter {row["id"]}: title={row.get("title")!r} appointment={row.get("appointment")}')
+        with_reason = [row for row in rows if (row.get('appointment') or {}).get('reason')]
+        with_category = [row for row in rows if (row.get('appointment') or {}).get('reasonCategory')]
+        print(f'  fetched {len(rows)} encounters, {len(with_reason)} have appointment.reason, '
+              f'{len(with_category)} have appointment.reasonCategory')
+        for row in with_reason[:20]:
+            appt = row.get('appointment') or {}
+            print(f'  - encounter {row["id"]}: reason={appt.get("reason")!r} '
+                  f'category={(appt.get("reasonCategory") or {}).get("name")!r} title={row.get("title")!r}')
     print()
 
 
