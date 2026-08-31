@@ -43,18 +43,39 @@ def supa_get(table, query):
         return json.loads(resp.read().decode())
 
 
+# PostgREST's server-side max-rows setting silently caps a response well
+# below any `limit=` the caller passes in the query string (this project's
+# own dashboard code has hit this before) -- page with `order` + `offset`
+# until a page comes back shorter than PAGE_SIZE, so a >page-size result
+# set can't quietly get truncated and undercount who's actually active.
+PAGE_SIZE = 1000
+
+
+def supa_get_all(table, query, order_col):
+    out = []
+    offset = 0
+    while True:
+        page = supa_get(table, f"{query}&order={order_col}.asc&limit={PAGE_SIZE}&offset={offset}")
+        out.extend(page)
+        if len(page) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--active-since", default="2026-07-01")
     args = ap.parse_args()
 
-    providers = supa_get("providers", "select=id,full_name,location_id")
+    providers = supa_get_all("providers", "select=id,full_name,location_id", "id")
     name_by_id = {p["id"]: (p.get("full_name") or "Unnamed") for p in providers}
 
-    encounters = supa_get(
+    encounters = supa_get_all(
         "encounters",
         f"select=provider_id,location_id,started_at&started_at=gte.{args.active_since}"
-        "&provider_id=not.is.null&limit=50000",
+        "&provider_id=not.is.null",
+        "started_at",
     )
 
     active_by_location = defaultdict(set)
