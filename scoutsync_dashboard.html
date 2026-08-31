@@ -384,7 +384,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Paraprofessional Staffing Targets</h2>
-      <span class="sub">Recommended CVT / VA / CSR headcount from active DVM headcount — trailing 60 days, all locations, not affected by the filters above</span></div>
+      <span class="sub">Recommended CVT / VA / CSR headcount from full-time (3+ shifts/week) DVM headcount — trailing 60 days, all locations, not affected by the filters above</span></div>
     <div class="chart-card">
       <div class="chart-title">Recommended staffing by location</div>
       <div class="chart-note" id="staffing-note"></div>
@@ -1564,52 +1564,81 @@ function renderComplaintPatterns(rows) {
 }
 
 // ── Paraprofessional staffing targets (recommended CVT/VA/CSR headcount,
-// derived from active DVM headcount -- not an actual-vs-target comparison,
-// since there's no Rippling integration to pull real CVT/VA/CSR counts) ──
+// derived from full-time DVM headcount -- not an actual-vs-target
+// comparison, since there's no Rippling integration to pull real CVT/VA/CSR
+// counts) ──
 
 // Ratio set by practice leadership, not derived from the data: 1 DVM FTE
 // is supported by 2 CVTs, 1 VA, 1 CSR.
 const DVM_TO_CVT = 2, DVM_TO_VA = 1, DVM_TO_CSR = 1;
-// "Active" DVM = has an encounter in this trailing window -- keeps "current"
-// moving with today's date rather than a fixed cutoff that goes stale
-// (~July 1 as of when this was built, Aug 31).
+// Merely having *an* encounter in the window isn't "full-time" -- Scout runs
+// one full-time doctor per location plus relief doctors subbing in, and a
+// relief doctor covering a single shift was getting counted the same as the
+// full-timer. Full-time is instead defined by shift frequency: a "shift" is
+// one calendar day (Central time) with at least one encounter at that
+// location, and a doctor counts as full-time AT THAT LOCATION only if their
+// average shifts/week over the trailing window meets this threshold.
+const FTE_MIN_SHIFTS_PER_WEEK = 3;
+// Window used both to decide "current" and to average shifts/week over --
+// keeps moving with today's date rather than a fixed cutoff that goes stale
+// (~July 1 as of when this was built, Aug 31). Long enough that one slow or
+// vacation week doesn't swing a real full-timer under the threshold.
 const DVM_ACTIVE_WINDOW_DAYS = 60;
 // No longer with Scout -- excluded even if a departure happens to leave one
 // of them with an encounter inside the active window during the transition.
 const DEPARTED_DVM_NAME_SUBSTRINGS = ['simpson', 'hill'];
 
-// encounterRows: {provider_id, location_id} (trailing-window encounters,
-// company-wide -- NOT scoped to the location/date filters above, since
-// "who is currently practicing where" is a different question from
-// "what happened in the selected range"). nameById: provider id -> full_name.
-function renderStaffingSection(encounterRows, nameById) {
-  const activeByLocation = {};
-  LOCATIONS.forEach(l => activeByLocation[l.uuid] = new Set());
-  const activeCompanyWide = new Set();
+function localDateCentral(iso) {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
 
+// encounterRows: {provider_id, location_id, started_at} (trailing-window
+// encounters, company-wide -- NOT scoped to the location/date filters
+// above, since "who is currently full-time where" is a different question
+// from "what happened in the selected range"). nameById: provider id -> full_name.
+function renderStaffingSection(encounterRows, nameById) {
+  // shiftDaysByProviderLocation: "providerId|locationId" -> Set of distinct
+  // Central-time calendar dates worked there.
+  const shiftDaysByKey = {};
   encounterRows.forEach(e => {
     const pid = e.provider_id, loc = e.location_id;
-    if (!pid || !loc || !activeByLocation[loc]) return;
+    if (!pid || !loc || !LOCATIONS.some(l => l.uuid === loc)) return;
     const name = (nameById[pid] || '').toLowerCase();
     if (DEPARTED_DVM_NAME_SUBSTRINGS.some(s => name.includes(s))) return;
-    activeByLocation[loc].add(pid);
-    activeCompanyWide.add(pid);
+    const key = `${pid}|${loc}`;
+    (shiftDaysByKey[key] = shiftDaysByKey[key] || new Set()).add(localDateCentral(e.started_at));
+  });
+
+  const weeksInWindow = DVM_ACTIVE_WINDOW_DAYS / 7;
+  const fteByLocation = {}, reliefByLocation = {};
+  LOCATIONS.forEach(l => { fteByLocation[l.uuid] = new Set(); reliefByLocation[l.uuid] = new Set(); });
+  const fteCompanyWide = new Set();
+
+  Object.entries(shiftDaysByKey).forEach(([key, days]) => {
+    const [pid, loc] = key.split('|');
+    const shiftsPerWeek = days.size / weeksInWindow;
+    if (shiftsPerWeek >= FTE_MIN_SHIFTS_PER_WEEK) {
+      fteByLocation[loc].add(pid);
+      fteCompanyWide.add(pid);
+    } else {
+      reliefByLocation[loc].add(pid);
+    }
   });
 
   const rows = LOCATIONS.map(l => {
-    const dvm = activeByLocation[l.uuid].size;
-    return { name: l.name, dvm, cvt: dvm * DVM_TO_CVT, va: dvm * DVM_TO_VA, csr: dvm * DVM_TO_CSR };
+    const dvm = fteByLocation[l.uuid].size;
+    const relief = reliefByLocation[l.uuid].size;
+    return { name: l.name, dvm, relief, cvt: dvm * DVM_TO_CVT, va: dvm * DVM_TO_VA, csr: dvm * DVM_TO_CSR };
   });
-  // DEFAULT basis: sum of each location's own active-DVM headcount. A DVM
-  // who works multiple sites counts once at *each* site, because
-  // paraprofessional support has to be scheduled wherever they're actually
-  // seeing patients -- so this total can be, and currently is, well above
-  // the number of distinct individual doctors on staff.
+  // DEFAULT basis: sum of each location's own full-time-DVM headcount. A
+  // doctor full-time at multiple sites (uncommon, but the code doesn't
+  // assume it away) would count once at each, since paraprofessional
+  // support has to be scheduled wherever they're actually seeing patients.
   const sumBasis = rows.reduce((a, r) => a + r.dvm, 0);
-  // Reference-only alternate: each doctor counted once company-wide,
-  // regardless of how many sites they cover. Deliberately NOT used as the
-  // default -- see note below.
-  const uniqueCount = activeCompanyWide.size;
+  // Reference-only alternate: each full-time doctor counted once
+  // company-wide. Deliberately NOT used as the default -- see note below.
+  const uniqueCount = fteCompanyWide.size;
+  const totalReliefDocs = new Set(Object.values(reliefByLocation).flatMap(s => [...s])).size;
 
   const totalRow = {
     name: 'All locations (sum — default basis)',
@@ -1617,18 +1646,20 @@ function renderStaffingSection(encounterRows, nameById) {
   };
 
   const note = document.getElementById('staffing-note');
-  note.innerHTML = `<b>Default basis: sum of per-location active-DVM headcount</b> (currently
-    <b>${fmtN(sumBasis)}</b> DVM "slots" company-wide) — a DVM working multiple sites counts once at each, since support
-    staff are needed wherever they see patients. That's what the recommended totals below use.
-    <i>For reference only (not used as the default): ${fmtN(uniqueCount)} unique individual doctors company-wide, if instead
-    counting each person once regardless of how many sites they cover.</i>
-    Active = an encounter in the trailing ${DVM_ACTIVE_WINDOW_DAYS} days; departed doctors (Simpson, Hill) excluded regardless of window.`;
+  note.innerHTML = `Full-time = averaging <b>${FTE_MIN_SHIFTS_PER_WEEK}+ shifts/week</b> at that location over the trailing
+    ${DVM_ACTIVE_WINDOW_DAYS} days (a shift = a Central-time calendar day with an encounter there) — a relief doctor covering
+    an occasional shift no longer counts as a full FTE. <b>Default basis: sum of per-location full-time-DVM headcount</b>
+    (currently <b>${fmtN(sumBasis)}</b> DVM FTEs company-wide) — that's what the recommended totals below use.
+    <i>For reference only (not used as the default): ${fmtN(uniqueCount)} unique full-time doctors company-wide, if instead
+    counting each person once regardless of how many sites they're full-time at.</i>
+    ${fmtN(totalReliefDocs)} additional relief/part-time doctor(s) covered shifts somewhere in this window without meeting the
+    full-time threshold anywhere; departed doctors (Simpson, Hill) excluded regardless of shift count.`;
 
   document.getElementById('staffing-table').innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
-    <thead><tr><th>Location</th><th>Active DVMs</th><th>→ CVT (×${DVM_TO_CVT})</th><th>→ VA (×${DVM_TO_VA})</th><th>→ CSR (×${DVM_TO_CSR})</th><th>Total support staff</th></tr></thead>
+    <thead><tr><th>Location</th><th>Full-time DVMs</th><th>Relief/part-time DVMs</th><th>→ CVT (×${DVM_TO_CVT})</th><th>→ VA (×${DVM_TO_VA})</th><th>→ CSR (×${DVM_TO_CSR})</th><th>Total support staff</th></tr></thead>
     <tbody>
-      ${rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmtN(r.dvm)}</td><td>${fmtN(r.cvt)}</td><td>${fmtN(r.va)}</td><td>${fmtN(r.csr)}</td><td><b>${fmtN(r.cvt + r.va + r.csr)}</b></td></tr>`).join('')}
-      <tr style="border-top:2px solid var(--border)"><td><b>${esc(totalRow.name)}</b></td><td><b>${fmtN(totalRow.dvm)}</b></td><td><b>${fmtN(totalRow.cvt)}</b></td><td><b>${fmtN(totalRow.va)}</b></td><td><b>${fmtN(totalRow.csr)}</b></td><td><b>${fmtN(totalRow.cvt + totalRow.va + totalRow.csr)}</b></td></tr>
+      ${rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmtN(r.dvm)}</td><td>${fmtN(r.relief)}</td><td>${fmtN(r.cvt)}</td><td>${fmtN(r.va)}</td><td>${fmtN(r.csr)}</td><td><b>${fmtN(r.cvt + r.va + r.csr)}</b></td></tr>`).join('')}
+      <tr style="border-top:2px solid var(--border)"><td><b>${esc(totalRow.name)}</b></td><td><b>${fmtN(totalRow.dvm)}</b></td><td>—</td><td><b>${fmtN(totalRow.cvt)}</b></td><td><b>${fmtN(totalRow.va)}</b></td><td><b>${fmtN(totalRow.csr)}</b></td><td><b>${fmtN(totalRow.cvt + totalRow.va + totalRow.csr)}</b></td></tr>
     </tbody>
   </table></div>
   <div class="chart-note" style="margin-top:10px">Recommended target only, not a gap analysis — actual current CVT/VA/CSR headcount isn't wired in yet (no Rippling integration).</div>`;
@@ -1715,7 +1746,7 @@ async function loadClinicalGeo() {
   const [heatRows, geoRows, staffEncounterRows, providerRows] = await Promise.all([
     fetchAllRows(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,case_value,started_at,location_id,chief_complaint&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&order=started_at.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_case_geo?select=postal_code,city,state,chief_complaint&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}&order=postal_code.asc`),
-    fetchAllRows(`${SUPA_URL}/rest/v1/encounters?select=provider_id,location_id&started_at=gte.${isoDaysAgo(DVM_ACTIVE_WINDOW_DAYS)}&provider_id=not.is.null&order=started_at.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/encounters?select=provider_id,location_id,started_at&started_at=gte.${isoDaysAgo(DVM_ACTIVE_WINDOW_DAYS)}&provider_id=not.is.null&order=started_at.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/providers?select=id,full_name&order=id.asc`),
   ]);
 
