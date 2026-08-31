@@ -687,6 +687,67 @@ def main():
                 print(f'  - encounter {row["id"]} ({row.get("start")}): {row.get("encounterProducts")}')
     print()
 
+    # 18. User correction: "the total value of that invoice where an exam was
+    # performed", not just the exam line's own catalog price. estimated_case_value
+    # currently sums quantity*product.unitPrice across encounterProducts --
+    # but Encounter.order: Order (a direct field, never queried) is a much
+    # more likely candidate for the actual invoice/order total than
+    # re-deriving one from encounterProducts, which may not even be the
+    # complete set of billed items for the visit. Dumping Order's fields,
+    # then a live sample of encounter.order for real encounters that have
+    # encounterProducts, to compare its total against the encounterProducts-
+    # sum estimate already in production.
+    print('=== Order fields ===')
+    dump_type_fields(args.token, 'Order')
+
+    r = gql(args.token, '{ __type(name: "Order") { fields { name type { name kind ofType { name } } } } }')
+    order_fields = {f['name']: f for f in ((r.get('data') or {}).get('__type') or {}).get('fields', [])}
+    total_field = next((n for n in order_fields if n.lower() in
+                        ('total', 'totalcents', 'grandtotal', 'subtotal', 'amount', 'amountdue', 'totalamount')), None)
+    print(f'  candidate total-like fields on Order: {sorted(n for n in order_fields if "total" in n.lower() or "amount" in n.lower() or "due" in n.lower() or "paid" in n.lower())}')
+
+    print('=== Live sample: encounter.order vs encounterProducts-sum estimate ===')
+    order_query = '''
+    query($s: NaiveDateTime, $limit: Int) {
+      encounters(updatedAtStart: $s, limit: $limit) {
+        id
+        start
+        encounterProducts { name quantity product { unitPrice } }
+        order { id total totalCents subtotal grandTotal amountDue amountPaid totalAmount }
+      }
+    }
+    '''
+    r2 = gql(args.token, order_query, {'s': week_ago + 'T00:00:00', 'limit': 30})
+    if 'errors' in r2:
+        print(f'  ERROR (some requested Order fields may not exist -- narrowing): {r2["errors"]}')
+        # Retry with only fields confirmed to exist from the dump above.
+        safe_fields = ' '.join(['id'] + [n for n in order_fields if n.lower() in
+                                ('total', 'totalcents', 'grandtotal', 'subtotal', 'amount', 'amountdue', 'amountpaid', 'totalamount')])
+        order_query2 = f'''
+        query($s: NaiveDateTime, $limit: Int) {{
+          encounters(updatedAtStart: $s, limit: $limit) {{
+            id
+            start
+            encounterProducts {{ name quantity product {{ unitPrice }} }}
+            order {{ {safe_fields} }}
+          }}
+        }}
+        '''
+        r2 = gql(args.token, order_query2, {'s': week_ago + 'T00:00:00', 'limit': 30})
+        print(f'  retried with fields: {safe_fields}')
+        if 'errors' in r2:
+            print(f'  ERROR again: {r2["errors"]}')
+
+    if 'data' in r2:
+        rows4 = (r2.get('data') or {}).get('encounters') or []
+        with_order = [row for row in rows4 if row.get('order')]
+        print(f'  fetched {len(rows4)} encounters, {len(with_order)} have a non-null order')
+        for row in with_order[:10]:
+            ep_sum = sum(float((p.get('product') or {}).get('unitPrice') or 0) * float(p.get('quantity') or 0)
+                         for p in (row.get('encounterProducts') or []))
+            print(f'  - encounter {row["id"]}: order={row.get("order")}  encounterProducts_sum_estimate=${ep_sum:.2f}')
+    print()
+
 
 if __name__ == '__main__':
     main()
