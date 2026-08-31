@@ -699,50 +699,49 @@ def main():
     # sum estimate already in production.
     print('=== Order fields ===')
     dump_type_fields(args.token, 'Order')
+    # Confirmed real fields (this practice's Order dump): subtotalCents,
+    # totalDiscountCents, totalBeforeTaxCents (taxable base after
+    # discounts), totalTaxCents, totalAfterTaxCents (grand total billed --
+    # the actual invoice total), totalPaid (collected so far),
+    # paymentDueCents (outstanding balance), status: InvoiceStatus,
+    # posted: Boolean. My first guesses (total/totalCents/grandTotal/
+    # amountDue/amountPaid/totalAmount) were all wrong field names.
 
-    r = gql(args.token, '{ __type(name: "Order") { fields { name type { name kind ofType { name } } } } }')
-    order_fields = {f['name']: f for f in ((r.get('data') or {}).get('__type') or {}).get('fields', [])}
-    total_field = next((n for n in order_fields if n.lower() in
-                        ('total', 'totalcents', 'grandtotal', 'subtotal', 'amount', 'amountdue', 'totalamount')), None)
-    print(f'  candidate total-like fields on Order: {sorted(n for n in order_fields if "total" in n.lower() or "amount" in n.lower() or "due" in n.lower() or "paid" in n.lower())}')
+    print('=== InvoiceStatus enum values ===')
+    r = gql(args.token, '{ __type(name: "InvoiceStatus") { enumValues { name } } }')
+    status_data = (r.get('data') or {}).get('__type')
+    print(f'  {[v["name"] for v in (status_data or {}).get("enumValues", [])]}' if status_data else '  (not an enum / not found)')
 
-    print('=== Live sample: encounter.order vs encounterProducts-sum estimate ===')
+    print('=== Live sample: encounter.order (real fields) vs encounterProducts-sum estimate ===')
     order_query = '''
     query($s: NaiveDateTime, $limit: Int) {
       encounters(updatedAtStart: $s, limit: $limit) {
         id
         start
         encounterProducts { name quantity product { unitPrice } }
-        order { id total totalCents subtotal grandTotal amountDue amountPaid totalAmount }
+        order {
+          id
+          status
+          posted
+          subtotalCents
+          totalDiscountCents
+          totalBeforeTaxCents
+          totalTaxCents
+          totalAfterTaxCents
+          totalPaid
+          paymentDueCents
+        }
       }
     }
     '''
     r2 = gql(args.token, order_query, {'s': week_ago + 'T00:00:00', 'limit': 30})
     if 'errors' in r2:
-        print(f'  ERROR (some requested Order fields may not exist -- narrowing): {r2["errors"]}')
-        # Retry with only fields confirmed to exist from the dump above.
-        safe_fields = ' '.join(['id'] + [n for n in order_fields if n.lower() in
-                                ('total', 'totalcents', 'grandtotal', 'subtotal', 'amount', 'amountdue', 'amountpaid', 'totalamount')])
-        order_query2 = f'''
-        query($s: NaiveDateTime, $limit: Int) {{
-          encounters(updatedAtStart: $s, limit: $limit) {{
-            id
-            start
-            encounterProducts {{ name quantity product {{ unitPrice }} }}
-            order {{ {safe_fields} }}
-          }}
-        }}
-        '''
-        r2 = gql(args.token, order_query2, {'s': week_ago + 'T00:00:00', 'limit': 30})
-        print(f'  retried with fields: {safe_fields}')
-        if 'errors' in r2:
-            print(f'  ERROR again: {r2["errors"]}')
-
-    if 'data' in r2:
+        print(f'  ERROR: {r2["errors"]}')
+    else:
         rows4 = (r2.get('data') or {}).get('encounters') or []
         with_order = [row for row in rows4 if row.get('order')]
         print(f'  fetched {len(rows4)} encounters, {len(with_order)} have a non-null order')
-        for row in with_order[:10]:
+        for row in with_order[:15]:
             ep_sum = sum(float((p.get('product') or {}).get('unitPrice') or 0) * float(p.get('quantity') or 0)
                          for p in (row.get('encounterProducts') or []))
             print(f'  - encounter {row["id"]}: order={row.get("order")}  encounterProducts_sum_estimate=${ep_sum:.2f}')
