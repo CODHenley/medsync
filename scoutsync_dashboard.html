@@ -343,10 +343,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
-      <h2>Case Dollar-Value Heatmap</h2></div>
+      <h2>Average Case Value Heatmap</h2></div>
     <div class="chart-card">
-      <div class="chart-title">Case value by day of week &amp; hour of day (9am–11pm, Central)</div>
-      <div class="chart-note">Darker = more invoice value from cases started in that hour — each case's full invoice total (Vetspire's own order total, not just the exam charge). Voided/deleted invoices count as $0; unpaid invoices still count at their billed amount — click any cell for detail</div>
+      <div class="chart-title">Average case value by day of week &amp; hour of day (9am–11pm, Central)</div>
+      <div class="chart-note">Darker = higher average invoice value per case started in that hour — not total revenue, so this is independent of how busy that hour is and highlights hours that draw disproportionately higher- or lower-value cases. Each case's full invoice total (Vetspire's own order total, not just the exam charge); voided/deleted invoices count as $0 — click any cell for detail</div>
       <div id="value-heatmap"></div>
       <div id="value-cell-detail" class="cell-detail-panel"></div>
     </div>
@@ -1175,13 +1175,23 @@ const HEATMAP_HOUR_END = 22;
 // SQL, so both the volume and dollar-value grids come from a single fetch.
 function buildHeatmapMatrices(rows) {
   const volume = Array.from({ length: 7 }, () => Array(24).fill(0));
-  const value = Array.from({ length: 7 }, () => Array(24).fill(0));
+  const value = Array.from({ length: 7 }, () => Array(24).fill(0)); // running sum here, averaged below
   rows.forEach(r => {
     const d = Number(r.day_of_week), h = Number(r.hour_of_day);
     if (Number.isNaN(d) || Number.isNaN(h) || d < 0 || d > 6 || h < 0 || h > 23) return;
     volume[d][h] += 1;
     value[d][h] += Number(r.case_value || 0);
   });
+  // Average invoice value per case, not the total -- total revenue tracks
+  // case count almost by definition (more cases -> more total dollars),
+  // which just makes this heatmap a recolored copy of the volume one. The
+  // average is independent of volume, so it actually shows whether an hour
+  // draws disproportionately higher- or lower-value cases.
+  for (let d = 0; d < 7; d++) {
+    for (let h = 0; h < 24; h++) {
+      if (volume[d][h] > 0) value[d][h] = value[d][h] / volume[d][h];
+    }
+  }
   return { volume, value };
 }
 
@@ -1462,7 +1472,7 @@ async function loadClinicalGeo() {
       detailPanel: document.getElementById('volume-cell-detail'),
     });
     renderHeatmapGrid(document.getElementById('value-heatmap'), value, {
-      rgb: FINANCIAL_RGB, formatValue: v => fmt$(v),
+      rgb: FINANCIAL_RGB, formatValue: v => fmt$(v) + ' avg',
       detailPanel: document.getElementById('value-cell-detail'),
     });
   }
