@@ -343,10 +343,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
-      <h2>Case Dollar-Value Heatmap</h2><span class="sub">Estimated</span></div>
+      <h2>Case Dollar-Value Heatmap</h2></div>
     <div class="chart-card">
-      <div class="chart-title">Estimated case value by day of week &amp; hour of day (9am–11pm, Central)</div>
-      <div class="chart-note">Darker = more estimated dollar value from cases started in that hour — catalog list price × quantity per case, not the final invoiced/collected total (doesn't reflect discounts, membership pricing, taxes, or refunds) — click any cell for detail</div>
+      <div class="chart-title">Case value by day of week &amp; hour of day (9am–11pm, Central)</div>
+      <div class="chart-note">Darker = more invoice value from cases started in that hour — each case's full invoice total (Vetspire's own order total, not just the exam charge). Voided/deleted invoices count as $0; unpaid invoices still count at their billed amount — click any cell for detail</div>
       <div id="value-heatmap"></div>
       <div id="value-cell-detail" class="cell-detail-panel"></div>
     </div>
@@ -1246,15 +1246,15 @@ function showCellDetail(panelEl, day, hour) {
       ${head}
       <div class="dd-stats">
         <div class="dd-stat"><div class="l">Cases</div><div class="v">${fmtN(count)}</div></div>
-        <div class="dd-stat"><div class="l">Total est. value</div><div class="v">${fmt$(totalValue)}</div></div>
-        <div class="dd-stat"><div class="l">Avg est. value / case</div><div class="v">${fmt$(avgValue)}</div></div>
+        <div class="dd-stat"><div class="l">Total invoice value</div><div class="v">${fmt$(totalValue)}</div></div>
+        <div class="dd-stat"><div class="l">Avg invoice value / case</div><div class="v">${fmt$(avgValue)}</div></div>
       </div>
       <div class="dd-grid">
         <div>
           <div class="dd-subtitle">Individual cases (${fmtN(count)})</div>
           <div class="cell-detail-caselist">
             <table class="dd-table">
-              <thead><tr><th>Date</th><th>Location</th><th>Est. value</th></tr></thead>
+              <thead><tr><th>Date</th><th>Location</th><th>Invoice value</th></tr></thead>
               <tbody>${sortedRows.map(r => `<tr><td>${esc(fmtDateTimeCentral(r.started_at))}</td><td>${esc((LOCATIONS.find(l => l.uuid === r.location_id) || {}).name || 'Unattributed')}</td><td>${fmt$(r.case_value)}</td></tr>`).join('')}</tbody>
             </table>
           </div>

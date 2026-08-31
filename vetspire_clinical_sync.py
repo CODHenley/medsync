@@ -81,30 +81,24 @@ def had_exam(encounter_products):
     return any("exam" in (p.get("name") or "").lower() for p in (encounter_products or []))
 
 
-# Estimated dollar value of a case, for the case-value heatmap. There's no
-# real per-encounter revenue source in Vetspire: invoice_line_items is
-# populated from salesReport, which only breaks down by day/provider/
-# category (confirmed via vetspire_clinical_schema_probe.py -- it has no
-# encounter-level grain and never sets encounter_id, and salesReport
-# outright rejects an APPOINTMENT_TIME breakdown despite it appearing in
-# ReportBreakdown's own enum). This sums quantity * product.unitPrice
-# across the encounter's own encounterProducts instead -- confirmed
-# populated and real (e.g. "Exam - Urgent Care" at $135.00). It's the
-# catalog list price, not the final invoiced/collected total, so it won't
-# reflect discounts, membership pricing, taxes, or refunds -- labeled as
-# "estimated" everywhere it's shown, same treatment as chief_complaint
-# being labeled reason-for-visit rather than diagnosis.
-def estimated_case_value(encounter_products):
-    total = 0.0
-    for p in (encounter_products or []):
-        product = p.get("product") or {}
-        try:
-            unit_price = float(product.get("unitPrice") or 0)
-            quantity = float(p.get("quantity") or 0)
-        except (TypeError, ValueError):
-            continue
-        total += unit_price * quantity
-    return round(total, 2)
+# The real invoice total for a case, straight from Vetspire's own Order
+# record (Encounter.order) -- confirmed via vetspire_clinical_schema_probe.py
+# to be the actual per-visit invoice, not an estimate. This replaces a first
+# attempt that summed quantity * product.unitPrice across encounterProducts:
+# a live comparison of 15 real encounters showed that approach undercounting
+# nearly every one -- e.g. $135 (the exam alone) vs. the real $717.00,
+# $447.27, or $1,148.50 order total, and $0 vs. a real $410.92 for one
+# encounter whose encounterProducts didn't include a priced item at all.
+# encounterProducts is simply not reliably the complete set of billed items
+# for a visit; Order.totalAfterTaxCents is. VOID/DELETED orders (confirmed
+# real InvoiceStatus values) are treated as $0 -- never actually charged;
+# every other status (PAID, DUE, OPEN, COLLECTIONS, UNCOLLECTIBLE) is a real
+# billed amount regardless of whether it's been collected yet.
+def invoice_value(order):
+    if not order or order.get("status") in ("VOID", "DELETED"):
+        return 0.0
+    cents = order.get("totalAfterTaxCents")
+    return round(float(cents) / 100, 2) if cents is not None else 0.0
 
 
 def to_date(dt_str):
@@ -183,7 +177,8 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
       completedAt
       reason
     }
-    encounterProducts { name quantity product { unitPrice } }
+    encounterProducts { name }
+    order { id status totalAfterTaxCents }
     diagnostics { id name providerId }
   }
 }
@@ -335,7 +330,7 @@ def main():
                     "completed_at": appt.get("completedAt") or enc.get("signedDatetime"),
                     "had_exam": had_exam(enc.get("encounterProducts")),
                     "chief_complaint": appt.get("reason"),
-                    "estimated_case_value": estimated_case_value(enc.get("encounterProducts")),
+                    "invoice_total": invoice_value(enc.get("order")),
                 })
 
                 # Diagnostics = tests/procedures ordered this encounter (Vetspire's
