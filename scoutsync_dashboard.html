@@ -328,6 +328,19 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div class="insight-list" id="insights-panel"></div>
     </div>
 
+    <div class="section-head"><div class="dot"></div><h2>Days Closed &amp; Financial Impact</h2>
+      <span class="sub">Since each location's opening — not affected by the date range/location filters above</span></div>
+    <div class="chart-card">
+      <div class="chart-title">Closed days by location</div>
+      <div class="chart-note" id="closed-days-note"></div>
+      <div id="closed-days-table"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Months with the most closed days (company-wide)</div>
+      <div class="chart-note">Worth spot-checking the largest clusters against a known event (holiday, weather, system outage) before treating the estimate as final</div>
+      <div id="closed-days-monthly"></div>
+    </div>
+
     <div id="financial-empty"></div>
   </section>
 
@@ -1070,8 +1083,120 @@ function renderInsights(revenueSeries, volumeSeries, revenueByName) {
     </div>`).join('');
 }
 
+// ── Days Closed & Financial Impact -- Scout operates every day of the week,
+// so a calendar day with zero billed activity at an already-open location
+// is a real loss, not just a slow day. Independent of the date-range/
+// location filters above -- this always covers each location's full
+// history since it opened. ──
+
+function daysBetweenInclusive(fromISO, toISO) {
+  const out = [];
+  const d = new Date(fromISO + 'T00:00:00');
+  const end = new Date(toISO + 'T00:00:00');
+  while (d <= end) { out.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+  return out;
+}
+
+async function loadClosedDaysReport() {
+  const note = document.getElementById('closed-days-note');
+  const table = document.getElementById('closed-days-table');
+  const monthly = document.getElementById('closed-days-monthly');
+
+  // v_avg_transaction_charge_daily is sparse -- a location/day with zero
+  // billed activity simply has no row, which is exactly the "closed" signal
+  // we want. Full history, paginated (see fetchAllRows), not scoped to the
+  // dashboard's date-range/location filters.
+  const rows = await fetchAllRows(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=service_date,revenue,encounter_count,location_id&order=service_date.asc`);
+  if (rows === null) {
+    note.textContent = '';
+    table.innerHTML = '<div class="chart-note">Couldn\'t load daily revenue data for the closed-days report.</div>';
+    monthly.innerHTML = '';
+    return;
+  }
+
+  const yesterday = isoDaysAgo(1); // exclude today -- it's still in progress
+  const byLocation = {};
+  LOCATIONS.forEach(l => byLocation[l.uuid] = new Map()); // service_date -> {revenue, count}
+  rows.forEach(r => {
+    const days = byLocation[r.location_id];
+    if (!days || !r.service_date || r.service_date > yesterday) return;
+    const prev = days.get(r.service_date) || { revenue: 0, count: 0 };
+    days.set(r.service_date, {
+      revenue: prev.revenue + Number(r.revenue || 0),
+      count: prev.count + Number(r.encounter_count || 0),
+    });
+  });
+
+  const closedByMonth = {}; // 'YYYY-MM' -> count, company-wide
+  const perLocation = LOCATIONS.map(l => {
+    const openDays = byLocation[l.uuid];
+    const dates = [...openDays.keys()].sort();
+    if (!dates.length) return { name: l.name, hasData: false };
+
+    // locations.open_date exists but isn't populated for any of the 4
+    // locations -- the earliest day with any billed activity is the best
+    // available proxy for "opened," so days before that are never counted
+    // as closed.
+    const firstDate = dates[0];
+    const allDays = daysBetweenInclusive(firstDate, yesterday);
+    const daysOpen = openDays.size;
+    const daysClosed = allDays.length - daysOpen;
+    let revenueOnOpenDays = 0, visitsOnOpenDays = 0;
+    openDays.forEach(v => { revenueOnOpenDays += v.revenue; visitsOnOpenDays += v.count; });
+    const avgDailyRevenue = daysOpen ? revenueOnOpenDays / daysOpen : 0;
+    const avgDailyVisits = daysOpen ? visitsOnOpenDays / daysOpen : 0;
+
+    allDays.forEach(d => {
+      if (!openDays.has(d)) {
+        const month = d.slice(0, 7);
+        closedByMonth[month] = (closedByMonth[month] || 0) + 1;
+      }
+    });
+
+    return {
+      name: l.name, hasData: true, firstDate, totalDays: allDays.length,
+      daysOpen, daysClosed, closedPct: (daysClosed / allDays.length) * 100,
+      avgDailyRevenue, estLostRevenue: daysClosed * avgDailyRevenue,
+      estLostVisits: daysClosed * avgDailyVisits,
+    };
+  });
+
+  const withData = perLocation.filter(r => r.hasData);
+  const totalClosed = withData.reduce((a, r) => a + r.daysClosed, 0);
+  const totalLostRevenue = withData.reduce((a, r) => a + r.estLostRevenue, 0);
+  const totalLostVisits = withData.reduce((a, r) => a + r.estLostVisits, 0);
+
+  note.innerHTML = `"Closed" = a calendar day with <b>zero billed activity</b> at a location that had already started
+    billing — Scout operates every day of the week, so a no-revenue day there is a real loss, not just a slow one.
+    Each location's own <b>earliest billed day is used as a proxy for its opening date</b> (<code>locations.open_date</code>
+    exists but isn't populated for any of the 4 locations), so days before that are never counted as closed. Today is
+    excluded (still in progress). Estimated lost revenue/visits apply each location's own average per <i>open</i> day to
+    its closed-day count — a real closure's actual lost revenue could differ, and a data-sync gap can look identical to a
+    genuine closure, so treat this as a directional estimate, not an audited figure.`;
+
+  const fmtOpenedDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  table.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
+    <thead><tr><th>Location</th><th>Opened (proxy)</th><th>Days tracked</th><th>Days open</th><th>Days closed</th><th>Closed rate</th><th>Avg daily revenue (open days)</th><th>Est. lost revenue</th><th>Est. lost visits</th></tr></thead>
+    <tbody>
+      ${withData.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(fmtOpenedDate(r.firstDate))}</td><td>${fmtN(r.totalDays)}</td><td>${fmtN(r.daysOpen)}</td><td>${fmtN(r.daysClosed)}</td><td>${r.closedPct.toFixed(1)}%</td><td>${fmt$(r.avgDailyRevenue)}</td><td>${fmt$(r.estLostRevenue)}</td><td>${fmtN(Math.round(r.estLostVisits))}</td></tr>`).join('')}
+      <tr style="border-top:2px solid var(--border)"><td><b>All locations</b></td><td>—</td><td>—</td><td>—</td><td><b>${fmtN(totalClosed)}</b></td><td>—</td><td>—</td><td><b>${fmt$(totalLostRevenue)}</b></td><td><b>${fmtN(Math.round(totalLostVisits))}</b></td></tr>
+    </tbody>
+  </table></div>`;
+
+  const topMonths = Object.entries(closedByMonth).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  monthly.innerHTML = topMonths.length
+    ? `<div style="overflow-x:auto"><table class="dd-table"><thead><tr><th>Month</th><th>Closed days (company-wide)</th></tr></thead>
+        <tbody>${topMonths.map(([month, count]) => `<tr><td>${esc(month)}</td><td>${fmtN(count)}</td></tr>`).join('')}</tbody>
+      </table></div>`
+    : '<div class="chart-note">No closed days found.</div>';
+}
+
 // ── Financial data + rendering ──
 async function loadFinancial() {
+  // Independent of the filters below (full history, all locations) --
+  // fired without awaiting so it doesn't block the rest of this tab's load.
+  loadClosedDaysReport();
+
   const { from, until, days } = selectedDateRange();
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
