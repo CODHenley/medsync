@@ -352,6 +352,25 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Reason-for-Visit Patterns</h2>
+      <span class="sub">Chief complaint, grouped into categories, by time of day &amp; location</span></div>
+    <div class="chart-card">
+      <div class="chart-title">Top reasons by time of day</div>
+      <div class="chart-note">Free-text chief complaints bucketed into categories by keyword match — directional, not a coded diagnosis. % is share of that time window's cases</div>
+      <div id="complaint-time-table"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Top reasons by location</div>
+      <div class="chart-note" id="complaint-location-note"></div>
+      <div id="complaint-location-table"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Notable patterns</div>
+      <div class="chart-note">Categories with at least 5 cases whose share of a time window or location is well above their overall share</div>
+      <div class="insight-list" id="complaint-insights"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Chicagoland Case Map</h2>
       <span class="sub">Practice locations + case density by client ZIP code</span></div>
     <div class="chart-card">
@@ -1362,6 +1381,155 @@ function renderHeatmapGrid(el, matrix, opts) {
   }
 }
 
+// ── Reason-for-visit patterns (chief_complaint is free text -- bucket it
+// into categories by keyword match so it can be cross-tabbed against time
+// of day and location; directional grouping, not a coded diagnosis) ──
+const COMPLAINT_CATEGORIES = [
+  { label: 'Vomiting / GI upset',         kws: ['vomit', 'diarrhea', 'gi upset', 'stomach', 'nausea', 'ate something', 'ingest'] },
+  { label: 'Skin / Allergy / Ear',        kws: ['skin', 'itch', 'allerg', 'rash', 'hot spot', 'ear'] },
+  { label: 'Wound / Trauma / Limping',    kws: ['wound', 'laceration', 'bite', 'hit by car', 'hbc', 'trauma', 'limp', 'lame', 'fracture', 'broken'] },
+  { label: 'Respiratory',                 kws: ['cough', 'sneeze', 'breathing', 'respiratory', 'wheez'] },
+  { label: 'Urinary / Reproductive',      kws: ['urinary', 'uti', 'urinat', 'blood in urine', 'pregnan', 'whelp', 'labor'] },
+  { label: 'Lethargy / Not eating / Ill', kws: ['lethargy', 'not eating', 'anorexia', 'weak', 'fever', 'malaise'] },
+  { label: 'Dental',                      kws: ['dental', 'tooth', 'teeth'] },
+  { label: 'Eye',                         kws: ['eye', 'conjunctiv'] },
+  { label: 'Wellness / Vaccine',          kws: ['wellness', 'vaccine', 'annual', 'checkup', 'check up', 'spay', 'neuter'] },
+];
+function categorizeComplaint(text) {
+  const t = (text || '').toLowerCase().trim();
+  if (!t) return 'Unspecified';
+  for (const c of COMPLAINT_CATEGORIES) {
+    if (c.kws.some(k => t.includes(k))) return c.label;
+  }
+  return 'Other';
+}
+
+// Buckets aligned to the heatmap's own 9am-11pm window, so every case in
+// heatRows lands in exactly one bucket.
+const TIME_BUCKETS = [
+  { label: 'Morning (9–11am)',  from: HEATMAP_HOUR_START, to: 11 },
+  { label: 'Midday (12–2pm)',   from: 12, to: 14 },
+  { label: 'Afternoon (3–5pm)', from: 15, to: 17 },
+  { label: 'Evening (6–11pm)',  from: 18, to: HEATMAP_HOUR_END },
+];
+function timeBucketForHour(h) {
+  return (TIME_BUCKETS.find(b => h >= b.from && h <= b.to) || TIME_BUCKETS[TIME_BUCKETS.length - 1]).label;
+}
+
+// rows: same v_case_heatmap rows the heatmaps already fetched (day_of_week,
+// hour_of_day, location_id, chief_complaint) -- no extra fetch needed.
+function renderComplaintPatterns(rows) {
+  const loc = selectedLocation();
+  const byCategory = {}; // label -> { total, byBucket: {label: n}, byLocation: {name: n} }
+  const bucketTotals = {}; TIME_BUCKETS.forEach(b => bucketTotals[b.label] = 0);
+  const locationTotals = {}; LOCATIONS.forEach(l => locationTotals[l.name] = 0);
+
+  rows.forEach(r => {
+    const cat = categorizeComplaint(r.chief_complaint);
+    const bucket = timeBucketForHour(Number(r.hour_of_day));
+    const locName = (LOCATIONS.find(l => l.uuid === r.location_id) || {}).name || 'Unattributed';
+    const c = byCategory[cat] = byCategory[cat] || { total: 0, byBucket: {}, byLocation: {} };
+    c.total += 1;
+    c.byBucket[bucket] = (c.byBucket[bucket] || 0) + 1;
+    c.byLocation[locName] = (c.byLocation[locName] || 0) + 1;
+    bucketTotals[bucket] += 1;
+    locationTotals[locName] = (locationTotals[locName] || 0) + 1;
+  });
+
+  const total = rows.length;
+  const sortedCats = Object.entries(byCategory).sort((a, b) => b[1].total - a[1].total);
+  const topCats = sortedCats.slice(0, 9);
+
+  // ── Time-of-day table ──
+  const timeTableEl = document.getElementById('complaint-time-table');
+  if (!total) {
+    timeTableEl.innerHTML = '<div class="chart-note">No cases in this range.</div>';
+  } else {
+    const cell = (cat, bucketLabel) => {
+      const n = byCategory[cat].byBucket[bucketLabel] || 0;
+      const bTotal = bucketTotals[bucketLabel] || 0;
+      const pct = bTotal ? Math.round((n / bTotal) * 100) : 0;
+      return n ? `${fmtN(n)} <span style="color:var(--ink-3)">(${pct}%)</span>` : '<span style="color:var(--ink-3)">—</span>';
+    };
+    timeTableEl.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
+      <thead><tr><th>Reason category</th>${TIME_BUCKETS.map(b => `<th>${esc(b.label)}</th>`).join('')}<th>Total</th></tr></thead>
+      <tbody>${topCats.map(([cat, d]) => `<tr><td>${esc(cat)}</td>${TIME_BUCKETS.map(b => `<td>${cell(cat, b.label)}</td>`).join('')}<td><b>${fmtN(d.total)}</b></td></tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  // ── Location table -- only meaningful when comparing across locations ──
+  const locTableEl = document.getElementById('complaint-location-table');
+  const locNoteEl = document.getElementById('complaint-location-note');
+  if (loc) {
+    locNoteEl.textContent = `Filtered to ${loc.name} — switch to All Locations to compare categories across sites.`;
+    locTableEl.innerHTML = '';
+  } else if (!total) {
+    locNoteEl.textContent = '';
+    locTableEl.innerHTML = '<div class="chart-note">No cases in this range.</div>';
+  } else {
+    locNoteEl.textContent = 'Count of cases in each category, by practice location';
+    const activeLocs = LOCATIONS.filter(l => locationTotals[l.name] > 0);
+    locTableEl.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
+      <thead><tr><th>Reason category</th>${activeLocs.map(l => `<th>${esc(l.name)}</th>`).join('')}<th>Total</th></tr></thead>
+      <tbody>${topCats.map(([cat, d]) => `<tr><td>${esc(cat)}</td>${activeLocs.map(l => `<td>${fmtN(d.byLocation[l.name] || 0)}</td>`).join('')}<td><b>${fmtN(d.total)}</b></td></tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  // ── Auto-generated pattern insights: for each category with enough volume
+  // to say anything meaningful, find the time bucket / location where its
+  // share of that slice is furthest above its overall share (an "index",
+  // 100 = perfectly even spread) ──
+  const insightsEl = document.getElementById('complaint-insights');
+  const MIN_CASES = 5;
+  const findings = [];
+  sortedCats.forEach(([cat, d]) => {
+    if (d.total < MIN_CASES || !total) return;
+    const catShare = d.total / total;
+
+    let bestBucket = null, bestIndex = 100;
+    TIME_BUCKETS.forEach(b => {
+      const n = d.byBucket[b.label] || 0;
+      const bTotal = bucketTotals[b.label] || 0;
+      if (!bTotal || !n) return;
+      const index = (n / (catShare * bTotal)) * 100;
+      if (index > bestIndex) { bestIndex = index; bestBucket = b.label; }
+    });
+    if (bestBucket && bestIndex >= 140) {
+      findings.push({
+        badge: 'T', cls: 'congruency', index: bestIndex,
+        title: `${esc(cat)} skews toward ${esc(bestBucket)}`,
+        body: `${fmtN(d.byBucket[bestBucket])} of ${fmtN(d.total)} “${esc(cat)}” cases (${Math.round(d.byBucket[bestBucket] / d.total * 100)}%) land in ${esc(bestBucket)}, vs. <b>${Math.round(bucketTotals[bestBucket] / total * 100)}%</b> of all cases in that window — about <b>${Math.round(bestIndex)}%</b> of an even spread.`,
+      });
+    }
+
+    if (!loc) {
+      let bestLoc = null, bestLocIndex = 100;
+      LOCATIONS.forEach(l => {
+        const n = d.byLocation[l.name] || 0;
+        const lTotal = locationTotals[l.name] || 0;
+        if (!lTotal || !n) return;
+        const index = (n / (catShare * lTotal)) * 100;
+        if (index > bestLocIndex) { bestLocIndex = index; bestLoc = l.name; }
+      });
+      if (bestLoc && bestLocIndex >= 140) {
+        findings.push({
+          badge: 'L', cls: 'concentration', index: bestLocIndex,
+          title: `${esc(cat)} concentrated at ${esc(bestLoc)}`,
+          body: `${fmtN(d.byLocation[bestLoc])} of ${fmtN(d.total)} “${esc(cat)}” cases (${Math.round(d.byLocation[bestLoc] / d.total * 100)}%) are at ${esc(bestLoc)}, vs. <b>${Math.round(locationTotals[bestLoc] / total * 100)}%</b> of all cases there — about <b>${Math.round(bestLocIndex)}%</b> of an even spread.`,
+        });
+      }
+    }
+  });
+
+  findings.sort((a, b) => b.index - a.index);
+  const top = findings.slice(0, 4);
+  insightsEl.innerHTML = top.length ? top.map(it => `
+    <div class="insight-item">
+      <div class="i-badge ${it.cls}">${it.badge}</div>
+      <div><div class="i-title">${it.title}</div><div class="i-body">${it.body}</div></div>
+    </div>`).join('') : '<div class="chart-note">No strongly skewed patterns in this range — try a longer date range for more signal.</div>';
+}
+
 // ── Chicagoland case map ──
 let chicagoMap = null;
 let mapMarkersLayer = null;
@@ -1460,6 +1628,8 @@ async function loadClinicalGeo() {
 
   const heatRows = await heatRes.json();
   const geoRows = await geoRes.json();
+
+  renderComplaintPatterns(heatRows);
 
   if (!heatRows.length) {
     document.getElementById('volume-heatmap').innerHTML = '<div class="chart-note">No cases in this range.</div>';
