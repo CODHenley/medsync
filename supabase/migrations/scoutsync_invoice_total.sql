@@ -33,8 +33,10 @@ comment on column public.encounters.invoice_total is
   '-- confirmed via vetspire_clinical_schema_probe.py against live data, '
   'not derived/estimated from encounterProducts. VOID/DELETED orders are 0.';
 
-alter table public.encounters drop column if exists estimated_case_value;
-
+-- Must repoint the view at invoice_total BEFORE dropping estimated_case_value --
+-- the existing view still selects it, and Postgres won't drop a column a
+-- live view depends on ("2BP01: cannot drop column ... because other
+-- objects depend on it").
 create or replace view public.v_case_heatmap as
 select
   e.location_id,
@@ -47,3 +49,5 @@ select
 from public.encounters e
 where e.had_exam
   and e.started_at is not null;
+
+alter table public.encounters drop column if exists estimated_case_value;
