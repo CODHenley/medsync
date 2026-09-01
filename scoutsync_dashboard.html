@@ -1163,6 +1163,12 @@ function showClosedDaysDetail(locUuid) {
   panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
 }
 
+// Trailing window the lost-revenue estimate's "typical billed day" average
+// is drawn from, floored at each location's opening date -- keeps the
+// estimate stable even when the selected date range itself is much
+// shorter than this (see loadClosedDaysReport).
+const BASELINE_DAYS = 90;
+
 async function loadClosedDaysReport() {
   const note = document.getElementById('closed-days-note');
   const table = document.getElementById('closed-days-table');
@@ -1234,8 +1240,21 @@ async function loadClosedDaysReport() {
     const scheduledNoRevenue = daysScheduled.filter(d => !revenueDays.has(d));
     closedDaysDetailByLocation[l.uuid] = { name: l.name, closedDates: daysClosed, scheduledNoRevenueDates: scheduledNoRevenue };
 
+    // "Typical billed day" for the lost-revenue estimate is drawn from a
+    // trailing BASELINE_DAYS window (or the full selected range if that's
+    // wider) rather than just the days inside a short custom range -- a
+    // 3-5 day window has too few billed days for its own average to be
+    // anything but noisy, and one unusually large invoice day would swing
+    // the imputed value for every closed day in it.
+    const baselineFloorDate = new Date(windowEnd + 'T00:00:00');
+    baselineFloorDate.setDate(baselineFloorDate.getDate() - (BASELINE_DAYS - 1));
+    const baselineFloorIso = baselineFloorDate.toISOString().slice(0, 10);
+    let baselineStart = windowStart < baselineFloorIso ? windowStart : baselineFloorIso;
+    if (baselineStart < openDate) baselineStart = openDate;
+    const baselineDays = daysBetweenInclusive(baselineStart, windowEnd);
+
     let revenueOnBilledDays = 0, visitsOnBilledDays = 0, billedDayCount = 0;
-    allDays.forEach(d => {
+    baselineDays.forEach(d => {
       const v = revenueDays.get(d);
       if (v) { revenueOnBilledDays += v.revenue; visitsOnBilledDays += v.count; billedDayCount++; }
     });
@@ -1271,12 +1290,13 @@ async function loadClosedDaysReport() {
     totals or the lost-revenue estimate below — worth a human looking into, not something this report guesses at. This table
     uses the date range selected above (${esc(fmtDate(rangeFrom))}–${esc(fmtDate(rangeEnd))}), floored at each location's own
     Vetspire-reported opening date if it opened more recently than that. Today is excluded (still in progress). Estimated lost
-    revenue/visits apply each location's own average per billed day <i>within this range</i> to its closed-day count only —
-    a directional estimate, not an audited figure.`;
+    revenue/visits apply each location's average per billed day, over a trailing ${BASELINE_DAYS}-day window ending at the range
+    (or the full selected range if it's wider than that) — a fixed baseline so a short custom range doesn't produce a noisy
+    per-day estimate off a handful of billed days — to its closed-day count only. A directional estimate, not an audited figure.`;
 
   const fmtOpenedDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   table.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
-    <thead><tr><th>Location</th><th>Opened</th><th>Days tracked</th><th>Days scheduled</th><th>Days closed</th><th>Closed rate</th><th>Scheduled, $0 revenue</th><th>Avg daily revenue (billed days)</th><th>Est. lost revenue</th><th>Est. lost visits</th></tr></thead>
+    <thead><tr><th>Location</th><th>Opened</th><th>Days tracked</th><th>Days scheduled</th><th>Days closed</th><th>Closed rate</th><th>Scheduled, $0 revenue</th><th>Avg daily revenue (trailing ${BASELINE_DAYS}d)</th><th>Est. lost revenue</th><th>Est. lost visits</th></tr></thead>
     <tbody>
       ${withData.map(r => `<tr><td><button class="dd-drill-link" data-loc="${r.uuid}">${esc(r.name)}</button></td><td>${esc(fmtOpenedDate(r.openDate))}</td><td>${fmtN(r.totalDays)}</td><td>${fmtN(r.daysScheduled)}</td><td>${fmtN(r.daysClosed)}</td><td>${r.closedPct.toFixed(1)}%</td><td>${fmtN(r.scheduledNoRevenue)}</td><td>${fmt$(r.avgDailyRevenue)}</td><td>${fmt$(r.estLostRevenue)}</td><td>${fmtN(Math.round(r.estLostVisits))}</td></tr>`).join('')}
       <tr style="border-top:2px solid var(--border)"><td><b>All locations</b></td><td>—</td><td>—</td><td>—</td><td><b>${fmtN(totalClosed)}</b></td><td>—</td><td><b>${fmtN(totalScheduledNoRevenue)}</b></td><td>—</td><td><b>${fmt$(totalLostRevenue)}</b></td><td><b>${fmtN(Math.round(totalLostVisits))}</b></td></tr>
