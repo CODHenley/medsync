@@ -36,7 +36,17 @@ def type_name(t):
 
 
 def dump_type_fields(token, type_name_str):
-    r = gql(token, f'{{ __type(name: "{type_name_str}") {{ name kind fields {{ name type {{ name kind ofType {{ name kind ofType {{ name }} }} }} args {{ name type {{ name kind ofType {{ name }} }} }} }} }} }}')
+    # One bad type (introspection depth limit, a union/interface with no
+    # plain `fields`, a transient network error) shouldn't kill the whole
+    # probe -- every call site wraps this and keeps going.
+    try:
+        r = gql(token, f'{{ __type(name: "{type_name_str}") {{ name kind fields {{ name type {{ name kind ofType {{ name kind ofType {{ name }} }} }} args {{ name type {{ name kind ofType {{ name }} }} }} }} }} }}')
+    except urllib.error.HTTPError as e:
+        print(f'  (type "{type_name_str}" — HTTP {e.code}: {e.read()[:400]})')
+        return
+    except Exception as e:
+        print(f'  (type "{type_name_str}" — request failed: {e!r})')
+        return
     data = (r.get('data') or {}).get('__type')
     if not data or not data.get('fields'):
         print(f'  (type "{type_name_str}" not found or has no fields — errors: {r.get("errors")})')
@@ -47,6 +57,16 @@ def dump_type_fields(token, type_name_str):
         args = ', '.join(f"{a['name']}: {type_name(a['type'])}" for a in (f.get('args') or []))
         print(f'  {f["name"]}({args}): {tname}')
     print()
+
+
+def dump_enum_values(token, type_name_str):
+    try:
+        r = gql(token, f'{{ __type(name: "{type_name_str}") {{ name enumValues {{ name }} }} }}')
+        data = (r.get('data') or {}).get('__type')
+        values = [v['name'] for v in (data or {}).get('enumValues') or []]
+        print(f'=== {type_name_str} enum values === {values}\n')
+    except Exception as e:
+        print(f'  (enum "{type_name_str}" — request failed: {e!r})')
 
 
 def main():
@@ -95,10 +115,15 @@ def main():
     for t in ['Provider', 'Appointment', 'Location']:
         dump_type_fields(args.token, t)
 
+    print('=== AppointmentStatus enum values ===')
+    dump_enum_values(args.token, 'AppointmentStatus')
+
     print('=== Dumping fields for each matched scheduling-ish type ===')
     for t in matches:
         if t['kind'] == 'OBJECT':
             dump_type_fields(args.token, t['name'])
+        elif t['kind'] == 'ENUM':
+            dump_enum_values(args.token, t['name'])
 
 
 if __name__ == '__main__':
