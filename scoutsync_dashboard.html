@@ -1084,10 +1084,17 @@ function renderInsights(revenueSeries, volumeSeries, revenueByName) {
 }
 
 // ── Days Closed & Financial Impact -- Scout operates every day of the week,
-// so a calendar day with zero billed activity at an already-open location
-// is a real loss, not just a slow day. Independent of the date-range/
-// location filters above -- this always covers each location's full
-// history since it opened. ──
+// so a calendar day with no staff scheduled at an already-open location is
+// a real closure. Independent of the date-range/location filters above --
+// this always covers each location's full history since it opened.
+//
+// "Closed" used to be inferred from zero billed revenue, which turned out
+// to just track financial-sync completeness, not real closures (a 2-week
+// company-wide gap in Mar 2026 had real encounters the whole time -- pure
+// billing-sync lag). The real signal is provider_shifts (Vetspire's own
+// Location.providerSchedules): no scheduled shift = closed. A day WITH a
+// scheduled shift but zero revenue is a different, non-closure problem
+// ("staffed but slow") and is reported separately, not counted as a loss. ──
 
 function daysBetweenInclusive(fromISO, toISO) {
   const out = [];
@@ -1102,23 +1109,35 @@ async function loadClosedDaysReport() {
   const table = document.getElementById('closed-days-table');
   const monthly = document.getElementById('closed-days-monthly');
 
-  // v_avg_transaction_charge_daily is sparse -- a location/day with zero
-  // billed activity simply has no row, which is exactly the "closed" signal
-  // we want. Full history, paginated (see fetchAllRows), not scoped to the
-  // dashboard's date-range/location filters.
-  const rows = await fetchAllRows(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=service_date,revenue,encounter_count,location_id&order=service_date.asc`);
-  if (rows === null) {
+  const [shiftRows, revenueRows, locationRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/provider_shifts?select=location_id,shift_start,shift_end&order=shift_start.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=service_date,revenue,encounter_count,location_id&order=service_date.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/locations?select=id,open_date&order=id.asc`),
+  ]);
+  if (shiftRows === null || revenueRows === null || locationRows === null) {
     note.textContent = '';
-    table.innerHTML = '<div class="chart-note">Couldn\'t load daily revenue data for the closed-days report.</div>';
+    table.innerHTML = '<div class="chart-note">Couldn\'t load shift/revenue data for the closed-days report — run scoutsync_provider_shifts.sql and vetspire_provider_shifts_sync.py if you haven\'t yet.</div>';
     monthly.innerHTML = '';
     return;
   }
 
   const yesterday = isoDaysAgo(1); // exclude today -- it's still in progress
-  const byLocation = {};
-  LOCATIONS.forEach(l => byLocation[l.uuid] = new Map()); // service_date -> {revenue, count}
-  rows.forEach(r => {
-    const days = byLocation[r.location_id];
+  const openDateByLocation = Object.fromEntries(locationRows.map(l => [l.id, l.open_date]));
+
+  const scheduledByLocation = {}; // location_id -> Set(dates with >=1 scheduled shift)
+  LOCATIONS.forEach(l => scheduledByLocation[l.uuid] = new Set());
+  shiftRows.forEach(r => {
+    const days = scheduledByLocation[r.location_id];
+    if (!days || !r.shift_start) return;
+    daysBetweenInclusive(r.shift_start, r.shift_end || r.shift_start).forEach(d => {
+      if (d <= yesterday) days.add(d);
+    });
+  });
+
+  const revenueByLocation = {}; // location_id -> Map(date -> {revenue, count})
+  LOCATIONS.forEach(l => revenueByLocation[l.uuid] = new Map());
+  revenueRows.forEach(r => {
+    const days = revenueByLocation[r.location_id];
     if (!days || !r.service_date || r.service_date > yesterday) return;
     const prev = days.get(r.service_date) || { revenue: 0, count: 0 };
     days.set(r.service_date, {
@@ -1129,57 +1148,63 @@ async function loadClosedDaysReport() {
 
   const closedByMonth = {}; // 'YYYY-MM' -> count, company-wide
   const perLocation = LOCATIONS.map(l => {
-    const openDays = byLocation[l.uuid];
-    const dates = [...openDays.keys()].sort();
-    if (!dates.length) return { name: l.name, hasData: false };
+    const scheduledDays = scheduledByLocation[l.uuid];
+    const revenueDays = revenueByLocation[l.uuid];
+    // Prefer Vetspire's own Location.openDate (synced by
+    // vetspire_provider_shifts_sync.py); fall back to the earliest scheduled
+    // or billed day if that sync hasn't run yet, so the report still shows
+    // something sensible rather than an empty row.
+    const openDate = openDateByLocation[l.uuid]
+      || [...scheduledDays].sort()[0]
+      || [...revenueDays.keys()].sort()[0];
+    if (!openDate) return { name: l.name, hasData: false };
 
-    // locations.open_date exists but isn't populated for any of the 4
-    // locations -- the earliest day with any billed activity is the best
-    // available proxy for "opened," so days before that are never counted
-    // as closed.
-    const firstDate = dates[0];
-    const allDays = daysBetweenInclusive(firstDate, yesterday);
-    const daysOpen = openDays.size;
-    const daysClosed = allDays.length - daysOpen;
-    let revenueOnOpenDays = 0, visitsOnOpenDays = 0;
-    openDays.forEach(v => { revenueOnOpenDays += v.revenue; visitsOnOpenDays += v.count; });
-    const avgDailyRevenue = daysOpen ? revenueOnOpenDays / daysOpen : 0;
-    const avgDailyVisits = daysOpen ? visitsOnOpenDays / daysOpen : 0;
+    const allDays = daysBetweenInclusive(openDate, yesterday);
+    const daysScheduled = allDays.filter(d => scheduledDays.has(d));
+    const daysClosed = allDays.filter(d => !scheduledDays.has(d));
+    const staffedNoRevenue = daysScheduled.filter(d => !revenueDays.has(d));
 
-    allDays.forEach(d => {
-      if (!openDays.has(d)) {
-        const month = d.slice(0, 7);
-        closedByMonth[month] = (closedByMonth[month] || 0) + 1;
-      }
+    let revenueOnBilledDays = 0, visitsOnBilledDays = 0;
+    revenueDays.forEach(v => { revenueOnBilledDays += v.revenue; visitsOnBilledDays += v.count; });
+    const billedDayCount = revenueDays.size;
+    const avgDailyRevenue = billedDayCount ? revenueOnBilledDays / billedDayCount : 0;
+    const avgDailyVisits = billedDayCount ? visitsOnBilledDays / billedDayCount : 0;
+
+    daysClosed.forEach(d => {
+      const month = d.slice(0, 7);
+      closedByMonth[month] = (closedByMonth[month] || 0) + 1;
     });
 
     return {
-      name: l.name, hasData: true, firstDate, totalDays: allDays.length,
-      daysOpen, daysClosed, closedPct: (daysClosed / allDays.length) * 100,
-      avgDailyRevenue, estLostRevenue: daysClosed * avgDailyRevenue,
-      estLostVisits: daysClosed * avgDailyVisits,
+      name: l.name, hasData: true, openDate, totalDays: allDays.length,
+      daysScheduled: daysScheduled.length, daysClosed: daysClosed.length,
+      closedPct: (daysClosed.length / allDays.length) * 100,
+      staffedNoRevenue: staffedNoRevenue.length,
+      avgDailyRevenue, estLostRevenue: daysClosed.length * avgDailyRevenue,
+      estLostVisits: daysClosed.length * avgDailyVisits,
     };
   });
 
   const withData = perLocation.filter(r => r.hasData);
   const totalClosed = withData.reduce((a, r) => a + r.daysClosed, 0);
+  const totalStaffedNoRevenue = withData.reduce((a, r) => a + r.staffedNoRevenue, 0);
   const totalLostRevenue = withData.reduce((a, r) => a + r.estLostRevenue, 0);
   const totalLostVisits = withData.reduce((a, r) => a + r.estLostVisits, 0);
 
-  note.innerHTML = `"Closed" = a calendar day with <b>zero billed activity</b> at a location that had already started
-    billing — Scout operates every day of the week, so a no-revenue day there is a real loss, not just a slow one.
-    Each location's own <b>earliest billed day is used as a proxy for its opening date</b> (<code>locations.open_date</code>
-    exists but isn't populated for any of the 4 locations), so days before that are never counted as closed. Today is
-    excluded (still in progress). Estimated lost revenue/visits apply each location's own average per <i>open</i> day to
-    its closed-day count — a real closure's actual lost revenue could differ, and a data-sync gap can look identical to a
-    genuine closure, so treat this as a directional estimate, not an audited figure.`;
+  note.innerHTML = `<b>Closed</b> = a calendar day with <b>no provider shift scheduled</b> at that location (Vetspire's own
+    staff schedule, not billing) — Scout operates every day of the week, so an unstaffed day there is a real closure.
+    <b>Staffed, no revenue</b> = a day WITH a scheduled shift but zero billed revenue that day — a real problem, but a
+    different one (slow day, no-shows, a billing lag), and it's <i>not</i> counted in the closed-day totals or the lost-revenue
+    estimate below. Each location's window starts at its own Vetspire-reported opening date. Today is excluded (still in
+    progress). Estimated lost revenue/visits apply each location's own average per billed day to its closed-day count only —
+    a directional estimate, not an audited figure.`;
 
   const fmtOpenedDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   table.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
-    <thead><tr><th>Location</th><th>Opened (proxy)</th><th>Days tracked</th><th>Days open</th><th>Days closed</th><th>Closed rate</th><th>Avg daily revenue (open days)</th><th>Est. lost revenue</th><th>Est. lost visits</th></tr></thead>
+    <thead><tr><th>Location</th><th>Opened</th><th>Days tracked</th><th>Days staffed</th><th>Days closed</th><th>Closed rate</th><th>Staffed, no revenue</th><th>Avg daily revenue (billed days)</th><th>Est. lost revenue</th><th>Est. lost visits</th></tr></thead>
     <tbody>
-      ${withData.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(fmtOpenedDate(r.firstDate))}</td><td>${fmtN(r.totalDays)}</td><td>${fmtN(r.daysOpen)}</td><td>${fmtN(r.daysClosed)}</td><td>${r.closedPct.toFixed(1)}%</td><td>${fmt$(r.avgDailyRevenue)}</td><td>${fmt$(r.estLostRevenue)}</td><td>${fmtN(Math.round(r.estLostVisits))}</td></tr>`).join('')}
-      <tr style="border-top:2px solid var(--border)"><td><b>All locations</b></td><td>—</td><td>—</td><td>—</td><td><b>${fmtN(totalClosed)}</b></td><td>—</td><td>—</td><td><b>${fmt$(totalLostRevenue)}</b></td><td><b>${fmtN(Math.round(totalLostVisits))}</b></td></tr>
+      ${withData.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(fmtOpenedDate(r.openDate))}</td><td>${fmtN(r.totalDays)}</td><td>${fmtN(r.daysScheduled)}</td><td>${fmtN(r.daysClosed)}</td><td>${r.closedPct.toFixed(1)}%</td><td>${fmtN(r.staffedNoRevenue)}</td><td>${fmt$(r.avgDailyRevenue)}</td><td>${fmt$(r.estLostRevenue)}</td><td>${fmtN(Math.round(r.estLostVisits))}</td></tr>`).join('')}
+      <tr style="border-top:2px solid var(--border)"><td><b>All locations</b></td><td>—</td><td>—</td><td>—</td><td><b>${fmtN(totalClosed)}</b></td><td>—</td><td><b>${fmtN(totalStaffedNoRevenue)}</b></td><td>—</td><td><b>${fmt$(totalLostRevenue)}</b></td><td><b>${fmtN(Math.round(totalLostVisits))}</b></td></tr>
     </tbody>
   </table></div>`;
 
