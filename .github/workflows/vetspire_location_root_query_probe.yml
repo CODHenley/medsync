@@ -1,0 +1,22 @@
+name: Vetspire Location Root Query Probe
+
+# One-off: find the root Query field for fetching a Location by id (needed
+# to nest providerSchedules under it), and live-test the exact query shape
+# against Lincoln Park before wiring it into a real sync script. Manual
+# trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run location root-query probe
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_location_root_query_probe.py --token "$VETSPIRE_API_TOKEN"
