@@ -64,6 +64,22 @@ def main():
     })
     print(json.dumps(rows, indent=2))
 
+    print(f"\n=== invoice_line_items, Wheaton, Jul 28 - Aug 11 2026 (wider window -- checking for a nearby billing-date mismatch) ===")
+    rows = supa_get("invoice_line_items", {
+        "location_id": f"eq.{WHEATON}",
+        "service_date": "gte.2026-07-28",
+        "and": "(service_date.lte.2026-08-11)",
+        "select": "service_date,vetspire_invoice_id,provider_id,category,description,amount",
+        "order": "service_date.asc",
+        "limit": "100",
+    })
+    print(json.dumps(rows, indent=2))
+    if rows:
+        by_date = {}
+        for r in rows:
+            by_date[r["service_date"]] = by_date.get(r["service_date"], 0) + float(r.get("amount") or 0)
+        print(f"  -> revenue by date: {by_date}")
+
     print(f"\n=== appointment_events, Wheaton, {DATE} ===")
     rows = supa_get("appointment_events", {
         "location_id": f"eq.{WHEATON}",
