@@ -16,6 +16,8 @@ invoice happened that day -- exactly the staffing signal needed.
 
 Usage:
   VETSPIRE_API_TOKEN="..." python3 vetspire_provider_shifts_sync.py
+  LOOKBACK_DAYS=0 for a full historical sweep from SWEEP_FLOOR (e.g. a
+  one-time backfill); scheduled runs default to a short rolling window.
 """
 import json, os, urllib.request, urllib.error
 from datetime import datetime, timedelta, timezone
@@ -38,9 +40,16 @@ LOCATIONS = {
 # Floor for the historical sweep -- safely before any location's real
 # openDate (Lincoln Park's, the oldest, is 2022-12-12 per Vetspire). A
 # location simply returns no shifts before it existed, so a floor this
-# early costs a few empty chunks, not incorrect data.
+# early costs a few empty chunks, not incorrect data. Only used for a full
+# sweep (LOOKBACK_DAYS=0, e.g. a one-time backfill) -- routine scheduled
+# runs use a short rolling window instead (see LOOKBACK_DAYS) so a daily
+# sync isn't re-pulling years of already-synced shifts every time.
 SWEEP_FLOOR = "2020-01-01"
 CHUNK_DAYS = int(os.environ.get("CHUNK_DAYS", "120"))
+# 0 = full sweep from SWEEP_FLOOR. Default (7) covers a scheduled daily
+# run's actual need -- a late schedule correction a day or two after the
+# fact -- without resweeping years of unchanged history.
+LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "0"))
 
 LOCATION_QUERY = """
 query($id: ID, $start: Date, $end: Date) {
@@ -159,14 +168,16 @@ def main():
     if not token:
         raise SystemExit("ERROR: VETSPIRE_API_TOKEN not set")
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_dt = datetime.now(timezone.utc)
+    today = today_dt.strftime("%Y-%m-%d")
+    sweep_start = (today_dt - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d") if LOOKBACK_DAYS else SWEEP_FLOOR
     totals = {"shifts": 0, "providers": 0, "locations_updated": 0}
 
     for vetspire_loc_id, (loc_uuid, loc_name) in LOCATIONS.items():
         print(f"\n=== {loc_name} ({vetspire_loc_id}) ===")
         open_date_captured = False
 
-        for chunk_start, chunk_end in date_chunks(SWEEP_FLOOR, today, CHUNK_DAYS):
+        for chunk_start, chunk_end in date_chunks(sweep_start, today, CHUNK_DAYS):
             result = gql(token, LOCATION_QUERY, {
                 "id": vetspire_loc_id, "start": chunk_start, "end": chunk_end,
             })

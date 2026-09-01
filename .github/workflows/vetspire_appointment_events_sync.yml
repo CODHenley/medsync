@@ -5,13 +5,22 @@ name: Vetspire Appointment Events Sync
 # operations report and the cancellation-rate-based "partial closure" flag
 # on the Days Closed & Financial Impact report.
 #
-# Manual trigger only for now (not yet on a schedule) -- run
-# scoutsync_appointment_events.sql in Supabase first if the
-# appointment_events table doesn't exist yet.
+# Daily, not on the 4-hour cadence used by the clinical/financial syncs --
+# these reports only ever look at yesterday and earlier (today's always
+# excluded as still-in-progress), so there's no same-day freshness to
+# gain. Scheduled runs use a short rolling lookback (not a full historical
+# resweep) -- run scoutsync_appointment_events.sql in Supabase first if
+# the appointment_events table doesn't exist yet.
 
 on:
+  schedule:
+    - cron: '0 13 * * *'  # 8:00am CT (UTC-5) daily, after the provider shifts sync
   workflow_dispatch:
     inputs:
+      lookback_days:
+        description: 'Days of history to pull (default 7; use 0 for a full historical sweep from 2020-01-01)'
+        required: false
+        default: '7'
       chunk_days:
         description: 'Days per Vetspire query chunk (default 60)'
         required: false
@@ -30,5 +39,6 @@ jobs:
       - name: Run Vetspire appointment events sync
         env:
           VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days || '7' }}
           CHUNK_DAYS: ${{ inputs.chunk_days || '60' }}
         run: python3 vetspire_appointment_events_sync.py
