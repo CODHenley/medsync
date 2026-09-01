@@ -107,8 +107,11 @@ def main():
     qmatches = [f for f in qfields if any(k in f['name'].lower() for k in KEYWORDS)]
     for f in sorted(qmatches, key=lambda x: x['name']):
         tname = type_name(f['type'])
-        args = ', '.join(f"{a['name']}: {type_name(a['type'])}" for a in (f.get('args') or []))
-        print(f"  {f['name']}({args}): {tname}")
+        # NOTE: intentionally not named `args` -- that would shadow the
+        # argparse Namespace of the same name for the rest of main(), since
+        # Python has no block scoping (this exact bug crashed the first run).
+        argstr = ', '.join(f"{a['name']}: {type_name(a['type'])}" for a in (f.get('args') or []))
+        print(f"  {f['name']}({argstr}): {tname}")
     print()
 
     print('=== Also checking known types for scheduling-ish fields: Provider, Appointment, Location ===')
