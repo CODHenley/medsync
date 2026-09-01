@@ -19,8 +19,68 @@ import json, os, urllib.request, urllib.error
 
 SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
 SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
+VETSPIRE_URL = "https://api.vetspire.com/graphql"
+WHEATON_VS_ID = "28253"
 WHEATON = "11111111-0000-0000-0000-000000000004"
 DATE = "2026-08-04"
+
+SALES_QUERY = """
+query($lids:[ID!], $s:Date, $e:Date){
+    salesReport(locationIds:$lids, startDate:$s, endDate:$e,
+                breakdowns:[PROVIDER_ID, PRODUCT_CATEGORY_ID], segment:DAY)
+}
+"""
+
+
+def gql(token, query, variables=None):
+    body = json.dumps({"query": query, "variables": variables or {}}).encode()
+    req = urllib.request.Request(VETSPIRE_URL, data=body, headers={
+        "Content-Type": "application/json",
+        "Authorization": token,
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        print(f"  Vetspire HTTP {e.code}: {e.read().decode()[:300]}")
+        return {"errors": [{"message": f"HTTP {e.code}"}]}
+
+
+def check_vetspire_direct():
+    token = os.environ.get("VETSPIRE_API_TOKEN", "").strip().removeprefix("Bearer ").strip()
+    if not token:
+        print("  (no VETSPIRE_API_TOKEN -- skipping direct Vetspire check)")
+        return
+
+    print(f"\n=== Vetspire salesReport DIRECT, Wheaton, single-day window ({DATE} only) ===")
+    result = gql(token, SALES_QUERY, {"lids": [WHEATON_VS_ID], "s": DATE, "e": DATE})
+    if "errors" in result:
+        print(f"  ERROR: {result['errors']}")
+    else:
+        raw = result.get("data", {}).get("salesReport", "[]")
+        rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        print(f"  fetched {len(rows)} breakdown rows for {DATE} alone")
+        total = sum(float(r.get("total") or 0) for r in rows)
+        print(f"  total: ${total:.2f}")
+        print(json.dumps(rows, indent=2)[:3000])
+
+    print(f"\n=== Vetspire salesReport DIRECT, Wheaton, same 115-day window the backfill used ===")
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=115)).strftime("%Y-%m-%d")
+    until = now.strftime("%Y-%m-%d")
+    result = gql(token, SALES_QUERY, {"lids": [WHEATON_VS_ID], "s": since, "e": until})
+    if "errors" in result:
+        print(f"  ERROR: {result['errors']}")
+    else:
+        raw = result.get("data", {}).get("salesReport", "[]")
+        rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        print(f"  fetched {len(rows)} breakdown rows for the full {since}..{until} window")
+        aug4_rows = [r for r in rows if r.get("date") == DATE]
+        print(f"  -> of those, {len(aug4_rows)} rows have date == {DATE}")
+        dates_present = sorted(set(r.get("date") for r in rows))
+        print(f"  -> distinct dates present in the response: {len(dates_present)} (window is {(now - timedelta(days=115)).strftime('%Y-%m-%d')}..{until})")
+        print(f"  -> is {DATE} in the response at all: {DATE in dates_present}")
 
 
 def supa_get(path, params):
@@ -38,6 +98,8 @@ def supa_get(path, params):
 
 
 def main():
+    check_vetspire_direct()
+
     print(f"=== provider_shifts, Wheaton, {DATE} ===")
     rows = supa_get("provider_shifts", {
         "location_id": f"eq.{WHEATON}",
