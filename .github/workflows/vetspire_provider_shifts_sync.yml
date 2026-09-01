@@ -1,0 +1,35 @@
+name: Vetspire Provider Shifts Sync
+
+# Populates provider_shifts (Location.providerSchedules) and backfills
+# locations.open_date (Location.openDate) from Vetspire. Needed to
+# distinguish "staffed but no revenue" from "actually closed" in the Days
+# Closed & Financial Impact report -- see provider_shifts's table comment
+# for why encounters/revenue alone can't make that call.
+#
+# Manual trigger only for now (not yet on a schedule) -- run
+# scoutsync_provider_shifts.sql in Supabase first if the provider_shifts
+# table doesn't exist yet.
+
+on:
+  workflow_dispatch:
+    inputs:
+      chunk_days:
+        description: 'Days per Vetspire query chunk (default 120)'
+        required: false
+        default: '120'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire provider shifts sync
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+          CHUNK_DAYS: ${{ inputs.chunk_days || '120' }}
+        run: python3 vetspire_provider_shifts_sync.py
