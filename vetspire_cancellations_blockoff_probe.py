@@ -54,7 +54,7 @@ def main():
       }
     }
     """
-    r1 = gql(token, q1, {"locationId": LP_ID, "start": "2025-10-17T00:00:00", "end": "2025-10-18T00:00:00"})
+    r1 = gql(token, q1, {"locationId": LP_ID, "start": "2025-10-17T00:00:00Z", "end": "2025-10-18T00:00:00Z"})
     print(json.dumps(r1, indent=2)[:6000])
 
     print("\n=== (2) Any block-off appointments at Lincoln Park in the last 60 days ===")
@@ -70,7 +70,7 @@ def main():
       }
     }
     """
-    r2 = gql(token, q2, {"locationId": LP_ID, "start": "2026-07-01T00:00:00", "end": "2026-09-01T00:00:00"})
+    r2 = gql(token, q2, {"locationId": LP_ID, "start": "2026-07-01T00:00:00Z", "end": "2026-09-01T00:00:00Z"})
     appts = (r2.get("data") or {}).get("appointments") or []
     blockoffs = [a for a in appts if (a.get("type") or {}).get("isBlockoff")]
     print(f"Total appointments in window: {len(appts)}")
