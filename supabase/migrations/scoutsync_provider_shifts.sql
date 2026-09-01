@@ -27,3 +27,17 @@ create index if not exists idx_provider_shifts_location_dates
 
 comment on table public.provider_shifts is
   'Vetspire Location.providerSchedules -- one row per provider per scheduled shift-day, independent of billed revenue or encounters. Used to tell "staffed but slow" apart from "actually closed."';
+
+-- Every other sync table (e.g. encounter_diagnostics) follows this same
+-- pattern -- a bare new table has no RLS policy and the anon key the sync
+-- scripts run under gets rejected with 42501 on the first insert.
+alter table public.provider_shifts enable row level security;
+drop policy if exists "anon_all" on public.provider_shifts;
+create policy "anon_all" on public.provider_shifts for all to anon using (true) with check (true);
+
+-- Discovered live (PGRST204) that locations.open_date doesn't actually
+-- exist in this project -- a different tool's payload-building code
+-- (medsync_newlocation_live.html) conditionally sets it, which had wrongly
+-- suggested the column was already there. vetspire_provider_shifts_sync.py
+-- needs it to backfill each location's real Vetspire-reported opening date.
+alter table public.locations add column if not exists open_date date;
