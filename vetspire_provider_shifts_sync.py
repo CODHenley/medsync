@@ -114,6 +114,32 @@ def supa_upsert(path, records, on_conflict):
         return []
 
 
+def supa_patch(path, filter_qs, fields):
+    # A real UPDATE, not an INSERT ... ON CONFLICT DO UPDATE -- the latter
+    # still validates NOT NULL/CHECK constraints on every column omitted
+    # from the payload (locations.name here) even though the row already
+    # exists and only the update branch would ever fire. PATCH only ever
+    # touches the columns given, so it can't trip a constraint on a column
+    # it isn't setting.
+    body = json.dumps(fields).encode()
+    req = urllib.request.Request(
+        f"{SUPA_URL}/rest/v1/{path}?{filter_qs}",
+        data=body, method="PATCH",
+        headers={
+            "Content-Type":  "application/json",
+            "apikey":        SUPA_KEY,
+            "Authorization": f"Bearer {SUPA_KEY}",
+            "Prefer":        "return=representation",
+        },
+    )
+    try:
+        body, _ = _urlopen_with_retry(req, timeout=20)
+        return json.loads(body)
+    except urllib.error.HTTPError as e:
+        print(f"  Supabase error {e.code} patching {path}: {e.read().decode()[:300]}")
+        return []
+
+
 def date_chunks(start_str, end_str, chunk_days):
     d = datetime.strptime(start_str, "%Y-%m-%d")
     end = datetime.strptime(end_str, "%Y-%m-%d")
@@ -150,10 +176,13 @@ def main():
             loc_data = (result.get("data") or {}).get("location") or {}
 
             if not open_date_captured and loc_data.get("openDate"):
-                supa_upsert("locations", [{"id": loc_uuid, "open_date": loc_data["openDate"]}], "id")
-                print(f"  open_date = {loc_data['openDate']}")
-                open_date_captured = True
-                totals["locations_updated"] += 1
+                open_date_captured = True  # don't retry every chunk regardless of outcome
+                patched = supa_patch("locations", f"id=eq.{loc_uuid}", {"open_date": loc_data["openDate"]})
+                if patched:
+                    print(f"  open_date = {loc_data['openDate']}")
+                    totals["locations_updated"] += 1
+                else:
+                    print(f"  open_date write FAILED for {loc_name} (Vetspire returned {loc_data['openDate']!r})")
 
             schedules = loc_data.get("providerSchedules") or []
             if not schedules:
