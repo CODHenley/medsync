@@ -1,0 +1,20 @@
+name: Oct 17 2025 Probe
+
+# One-off: verify a specific user-reported real closure date (2025-10-17)
+# against provider_shifts, v_avg_transaction_charge_daily, and encounters
+# for all 4 locations, before trusting or distrusting the Days Closed
+# report's classification of that date.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run Oct 17 probe
+        run: python3 scoutsync_oct17_probe.py
