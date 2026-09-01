@@ -1297,8 +1297,9 @@ async function loadClosedDaysReport() {
 
 // ── Financial data + rendering ──
 async function loadFinancial() {
-  // Independent of the filters below (full history, all locations) --
-  // fired without awaiting so it doesn't block the rest of this tab's load.
+  // Reads the same date-range filter as the rest of this tab (see
+  // loadClosedDaysReport itself) -- fired without awaiting so it doesn't
+  // block the rest of this tab's load.
   loadClosedDaysReport();
 
   const { from, until, days } = selectedDateRange();
@@ -1312,11 +1313,13 @@ async function loadFinancial() {
   prevFromDate.setDate(prevFromDate.getDate() - days);
   const prevFrom = prevFromDate.toISOString().slice(0, 10);
 
-  const [kpiRes, prevKpiRes, actRes, provRevRes, provRes, catRes, clinicalRes, diagRes] = await Promise.all([
+  const [kpiRes, prevKpiRes, actRes, provRevRows_, provRes, catRes, clinicalRes, diagRes] = await Promise.all([
     fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${prevFrom}&service_date=lt.${prevUntil}${locFilter}`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=*&provider_id=neq.${UNATTRIBUTED_PROVIDER}${locFilter}`, { headers: HEADERS }),
+    // Fine-grained (provider x location x day) since the date-range fix below --
+    // can exceed PostgREST's 1000-row cap for wide ranges, so paginate.
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=provider_id,total_revenue&provider_id=neq.${UNATTRIBUTED_PROVIDER}&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
     fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}`, { headers: HEADERS }),
@@ -1325,7 +1328,7 @@ async function loadFinancial() {
   const rows = kpiRes.ok ? await kpiRes.json() : [];
   const prevRows = prevKpiRes.ok ? await prevKpiRes.json() : [];
   const actRows = actRes.ok ? await actRes.json() : [];
-  const provRevRows = provRevRes.ok ? await provRevRes.json() : [];
+  const provRevRows = provRevRows_ || [];
   const provRows = provRes.ok ? await provRes.json() : [];
   const catRows = catRes.ok ? await catRes.json() : [];
   const clinicalRows = clinicalRes.ok ? await clinicalRes.json() : [];
