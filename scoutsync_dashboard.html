@@ -181,6 +181,11 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
   border-radius: 6px; cursor: pointer; font-size: 14px; line-height: 1;
 }
 .dd-close:hover { background: var(--border); }
+.dd-drill-link {
+  border: none; background: none; padding: 0; font: inherit; color: var(--c-financial);
+  font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.dd-drill-link:hover { opacity: .8; }
 .dd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .dd-stat .l { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
 .dd-stat .v { font-size: 19px; font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
@@ -334,6 +339,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div class="chart-title">Closed days by location</div>
       <div class="chart-note" id="closed-days-note"></div>
       <div id="closed-days-table"></div>
+      <div id="closed-days-detail" class="cell-detail-panel"></div>
     </div>
     <div class="chart-card">
       <div class="chart-title">Months with the most closed days (company-wide)</div>
@@ -1110,10 +1116,58 @@ function daysBetweenInclusive(fromISO, toISO) {
   return out;
 }
 
+// uuid -> {name, closedDates, scheduledNoRevenueDates} -- populated by
+// loadClosedDaysReport(), read by the drill-down panel below.
+let closedDaysDetailByLocation = {};
+
+function fmtDateWithWeekday(iso) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Cross-reference drill-down: the exact dates behind a location's closed-day
+// and scheduled-$0-revenue counts, so they can be checked against what
+// actually happened rather than just trusting the aggregate numbers.
+function showClosedDaysDetail(locUuid) {
+  const panel = document.getElementById('closed-days-detail');
+  const d = closedDaysDetailByLocation[locUuid];
+  if (!d) { panel.innerHTML = ''; return; }
+
+  const closedRows = d.closedDates.slice().sort().reverse();
+  const scheduledNoRevRows = d.scheduledNoRevenueDates.slice().sort().reverse();
+
+  panel.innerHTML = `
+    <div class="dd-head">
+      <div class="dd-title">${esc(d.name)} — closed-day detail</div>
+      <button class="dd-close" title="Close">×</button>
+    </div>
+    <div class="dd-grid">
+      <div>
+        <div class="dd-subtitle">Closed (${fmtN(closedRows.length)}) — no shift scheduled</div>
+        ${closedRows.length ? `
+        <div class="cell-detail-caselist">
+          <table class="dd-table"><thead><tr><th>Date</th></tr></thead>
+            <tbody>${closedRows.map(dt => `<tr><td>${esc(fmtDateWithWeekday(dt))}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>` : '<div class="chart-note">None.</div>'}
+      </div>
+      <div>
+        <div class="dd-subtitle">Scheduled, $0 revenue (${fmtN(scheduledNoRevRows.length)})</div>
+        ${scheduledNoRevRows.length ? `
+        <div class="cell-detail-caselist">
+          <table class="dd-table"><thead><tr><th>Date</th></tr></thead>
+            <tbody>${scheduledNoRevRows.map(dt => `<tr><td>${esc(fmtDateWithWeekday(dt))}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>` : '<div class="chart-note">None.</div>'}
+      </div>
+    </div>`;
+  panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
+}
+
 async function loadClosedDaysReport() {
   const note = document.getElementById('closed-days-note');
   const table = document.getElementById('closed-days-table');
   const monthly = document.getElementById('closed-days-monthly');
+  document.getElementById('closed-days-detail').innerHTML = ''; // stale drill-down would show the old filter's data
 
   const [shiftRows, revenueRows, locationRows] = await Promise.all([
     fetchAllRows(`${SUPA_URL}/rest/v1/provider_shifts?select=location_id,shift_start,shift_end&order=shift_start.asc`),
@@ -1153,6 +1207,7 @@ async function loadClosedDaysReport() {
   });
 
   const closedByMonth = {}; // 'YYYY-MM' -> count, company-wide
+  closedDaysDetailByLocation = {}; // uuid -> {name, closedDates, scheduledNoRevenueDates} -- for the drill-down panel
   const perLocation = LOCATIONS.map(l => {
     const scheduledDays = scheduledByLocation[l.uuid];
     const revenueDays = revenueByLocation[l.uuid];
@@ -1169,6 +1224,7 @@ async function loadClosedDaysReport() {
     const daysScheduled = allDays.filter(d => scheduledDays.has(d));
     const daysClosed = allDays.filter(d => !scheduledDays.has(d));
     const scheduledNoRevenue = daysScheduled.filter(d => !revenueDays.has(d));
+    closedDaysDetailByLocation[l.uuid] = { name: l.name, closedDates: daysClosed, scheduledNoRevenueDates: scheduledNoRevenue };
 
     let revenueOnBilledDays = 0, visitsOnBilledDays = 0;
     revenueDays.forEach(v => { revenueOnBilledDays += v.revenue; visitsOnBilledDays += v.count; });
@@ -1182,7 +1238,7 @@ async function loadClosedDaysReport() {
     });
 
     return {
-      name: l.name, hasData: true, openDate, totalDays: allDays.length,
+      uuid: l.uuid, name: l.name, hasData: true, openDate, totalDays: allDays.length,
       daysScheduled: daysScheduled.length, daysClosed: daysClosed.length,
       closedPct: (daysClosed.length / allDays.length) * 100,
       scheduledNoRevenue: scheduledNoRevenue.length,
@@ -1211,10 +1267,14 @@ async function loadClosedDaysReport() {
   table.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
     <thead><tr><th>Location</th><th>Opened</th><th>Days tracked</th><th>Days scheduled</th><th>Days closed</th><th>Closed rate</th><th>Scheduled, $0 revenue</th><th>Avg daily revenue (billed days)</th><th>Est. lost revenue</th><th>Est. lost visits</th></tr></thead>
     <tbody>
-      ${withData.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(fmtOpenedDate(r.openDate))}</td><td>${fmtN(r.totalDays)}</td><td>${fmtN(r.daysScheduled)}</td><td>${fmtN(r.daysClosed)}</td><td>${r.closedPct.toFixed(1)}%</td><td>${fmtN(r.scheduledNoRevenue)}</td><td>${fmt$(r.avgDailyRevenue)}</td><td>${fmt$(r.estLostRevenue)}</td><td>${fmtN(Math.round(r.estLostVisits))}</td></tr>`).join('')}
+      ${withData.map(r => `<tr><td><button class="dd-drill-link" data-loc="${r.uuid}">${esc(r.name)}</button></td><td>${esc(fmtOpenedDate(r.openDate))}</td><td>${fmtN(r.totalDays)}</td><td>${fmtN(r.daysScheduled)}</td><td>${fmtN(r.daysClosed)}</td><td>${r.closedPct.toFixed(1)}%</td><td>${fmtN(r.scheduledNoRevenue)}</td><td>${fmt$(r.avgDailyRevenue)}</td><td>${fmt$(r.estLostRevenue)}</td><td>${fmtN(Math.round(r.estLostVisits))}</td></tr>`).join('')}
       <tr style="border-top:2px solid var(--border)"><td><b>All locations</b></td><td>—</td><td>—</td><td>—</td><td><b>${fmtN(totalClosed)}</b></td><td>—</td><td><b>${fmtN(totalScheduledNoRevenue)}</b></td><td>—</td><td><b>${fmt$(totalLostRevenue)}</b></td><td><b>${fmtN(Math.round(totalLostVisits))}</b></td></tr>
     </tbody>
-  </table></div>`;
+  </table></div>
+  <div class="chart-note" style="margin-top:6px">Click a location name to see the specific dates behind its numbers.</div>`;
+  table.querySelectorAll('.dd-drill-link').forEach(btn => {
+    btn.addEventListener('click', () => showClosedDaysDetail(btn.dataset.loc));
+  });
 
   const topMonths = Object.entries(closedByMonth).sort((a, b) => b[1] - a[1]).slice(0, 12);
   monthly.innerHTML = topMonths.length
