@@ -6,13 +6,23 @@ name: Vetspire Provider Shifts Sync
 # Closed & Financial Impact report -- see provider_shifts's table comment
 # for why encounters/revenue alone can't make that call.
 #
-# Manual trigger only for now (not yet on a schedule) -- run
-# scoutsync_provider_shifts.sql in Supabase first if the provider_shifts
-# table doesn't exist yet.
+# Daily, not on the 4-hour cadence used by the clinical/financial syncs --
+# the Days Closed report only ever looks at yesterday and earlier (today's
+# always excluded as still-in-progress), so there's no same-day freshness
+# to gain, and a schedule this data rarely needs live intra-day updates.
+# Scheduled runs use a short rolling lookback (not a full historical
+# resweep) -- run scoutsync_provider_shifts.sql in Supabase first if the
+# provider_shifts table doesn't exist yet.
 
 on:
+  schedule:
+    - cron: '45 12 * * *'  # 7:45am CT (UTC-5) daily, after the lot/products sync cluster
   workflow_dispatch:
     inputs:
+      lookback_days:
+        description: 'Days of history to pull (default 7; use 0 for a full historical sweep from 2020-01-01)'
+        required: false
+        default: '7'
       chunk_days:
         description: 'Days per Vetspire query chunk (default 120)'
         required: false
@@ -31,5 +41,6 @@ jobs:
       - name: Run Vetspire provider shifts sync
         env:
           VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days || '7' }}
           CHUNK_DAYS: ${{ inputs.chunk_days || '120' }}
         run: python3 vetspire_provider_shifts_sync.py

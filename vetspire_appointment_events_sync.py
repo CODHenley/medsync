@@ -19,6 +19,8 @@ appointments()'s start/end args) needs a timezone-qualified ISO string
 
 Usage:
   VETSPIRE_API_TOKEN="..." python3 vetspire_appointment_events_sync.py
+  LOOKBACK_DAYS=0 for a full historical sweep from SWEEP_FLOOR (e.g. a
+  one-time backfill); scheduled runs default to a short rolling window.
 """
 import json, os, time, urllib.request, urllib.error
 from datetime import datetime, timedelta, timezone
@@ -40,9 +42,16 @@ LOCATIONS = {
 
 # Same floor as vetspire_provider_shifts_sync.py -- safely before any
 # location's real opening date; a location simply returns nothing before it
-# existed.
+# existed. Only used for a full historical sweep (LOOKBACK_DAYS=0, e.g. a
+# one-time backfill) -- routine scheduled runs use a short rolling window
+# instead (see LOOKBACK_DAYS) so a daily sync isn't re-pulling 5+ years of
+# already-synced appointments every time.
 SWEEP_FLOOR = "2020-01-01"
 CHUNK_DAYS = int(os.environ.get("CHUNK_DAYS", "60"))
+# 0 = full sweep from SWEEP_FLOOR. Default (7) covers a scheduled daily
+# run's actual need -- late-edited cancellations/no-shows a day or two
+# after the fact -- without resweeping years of unchanged history.
+LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "0"))
 PAGE_LIMIT = 200  # appointments() has no offset param confirmed working the same way encounters() does -- keep chunks narrow instead of paginating within one
 
 APPOINTMENTS_QUERY = """
@@ -159,12 +168,13 @@ def main():
         raise SystemExit("ERROR: VETSPIRE_API_TOKEN not set")
 
     today = datetime.now(timezone.utc)
+    sweep_start = (today - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d") if LOOKBACK_DAYS else SWEEP_FLOOR
     totals = {"appointments": 0, "providers": 0, "cancelled_or_deleted": 0}
 
     for vetspire_loc_id, (loc_uuid, loc_name) in LOCATIONS.items():
         print(f"\n=== {loc_name} ({vetspire_loc_id}) ===")
 
-        for chunk_start, chunk_end in date_chunks(SWEEP_FLOOR, today.strftime("%Y-%m-%d"), CHUNK_DAYS):
+        for chunk_start, chunk_end in date_chunks(sweep_start, today.strftime("%Y-%m-%d"), CHUNK_DAYS):
             start_iso = chunk_start.strftime("%Y-%m-%dT00:00:00Z")
             end_iso = (chunk_end + timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
             appts, errors = fetch_all_appointments(token, vetspire_loc_id, start_iso, end_iso)
