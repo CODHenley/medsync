@@ -334,7 +334,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot"></div><h2>Days Closed &amp; Financial Impact</h2>
-      <span class="sub">Since each location's opening — not affected by the date range/location filters above</span></div>
+      <span class="sub">Matches the date range selected above, floored at each location's real opening date</span></div>
     <div class="chart-card">
       <div class="chart-title">Closed days by location</div>
       <div class="chart-note" id="closed-days-note"></div>
@@ -1182,6 +1182,8 @@ async function loadClosedDaysReport() {
   }
 
   const yesterday = isoDaysAgo(1); // exclude today -- it's still in progress
+  const { from: rangeFrom, until: rangeUntil } = selectedDateRange();
+  const rangeEnd = rangeUntil < yesterday ? rangeUntil : yesterday; // never claim today/future
   const openDateByLocation = Object.fromEntries(locationRows.map(l => [l.id, l.open_date]));
 
   const scheduledByLocation = {}; // location_id -> Set(dates with >=1 scheduled shift)
@@ -1220,15 +1222,23 @@ async function loadClosedDaysReport() {
       || [...revenueDays.keys()].sort()[0];
     if (!openDate) return { name: l.name, hasData: false };
 
-    const allDays = daysBetweenInclusive(openDate, yesterday);
+    // Respect the date-range filter above, but never claim a day before the
+    // location actually existed or after yesterday.
+    const windowStart = openDate > rangeFrom ? openDate : rangeFrom;
+    const windowEnd = rangeEnd;
+    if (windowStart > windowEnd) return { name: l.name, hasData: false }; // e.g. selected range entirely predates this location
+
+    const allDays = daysBetweenInclusive(windowStart, windowEnd);
     const daysScheduled = allDays.filter(d => scheduledDays.has(d));
     const daysClosed = allDays.filter(d => !scheduledDays.has(d));
     const scheduledNoRevenue = daysScheduled.filter(d => !revenueDays.has(d));
     closedDaysDetailByLocation[l.uuid] = { name: l.name, closedDates: daysClosed, scheduledNoRevenueDates: scheduledNoRevenue };
 
-    let revenueOnBilledDays = 0, visitsOnBilledDays = 0;
-    revenueDays.forEach(v => { revenueOnBilledDays += v.revenue; visitsOnBilledDays += v.count; });
-    const billedDayCount = revenueDays.size;
+    let revenueOnBilledDays = 0, visitsOnBilledDays = 0, billedDayCount = 0;
+    allDays.forEach(d => {
+      const v = revenueDays.get(d);
+      if (v) { revenueOnBilledDays += v.revenue; visitsOnBilledDays += v.count; billedDayCount++; }
+    });
     const avgDailyRevenue = billedDayCount ? revenueOnBilledDays / billedDayCount : 0;
     const avgDailyVisits = billedDayCount ? visitsOnBilledDays / billedDayCount : 0;
 
@@ -1258,10 +1268,11 @@ async function loadClosedDaysReport() {
     closure. <b>Scheduled, $0 revenue</b> = a day WITH a scheduled shift but zero billed revenue that day — reported as just
     those two observed facts, not a diagnosis: a scheduled shift isn't confirmation someone was present, and we don't know
     why revenue was zero (no-show, call-out, a billing lag, or something else). It's <i>not</i> counted in the closed-day
-    totals or the lost-revenue estimate below — worth a human looking into, not something this report guesses at. Each
-    location's window starts at its own Vetspire-reported opening date. Today is excluded (still in progress). Estimated lost
-    revenue/visits apply each location's own average per billed day to its closed-day count only — a directional estimate,
-    not an audited figure.`;
+    totals or the lost-revenue estimate below — worth a human looking into, not something this report guesses at. This table
+    uses the date range selected above (${esc(fmtDate(rangeFrom))}–${esc(fmtDate(rangeEnd))}), floored at each location's own
+    Vetspire-reported opening date if it opened more recently than that. Today is excluded (still in progress). Estimated lost
+    revenue/visits apply each location's own average per billed day <i>within this range</i> to its closed-day count only —
+    a directional estimate, not an audited figure.`;
 
   const fmtOpenedDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   table.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
