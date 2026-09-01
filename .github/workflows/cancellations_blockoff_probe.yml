@@ -1,0 +1,23 @@
+name: Cancellations & Blockoff Probe
+
+# One-off: verify the appointments() query returns real deleted/cancelled
+# records with deletedBy/deletionReason, and that block-off schedule
+# entries (AppointmentType.isBlockoff) exist and are queryable -- needed
+# before building the new Cancellations & Deletions operations report and
+# the schedule-block-based partial-closure signal.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run cancellations/blockoff probe
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_cancellations_blockoff_probe.py --token "$VETSPIRE_API_TOKEN"
