@@ -75,10 +75,21 @@ def main():
     blockoffs = [a for a in appts if (a.get("type") or {}).get("isBlockoff")]
     print(f"Total appointments in window: {len(appts)}")
     print(f"Blockoff appointments found: {len(blockoffs)}")
-    for b in blockoffs[:20]:
-        print(f"  start={b['start']} duration={b['duration']} provider={(b.get('provider') or {}).get('name')} type={b['type']['name']}")
     if "errors" in r2:
         print("ERRORS:", r2["errors"])
+
+    print("\n=== (3) Distinct block-off type names, with count and duration range ===")
+    from collections import defaultdict
+    by_type = defaultdict(list)
+    for b in blockoffs:
+        by_type[b['type']['name']].append(b.get('duration') or 0)
+    for tname, durations in sorted(by_type.items(), key=lambda kv: -len(kv[1])):
+        print(f"  {tname!r}: count={len(durations)} duration_min={min(durations)} duration_max={max(durations)} duration_avg={sum(durations)/len(durations):.0f}")
+
+    print("\n=== (4) Sample of longest-duration blockoffs (candidates for real closures) ===")
+    longest = sorted(blockoffs, key=lambda b: -(b.get('duration') or 0))[:15]
+    for b in longest:
+        print(f"  start={b['start']} duration={b['duration']} provider={(b.get('provider') or {}).get('name')} type={b['type']['name']}")
 
 
 if __name__ == '__main__':
