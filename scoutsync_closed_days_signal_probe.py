@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-One-off: compare two possible signals for "was this location closed on this
-day" over the trailing 365 days, per location --
-  (a) zero billed revenue that day (v_avg_transaction_charge_daily, what the
-      shipped Days Closed report currently uses)
-  (b) zero clinical encounters that day (encounters.started_at)
--- to find out which one actually matches what the user knows to be true
-(closures/partial closures at Lincoln Park, Old Orchard, and West Loop that
-the revenue-based signal isn't catching, apparently).
+Follow-up: for each location, find calendar days with ZERO encounters AND
+ZERO revenue (the "neither" set -- days no signal shows any activity at
+all), over the trailing 365 days, and characterize whether those days form
+long consecutive runs (data-sync/backfill gap signature) or scattered
+isolated days (closure signature, e.g. holidays). Also report the longest
+consecutive run of "zero encounter" days regardless of revenue, since that
+alone reveals whether the clinical sync itself has backfill gaps.
 """
 import json
 import urllib.request
@@ -45,10 +44,27 @@ def supa_get_all(table, query, order_col):
 
 
 def local_date(iso):
-    # matches the dashboard's own Central-time convention
     return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(
         __import__("zoneinfo").ZoneInfo("America/Chicago")
     ).date().isoformat()
+
+
+def consecutive_runs(sorted_dates):
+    """Given sorted YYYY-MM-DD strings, return list of (start, end, length) runs of consecutive calendar days."""
+    if not sorted_dates:
+        return []
+    runs = []
+    run_start = prev = sorted_dates[0]
+    for d in sorted_dates[1:]:
+        prev_dt = datetime.fromisoformat(prev)
+        d_dt = datetime.fromisoformat(d)
+        if (d_dt - prev_dt).days == 1:
+            prev = d
+            continue
+        runs.append((run_start, prev, (datetime.fromisoformat(prev) - datetime.fromisoformat(run_start)).days + 1))
+        run_start = prev = d
+    runs.append((run_start, prev, (datetime.fromisoformat(prev) - datetime.fromisoformat(run_start)).days + 1))
+    return runs
 
 
 def main():
@@ -57,7 +73,7 @@ def main():
 
     rev_rows = supa_get_all(
         "v_avg_transaction_charge_daily",
-        f"select=service_date,revenue,encounter_count,location_id&service_date=gte.{since}",
+        f"select=service_date,revenue,location_id&service_date=gte.{since}",
         "service_date",
     )
     enc_rows = supa_get_all(
@@ -72,37 +88,38 @@ def main():
             revenue_days[r["location_id"]].add(r["service_date"])
 
     encounter_days = defaultdict(set)
-    enc_count_by_day = defaultdict(int)
     for e in enc_rows:
         if not e.get("started_at"):
             continue
         d = local_date(e["started_at"])
         if d <= yesterday:
             encounter_days[e["location_id"]].add(d)
-            enc_count_by_day[(e["location_id"], d)] += 1
 
-    print(f"Window: {since} .. {yesterday} (trailing 365 days, Central-time calendar days)\n")
+    all_days = []
+    d = datetime.fromisoformat(since)
+    end = datetime.fromisoformat(yesterday)
+    while d <= end:
+        all_days.append(d.date().isoformat())
+        d += timedelta(days=1)
+
+    print(f"Window: {since} .. {yesterday} ({len(all_days)} calendar days)\n")
     for loc_id, name in LOCATIONS.items():
-        rdays = revenue_days[loc_id]
         edays = encounter_days[loc_id]
-        rev_only = sorted(rdays - edays)          # revenue posted, but no encounter that day
-        enc_only = sorted(edays - rdays)          # encounter happened, but no revenue posted that day
-        neither = None  # computed below against full calendar range once we know first-activity date
+        rdays = revenue_days[loc_id]
+        no_encounter_days = sorted(d for d in all_days if d not in edays)
+        neither_days = sorted(d for d in all_days if d not in edays and d not in rdays)
+
+        enc_runs = consecutive_runs(no_encounter_days)
+        enc_runs_sorted = sorted(enc_runs, key=lambda r: -r[2])[:8]
+
+        neither_runs = consecutive_runs(neither_days)
+        neither_runs_sorted = sorted(neither_runs, key=lambda r: -r[2])[:8]
 
         print(f"=== {name} ===")
-        print(f"  distinct days with revenue>0:   {len(rdays)}")
-        print(f"  distinct days with an encounter: {len(edays)}")
-        print(f"  days with revenue but NO encounter that day ({len(rev_only)}): {rev_only[:15]}{' ...' if len(rev_only) > 15 else ''}")
-        print(f"  days with an encounter but NO revenue that day ({len(enc_only)}): {enc_only[:15]}{' ...' if len(enc_only) > 15 else ''}")
-
-        # low-volume "partial closure" candidates: encounter days with unusually
-        # low visit counts vs. that location's own trailing median
-        counts = sorted(enc_count_by_day[(loc_id, d)] for d in edays)
-        if counts:
-            median = counts[len(counts) // 2]
-            low_days = sorted(d for d in edays if enc_count_by_day[(loc_id, d)] > 0
-                               and enc_count_by_day[(loc_id, d)] <= max(1, median * 0.25))
-            print(f"  median encounters/open-day: {median}; low-volume candidate days (<=25% of median, {len(low_days)}): {low_days[:15]}{' ...' if len(low_days) > 15 else ''}")
+        print(f"  zero-ENCOUNTER days: {len(no_encounter_days)} / {len(all_days)}")
+        print(f"  longest zero-encounter runs (start, end, length): {enc_runs_sorted}")
+        print(f"  zero-encounter AND zero-revenue ('neither') days: {len(neither_days)} / {len(all_days)}")
+        print(f"  longest 'neither' runs (start, end, length): {neither_runs_sorted}")
         print()
 
 
