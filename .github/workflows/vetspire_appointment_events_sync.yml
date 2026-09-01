@@ -1,0 +1,34 @@
+name: Vetspire Appointment Events Sync
+
+# Populates appointment_events (Vetspire appointments(), any status,
+# blockoff-typed rows excluded) -- backs the Cancellations & Deletions
+# operations report and the cancellation-rate-based "partial closure" flag
+# on the Days Closed & Financial Impact report.
+#
+# Manual trigger only for now (not yet on a schedule) -- run
+# scoutsync_appointment_events.sql in Supabase first if the
+# appointment_events table doesn't exist yet.
+
+on:
+  workflow_dispatch:
+    inputs:
+      chunk_days:
+        description: 'Days per Vetspire query chunk (default 60)'
+        required: false
+        default: '60'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire appointment events sync
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+          CHUNK_DAYS: ${{ inputs.chunk_days || '60' }}
+        run: python3 vetspire_appointment_events_sync.py
