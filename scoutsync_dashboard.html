@@ -1447,6 +1447,16 @@ async function loadFinancial() {
   const actVisits = actRows.reduce((a, r) => a + Number(r.encounter_count || 0), 0);
   const act = actVisits ? actRevenue / actVisits : null;
 
+  // VHMA benchmark for general small-animal ATV -- see vetsoftwarereportingresearch.md.
+  // Not a target Scout necessarily should hit (case mix varies), just the
+  // reference point practice owners commonly compare against.
+  const ATV_BENCHMARK_LOW = 175, ATV_BENCHMARK_HIGH = 225;
+  const actBenchmarkNote = act === null ? '' : act < ATV_BENCHMARK_LOW
+    ? `<div class="delta down">▼ Below $${ATV_BENCHMARK_LOW}–${ATV_BENCHMARK_HIGH} benchmark <span class="vs">VHMA, general small animal</span></div>`
+    : act > ATV_BENCHMARK_HIGH
+      ? `<div class="delta up">▲ Above $${ATV_BENCHMARK_LOW}–${ATV_BENCHMARK_HIGH} benchmark <span class="vs">VHMA, general small animal</span></div>`
+      : `<div class="delta" style="color:var(--muted)">Within $${ATV_BENCHMARK_LOW}–${ATV_BENCHMARK_HIGH} benchmark <span class="vs">VHMA, general small animal</span></div>`;
+
   document.getElementById('hero-note').textContent = loc ? loc.name : 'All locations';
   document.getElementById('hero-tiles').innerHTML = `
     <div class="hero-tile">
@@ -1457,6 +1467,7 @@ async function loadFinancial() {
     <div class="hero-tile">
       <div class="l">Avg cost per transaction</div>
       <div class="v">${act ? fmt$(act) : '—'}</div>
+      ${actBenchmarkNote}
     </div>`;
 
   // ── Revenue trend + case volume: daily totals, 0-filled across the whole
