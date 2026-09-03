@@ -454,6 +454,14 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       </div>
     </div>
 
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Purchase vs. Usage</h2>
+      <span class="sub">Aggregate-dollar reconciliation, selected range</span></div>
+    <div class="chart-card">
+      <div class="chart-note" id="reconciliation-note"></div>
+      <div class="hero-row" id="reconciliation-tiles"></div>
+    </div>
+
     <div id="inventory-empty"></div>
   </section>
 
@@ -2223,10 +2231,13 @@ async function loadInventory() {
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
 
-  const [revRows, spendRows, cogsTarget] = await Promise.all([
+  const untilEndOfDay = until + 'T23:59:59';
+  const [revRows, spendRows, cogsTarget, usageRows, lostRows] = await Promise.all([
     fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue&service_date=gte.${from}&service_date=lte.${until}${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/purchase_history?select=amount&purchased_at=gte.${from}&purchased_at=lte.${until}${locFilter}`),
     fetchCogsTarget(),
+    fetchAllRows(`${SUPA_URL}/rest/v1/procurement_daily_cogs?select=true_cogs&dispense_date=gte.${from}&dispense_date=lte.${until}${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/goods_lost?select=value_lost&created_at=gte.${from}&created_at=lte.${untilEndOfDay}${locFilter}`),
   ]);
 
   document.getElementById('cogs-target-input').value = cogsTarget.min;
@@ -2285,6 +2296,53 @@ async function loadInventory() {
       <div class="l">Actual COGS%</div>
       <div class="v" style="color:${pctColor}">${actualPct === null ? '—' : actualPct.toFixed(1) + '%'}</div>
     </div>`;
+
+  // ── Purchase vs. Usage reconciliation ──
+  // Only aggregate-dollar reconciliation is reliable today: purchase_history
+  // (what MedSync/vendors recorded as bought) has no product/SKU column at
+  // all, and dispensed_items' vetspire_product_id doesn't match po_items'
+  // freestanding product_id or any vetcove_orders key -- so there is no
+  // clean per-product join to build a real shrinkage calculation from.
+  // Confirmed via research that no prior "purchase vs usage" feature ever
+  // shipped in this codebase to be consistent with.
+  const reconNote = document.getElementById('reconciliation-note');
+  const reconTiles = document.getElementById('reconciliation-tiles');
+  if (usageRows === null || lostRows === null) {
+    reconNote.textContent = '';
+    reconTiles.innerHTML = '<div class="chart-note">Couldn\'t load usage/waste data for this report — run dispensed_items_migration.sql / missing_tables.sql if you haven\'t yet.</div>';
+  } else {
+    const usageCogs = usageRows.reduce((a, r) => a + Number(r.true_cogs || 0), 0);
+    const lostValue = lostRows.reduce((a, r) => a + Number(r.value_lost || 0), 0);
+    const gap = spend - usageCogs;
+
+    reconNote.innerHTML = `<b>Purchased</b> = the same <code>purchase_history</code> total as Spend above. <b>Used (COGS)</b> =
+      the cost of what was actually dispensed in this range (<code>dispensed_items.unit_cost × quantity</code>, returns/refunds
+      excluded). <b>Gap</b> = Purchased − Used — a directional, aggregate-dollar comparison only, <i>not</i> a shrinkage
+      calculation: there's no product-level match between what's recorded as purchased and what Vetspire recorded as
+      dispensed, so a large gap in either direction can mean normal stock buildup or drawdown, a timing lag between buying
+      and using something, or real shrinkage/miscounts — it's a prompt to look closer, not a verdict. <b>Recorded waste</b> is
+      a separate figure from <code>goods_lost</code>'s manually-logged shrinkage/expiry entries for this range — it is
+      <i>not</i> mathematically part of the Gap above (different data source, no reliable way to net them against each
+      other), just useful side-by-side context.`;
+
+    reconTiles.innerHTML = `
+      <div class="hero-tile">
+        <div class="l">Purchased</div>
+        <div class="v">${fmt$(spend)}</div>
+      </div>
+      <div class="hero-tile">
+        <div class="l">Used (COGS)</div>
+        <div class="v">${fmt$(usageCogs)}</div>
+      </div>
+      <div class="hero-tile">
+        <div class="l">Gap</div>
+        <div class="v">${gap < 0 ? '-' : ''}${fmt$(Math.abs(gap))}</div>
+      </div>
+      <div class="hero-tile">
+        <div class="l">Recorded waste</div>
+        <div class="v">${fmt$(lostValue)}</div>
+      </div>`;
+  }
 }
 
 function loadActiveTab() {
