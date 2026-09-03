@@ -119,6 +119,19 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
 .chart-card .chart-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
 .chart-card .chart-note { font-size: 11.5px; color: var(--ink-3); margin-bottom: 10px; }
 
+.cogs-target-form { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cogs-target-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.cogs-target-form input {
+  width: 90px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; font-family: inherit; color: var(--text); background: var(--card);
+}
+.cogs-target-form button {
+  padding: 8px 16px; border: none; border-radius: 8px; background: var(--c-financial);
+  color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; align-self: flex-end;
+}
+.cogs-target-form button:hover { opacity: .9; }
+.cogs-target-form #cogs-target-status { margin: 0; align-self: flex-end; padding-bottom: 8px; }
+
 .viz-tooltip {
   position: absolute; pointer-events: none; background: var(--navy); color: #fff;
   font-size: 12px; padding: 6px 10px; border-radius: 6px; white-space: nowrap;
@@ -429,6 +442,16 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div class="chart-card">
       <div class="chart-note" id="inventory-note"></div>
       <div class="hero-row" id="inventory-tiles"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">COGS target</div>
+      <div class="chart-note">Shared with MedSync's Admin Settings — editing here updates the same setting there, and vice versa.</div>
+      <div class="cogs-target-form">
+        <label>Target %<input type="number" id="cogs-target-input" min="0" max="100" step="0.1"></label>
+        <label>Alert ceiling %<input type="number" id="cogs-ceiling-input" min="0" max="100" step="0.1"></label>
+        <button id="cogs-target-save">Save</button>
+        <span id="cogs-target-status" class="chart-note"></span>
+      </div>
     </div>
 
     <div id="inventory-empty"></div>
@@ -2135,12 +2158,61 @@ async function loadClinicalGeo() {
 // Budget = revenue in range x a COGS target % -- revenue is used ONLY as a
 // calculation input here and is never shown as a standalone figure on this
 // tab, which is scoped to inventory spend, not hospital financials.
-// organization_settings has zero rows in production (confirmed via
-// scoutsync_org_settings_probe.py) -- there's no real stored COGS target
-// anywhere yet, so this uses the same 8% default medsync_cogs_import_live.html
-// itself falls back to whenever that setting is missing. Not a configured
-// target; worth becoming a real editable setting later.
-const COGS_TARGET_PCT_DEFAULT = 0.08;
+//
+// The target itself lives in organization_settings.settings_json (id=1) --
+// the SAME row medsync_settings_live.html's Admin Settings screen already
+// reads/writes (cogs_min/cogs_max), so editing it here or there stays in
+// sync. Confirmed via scoutsync_org_settings_probe.py that this row simply
+// doesn't exist yet in production (nobody's ever saved it) -- not an RLS
+// problem, both anon_all and authenticated_all policies already exist on
+// this table -- so these defaults (8/10, matching that page's own input
+// defaults) apply until the first real save.
+const COGS_TARGET_DEFAULT = { min: 8, max: 10 };
+
+async function fetchCogsTarget() {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/organization_settings?id=eq.1&select=settings_json`, { headers: HEADERS });
+    if (!res.ok) return { ...COGS_TARGET_DEFAULT };
+    const rows = await res.json();
+    const s = (rows[0] || {}).settings_json || {};
+    const min = parseFloat(s.cogs_min), max = parseFloat(s.cogs_max);
+    return {
+      min: Number.isFinite(min) ? min : COGS_TARGET_DEFAULT.min,
+      max: Number.isFinite(max) ? max : COGS_TARGET_DEFAULT.max,
+    };
+  } catch (e) {
+    return { ...COGS_TARGET_DEFAULT };
+  }
+}
+
+async function saveCogsTarget(min, max) {
+  const status = document.getElementById('cogs-target-status');
+  status.textContent = 'Saving…';
+  try {
+    // Fetch-then-merge, not a bare overwrite -- settings_json is a single
+    // JSON blob shared with the Admin Settings screen, which stores several
+    // OTHER fields in it too (gl_pct_thresh, exp_days, margin targets, etc).
+    // PostgREST's merge-duplicates upsert replaces the whole settings_json
+    // column on conflict, not a deep merge of its keys -- a bare POST here
+    // would silently wipe those other fields out from under that page.
+    const existingRes = await fetch(`${SUPA_URL}/rest/v1/organization_settings?id=eq.1&select=settings_json`, { headers: HEADERS });
+    const existingRows = existingRes.ok ? await existingRes.json() : [];
+    const merged = Object.assign({}, (existingRows[0] || {}).settings_json || {}, { cogs_min: min, cogs_max: max });
+
+    const res = await fetch(`${SUPA_URL}/rest/v1/organization_settings`, {
+      method: 'POST',
+      headers: Object.assign({}, HEADERS, { 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify({ id: 1, settings_json: merged, updated_at: new Date().toISOString() }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    status.textContent = '✓ Saved';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+    return true;
+  } catch (e) {
+    status.textContent = 'Error saving — try again';
+    return false;
+  }
+}
 
 async function loadInventory() {
   const note = document.getElementById('inventory-note');
@@ -2151,10 +2223,24 @@ async function loadInventory() {
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
 
-  const [revRows, spendRows] = await Promise.all([
+  const [revRows, spendRows, cogsTarget] = await Promise.all([
     fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue&service_date=gte.${from}&service_date=lte.${until}${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/purchase_history?select=amount&purchased_at=gte.${from}&purchased_at=lte.${until}${locFilter}`),
+    fetchCogsTarget(),
   ]);
+
+  document.getElementById('cogs-target-input').value = cogsTarget.min;
+  document.getElementById('cogs-ceiling-input').value = cogsTarget.max;
+  document.getElementById('cogs-target-save').onclick = async () => {
+    const newMin = parseFloat(document.getElementById('cogs-target-input').value);
+    const newMax = parseFloat(document.getElementById('cogs-ceiling-input').value);
+    if (!Number.isFinite(newMin) || !Number.isFinite(newMax)) {
+      document.getElementById('cogs-target-status').textContent = 'Enter valid numbers';
+      return;
+    }
+    const ok = await saveCogsTarget(newMin, newMax);
+    if (ok) loadInventory(); // recompute Budget/Actual COGS% against the new target
+  };
 
   if (revRows === null || spendRows === null) {
     note.textContent = '';
@@ -2166,22 +2252,21 @@ async function loadInventory() {
 
   const revenue = revRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
   const spend = spendRows.reduce((a, r) => a + Number(r.amount || 0), 0);
-  const budget = revenue * COGS_TARGET_PCT_DEFAULT;
+  const budget = revenue * (cogsTarget.min / 100);
   const variance = budget - spend;
   const actualPct = revenue > 0 ? (spend / revenue) * 100 : null;
 
   const pctColor = actualPct === null ? 'var(--text)'
-    : actualPct <= 7 ? 'var(--s-good)' : actualPct <= 9 ? 'var(--s-warn)' : 'var(--s-critical)';
+    : actualPct <= cogsTarget.min ? 'var(--s-good)' : actualPct <= cogsTarget.max ? 'var(--s-warn)' : 'var(--s-critical)';
 
-  const targetPct = (COGS_TARGET_PCT_DEFAULT * 100).toFixed(0);
-  note.innerHTML = `<b>Budget</b> = revenue in the selected range × a <b>${targetPct}% COGS target</b> — revenue is used only to size
-    this spending ceiling and isn't a hospital financial figure reported here. That ${targetPct}% is a hardcoded default, not a
-    configured target: <code>organization_settings</code> currently has no stored COGS target at all, so this matches the same
-    fallback MedSync's own Budget vs Spend tool already uses when that setting is missing — worth becoming a real, editable setting
-    rather than relying on this default long-term. <b>Spend</b> = everything recorded in <code>purchase_history</code> for this range
-    (Vetcove weekly-budget entries and per-order imports both included — confirmed non-overlapping periods, so nothing here is
-    double-counted). Spend reflects only what's been entered to date; the most recent recorded purchase across all locations is
-    Aug 12, 2026 — a range extending past that will show a growing gap that's a <i>recording</i> gap, not proof of zero purchasing.`;
+  note.innerHTML = `<b>Budget</b> = revenue in the selected range × the <b>${cogsTarget.min}% COGS target</b> below — revenue is
+    used only to size this spending ceiling and isn't a hospital financial figure reported here. That target (and the
+    ${cogsTarget.max}% alert ceiling used for the coloring below) is a real, editable setting shared with MedSync's Admin
+    Settings screen — change it here or there and both stay in sync. <b>Spend</b> = everything recorded in
+    <code>purchase_history</code> for this range (Vetcove weekly-budget entries and per-order imports both included —
+    confirmed non-overlapping periods, so nothing here is double-counted). Spend reflects only what's been entered to date;
+    the most recent recorded purchase across all locations is Aug 12, 2026 — a range extending past that will show a growing
+    gap that's a <i>recording</i> gap, not proof of zero purchasing.`;
 
   tiles.innerHTML = `
     <div class="hero-tile">
