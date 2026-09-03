@@ -1257,7 +1257,7 @@ async function loadClosedDaysReport() {
     fetchAllRows(`${SUPA_URL}/rest/v1/provider_shifts?select=location_id,shift_start,shift_end&order=shift_start.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=service_date,revenue,encounter_count,location_id&order=service_date.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/locations?select=id,open_date&order=id.asc`),
-    fetchAllRows(`${SUPA_URL}/rest/v1/appointment_events?select=location_id,scheduled_start,status,deleted&order=scheduled_start.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/appointment_events?select=location_id,vetspire_patient_id,scheduled_start,status,deleted&order=scheduled_start.asc`),
   ]);
   if (shiftRows === null || revenueRows === null || locationRows === null) {
     note.textContent = '';
@@ -1270,12 +1270,19 @@ async function loadClosedDaysReport() {
   // which works fine without it.
   const apptStatsByLocation = {}; // location_id -> Map(date -> {total, affected})
   LOCATIONS.forEach(l => apptStatsByLocation[l.uuid] = new Map());
+  const apptKeptDays = buildKeptAppointmentDays(apptEventRows || []);
   (apptEventRows || []).forEach(r => {
     const days = apptStatsByLocation[r.location_id];
     if (!days || !r.scheduled_start) return;
-    const d = r.scheduled_start.slice(0, 10);
+    // Central time, not a raw UTC slice -- an evening appointment (Scout
+    // runs until 9-11pm) can already be past midnight UTC, which would
+    // silently bucket it into the wrong calendar day otherwise.
+    const d = centralDateKey(r.scheduled_start);
     const prev = days.get(d) || { total: 0, affected: 0 };
-    const affected = r.status === 'CANCELLED' || r.status === 'NOSHOW' || r.deleted;
+    // Same-day reschedule (that patient has another kept appointment at
+    // this location the same day) isn't a real cancellation for this
+    // threshold -- see buildKeptAppointmentDays/isSameDayReschedule.
+    const affected = isAffectedEvent(r) && !isSameDayReschedule(r, apptKeptDays);
     days.set(d, { total: prev.total + 1, affected: prev.affected + (affected ? 1 : 0) });
   });
 
@@ -1402,7 +1409,9 @@ async function loadClosedDaysReport() {
     those two observed facts, not a diagnosis: a scheduled shift isn't confirmation someone was present, and we don't know
     why revenue was zero (no-show, call-out, a billing lag, or something else). <b>Partial closures</b> = a scheduled day where
     at least ${(PARTIAL_CLOSURE_THRESHOLD * 100).toFixed(0)}% of that day's appointments were cancelled, no-showed, or deleted —
-    staff were on the books, but the day functionally didn't run as normal. None of these three are counted in the closed-day
+    staff were on the books, but the day functionally didn't run as normal. A cancellation doesn't count toward that rate if
+    the same patient has another kept appointment at that location the same day (a reschedule, not a real loss). None of these
+    three are counted in the closed-day
     totals or the lost-revenue estimate below — worth a human looking into, not something this report guesses at. This table
     uses the date range selected above (${esc(fmtDate(rangeFrom))}–${esc(fmtDate(rangeEnd))}), floored at each location's own
     Vetspire-reported opening date if it opened more recently than that. Today is excluded (still in progress). Estimated lost
@@ -1642,6 +1651,37 @@ function fmtDateTimeCentral(iso) {
     timeZone: 'America/Chicago', month: 'short', day: 'numeric',
     hour: 'numeric', minute: '2-digit',
   });
+}
+
+// Returns the America/Chicago calendar-date ('YYYY-MM-DD') for a timestamptz
+// ISO string -- for bucketing/grouping by local day (see fmtDateTimeCentral
+// above for display formatting instead). en-CA formats dates as YYYY-MM-DD.
+function centralDateKey(iso) {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+
+// Same-day-reschedule detection, shared by the Cancellations & Deletions
+// report and the Days Closed partial-closure flag: a cancelled/no-show/
+// deleted appointment isn't a real loss if that same patient has another
+// KEPT (not itself cancelled/no-show/deleted) appointment at the same
+// location the same calendar day -- that's a reschedule, not a loss.
+// Rows with no vetspire_patient_id never match anything here (fail safe --
+// don't suppress a real cancellation just because patient linking is
+// missing on that particular row).
+function isAffectedEvent(r) { return r.status === 'CANCELLED' || r.status === 'NOSHOW' || !!r.deleted; }
+
+function buildKeptAppointmentDays(rows) {
+  const kept = new Set(); // `${patientId}|${locationId}|${centralDateKey}`
+  rows.forEach(r => {
+    if (!r.vetspire_patient_id || !r.scheduled_start || isAffectedEvent(r)) return;
+    kept.add(`${r.vetspire_patient_id}|${r.location_id}|${centralDateKey(r.scheduled_start)}`);
+  });
+  return kept;
+}
+
+function isSameDayReschedule(row, keptDays) {
+  if (!row.vetspire_patient_id || !row.scheduled_start) return false;
+  return keptDays.has(`${row.vetspire_patient_id}|${row.location_id}|${centralDateKey(row.scheduled_start)}`);
 }
 
 // panelEl: the .cell-detail-panel next to the grid that was clicked.
@@ -2011,7 +2051,7 @@ async function loadCancellationsReport() {
   const untilEndOfDay = until + 'T23:59:59';
 
   const [eventRows, provRows] = await Promise.all([
-    fetchAllRows(`${SUPA_URL}/rest/v1/appointment_events?select=location_id,provider_id,appointment_type,scheduled_start,status,deleted,deletion_reason&scheduled_start=gte.${from}&scheduled_start=lte.${untilEndOfDay}${locFilter}&order=scheduled_start.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/appointment_events?select=location_id,provider_id,vetspire_patient_id,appointment_type,scheduled_start,status,deleted,deletion_reason&scheduled_start=gte.${from}&scheduled_start=lte.${untilEndOfDay}${locFilter}&order=scheduled_start.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/providers?select=id,full_name`),
   ]);
 
@@ -2023,6 +2063,7 @@ async function loadCancellationsReport() {
   }
 
   const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
+  const keptDays = buildKeptAppointmentDays(eventRows);
 
   cancellationsDetailByLocation = {};
   const perLocation = LOCATIONS.map(l => {
@@ -2033,13 +2074,20 @@ async function loadCancellationsReport() {
     const deleted = rows.filter(r => r.deleted).length;
     // A single appointment can be both a status match and deleted -- count it
     // once here so the rate isn't inflated by double-counting.
-    const affected = rows.filter(r => r.status === 'CANCELLED' || r.status === 'NOSHOW' || r.deleted);
-    const rate = (affected.length / rows.length) * 100;
+    const affected = rows.filter(isAffectedEvent).map(r => Object.assign({}, r, {
+      _sameDayReschedule: isSameDayReschedule(r, keptDays),
+    }));
+    const sameDayReschedule = affected.filter(r => r._sameDayReschedule).length;
+    const netAffected = affected.length - sameDayReschedule;
+    const netRate = (netAffected / rows.length) * 100;
     cancellationsDetailByLocation[l.uuid] = {
       name: l.name,
       rows: affected.slice().sort((a, b) => new Date(b.scheduled_start) - new Date(a.scheduled_start)),
     };
-    return { uuid: l.uuid, name: l.name, hasData: true, total: rows.length, cancelled, noshow, deleted, affected: affected.length, rate };
+    return {
+      uuid: l.uuid, name: l.name, hasData: true, total: rows.length, cancelled, noshow, deleted,
+      sameDayReschedule, rawAffected: affected.length, netAffected, netRate,
+    };
   });
 
   const withData = perLocation.filter(r => r.hasData);
@@ -2047,18 +2095,24 @@ async function loadCancellationsReport() {
   const totalCancelled = withData.reduce((a, r) => a + r.cancelled, 0);
   const totalNoshow = withData.reduce((a, r) => a + r.noshow, 0);
   const totalDeleted = withData.reduce((a, r) => a + r.deleted, 0);
-  const totalAffected = withData.reduce((a, r) => a + r.affected, 0);
+  const totalSameDayReschedule = withData.reduce((a, r) => a + r.sameDayReschedule, 0);
+  const totalRawAffected = withData.reduce((a, r) => a + r.rawAffected, 0);
+  const totalNetAffected = withData.reduce((a, r) => a + r.netAffected, 0);
 
   note.innerHTML = `Blockoff-typed rows (Lunch, internal scheduling placeholders) are excluded at sync time — these are real client
     appointments only. <b>Cancelled</b>/<b>No-show</b> come from Vetspire's own appointment status; <b>Deleted</b> is a separate flag
-    (removed from the schedule entirely) that can overlap with either status — <b>Affected</b> counts each appointment once even when
-    it's both. Selected range: ${esc(fmtDate(from))}–${esc(fmtDate(until))}.`;
+    (removed from the schedule entirely) that can overlap with either status. <b>Same-day reschedule</b> = an affected appointment
+    where that same patient has another kept appointment at the same location the same calendar day — a reschedule, not a real loss,
+    so it's carved out of <b>Net affected</b> (which is what the rate below is based on). <b>Raw affected</b> counts every
+    cancelled/no-show/deleted appointment once each regardless of same-day rebooking, for comparison. An appointment with no patient
+    ID on file can't be matched to a reschedule and always counts toward both raw and net. Selected range:
+    ${esc(fmtDate(from))}–${esc(fmtDate(until))}.`;
 
   table.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
-    <thead><tr><th>Location</th><th>Total appts</th><th>Cancelled</th><th>No-show</th><th>Deleted</th><th>Affected</th><th>Affected rate</th></tr></thead>
+    <thead><tr><th>Location</th><th>Total appts</th><th>Cancelled</th><th>No-show</th><th>Deleted</th><th>Same-day reschedule</th><th>Raw affected</th><th>Net affected</th><th>Net affected rate</th></tr></thead>
     <tbody>
-      ${withData.map(r => `<tr><td><button class="dd-drill-link" data-loc="${r.uuid}">${esc(r.name)}</button></td><td>${fmtN(r.total)}</td><td>${fmtN(r.cancelled)}</td><td>${fmtN(r.noshow)}</td><td>${fmtN(r.deleted)}</td><td>${fmtN(r.affected)}</td><td>${r.rate.toFixed(1)}%</td></tr>`).join('')}
-      <tr style="border-top:2px solid var(--border)"><td><b>All locations</b></td><td><b>${fmtN(totalAll)}</b></td><td><b>${fmtN(totalCancelled)}</b></td><td><b>${fmtN(totalNoshow)}</b></td><td><b>${fmtN(totalDeleted)}</b></td><td><b>${fmtN(totalAffected)}</b></td><td><b>${totalAll ? ((totalAffected / totalAll) * 100).toFixed(1) : '0.0'}%</b></td></tr>
+      ${withData.map(r => `<tr><td><button class="dd-drill-link" data-loc="${r.uuid}">${esc(r.name)}</button></td><td>${fmtN(r.total)}</td><td>${fmtN(r.cancelled)}</td><td>${fmtN(r.noshow)}</td><td>${fmtN(r.deleted)}</td><td>${fmtN(r.sameDayReschedule)}</td><td>${fmtN(r.rawAffected)}</td><td>${fmtN(r.netAffected)}</td><td>${r.netRate.toFixed(1)}%</td></tr>`).join('')}
+      <tr style="border-top:2px solid var(--border)"><td><b>All locations</b></td><td><b>${fmtN(totalAll)}</b></td><td><b>${fmtN(totalCancelled)}</b></td><td><b>${fmtN(totalNoshow)}</b></td><td><b>${fmtN(totalDeleted)}</b></td><td><b>${fmtN(totalSameDayReschedule)}</b></td><td><b>${fmtN(totalRawAffected)}</b></td><td><b>${fmtN(totalNetAffected)}</b></td><td><b>${totalAll ? ((totalNetAffected / totalAll) * 100).toFixed(1) : '0.0'}%</b></td></tr>
     </tbody>
   </table></div>
   <div class="chart-note" style="margin-top:6px">Click a location name to see individual appointments.</div>`;
@@ -2093,8 +2147,8 @@ function showCancellationsDetail(locUuid, nameById) {
     </div>
     <div class="cell-detail-caselist">
       <table class="dd-table">
-        <thead><tr><th>Date</th><th>Provider</th><th>Type</th><th>Status</th><th>Deleted</th><th>Deletion reason</th></tr></thead>
-        <tbody>${d.rows.map(r => `<tr><td>${esc(fmtDateTimeCentral(r.scheduled_start))}</td><td>${esc(nameById[r.provider_id] || 'Unattributed')}</td><td>${esc(r.appointment_type || '—')}</td><td>${esc(r.status || '—')}</td><td>${r.deleted ? 'Yes' : 'No'}</td><td>${esc(r.deletion_reason || '—')}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>Date</th><th>Provider</th><th>Type</th><th>Status</th><th>Deleted</th><th>Deletion reason</th><th>Same-day reschedule</th></tr></thead>
+        <tbody>${d.rows.map(r => `<tr><td>${esc(fmtDateTimeCentral(r.scheduled_start))}</td><td>${esc(nameById[r.provider_id] || 'Unattributed')}</td><td>${esc(r.appointment_type || '—')}</td><td>${esc(r.status || '—')}</td><td>${r.deleted ? 'Yes' : 'No'}</td><td>${esc(r.deletion_reason || '—')}</td><td>${r._sameDayReschedule ? 'Yes' : 'No'}</td></tr>`).join('')}</tbody>
       </table>
     </div>`;
   panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
