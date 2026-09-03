@@ -47,6 +47,13 @@
   --ink-3:  #898781;
 }
 * { box-sizing: border-box; }
+/* A normal author rule (e.g. .custom-range { display:flex }) always beats
+   the UA stylesheet's [hidden] rule in the cascade, regardless of
+   specificity -- confirmed live: the header's own #custom-range date
+   pickers have always rendered even while "hidden" (just easy to miss,
+   two small blank inputs in a dark header). One explicit override fixes
+   every hidden element on the page, not just that one. */
+[hidden] { display: none !important; }
 body {
   margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--surface); color: var(--text);
@@ -131,6 +138,23 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
 }
 .cogs-target-form button:hover { opacity: .9; }
 .cogs-target-form #cogs-target-status { margin: 0; align-self: flex-end; padding-bottom: 8px; }
+
+.act-period-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.act-period-row select {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px; font-family: inherit; color: var(--text); background: var(--card);
+}
+.act-period-row .custom-range { gap: 6px; }
+.act-period-row .custom-range span { color: var(--muted); font-size: 12px; }
+.act-period-row .custom-range input[type="date"] {
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 12.5px; font-family: inherit; color: var(--text); background: var(--card); color-scheme: light;
+}
+
+.variance-flag {
+  display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 100px;
+  font-size: 10.5px; font-weight: 700; background: #FFF4E5; color: var(--s-warn);
+}
 
 .viz-tooltip {
   position: absolute; pointer-events: none; background: var(--navy); color: #fff;
@@ -342,6 +366,33 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div id="provider-chart" class="bar-chart-wrap"></div>
     </div>
 
+    <div class="section-head"><div class="dot"></div><h2>Avg Cost per Transaction by Provider</h2>
+      <span class="sub">Its own period selector — independent of the range filter above</span></div>
+    <div class="chart-card">
+      <div class="act-period-row">
+        <select id="act-period-select">
+          <option value="t7">Trailing 7 days</option>
+          <option value="t30" selected>Trailing 30 days</option>
+          <option value="t60">Trailing 60 days</option>
+          <option value="t90">Trailing 90 days</option>
+          <option value="mtd">Month to date</option>
+          <option value="ytd">Year to date</option>
+          <option value="mom">Month over month (last full month)</option>
+          <option value="yoy">Year over year (trailing 365 days)</option>
+          <option value="py">Previous calendar year</option>
+          <option value="custom">Custom range</option>
+        </select>
+        <div class="custom-range" id="act-custom-range" hidden>
+          <input type="date" id="act-custom-from">
+          <span>–</span>
+          <input type="date" id="act-custom-to">
+        </div>
+      </div>
+      <div class="chart-title">Ranked by revenue</div>
+      <div class="chart-note" id="act-provider-note"></div>
+      <div id="act-provider-table"></div>
+    </div>
+
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div><h2>Executive Insights</h2>
       <span class="sub">computed live from the charts above</span></div>
     <div class="chart-card">
@@ -402,6 +453,16 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div class="chart-title">Notable patterns</div>
       <div class="chart-note">Categories with at least 5 cases whose share of a time window or location is well above their overall share</div>
       <div class="insight-list" id="complaint-insights"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Billing Consistency by Provider</h2>
+      <span class="sub">Same reason-for-visit category, compared across doctors, selected range</span></div>
+    <div class="chart-card">
+      <div class="chart-title">Invoice total spread, by reason category</div>
+      <div class="chart-note" id="billing-consistency-note"></div>
+      <div id="billing-consistency-table"></div>
+      <div id="billing-consistency-detail" class="cell-detail-panel"></div>
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
@@ -1446,6 +1507,9 @@ async function loadFinancial() {
   // loadClosedDaysReport itself) -- fired without awaiting so it doesn't
   // block the rest of this tab's load.
   loadClosedDaysReport();
+  // Independent section with its own period selector (not selectedDateRange())
+  // -- fired without awaiting for the same reason.
+  loadActPerProviderReport();
 
   const { from, until, days } = selectedDateRange();
   const loc = selectedLocation();
@@ -1580,6 +1644,147 @@ async function loadFinancial() {
 
   document.getElementById('last-updated').textContent =
     'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+// ── Avg Cost per Transaction by Provider: many period cuts (trailing N
+// days / MTD / YTD / MoM / YoY / previous year / custom range), all on an
+// independent selector -- the top-level #range-select only has 4 trailing
+// presets + one custom range, not enough shapes for a MoM/YoY-style report.
+// v_act_per_provider_daily exposes provider+day revenue and encounter_count
+// (see scoutsync_act_per_provider.sql); each cut below is just a from/until
+// window (plus a comparison window) summed client-side over that view. ──
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function shiftDays(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); }
+function startOfMonth(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), d.getMonth(), 1)); }
+function endOfMonth(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0)); }
+function shiftMonths(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), d.getMonth() + n, d.getDate())); }
+function startOfYear(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), 0, 1)); }
+function shiftYears(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear() + n, d.getMonth(), d.getDate())); }
+
+// { from, until, compareFrom, compareUntil, compareLabel } -- the comparison
+// window is always a real, distinct period so a Δ can be shown for every cut.
+function getActPeriod(key) {
+  const today = ymd(new Date());
+  if (key === 't7' || key === 't30' || key === 't60' || key === 't90') {
+    const n = parseInt(key.slice(1), 10);
+    const from = shiftDays(today, -(n - 1)), until = today;
+    return { from, until, compareFrom: shiftDays(from, -n), compareUntil: shiftDays(from, -1), compareLabel: `the previous ${n} days` };
+  }
+  if (key === 'mtd') {
+    const from = startOfMonth(today), until = today;
+    const dayOfMonth = new Date(today + 'T00:00:00').getDate();
+    const prevStart = shiftMonths(from, -1);
+    const prevEnd = endOfMonth(prevStart);
+    const cappedDay = Math.min(dayOfMonth, new Date(prevEnd + 'T00:00:00').getDate());
+    const pd = new Date(prevStart + 'T00:00:00');
+    return { from, until, compareFrom: prevStart, compareUntil: ymd(new Date(pd.getFullYear(), pd.getMonth(), cappedDay)), compareLabel: 'the same days last month' };
+  }
+  if (key === 'ytd') {
+    const from = startOfYear(today), until = today;
+    return { from, until, compareFrom: shiftYears(from, -1), compareUntil: shiftYears(until, -1), compareLabel: 'the same year-to-date last year' };
+  }
+  if (key === 'mom') {
+    // Last full completed calendar month vs. the one before it -- a partial
+    // current month would otherwise skew a month-over-month trend read.
+    const lastMonthEnd = shiftDays(startOfMonth(today), -1);
+    const from = startOfMonth(lastMonthEnd), until = lastMonthEnd;
+    const compareUntil = shiftDays(from, -1), compareFrom = startOfMonth(compareUntil);
+    return { from, until, compareFrom, compareUntil, compareLabel: 'the month before' };
+  }
+  if (key === 'yoy') {
+    const from = shiftDays(today, -364), until = today;
+    return { from, until, compareFrom: shiftDays(from, -365), compareUntil: shiftDays(from, -1), compareLabel: 'the prior 365-day period' };
+  }
+  if (key === 'py') {
+    const thisYear = new Date(today + 'T00:00:00').getFullYear();
+    return { from: `${thisYear - 1}-01-01`, until: `${thisYear - 1}-12-31`, compareFrom: `${thisYear - 2}-01-01`, compareUntil: `${thisYear - 2}-12-31`, compareLabel: 'the year before that' };
+  }
+  // custom
+  const from = document.getElementById('act-custom-from').value || shiftDays(today, -29);
+  const until = document.getElementById('act-custom-to').value || today;
+  const days = Math.round((new Date(until) - new Date(from)) / 86400000) + 1;
+  return { from, until, compareFrom: shiftDays(from, -days), compareUntil: shiftDays(from, -1), compareLabel: 'the previous period' };
+}
+
+async function loadActPerProviderReport() {
+  const note = document.getElementById('act-provider-note');
+  const tableEl = document.getElementById('act-provider-table');
+  const key = document.getElementById('act-period-select').value;
+  document.getElementById('act-custom-range').hidden = key !== 'custom';
+  if (key === 'custom') {
+    const f = document.getElementById('act-custom-from').value, t = document.getElementById('act-custom-to').value;
+    if (!f || !t || f > t) { tableEl.innerHTML = ''; note.textContent = 'Pick a valid custom range.'; return; }
+  }
+
+  const period = getActPeriod(key);
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+
+  const [curRows_, cmpRows_, provRes] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_act_per_provider_daily?select=provider_id,revenue,encounter_count&service_date=gte.${period.from}&service_date=lte.${period.until}${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_act_per_provider_daily?select=provider_id,revenue,encounter_count&service_date=gte.${period.compareFrom}&service_date=lte.${period.compareUntil}${locFilter}`),
+    fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
+  ]);
+
+  if (curRows_ === null || cmpRows_ === null) {
+    tableEl.innerHTML = '';
+    note.innerHTML = `Couldn't load <code>v_act_per_provider_daily</code> — run <code>scoutsync_act_per_provider.sql</code> in the Supabase SQL editor if you haven't yet.`;
+    return;
+  }
+  const provRows = provRes.ok ? await provRes.json() : [];
+  const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
+
+  function aggregateByName(rows) {
+    const byName = {};
+    rows.forEach(r => {
+      if (!r.provider_id || r.provider_id === UNATTRIBUTED_PROVIDER) return;
+      const name = nameById[r.provider_id] || 'Unknown provider';
+      const a = byName[name] = byName[name] || { revenue: 0, visits: 0 };
+      a.revenue += Number(r.revenue || 0);
+      a.visits += Number(r.encounter_count || 0);
+    });
+    return byName;
+  }
+  const current = aggregateByName(curRows_);
+  const compare = aggregateByName(cmpRows_);
+
+  const providerRows = Object.keys(current).map(name => {
+    const cur = current[name];
+    const act = cur.visits ? cur.revenue / cur.visits : null;
+    const cmp = compare[name];
+    const cmpAct = cmp && cmp.visits ? cmp.revenue / cmp.visits : null;
+    const deltaPct = (act !== null && cmpAct) ? ((act - cmpAct) / cmpAct) * 100 : null;
+    return { name, revenue: cur.revenue, visits: cur.visits, act, deltaPct };
+  }).sort((a, b) => b.revenue - a.revenue);
+
+  const totalRevenue = providerRows.reduce((a, r) => a + r.revenue, 0);
+  const totalVisits = providerRows.reduce((a, r) => a + r.visits, 0);
+  const totalAct = totalVisits ? totalRevenue / totalVisits : null;
+  const cmpTotalRevenue = Object.values(compare).reduce((a, r) => a + r.revenue, 0);
+  const cmpTotalVisits = Object.values(compare).reduce((a, r) => a + r.visits, 0);
+  const cmpTotalAct = cmpTotalVisits ? cmpTotalRevenue / cmpTotalVisits : null;
+  const totalDeltaPct = (totalAct !== null && cmpTotalAct) ? ((totalAct - cmpTotalAct) / cmpTotalAct) * 100 : null;
+
+  note.innerHTML = `${esc(fmtDate(period.from))}–${esc(fmtDate(period.until))}, ranked by revenue. Δ compares each provider's ACT to
+    <b>${esc(period.compareLabel)}</b> (${esc(fmtDate(period.compareFrom))}–${esc(fmtDate(period.compareUntil))}). "Transaction" = an
+    encounter, same convention as the sitewide Avg cost per transaction tile above — Vetspire's sales data has no true invoice count.
+    A provider with no data in the comparison window shows no Δ.`;
+
+  if (!providerRows.length) {
+    tableEl.innerHTML = '<div class="chart-note">No attributed revenue in this period.</div>';
+    return;
+  }
+
+  const deltaCell = (pct) => pct === null ? '<span style="color:var(--ink-3)">—</span>'
+    : `<span style="color:${pct >= 0 ? 'var(--s-good)' : 'var(--s-critical)'};font-weight:700">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%</span>`;
+
+  tableEl.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
+    <thead><tr><th>Provider</th><th>Revenue</th><th>Transactions</th><th>ACT</th><th>Δ vs. ${esc(period.compareLabel)}</th></tr></thead>
+    <tbody>
+      ${providerRows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmt$(r.revenue)}</td><td>${fmtN(r.visits)}</td><td>${r.act !== null ? fmt$(r.act) : '—'}</td><td>${deltaCell(r.deltaPct)}</td></tr>`).join('')}
+      <tr style="border-top:2px solid var(--border)"><td><b>All providers</b></td><td><b>${fmt$(totalRevenue)}</b></td><td><b>${fmtN(totalVisits)}</b></td><td><b>${totalAct !== null ? fmt$(totalAct) : '—'}</b></td><td><b>${deltaCell(totalDeltaPct)}</b></td></tr>
+    </tbody>
+  </table></div>`;
 }
 
 // ── Case heatmaps (day-of-week x hour-of-day) ──
@@ -2154,11 +2359,143 @@ function showCancellationsDetail(locUuid, nameById) {
   panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
 }
 
+// ── Billing consistency by provider, for the same reason-for-visit category
+// -- reuses categorizeComplaint()'s keyword buckets (same directional,
+// not-a-coded-diagnosis caveat) to ask a different question than the Reason-
+// for-Visit Patterns section above: for a given issue, do different doctors
+// invoice it consistently, or is there a wide spread? ──
+const BILLING_CONSISTENCY_MIN_N = 3;         // min cases before a provider's average in a category counts
+const BILLING_CONSISTENCY_MIN_PROVIDERS = 2; // min qualifying providers before a category has anything to compare
+const BILLING_CONSISTENCY_HIGH_CV = 25;      // flag threshold, % coefficient of variation across provider averages
+
+function stdev(values, mean) {
+  if (values.length < 2) return 0;
+  return Math.sqrt(values.reduce((a, v) => a + (v - mean) ** 2, 0) / (values.length - 1));
+}
+function median(sortedValues) {
+  const n = sortedValues.length;
+  return n % 2 ? sortedValues[(n - 1) / 2] : (sortedValues[n / 2 - 1] + sortedValues[n / 2]) / 2;
+}
+
+let billingConsistencyDetailByCategory = {};
+
+async function loadBillingConsistency() {
+  const note = document.getElementById('billing-consistency-note');
+  const tableEl = document.getElementById('billing-consistency-table');
+  document.getElementById('billing-consistency-detail').innerHTML = '';
+
+  const { from, until } = selectedDateRange();
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const untilEndOfDay = until + 'T23:59:59';
+
+  const [encRows_, provRes] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/encounters?select=provider_id,chief_complaint,invoice_total,started_at,location_id&had_exam=eq.true&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&order=started_at.asc`),
+    fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
+  ]);
+
+  if (encRows_ === null) {
+    tableEl.innerHTML = '';
+    note.innerHTML = `Couldn't load <code>encounters</code>.`;
+    return;
+  }
+  const encRows = encRows_;
+  const provRows = provRes.ok ? await provRes.json() : [];
+  const nameById = Object.fromEntries(provRows.map(p => [p.id, p.full_name]));
+
+  // Only cases with a real reason-for-visit and a known, attributed provider
+  // can be compared at all.
+  const usable = encRows.filter(r => (r.chief_complaint || '').trim() && r.provider_id && r.provider_id !== UNATTRIBUTED_PROVIDER);
+  const excludedBlank = encRows.length - usable.length;
+
+  const byCategory = {}; // category label -> { name -> [invoice_total, ...] }
+  usable.forEach(r => {
+    const cat = categorizeComplaint(r.chief_complaint);
+    const name = nameById[r.provider_id] || 'Unknown provider';
+    const c = byCategory[cat] = byCategory[cat] || {};
+    (c[name] = c[name] || []).push(Number(r.invoice_total || 0));
+  });
+
+  const categorySummaries = [];
+  let excludedSmallSample = 0;
+  Object.entries(byCategory).forEach(([cat, byProvider]) => {
+    const providerStats = [];
+    Object.entries(byProvider).forEach(([name, values]) => {
+      if (values.length < BILLING_CONSISTENCY_MIN_N) { excludedSmallSample += values.length; return; }
+      const mean = values.reduce((a, v) => a + v, 0) / values.length;
+      const sorted = values.slice().sort((a, b) => a - b);
+      providerStats.push({ name, n: values.length, mean, median: median(sorted), sd: stdev(values, mean) });
+    });
+    if (providerStats.length < BILLING_CONSISTENCY_MIN_PROVIDERS) return; // nothing to compare against
+
+    const providerMeans = providerStats.map(p => p.mean);
+    const overallMean = providerMeans.reduce((a, v) => a + v, 0) / providerMeans.length;
+    const spreadCV = overallMean ? (stdev(providerMeans, overallMean) / overallMean) * 100 : 0;
+    categorySummaries.push({
+      category: cat,
+      providerStats: providerStats.sort((a, b) => b.mean - a.mean),
+      overallMean, spreadCV,
+      totalCases: providerStats.reduce((a, p) => a + p.n, 0),
+      high: spreadCV >= BILLING_CONSISTENCY_HIGH_CV,
+    });
+  });
+  categorySummaries.sort((a, b) => b.spreadCV - a.spreadCV);
+  billingConsistencyDetailByCategory = Object.fromEntries(categorySummaries.map(c => [c.category, c]));
+
+  note.innerHTML = `Reason-for-visit text bucketed into categories by keyword match (same categories as Reason-for-Visit Patterns) —
+    free text, not a coded diagnosis, so this is directional. Only providers with at least ${BILLING_CONSISTENCY_MIN_N} cases in a
+    category count toward that category's spread (${fmtN(excludedSmallSample)} cases excluded for too small a sample);
+    ${fmtN(excludedBlank)} cases with no reason-for-visit text or no attributed provider are excluded entirely. <b>Spread</b> =
+    coefficient of variation across each qualifying provider's average invoice total for that category — higher means doctors are
+    charging more inconsistently for what looks like the same issue. Flagged at ${BILLING_CONSISTENCY_HIGH_CV}%+.`;
+
+  if (!categorySummaries.length) {
+    tableEl.innerHTML = '<div class="chart-note">Not enough same-category, same-provider volume in this range to compare.</div>';
+    return;
+  }
+
+  tableEl.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
+    <thead><tr><th>Reason category</th><th>Providers compared</th><th>Cases</th><th>Category avg</th><th>Spread across doctors</th></tr></thead>
+    <tbody>${categorySummaries.map(c => `<tr>
+      <td><button class="dd-drill-link" data-cat="${esc(c.category)}">${esc(c.category)}</button></td>
+      <td>${fmtN(c.providerStats.length)}</td>
+      <td>${fmtN(c.totalCases)}</td>
+      <td>${fmt$(c.overallMean)}</td>
+      <td>${c.spreadCV.toFixed(1)}%${c.high ? ' <span class="variance-flag">High variance</span>' : ''}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>
+  <div class="chart-note" style="margin-top:6px">Click a reason category to see each provider's average.</div>`;
+
+  tableEl.querySelectorAll('.dd-drill-link').forEach(btn => {
+    btn.addEventListener('click', () => showBillingConsistencyDetail(btn.dataset.cat));
+  });
+}
+
+function showBillingConsistencyDetail(category) {
+  const panel = document.getElementById('billing-consistency-detail');
+  const d = billingConsistencyDetailByCategory[category];
+  if (!d) { panel.innerHTML = ''; return; }
+  panel.innerHTML = `
+    <div class="dd-head">
+      <div class="dd-title">${esc(category)} — by provider (category avg ${fmt$(d.overallMean)})</div>
+      <button class="dd-close" title="Close">×</button>
+    </div>
+    <table class="dd-table">
+      <thead><tr><th>Provider</th><th>Cases</th><th>Avg charge</th><th>Median charge</th><th>Std dev</th><th>vs. category avg</th></tr></thead>
+      <tbody>${d.providerStats.map(p => {
+        const deltaPct = d.overallMean ? ((p.mean - d.overallMean) / d.overallMean) * 100 : 0;
+        return `<tr><td>${esc(p.name)}</td><td>${fmtN(p.n)}</td><td>${fmt$(p.mean)}</td><td>${fmt$(p.median)}</td><td>${fmt$(p.sd)}</td><td>${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%</td></tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
+}
+
 // ── Clinical Operations (heatmaps + geo map) data + rendering ──
 async function loadClinicalGeo() {
-  // Independent section, fired without awaiting so it doesn't block the
+  // Independent sections, fired without awaiting so they don't block the
   // rest of this tab's load.
   loadCancellationsReport();
+  loadBillingConsistency();
 
   const { from, until } = selectedDateRange();
   const loc = selectedLocation();
@@ -2443,6 +2780,20 @@ document.getElementById('range-select').addEventListener('change', () => {
 document.getElementById('custom-from').addEventListener('change', () => { if (isCustomRange()) loadActiveTab(); });
 document.getElementById('custom-to').addEventListener('change', () => { if (isCustomRange()) loadActiveTab(); });
 document.getElementById('overlay-toggle').addEventListener('change', renderTrendSection);
+
+document.getElementById('act-period-select').addEventListener('change', () => {
+  const custom = document.getElementById('act-period-select').value === 'custom';
+  document.getElementById('act-custom-range').hidden = !custom;
+  const fromInput = document.getElementById('act-custom-from'), toInput = document.getElementById('act-custom-to');
+  if (custom && !fromInput.value && !toInput.value) {
+    toInput.value = isoDaysAgo(0);
+    fromInput.value = isoDaysAgo(30);
+  }
+  if (!custom || (fromInput.value && toInput.value)) loadActPerProviderReport();
+});
+document.getElementById('act-custom-from').addEventListener('change', loadActPerProviderReport);
+document.getElementById('act-custom-to').addEventListener('change', loadActPerProviderReport);
+document.getElementById('act-custom-from').max = document.getElementById('act-custom-to').max = isoDaysAgo(0);
 document.getElementById('refresh-btn').addEventListener('click', refreshNow);
 
 // Auto-refresh twice a day (every 12h) so insights stay current on a tab left
