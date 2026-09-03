@@ -33,18 +33,30 @@ def main():
     print("\n=== location_settings ===")
     print(json.dumps(supa_get("location_settings", {"select": "*"}), indent=2))
 
-    print("\n=== purchase_history: distinct sources + row count per location ===")
+    print("\n=== purchase_history: distinct sources + row count + date range + $ per location ===")
     rows = supa_get("purchase_history", {"select": "location_id,source,amount,purchased_at", "order": "purchased_at.desc", "limit": "2000"})
     if rows:
         by_loc_source = {}
         for r in rows:
             key = (r["location_id"], r["source"])
-            by_loc_source[key] = by_loc_source.get(key, 0) + 1
-        for (loc, src), count in sorted(by_loc_source.items()):
-            print(f"  {loc} / {src}: {count} rows")
+            stats = by_loc_source.setdefault(key, {"count": 0, "total": 0.0, "min_date": r["purchased_at"], "max_date": r["purchased_at"]})
+            stats["count"] += 1
+            stats["total"] += float(r["amount"] or 0)
+            stats["min_date"] = min(stats["min_date"], r["purchased_at"])
+            stats["max_date"] = max(stats["max_date"], r["purchased_at"])
+        for (loc, src), s in sorted(by_loc_source.items()):
+            print(f"  {loc} / {src}: {s['count']} rows, ${s['total']:.2f} total, {s['min_date']} .. {s['max_date']}")
         print(f"  total rows fetched (capped at 2000): {len(rows)}")
-        print(f"  most recent purchased_at: {rows[0]['purchased_at']}")
-        print(f"  oldest in this page: {rows[-1]['purchased_at']}")
+
+        # Check for same-week overlap between vetcove_import and vetcove_weekly
+        # for one location -- if both sources have rows in the same week, summing
+        # both would double-count the same real-world spend.
+        lp = "11111111-0000-0000-0000-000000000001"
+        lp_rows = [r for r in rows if r["location_id"] == lp]
+        weekly_dates = sorted(r["purchased_at"] for r in lp_rows if r["source"] == "vetcove_weekly")
+        import_dates = sorted(r["purchased_at"] for r in lp_rows if r["source"] == "vetcove_import")
+        print(f"\n  Lincoln Park vetcove_weekly dates: {weekly_dates[:5]} ... {weekly_dates[-5:] if len(weekly_dates) > 5 else ''}")
+        print(f"  Lincoln Park vetcove_import dates (first/last 10): {import_dates[:10]} ... {import_dates[-10:]}")
 
 
 if __name__ == "__main__":
