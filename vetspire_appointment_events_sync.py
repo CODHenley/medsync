@@ -7,11 +7,14 @@ blockoff-typed rows (Lunch, Booking Appointment, etc. -- confirmed via
 vetspire_cancellations_blockoff_probe.py to be routine internal placeholders,
 not real client appointments or closures).
 
-Backs two things:
+Backs three things:
 - A standalone Cancellations & Deletions operations report (status IN
   ('CANCELLED', 'NOSHOW') OR deleted = true)
 - A "high cancellation rate" partial-closure flag on the Days Closed report
   (cancelled+noshow+deleted / total appointments, per provider per day)
+- Same-day-reschedule detection on both of the above (vetspire_patient_id) --
+  a cancelled/deleted appointment isn't a real loss if that same patient has
+  another active appointment at the same location the same day.
 
 Confirmed live against production that Vetspire's DateTime scalar (used by
 appointments()'s start/end args) needs a timezone-qualified ISO string
@@ -63,6 +66,7 @@ query($locationId: ID, $start: DateTime, $end: DateTime, $limit: Int, $offset: I
     deletedBy { id name }
     deletionReason
     provider { id name }
+    patient { id }
     start
     duration
     type { name isBlockoff }
@@ -207,6 +211,7 @@ def main():
                     "vetspire_appointment_id": a["id"],
                     "location_id": loc_uuid,
                     "provider_id": provider_uuid_by_vs.get(provider_vs),
+                    "vetspire_patient_id": (a.get("patient") or {}).get("id"),
                     "appointment_type": (a.get("type") or {}).get("name"),
                     "scheduled_start": a.get("start"),
                     "status": status,
