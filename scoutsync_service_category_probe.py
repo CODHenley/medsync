@@ -151,8 +151,15 @@ def main():
     # items", or mostly just inventory-tracked products? Compare against
     # salesReport's revenue for the exact same window/location. ──
     sales_result = gql(token, SALES_QUERY, {"lids": [LOCATION_ID], "s": s_str, "e": e_str})
-    sales_rows = (sales_result.get("data") or {}).get("salesReport") or []
-    sales_total = sum(float(r.get("total") or 0) for r in sales_rows) if isinstance(sales_rows, list) else None
+    sales_total = None
+    if "errors" not in sales_result:
+        # salesReport is a JSON-encoded string scalar, not a native GraphQL
+        # list -- confirmed in vetspire_financial_sync.py:175-176. Missing
+        # this the first time around is why this check silently came back
+        # empty on the first probe run.
+        raw = (sales_result.get("data") or {}).get("salesReport", "[]")
+        sales_rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        sales_total = sum(float(r.get("total") or 0) for r in sales_rows)
     usage_total = total_subtotal_cents / 100.0
     print(f"\n--- Revenue coverage check, same window/location ---")
     print(f"usageReport.orderItems subtotalCents sum: ${usage_total:,.2f}")
