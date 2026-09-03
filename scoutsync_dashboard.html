@@ -38,6 +38,7 @@
   /* status — reserved, never reused as categorical */
   --s-good:     #006300;
   --s-critical: #B42318;
+  --s-warn:     #9A5B00;
   --s-neutral:  #8A93A6;
 
   --grid:   #E1E0D9;
@@ -294,6 +295,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 <nav class="tabs">
   <button class="active" data-tab="financial">Financial</button>
   <button data-tab="clinical">Clinical Operations</button>
+  <button data-tab="inventory">Inventory</button>
   <button class="soon" disabled>Facilities Operations<span class="tag">Soon</span></button>
 </nav>
 
@@ -417,6 +419,19 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div id="clinical-empty"></div>
+  </section>
+
+  <section class="panel" id="panel-inventory">
+
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Budget vs Spend</h2>
+      <span class="sub">For inventory leads tracking spend against a target</span></div>
+    <div class="chart-card">
+      <div class="chart-note" id="inventory-note"></div>
+      <div class="hero-row" id="inventory-tiles"></div>
+    </div>
+
+    <div id="inventory-empty"></div>
   </section>
 
   <div class="foot-note">
@@ -2116,8 +2131,81 @@ async function loadClinicalGeo() {
 // Manual refresh — pulls fresh data and recomputes hero stats, all three
 // charts, and every insight. Button shows a spin + disables itself mid-fetch
 // so a second click can't stack a duplicate in-flight request.
+// ── Inventory (Budget vs Spend) ──
+// Budget = revenue in range x a COGS target % -- revenue is used ONLY as a
+// calculation input here and is never shown as a standalone figure on this
+// tab, which is scoped to inventory spend, not hospital financials.
+// organization_settings has zero rows in production (confirmed via
+// scoutsync_org_settings_probe.py) -- there's no real stored COGS target
+// anywhere yet, so this uses the same 8% default medsync_cogs_import_live.html
+// itself falls back to whenever that setting is missing. Not a configured
+// target; worth becoming a real editable setting later.
+const COGS_TARGET_PCT_DEFAULT = 0.08;
+
+async function loadInventory() {
+  const note = document.getElementById('inventory-note');
+  const tiles = document.getElementById('inventory-tiles');
+  const empty = document.getElementById('inventory-empty');
+
+  const { from, until } = selectedDateRange();
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+
+  const [revRows, spendRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue&service_date=gte.${from}&service_date=lte.${until}${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/purchase_history?select=amount&purchased_at=gte.${from}&purchased_at=lte.${until}${locFilter}`),
+  ]);
+
+  if (revRows === null || spendRows === null) {
+    note.textContent = '';
+    tiles.innerHTML = '';
+    empty.innerHTML = '<div class="empty-note">Couldn\'t load revenue/spend data for this report.</div>';
+    return;
+  }
+  empty.innerHTML = '';
+
+  const revenue = revRows.reduce((a, r) => a + Number(r.revenue || 0), 0);
+  const spend = spendRows.reduce((a, r) => a + Number(r.amount || 0), 0);
+  const budget = revenue * COGS_TARGET_PCT_DEFAULT;
+  const variance = budget - spend;
+  const actualPct = revenue > 0 ? (spend / revenue) * 100 : null;
+
+  const pctColor = actualPct === null ? 'var(--text)'
+    : actualPct <= 7 ? 'var(--s-good)' : actualPct <= 9 ? 'var(--s-warn)' : 'var(--s-critical)';
+
+  const targetPct = (COGS_TARGET_PCT_DEFAULT * 100).toFixed(0);
+  note.innerHTML = `<b>Budget</b> = revenue in the selected range × a <b>${targetPct}% COGS target</b> — revenue is used only to size
+    this spending ceiling and isn't a hospital financial figure reported here. That ${targetPct}% is a hardcoded default, not a
+    configured target: <code>organization_settings</code> currently has no stored COGS target at all, so this matches the same
+    fallback MedSync's own Budget vs Spend tool already uses when that setting is missing — worth becoming a real, editable setting
+    rather than relying on this default long-term. <b>Spend</b> = everything recorded in <code>purchase_history</code> for this range
+    (Vetcove weekly-budget entries and per-order imports both included — confirmed non-overlapping periods, so nothing here is
+    double-counted). Spend reflects only what's been entered to date; the most recent recorded purchase across all locations is
+    Aug 12, 2026 — a range extending past that will show a growing gap that's a <i>recording</i> gap, not proof of zero purchasing.`;
+
+  tiles.innerHTML = `
+    <div class="hero-tile">
+      <div class="l">Budget</div>
+      <div class="v">${fmt$(budget)}</div>
+    </div>
+    <div class="hero-tile">
+      <div class="l">Spend</div>
+      <div class="v">${fmt$(spend)}</div>
+    </div>
+    <div class="hero-tile">
+      <div class="l">Variance</div>
+      <div class="v" style="color:${variance < 0 ? 'var(--s-critical)' : 'var(--s-good)'}">${variance < 0 ? '-' : ''}${fmt$(Math.abs(variance))}</div>
+    </div>
+    <div class="hero-tile">
+      <div class="l">Actual COGS%</div>
+      <div class="v" style="color:${pctColor}">${actualPct === null ? '—' : actualPct.toFixed(1) + '%'}</div>
+    </div>`;
+}
+
 function loadActiveTab() {
-  return activeTab === 'clinical' ? loadClinicalGeo() : loadFinancial();
+  if (activeTab === 'clinical') return loadClinicalGeo();
+  if (activeTab === 'inventory') return loadInventory();
+  return loadFinancial();
 }
 
 async function refreshNow() {
