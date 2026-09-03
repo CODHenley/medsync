@@ -50,7 +50,7 @@ query($lids:[ID!], $s:Date, $e:Date){
         orderItems {
             id
             productId
-            product { id name sku unitCost }
+            product { id name sku unitCost productCategories { id name } }
             quantity
             quantityRemaining
             unitPrice
@@ -190,6 +190,16 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
             if dispensed_at and "T" in dispensed_at and not dispensed_at.endswith("Z") and "+" not in dispensed_at[10:]:
                 dispensed_at += "Z"  # Vetspire returns naive datetimes — treat as UTC
 
+            # productCategories is a list -- confirmed live (scoutsync_service_
+            # category_probe.py) that a product carries 0 or 1 in practice,
+            # never more; take the first if one is ever present. None means
+            # Vetspire itself has no category for this product.
+            categories = prod.get("productCategories") or []
+            try:
+                category_id = int(categories[0]["id"]) if categories else None
+            except (KeyError, TypeError, ValueError):
+                category_id = None
+
             records.append({
                 "order_item_id":          str(oid),
                 "vetspire_product_id":    str(pid),
@@ -199,6 +209,7 @@ def backfill_location(token, loc_name, loc_id, start: date, end: date, dry_run: 
                 "quantity_remaining":     float(item.get("quantityRemaining") or 0),
                 "unit_price":             unit_price,
                 "unit_cost":              float(unit_cost) if unit_cost is not None else None,
+                "product_category_id":    category_id,
                 "subtotal_cents":         int(item.get("subtotalCents") or 0),
                 "total_before_tax_cents": int(item.get("totalBeforeTaxCents") or 0),
                 "returned":               bool(item.get("returned", False)),
