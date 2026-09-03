@@ -355,8 +355,9 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div class="section-head"><div class="dot"></div><h2>Revenue by Source</h2></div>
     <div class="chart-card">
       <div class="chart-title">By product category</div>
-      <div class="chart-note">Top 6 categories by revenue; the rest grouped as Other</div>
+      <div class="chart-note">Top 6 categories by revenue; the rest grouped as Other. Click a category for the services in it.</div>
       <div id="category-chart" class="bar-chart-wrap"></div>
+      <div id="category-drilldown" class="cell-detail-panel"></div>
     </div>
 
     <div class="section-head"><div class="dot"></div><h2>Revenue per Veterinarian</h2></div>
@@ -848,7 +849,9 @@ function renderLineChart(el, points, opts) {
 }
 
 function renderBarChart(el, rows, opts) {
-  // rows: [{label, value, color}], pre-sorted descending
+  // rows: [{label, value, color, key?}], pre-sorted descending. A row with a
+  // `key` is clickable when opts.onClick is given -- opts.onClick(row) fires
+  // with the whole row, so the caller decides what `key` means.
   el.innerHTML = '';
   if (!rows.length) { el.innerHTML = '<div class="chart-note">No data in this range.</div>'; return; }
   const max = Math.max(...rows.map(r => r.value), 1);
@@ -871,8 +874,66 @@ function renderBarChart(el, rows, opts) {
       tt.innerHTML = `<div class="tt-label">${esc(r.label)}</div><div class="tt-value">${esc(fmt$(r.value))}</div>`;
     });
     fill.addEventListener('mouseleave', () => { tt.style.opacity = '0'; });
+    if (opts.onClick && r.key !== undefined) {
+      row.style.cursor = 'pointer';
+      row.title = `Click for services in ${r.label}`;
+      row.addEventListener('click', () => opts.onClick(r));
+    }
     el.appendChild(row);
   });
+}
+
+// Revenue by Source has no per-service detail at all (invoice_line_items is
+// Vetspire salesReport's pre-aggregated location+provider+category+day
+// totals). dispensed_items (usageReport.orderItems, used elsewhere for
+// inventory/COGS) has one row per real billed item with a product name --
+// confirmed via a live probe that its dollar total covers ~100% of
+// salesReport revenue for the same window, so it's a reliable stand-in here,
+// not just a pharmacy/inventory slice. Note: dispensed_items.location_id is
+// Vetspire's own raw location id (e.g. "23083"), NOT the Supabase location
+// UUID every other table on this dashboard uses -- must filter on loc.vid.
+async function showCategoryDrilldown(catRow, from, until, loc) {
+  const panel = document.getElementById('category-drilldown');
+  panel.innerHTML = '<div class="chart-note">Loading services…</div>';
+
+  const catFilter = catRow.key === 'uncategorized' ? 'product_category_id=is.null' : `product_category_id=eq.${catRow.key}`;
+  const locFilter = loc ? `&location_id=eq.${loc.vid}` : '';
+  const untilEndOfDay = until + 'T23:59:59';
+  const rows = await fetchAllRows(`${SUPA_URL}/rest/v1/dispensed_items?select=product_name,subtotal_cents&${catFilter}&dispensed_at=gte.${from}&dispensed_at=lte.${untilEndOfDay}${locFilter}`);
+
+  if (rows === null) {
+    panel.innerHTML = `<div class="chart-note">Couldn't load <code>dispensed_items</code> — run
+      <code>scoutsync_dispensed_items_category.sql</code> in the Supabase SQL editor if you haven't yet.</div>`;
+    return;
+  }
+
+  const byService = {};
+  rows.forEach(r => {
+    const name = r.product_name || 'Unnamed service';
+    const s = byService[name] = byService[name] || { count: 0, revenue: 0 };
+    s.count += 1;
+    s.revenue += Number(r.subtotal_cents || 0) / 100;
+  });
+  const serviceRows = Object.entries(byService)
+    .map(([name, s]) => ({ name, count: s.count, revenue: s.revenue }))
+    .sort((a, b) => b.revenue - a.revenue);
+  const totalCount = serviceRows.reduce((a, s) => a + s.count, 0);
+  const totalRevenue = serviceRows.reduce((a, s) => a + s.revenue, 0);
+
+  panel.innerHTML = `
+    <div class="dd-head">
+      <div class="dd-title">${esc(catRow.label)} — services (${fmtN(totalCount)} ${totalCount === 1 ? 'instance' : 'instances'}, ${fmt$(totalRevenue)})</div>
+      <button class="dd-close" title="Close">×</button>
+    </div>
+    <div class="chart-note" style="margin-top:-4px;margin-bottom:10px">
+      From dispensed_items (real Vetspire order items), not invoice_line_items -- covers ~100% of billed revenue for this window in
+      testing, but a category's dollar total on the chart above may not exactly match this list's sum (different source tables).
+    </div>
+    ${serviceRows.length ? `<div style="overflow-x:auto"><table class="dd-table">
+      <thead><tr><th>Service</th><th>Instances</th><th>Revenue</th></tr></thead>
+      <tbody>${serviceRows.map(s => `<tr><td>${esc(s.name)}</td><td>${fmtN(s.count)}</td><td>${fmt$(s.revenue)}</td></tr>`).join('')}</tbody>
+    </table></div>` : '<div class="chart-note">No services found for this category in this range.</div>'}`;
+  panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
 }
 
 function pearsonCorrelation(xs, ys) {
@@ -1623,10 +1684,15 @@ async function loadFinancial() {
   const otherTotal = rest.reduce((a, [, v]) => a + v, 0);
   const catRowsForChart = top6.map(([id, v], i) => ({
     label: id === 'uncategorized' ? 'Uncategorized' : (categoryNameById[id] || `Category ${id}`),
-    value: v, color: CAT_COLORS[i],
+    value: v, color: CAT_COLORS[i], key: id,
   }));
+  // "Other" is several categories lumped together, not one -- not a
+  // meaningful single thing to drill into, so it gets no `key` (not clickable).
   if (otherTotal > 0) catRowsForChart.push({ label: 'Other', value: otherTotal, color: 'var(--cat-other)' });
-  renderBarChart(document.getElementById('category-chart'), catRowsForChart, {});
+  document.getElementById('category-drilldown').innerHTML = '';
+  renderBarChart(document.getElementById('category-chart'), catRowsForChart, {
+    onClick: (r) => showCategoryDrilldown(r, from, until, loc),
+  });
 
   // ── Revenue per veterinarian: merge duplicate provider records by name ──
   const revenueByName = {};
