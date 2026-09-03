@@ -1606,7 +1606,14 @@ async function loadFinancial() {
   const categoryNameById = Object.fromEntries(catRows.map(c => [c.id, c.name.trim()]));
   const byCategory = {};
   rows.forEach(r => {
-    const key = r.product_category_id === null || r.product_category_id === undefined ? 'uncategorized' : r.product_category_id;
+    // vetspire_financial_sync.py coalesces Vetspire's null PRODUCT_CATEGORY_ID
+    // breakdown (a line item with no category assigned in Vetspire) to 0
+    // before it ever reaches this table -- product_category_id is never
+    // actually null/undefined here. 0 isn't a real Vetspire category id (the
+    // 18 real ones never include it), so it needs the same "Uncategorized"
+    // bucket as an actual null would get, or it renders as the meaningless
+    // literal label "Category 0".
+    const key = (r.product_category_id === null || r.product_category_id === undefined || r.product_category_id === 0) ? 'uncategorized' : r.product_category_id;
     byCategory[key] = (byCategory[key] || 0) + Number(r.revenue || 0);
   });
   const catEntries = Object.entries(byCategory).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
