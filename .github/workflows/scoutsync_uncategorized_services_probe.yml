@@ -1,0 +1,24 @@
+name: ScoutSync Uncategorized Services Probe
+
+# One-off, read-only: what are the real top uncategorized services (for
+# category recommendations), and does Vetspire expose any mutation to write
+# a product's category back? See scoutsync_uncategorized_services_probe.py.
+# Manual trigger only; deleted once its purpose is served.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run uncategorized services probe
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 scoutsync_uncategorized_services_probe.py
