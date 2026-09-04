@@ -22,7 +22,7 @@ Usage:
   python3 census_zip_demographics_sync.py
   ACS_VINTAGE_YEAR=2022 python3 census_zip_demographics_sync.py
 """
-import json, os, time, urllib.parse, urllib.request, urllib.error
+import json, os, re, time, urllib.parse, urllib.request, urllib.error
 
 SUPA_URL = "https://aemkdummdrmxtwrkggjw.supabase.co"
 SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
@@ -116,7 +116,14 @@ def fetch_acs_batch(zip_codes):
     except urllib.error.HTTPError as e:
         print(f"  Census API error {e.code} for batch of {len(zip_codes)}: {e.read().decode()[:300]}")
         return []
-    rows = json.loads(body)
+    try:
+        rows = json.loads(body)
+    except json.JSONDecodeError:
+        # The Census API sometimes answers a malformed query with a 200 and
+        # a non-JSON (often empty or HTML) body instead of a real error
+        # status -- skip this one batch rather than crashing the whole sync.
+        print(f"  Census API returned non-JSON for batch of {len(zip_codes)}: {body[:300]!r}")
+        return []
     header, data_rows = rows[0], rows[1:]
     col_idx = {name: i for i, name in enumerate(header)}
     zcta_idx = col_idx["zip code tabulation area"]
@@ -146,11 +153,24 @@ def main():
     print(f"=== Census ZIP demographics sync (ACS {ACS_VINTAGE_YEAR} 5-year) ===\n")
 
     geo_rows = supa_get_all("v_case_geo", "select=postal_code")
-    zip_codes = sorted({(r.get("postal_code") or "").strip() for r in geo_rows if r.get("postal_code")})
-    print(f"{len(zip_codes)} distinct real client ZIP codes found in v_case_geo\n")
+    raw_zips = sorted({(r.get("postal_code") or "").strip() for r in geo_rows if r.get("postal_code")})
+    print(f"{len(raw_zips)} distinct real client postal_code values found in v_case_geo")
+
+    # Client postal_code is free-typed in Vetspire -- ZIP+4 ("60614-1234"),
+    # stray whitespace, or non-US codes have shown up before. The Census
+    # ZCTA `for` clause is a single comma-separated string; one malformed
+    # entry can make the ENTIRE batch it's in come back non-JSON instead of
+    # a clean per-item error, so filter to plain 5-digit ZIPs up front
+    # rather than discovering that one bad value at request time.
+    zip_codes = sorted({z[:5] for z in raw_zips if re.fullmatch(r"\d{5}(-\d{4})?", z)})
+    dropped = len(raw_zips) - len(zip_codes)
+    if dropped:
+        not_5digit = [z for z in raw_zips if not re.fullmatch(r"\d{5}(-\d{4})?", z)][:10]
+        print(f"  {dropped} value(s) weren't a plain 5-digit (or ZIP+4) US ZIP, skipped: {not_5digit}")
+    print(f"{len(zip_codes)} valid 5-digit ZIPs to look up\n")
 
     if not zip_codes:
-        print("No ZIP codes to look up -- nothing to do.")
+        print("No valid ZIP codes to look up -- nothing to do.")
         return
 
     all_records = []
