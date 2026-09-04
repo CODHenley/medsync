@@ -1609,26 +1609,34 @@ async function loadFinancial() {
   prevFromDate.setDate(prevFromDate.getDate() - days);
   const prevFrom = prevFromDate.toISOString().slice(0, 10);
 
-  const [kpiRes, prevKpiRes, actRes, provRevRows_, provRes, catRes, clinicalRes, diagRes] = await Promise.all([
-    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${prevFrom}&service_date=lt.${prevUntil}${locFilter}`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
-    // Fine-grained (provider x location x day) since the date-range fix below --
-    // can exceed PostgREST's 1000-row cap for wide ranges, so paginate.
+  // v_financial_kpis_daily/v_avg_transaction_charge_daily/v_clinical_kpis_daily
+  // are all location(+provider)+day grain -- e.g. kpis_daily also breaks down
+  // by category, so a 365-day window across 4 locations can need well over
+  // 1000 rows. encounter_diagnostics is raw per-encounter-diagnosis rows,
+  // same risk. A plain fetch() silently truncates at PostgREST's default
+  // row cap with no error, which is exactly what made "Trailing 365 days"
+  // quietly show only the first chunk of the year instead of the full
+  // range -- confirmed live (v_financial_kpis_daily alone needs ~1200+ rows
+  // for a full year across today's 4 locations). fetchAllRows() paginates
+  // properly, same fix already applied to v_revenue_per_provider below.
+  const [rows_, prevRows_, actRows_, provRevRows_, provRes, catRes, clinicalRows_, diagRows_] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${prevFrom}&service_date=lt.${prevUntil}&order=service_date.asc${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=provider_id,total_revenue&provider_id=neq.${UNATTRIBUTED_PROVIDER}&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
     fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}`, { headers: HEADERS }),
-    fetch(`${SUPA_URL}/rest/v1/encounter_diagnostics?select=service_date,provider_id,name&service_date=gte.${from}&service_date=lte.${until}${locFilter}`, { headers: HEADERS }),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}&visit_date=lte.${until}&order=visit_date.asc${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/encounter_diagnostics?select=service_date,provider_id,name&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
   ]);
-  const rows = kpiRes.ok ? await kpiRes.json() : [];
-  const prevRows = prevKpiRes.ok ? await prevKpiRes.json() : [];
-  const actRows = actRes.ok ? await actRes.json() : [];
+  const rows = rows_ || [];
+  const prevRows = prevRows_ || [];
+  const actRows = actRows_ || [];
   const provRevRows = provRevRows_ || [];
   const provRows = provRes.ok ? await provRes.json() : [];
   const catRows = catRes.ok ? await catRes.json() : [];
-  const clinicalRows = clinicalRes.ok ? await clinicalRes.json() : [];
-  const diagRows = diagRes.ok ? await diagRes.json() : [];
+  const clinicalRows = clinicalRows_ || [];
+  const diagRows = diagRows_ || [];
 
   if (!rows.length) {
     document.getElementById('financial-empty').innerHTML = `<div class="empty-note">
