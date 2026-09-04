@@ -1,0 +1,22 @@
+name: ScoutSync Probe Chief Complaint
+
+# Investigating a new "invoicing variance by doctor, same illness" feature
+# for the Clinical Operations tab. Samples real encounters.chief_complaint
+# values before designing any normalization/bucketing. See
+# scoutsync_probe_chief_complaint.py. Manual trigger only. Read-only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run probe
+        run: python3 scoutsync_probe_chief_complaint.py
