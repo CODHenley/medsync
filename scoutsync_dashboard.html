@@ -2073,6 +2073,16 @@ function showCellDetail(panelEl, day, hour) {
 // matrix[day][hour] = numeric value. A cell with 0 activity is rendered
 // near-invisible rather than skipped — same "0 is real data" philosophy as
 // the revenue trend chart's 0-filled days.
+// Power curve, not linear -- a linear ramp makes most real-world cells (which
+// cluster in the low-to-mid range, with only a few genuine hotspots) all read
+// as similarly "medium," so the actual hot cells don't stand out. Boosting
+// the curve compresses the low/mid range toward pale and reserves dark
+// shading for cells that are genuinely close to the max -- easier to spot
+// where the heat really is at a glance.
+function heatAlpha(ratio) {
+  return 0.08 + 0.84 * Math.pow(Math.max(0, Math.min(1, ratio)), 1.6);
+}
+
 function renderHeatmapGrid(el, matrix, opts) {
   el.innerHTML = '';
   // Scale off the visible window only — a stray outside-hours case (rare,
@@ -2112,7 +2122,7 @@ function renderHeatmapGrid(el, matrix, opts) {
       const v = matrix[d][h] || 0;
       const cell = document.createElement('div');
       cell.className = 'heatmap-cell';
-      const alpha = max > 0 && v > 0 ? 0.08 + 0.84 * (v / max) : 0.04;
+      const alpha = max > 0 && v > 0 ? heatAlpha(v / max) : 0.04;
       cell.style.background = `rgba(${opts.rgb}, ${alpha.toFixed(2)})`;
       cell.title = `${DAY_NAMES[d]}, ${hourLabelFull(h)}: ${opts.formatValue(v)} — click for detail`;
       if (opts.detailPanel) {
@@ -2132,8 +2142,12 @@ function renderHeatmapGrid(el, matrix, opts) {
   if (max > 0) {
     const legend = document.createElement('div');
     legend.className = 'heatmap-legend';
+    // 3 steps, not 5 -- fewer, more visually distinct swatches so the
+    // legend doesn't imply more resolvable gradations than the eye can
+    // actually tell apart. Same curve as the cells themselves (heatAlpha),
+    // so the legend always matches what's rendered.
     legend.innerHTML = `<span>Less</span><div class="heatmap-legend-scale">${
-      [0.08, 0.3, 0.5, 0.7, 0.92].map(a => `<span style="background:rgba(${opts.rgb},${a})"></span>`).join('')
+      [0, 0.5, 1].map(r => `<span style="background:rgba(${opts.rgb},${heatAlpha(r)})"></span>`).join('')
     }</div><span>More</span>`;
     el.appendChild(legend);
   }
