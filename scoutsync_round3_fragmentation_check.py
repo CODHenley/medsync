@@ -9,7 +9,7 @@ Vetspire product IDs sharing this same display name (e.g. one per
 location) and round 1 only touched one of them.
 
 For the top 15 uncategorized names by revenue, break down by DISTINCT
-product_id to see how many separate Vetspire products share each name,
+vetspire_product_id to see how many separate Vetspire products share each name,
 and how many of those distinct ids are still uncategorized.
 
 Read-only. Deleted once its purpose is served, per this repo's convention.
@@ -64,7 +64,7 @@ def supa_get_all(path, params, page_size=1000):
 
 
 def main():
-    print("=== Round 3 diagnostic: product_id fragmentation for top uncategorized names ===\n")
+    print("=== Round 3 diagnostic: vetspire_product_id fragmentation for top uncategorized names ===\n")
 
     sample = supa_get("dispensed_items", "select=*&limit=1")
     print(f"-- dispensed_items columns (from a sample row): {sorted(sample[0].keys()) if sample else '(no rows)'} --\n")
@@ -74,25 +74,27 @@ def main():
         try:
             uncategorized_rows = supa_get_all(
                 "dispensed_items",
-                f"select=product_id,dispensed_at&product_category_id=is.null&product_name=eq.{q}",
+                f"select=vetspire_product_id,location_name,dispensed_at&product_category_id=is.null&product_name=eq.{q}",
             )
             all_rows = supa_get_all(
                 "dispensed_items",
-                f"select=product_id&product_name=eq.{q}",
+                f"select=vetspire_product_id&product_name=eq.{q}",
             )
         except urllib.error.HTTPError:
             print(f"'{name}': FAILED (see error above), skipping\n")
             continue
-        uncategorized_ids = defaultdict(int)
+        uncategorized_ids = defaultdict(lambda: {"count": 0, "locations": set()})
         for r in uncategorized_rows:
-            uncategorized_ids[r.get("product_id")] += 1
-        all_ids = set(r.get("product_id") for r in all_rows)
+            entry = uncategorized_ids[r.get("vetspire_product_id")]
+            entry["count"] += 1
+            entry["locations"].add(r.get("location_name"))
+        all_ids = set(r.get("vetspire_product_id") for r in all_rows)
         latest = max((r.get("dispensed_at") for r in uncategorized_rows), default=None)
         print(f"'{name}':")
-        print(f"  total distinct product_ids (any category state): {len(all_ids)}")
-        print(f"  distinct product_ids still UNCATEGORIZED: {len(uncategorized_ids)}")
-        for pid, cnt in sorted(uncategorized_ids.items(), key=lambda kv: -kv[1]):
-            print(f"    product_id={pid}: {cnt} uncategorized rows")
+        print(f"  total distinct vetspire_product_ids (any category state): {len(all_ids)}")
+        print(f"  distinct vetspire_product_ids still UNCATEGORIZED: {len(uncategorized_ids)}")
+        for pid, entry in sorted(uncategorized_ids.items(), key=lambda kv: -kv[1]["count"]):
+            print(f"    vetspire_product_id={pid}: {entry['count']} uncategorized rows, locations={sorted(entry['locations'])}")
         print(f"  most recent uncategorized dispensed_at: {latest}")
         print()
 
