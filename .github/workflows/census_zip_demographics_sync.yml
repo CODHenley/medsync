@@ -1,0 +1,32 @@
+name: Census ZIP Demographics Sync
+
+# Refreshes zip_demographics from the U.S. Census ACS 5-year estimates for
+# every real client ZIP code seen in v_case_geo. ACS updates roughly
+# annually, so a monthly refresh is more than enough -- mainly this re-runs
+# to pick up newly-seen ZIP codes as the client base grows.
+
+on:
+  workflow_dispatch:
+    inputs:
+      acs_vintage_year:
+        description: 'ACS 5-year vintage (end year), e.g. 2022'
+        required: false
+        default: '2022'
+  schedule:
+    - cron: '0 14 1 * *'   # 9am CT (UTC-5), 1st of the month
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Census ZIP demographics sync
+        env:
+          ACS_VINTAGE_YEAR: ${{ inputs.acs_vintage_year || '2022' }}
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+        run: python3 census_zip_demographics_sync.py
