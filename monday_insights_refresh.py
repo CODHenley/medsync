@@ -71,6 +71,63 @@ def supa_get(path):
         return []
 
 
+def supa_get_paginated(path, page_size=1000):
+    """Like supa_get(), but pages via limit/offset -- PostgREST silently caps
+    a single request at its configured max-rows regardless of any limit=
+    in the query string, and 30 days x 4 locations of encounters can
+    exceed that."""
+    out = []
+    offset = 0
+    sep = "&" if "?" in path else "?"
+    while True:
+        page = supa_get(f"{path}{sep}limit={page_size}&offset={offset}")
+        if not page:
+            return out
+        out.extend(page)
+        if len(page) < page_size:
+            return out
+        offset += page_size
+
+
+# Same keyword buckets as categorizeComplaint() in scoutsync_dashboard.html's
+# "Billing Consistency by Provider" section -- kept in sync manually since
+# this is a one-off Python port, not shared code.
+COMPLAINT_CATEGORIES = [
+    ("Vomiting / GI upset",         ["vomit", "diarrhea", "gi upset", "stomach", "nausea", "ate something", "ingest"]),
+    ("Skin / Allergy / Ear",        ["skin", "itch", "allerg", "rash", "hot spot", "ear"]),
+    ("Wound / Trauma / Limping",    ["wound", "laceration", "bite", "hit by car", "hbc", "trauma", "limp", "lame", "fracture", "broken"]),
+    ("Respiratory",                 ["cough", "sneeze", "breathing", "respiratory", "wheez"]),
+    ("Urinary / Reproductive",      ["urinary", "uti", "urinat", "blood in urine", "pregnan", "whelp", "labor"]),
+    ("Lethargy / Not eating / Ill", ["lethargy", "not eating", "anorexia", "weak", "fever", "malaise"]),
+    ("Dental",                      ["dental", "tooth", "teeth"]),
+    ("Eye",                         ["eye", "conjunctiv"]),
+    ("Wellness / Vaccine",          ["wellness", "vaccine", "annual", "checkup", "check up", "spay", "neuter"]),
+]
+
+# Same thresholds as BILLING_CONSISTENCY_MIN_N / _MIN_PROVIDERS / _HIGH_CV on
+# the dashboard, so a category only surfaces here if it would also be
+# flagged "High variance" there.
+BILLING_MIN_N = 3
+BILLING_MIN_PROVIDERS = 2
+BILLING_HIGH_CV = 25
+
+
+def categorize_complaint(text):
+    t = (text or "").lower().strip()
+    if not t:
+        return "Unspecified"
+    for label, kws in COMPLAINT_CATEGORIES:
+        if any(k in t for k in kws):
+            return label
+    return "Other"
+
+
+def stdev(values, mean):
+    if len(values) < 2:
+        return 0
+    return (sum((v - mean) ** 2 for v in values) / (len(values) - 1)) ** 0.5
+
+
 def fmt_dollar(n):
     return f"${n:,.0f}"
 
@@ -203,6 +260,78 @@ def build_insights():
                     badge=fmt_dollar(top_cost),
                     badge_cls="badge-warn",
                     tag="Cost driver",
+                ),
+            })
+
+    # ── 4. Billing variance by provider, same reason-for-visit category ────
+    # Same directional analysis as "Billing Consistency by Provider" on the
+    # Clinical Operations tab (encounters.chief_complaint bucketed by
+    # keyword, invoice_total compared across doctors) -- only surfaces here
+    # if a category's spread also clears the dashboard's own "High variance"
+    # bar, so this and the dashboard section never disagree about what
+    # counts as notable.
+    UNATTRIBUTED_PROVIDER = "00000000-0000-0000-0000-000000000000"
+    enc = supa_get_paginated(
+        f"/rest/v1/encounters?select=provider_id,chief_complaint,invoice_total,started_at"
+        f"&had_exam=eq.true&started_at=gte.{days30_ago}&started_at=lte.{today_str}"
+    )
+    if enc:
+        providers = supa_get_paginated("/rest/v1/providers?select=id,full_name")
+        name_by_id = {p["id"]: p["full_name"] for p in providers}
+
+        by_category = {}  # label -> {provider_name: [invoice_total, ...]}
+        for r in enc:
+            cc, pid = (r.get("chief_complaint") or "").strip(), r.get("provider_id")
+            if not cc or not pid or pid == UNATTRIBUTED_PROVIDER:
+                continue
+            cat = categorize_complaint(cc)
+            name = name_by_id.get(pid, "Unknown provider")
+            by_category.setdefault(cat, {}).setdefault(name, []).append(float(r.get("invoice_total") or 0))
+
+        best = None  # highest-dollar-impact qualifying category
+        for cat, by_provider in by_category.items():
+            stats = []
+            for name, values in by_provider.items():
+                if len(values) < BILLING_MIN_N:
+                    continue
+                mean = sum(values) / len(values)
+                stats.append({"name": name, "n": len(values), "mean": mean})
+            if len(stats) < BILLING_MIN_PROVIDERS:
+                continue
+            means = [s["mean"] for s in stats]
+            overall_mean = sum(means) / len(means)
+            cv = (stdev(means, overall_mean) / overall_mean * 100) if overall_mean else 0
+            if cv < BILLING_HIGH_CV:
+                continue
+            stats.sort(key=lambda s: s["mean"])
+            low, high = stats[0], stats[-1]
+            # What the lowest-charging doctor would have billed at the
+            # category average, over their own case volume this period.
+            est_impact = (overall_mean - low["mean"]) * low["n"]
+            if est_impact <= 0:
+                continue
+            if best is None or est_impact > best["est_impact"]:
+                best = {"cat": cat, "cv": cv, "low": low, "high": high,
+                        "overall_mean": overall_mean, "providers": len(stats), "est_impact": est_impact}
+
+        if best:
+            body = (f"{best['cat']}: {best['providers']} doctors compared, {best['cv']:.0f}% spread. "
+                    f"{best['low']['name']} averages {fmt_dollar(best['low']['mean'])}/case ({best['low']['n']} cases) "
+                    f"vs. a {fmt_dollar(best['overall_mean'])} category average -- "
+                    f"{fmt_dollar(best['est_impact'])} potential gap this period.")
+            insights.append({
+                "dollar": best["est_impact"],
+                "html": card_html(
+                    icon="ti-receipt-2",
+                    icon_color="#a0700a",
+                    bg="#fdf8ee",
+                    border="#f0d070",
+                    icon_bg="#fdefc7",
+                    title=f"Billing variance — {best['cat']}",
+                    body=body,
+                    badge=fmt_dollar(best["est_impact"]),
+                    badge_cls="badge-warn",
+                    tag="Billing variance",
                 ),
             })
 
