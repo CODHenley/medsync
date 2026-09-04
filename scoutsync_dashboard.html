@@ -309,7 +309,11 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   </div>
   <div class="range-filter">
     <select id="range-select">
-      <option value="30">Trailing 30 days</option>
+      <option value="today">Today</option>
+      <option value="thismonth">This month</option>
+      <option value="lastmonth">Last month</option>
+      <option value="thisquarter">This quarter</option>
+      <option value="30" selected>Trailing 30 days</option>
       <option value="7">Trailing 7 days</option>
       <option value="90">Trailing 90 days</option>
       <option value="365">Trailing 365 days</option>
@@ -709,15 +713,21 @@ function selectedLocation() {
   const key = document.getElementById('loc-select').value;
   return LOCATIONS.find(l => l.key === key) || null;
 }
+function selectedRangeKey() { return document.getElementById('range-select').value; }
 function selectedRangeDays() { return parseInt(document.getElementById('range-select').value, 10); }
 
 function isCustomRange() { return document.getElementById('range-select').value === 'custom'; }
 
-// { from, until, days } for whichever range is selected — a preset (days
-// back from today) or the two custom date inputs. Falls back to the 30-day
-// default if a custom range is selected but incomplete, so every caller
-// always gets a usable range rather than having to special-case "not set yet".
+// { from, until, days } for whichever range is selected — a calendar preset
+// (today/this month/last month/this quarter), a trailing-N-days preset, or
+// the two custom date inputs. Falls back to the 30-day default if a custom
+// range is selected but incomplete, so every caller always gets a usable
+// range rather than having to special-case "not set yet". Mirrors the
+// Vetspire invoices date-range picker's calendar presets alongside the
+// existing trailing-day ones (see getActPeriod() below for the same
+// month/quarter math reused here).
 function selectedDateRange() {
+  const today = isoDaysAgo(0);
   if (isCustomRange()) {
     const from = document.getElementById('custom-from').value;
     const until = document.getElementById('custom-to').value;
@@ -725,9 +735,25 @@ function selectedDateRange() {
       const days = Math.round((new Date(until) - new Date(from)) / 86400000) + 1;
       return { from, until, days };
     }
+    return { from: isoDaysAgo(30), until: today, days: 30 };
   }
-  const days = isCustomRange() ? 30 : selectedRangeDays();
-  return { from: isoDaysAgo(days), until: isoDaysAgo(0), days };
+  const key = selectedRangeKey();
+  let from, until;
+  if (key === 'today') {
+    from = today; until = today;
+  } else if (key === 'thismonth') {
+    from = startOfMonth(today); until = today;
+  } else if (key === 'lastmonth') {
+    const lastMonthEnd = shiftDays(startOfMonth(today), -1);
+    from = startOfMonth(lastMonthEnd); until = lastMonthEnd;
+  } else if (key === 'thisquarter') {
+    from = startOfQuarter(today); until = today;
+  } else {
+    const days = selectedRangeDays();
+    from = isoDaysAgo(days); until = today;
+  }
+  const days = Math.round((new Date(until) - new Date(from)) / 86400000) + 1;
+  return { from, until, days };
 }
 
 // ── Tiny reusable SVG chart builders (per dataviz skill: thin marks, 2px
@@ -1721,8 +1747,9 @@ async function loadFinancial() {
 
 // ── Avg Cost per Transaction by Provider: many period cuts (trailing N
 // days / MTD / YTD / MoM / YoY / previous year / custom range), all on an
-// independent selector -- the top-level #range-select only has 4 trailing
-// presets + one custom range, not enough shapes for a MoM/YoY-style report.
+// independent selector -- the top-level #range-select has calendar +
+// trailing-day presets but no comparison-window shapes (MoM/YoY), so this
+// section still needs its own richer selector.
 // v_act_per_provider_daily exposes provider+day revenue and encounter_count
 // (see scoutsync_act_per_provider.sql); each cut below is just a from/until
 // window (plus a comparison window) summed client-side over that view. ──
@@ -1733,6 +1760,8 @@ function endOfMonth(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return
 function shiftMonths(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), d.getMonth() + n, d.getDate())); }
 function startOfYear(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), 0, 1)); }
 function shiftYears(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear() + n, d.getMonth(), d.getDate())); }
+// Used by the top-level #range-select's "This quarter" preset.
+function startOfQuarter(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1)); }
 
 // { from, until, compareFrom, compareUntil, compareLabel } -- the comparison
 // window is always a real, distinct period so a Δ can be shown for every cut.
