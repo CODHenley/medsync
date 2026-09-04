@@ -1,0 +1,22 @@
+name: ScoutSync Bulk Category Apply Round 2
+
+# User-authorized round-2 bulk categorization of the uncategorized long
+# tail. See scoutsync_bulk_category_apply_round2.py. Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Apply round 2 category recommendations
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 scoutsync_bulk_category_apply_round2.py
