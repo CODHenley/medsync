@@ -1,0 +1,23 @@
+name: ScoutSync Sample Null Dispensed At
+
+# Why does the exact count of uncategorized "Exam - Urgent Care" rows
+# (8833) not match the sum of per-month counts across the only possible
+# months (19)? scope_legacy_rows.py ruled out order_item_id IS NULL rows
+# (0 found). Sample actual dispensed_at values directly. See
+# scoutsync_sample_null_dispensed_at.py. Manual trigger only. Read-only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run sample check
+        run: python3 scoutsync_sample_null_dispensed_at.py
