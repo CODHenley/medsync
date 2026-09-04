@@ -1,0 +1,22 @@
+name: ScoutSync Recheck Exam Urgent Care
+
+# Is "Exam - Urgent Care"'s uncategorized count actually dropping over
+# time (confirming the backfill/sync writes work, just needed time to
+# propagate) or still stuck near 8833? See
+# scoutsync_recheck_exam_urgent_care.py. Manual trigger only. Read-only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run recheck
+        run: python3 scoutsync_recheck_exam_urgent_care.py
