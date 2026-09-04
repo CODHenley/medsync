@@ -44,8 +44,12 @@ def supa_get(path, params):
         f"{SUPA_URL}/rest/v1/{path}?{params}",
         headers={"apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}"},
     )
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        print(f"  !! HTTPError {e.code} for {req.full_url}\n     body: {e.read()[:500]}")
+        raise
 
 
 def supa_get_all(path, params, page_size=1000):
@@ -61,16 +65,24 @@ def supa_get_all(path, params, page_size=1000):
 
 def main():
     print("=== Round 3 diagnostic: product_id fragmentation for top uncategorized names ===\n")
+
+    sample = supa_get("dispensed_items", "select=*&limit=1")
+    print(f"-- dispensed_items columns (from a sample row): {sorted(sample[0].keys()) if sample else '(no rows)'} --\n")
+
     for name in NAMES_TO_CHECK:
         q = urllib.parse.quote(name)
-        uncategorized_rows = supa_get_all(
-            "dispensed_items",
-            f"select=product_id,dispensed_at&product_category_id=is.null&product_name=eq.{q}",
-        )
-        all_rows = supa_get_all(
-            "dispensed_items",
-            f"select=product_id&product_name=eq.{q}",
-        )
+        try:
+            uncategorized_rows = supa_get_all(
+                "dispensed_items",
+                f"select=product_id,dispensed_at&product_category_id=is.null&product_name=eq.{q}",
+            )
+            all_rows = supa_get_all(
+                "dispensed_items",
+                f"select=product_id&product_name=eq.{q}",
+            )
+        except urllib.error.HTTPError:
+            print(f"'{name}': FAILED (see error above), skipping\n")
+            continue
         uncategorized_ids = defaultdict(int)
         for r in uncategorized_rows:
             uncategorized_ids[r.get("product_id")] += 1
