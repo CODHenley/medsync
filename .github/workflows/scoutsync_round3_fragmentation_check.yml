@@ -1,0 +1,22 @@
+name: ScoutSync Round 3 Fragmentation Check
+
+# Diagnostic: why is "Exam - Urgent Care" (fixed in round 1) back at the
+# top of the round 3 uncategorized list at $1.19M? Checks whether
+# multiple distinct Vetspire product_ids share the same display name. See
+# scoutsync_round3_fragmentation_check.py. Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run fragmentation check
+        run: python3 scoutsync_round3_fragmentation_check.py
