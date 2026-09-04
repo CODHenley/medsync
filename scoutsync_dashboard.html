@@ -433,6 +433,15 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Case Volume Over Time</h2>
+      <span class="sub">All history, independent of the range filter above — year-over-year, to see peak vs. slow season</span></div>
+    <div class="chart-card">
+      <div class="chart-title">Monthly case volume by year</div>
+      <div class="chart-note" id="seasonal-note">Each line is one calendar year; compare the same month across years to spot seasonality</div>
+      <div id="seasonal-chart"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Average Case Value Heatmap</h2></div>
     <div class="chart-card">
       <div class="chart-title">Average case value by day of week &amp; hour of day (9am–11pm, Central)</div>
@@ -575,6 +584,7 @@ const PRACTICE_LOCATIONS = [
 // overlay line and the Chicagoland map's ZIP circles.
 const SCOUT_GREEN_RGB = '30,92,81';
 const FINANCIAL_RGB = '200,56,3';
+const CLINICAL_RGB = '43,108,176'; // matches --c-clinical (#2B6CB0)
 
 // Chicagoland ZIP -> approximate centroid, covering Chicago proper plus the
 // North Shore and near-west suburbs around the 4 practice locations. A
@@ -872,6 +882,148 @@ function renderLineChart(el, points, opts) {
     crosshair.style.opacity = '0'; dot.style.opacity = '0'; tt.style.opacity = '0';
   });
   hitRect.addEventListener('click', e => { showDayDetail(points[idxAt(e.clientX)].x); });
+}
+
+// General-purpose multi-line chart for a small, fixed set of x categories
+// (month names for the seasonal chart, "months since open" for the de novo
+// ramp-up chart) rather than a continuous date axis. Used wherever several
+// lines need comparing side by side against the same category axis.
+//   series: [{label, color, values, dashed?, strokeWidth?}] -- values[i] is
+//     the y value at xLabels[i]; null/undefined renders as a gap (never a
+//     false zero or an interpolated lie across a month with no data yet).
+//   xLabels: category labels, one per x position.
+function renderMultiSeriesLineChart(el, series, xLabels, opts) {
+  el.innerHTML = '';
+  opts = opts || {};
+  const hasAny = series.some(s => s.values.some(v => v !== null && v !== undefined));
+  if (!xLabels.length || !hasAny) { el.innerHTML = '<div class="chart-note">No data in this range.</div>'; return; }
+
+  const W = 900, H = 250, PAD_L = 54, PAD_R = 16, PAD_T = 14, PAD_B = 46;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const n = xLabels.length;
+  const allY = series.flatMap(s => s.values.filter(v => v !== null && v !== undefined));
+  const maxY = Math.max(...allY, 1);
+  const niceMax = Math.ceil(maxY / 4) * 4 || 1;
+  const xAt = i => PAD_L + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const yAt = v => PAD_T + plotH - (v / niceMax) * plotH;
+  const fmtVal = opts.formatValue || fmtN;
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.width = '100%'; svg.style.height = 'auto'; svg.style.display = 'block';
+
+  for (let g = 0; g <= 3; g++) {
+    const v = (niceMax / 3) * g;
+    const y = yAt(v);
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', PAD_L); line.setAttribute('x2', W - PAD_R);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'var(--grid)'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', PAD_L - 8); label.setAttribute('y', y + 4);
+    label.setAttribute('text-anchor', 'end'); label.setAttribute('font-size', '10.5');
+    label.setAttribute('fill', 'var(--ink-3)');
+    label.textContent = fmtN(Math.round(v));
+    svg.appendChild(label);
+  }
+
+  const step = n <= 12 ? 1 : Math.ceil(n / 12);
+  for (let i = 0; i < n; i += step) {
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', xAt(i)); label.setAttribute('y', H - PAD_B + 16);
+    label.setAttribute('text-anchor', i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle');
+    label.setAttribute('font-size', '10.5'); label.setAttribute('fill', 'var(--ink-3)');
+    label.textContent = xLabels[i];
+    svg.appendChild(label);
+  }
+
+  series.forEach(s => {
+    let d = '', drawing = false;
+    s.values.forEach((v, i) => {
+      if (v === null || v === undefined) { drawing = false; return; }
+      d += `${drawing ? 'L' : 'M'} ${xAt(i)} ${yAt(v)} `;
+      drawing = true;
+    });
+    if (!d) return;
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', d.trim()); path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', s.color); path.setAttribute('stroke-width', s.strokeWidth || 2);
+    path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('stroke-linecap', 'round');
+    if (s.dashed) path.setAttribute('stroke-dasharray', '5,4');
+    svg.appendChild(path);
+  });
+
+  // Legend -- always shown for 2+ series per the multi-series convention.
+  const legendY = H - 12;
+  let lx = PAD_L;
+  series.forEach(s => {
+    const sw = document.createElementNS(svgNS, 'rect');
+    sw.setAttribute('x', lx); sw.setAttribute('y', legendY - 8);
+    sw.setAttribute('width', 10); sw.setAttribute('height', 3);
+    sw.setAttribute('fill', s.color);
+    if (s.dashed) sw.setAttribute('stroke-dasharray', '2,1.5');
+    svg.appendChild(sw);
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', lx + 14); label.setAttribute('y', legendY);
+    label.setAttribute('font-size', '10.5'); label.setAttribute('fill', 'var(--ink-2)');
+    label.textContent = s.label;
+    svg.appendChild(label);
+    lx += 14 + s.label.length * 6 + 18;
+  });
+
+  const crosshair = document.createElementNS(svgNS, 'line');
+  crosshair.setAttribute('y1', PAD_T); crosshair.setAttribute('y2', PAD_T + plotH);
+  crosshair.setAttribute('stroke', 'var(--axis)'); crosshair.setAttribute('stroke-width', '1');
+  crosshair.style.opacity = '0';
+  svg.appendChild(crosshair);
+
+  const dots = series.map(s => {
+    const dot = document.createElementNS(svgNS, 'circle');
+    dot.setAttribute('r', '4'); dot.setAttribute('fill', s.color);
+    dot.setAttribute('stroke', 'var(--card)'); dot.setAttribute('stroke-width', '2');
+    dot.style.opacity = '0';
+    svg.appendChild(dot);
+    return dot;
+  });
+
+  const hitRect = document.createElementNS(svgNS, 'rect');
+  hitRect.setAttribute('x', PAD_L); hitRect.setAttribute('y', PAD_T);
+  hitRect.setAttribute('width', plotW); hitRect.setAttribute('height', plotH);
+  hitRect.setAttribute('fill', 'transparent');
+  hitRect.style.cursor = 'pointer';
+  svg.appendChild(hitRect);
+
+  el.appendChild(svg);
+  const tt = makeTooltip(el);
+
+  const idxAt = clientX => {
+    const rect = svg.getBoundingClientRect();
+    const relX = (clientX - rect.left) / rect.width * W;
+    const idx = Math.round(((relX - PAD_L) / plotW) * (n - 1));
+    return Math.max(0, Math.min(n - 1, idx));
+  };
+  hitRect.addEventListener('mousemove', e => {
+    const idx = idxAt(e.clientX);
+    const rect = svg.getBoundingClientRect();
+    crosshair.setAttribute('x1', xAt(idx)); crosshair.setAttribute('x2', xAt(idx));
+    crosshair.style.opacity = '1';
+    let rows = '';
+    series.forEach((s, si) => {
+      const v = s.values[idx];
+      if (v === null || v === undefined) { dots[si].style.opacity = '0'; return; }
+      dots[si].setAttribute('cx', xAt(idx)); dots[si].setAttribute('cy', yAt(v));
+      dots[si].style.opacity = '1';
+      rows += `<div class="tt-value"><span style="color:${s.color}">●</span> ${esc(s.label)}: ${esc(fmtVal(v))}</div>`;
+    });
+    const px = (xAt(idx) / W) * rect.width;
+    tt.style.left = px + 'px'; tt.style.top = ((PAD_T / H) * rect.height) + 'px'; tt.style.opacity = '1';
+    tt.innerHTML = `<div class="tt-label">${esc(xLabels[idx])}</div>${rows}`;
+  });
+  hitRect.addEventListener('mouseleave', () => {
+    crosshair.style.opacity = '0'; dots.forEach(d => d.style.opacity = '0'); tt.style.opacity = '0';
+  });
 }
 
 function renderBarChart(el, rows, opts) {
@@ -2614,12 +2766,63 @@ function showBillingConsistencyDetail(category) {
   panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
 }
 
+// ── Case Volume Over Time (seasonal trend, year-over-year) -- deliberately
+// independent of the top-level range filter (always all history) since a
+// seasonal pattern needs multiple full years to be visible at all; the range
+// filter's typical 30/90-day windows would never show one. Location filter
+// still applies. Backed by v_case_volume_monthly (pre-aggregated per
+// location+month) rather than fetching years of raw encounters client-side
+// the way the heatmaps do for a single selected range. ──
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+async function loadSeasonalChart() {
+  const el = document.getElementById('seasonal-chart');
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+
+  const rows = await fetchAllRows(`${SUPA_URL}/rest/v1/v_case_volume_monthly?select=month_start,case_count&order=month_start.asc${locFilter}`);
+  if (rows === null) {
+    el.innerHTML = `<div class="chart-note">Couldn't load <code>v_case_volume_monthly</code> — run
+      <code>scoutsync_case_volume_monthly.sql</code> in the Supabase SQL editor if you haven't yet.</div>`;
+    return;
+  }
+
+  // One row per location per month when "All Locations" is selected --
+  // sum across locations onto a single 'YYYY-MM' -> case_count map.
+  const byMonth = {};
+  rows.forEach(r => {
+    const key = (r.month_start || '').slice(0, 7);
+    if (!key) return;
+    byMonth[key] = (byMonth[key] || 0) + Number(r.case_count || 0);
+  });
+
+  const years = [...new Set(Object.keys(byMonth).map(k => k.slice(0, 4)))].sort();
+  if (!years.length) { el.innerHTML = '<div class="chart-note">No case history yet.</div>'; return; }
+
+  const todayYM = isoDaysAgo(0).slice(0, 7); // current calendar month -- future months stay gaps, not 0
+  const series = years.map((year, i) => {
+    // Ordinal color, not categorical -- years are a sequence (this year vs.
+    // last year vs. the year before), so one hue stepped light-to-dark
+    // reads the order directly, oldest faintest / most recent most solid.
+    const alpha = years.length === 1 ? 1 : 0.3 + 0.7 * (i / (years.length - 1));
+    const values = MONTH_NAMES.map((_, mi) => {
+      const ym = `${year}-${String(mi + 1).padStart(2, '0')}`;
+      return ym > todayYM ? null : (byMonth[ym] || 0);
+    });
+    return { label: year, color: `rgba(${CLINICAL_RGB},${alpha.toFixed(2)})`, values,
+             strokeWidth: i === years.length - 1 ? 2.5 : 2 };
+  });
+
+  renderMultiSeriesLineChart(el, series, MONTH_NAMES, { formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases') });
+}
+
 // ── Clinical Operations (heatmaps + geo map) data + rendering ──
 async function loadClinicalGeo() {
   // Independent sections, fired without awaiting so they don't block the
   // rest of this tab's load.
   loadCancellationsReport();
   loadBillingConsistency();
+  loadSeasonalChart();
 
   const { from, until } = selectedDateRange();
   const loc = selectedLocation();
