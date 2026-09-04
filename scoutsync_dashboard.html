@@ -444,6 +444,16 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>New Location Ramp-Up</h2>
+      <span class="sub">Case volume since opening day, vs. a cohort benchmark — use the location filter above to pick which one</span></div>
+    <div class="chart-card">
+      <div class="chart-title" id="rampup-title">Months since opening</div>
+      <div class="chart-note" id="rampup-note"></div>
+      <div class="hero-row" id="rampup-tiles"></div>
+      <div id="rampup-chart"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Average Case Value Heatmap</h2></div>
     <div class="chart-card">
       <div class="chart-title">Average case value by day of week &amp; hour of day (9am–11pm, Central)</div>
@@ -2818,6 +2828,177 @@ async function loadSeasonalChart() {
   renderMultiSeriesLineChart(el, series, MONTH_NAMES, { formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases') });
 }
 
+// ── New Location Ramp-Up: case volume re-anchored to "months since
+// opening" instead of calendar time, so a de novo location's trajectory
+// can be compared against how mature locations ramped in their OWN early
+// months -- weighted by service-area demographic similarity
+// (v_location_demographic_profile) when that data is available, falling
+// back to an unweighted cohort average otherwise (the weighting upgrades
+// itself automatically once zip_demographics is populated -- no code
+// change needed). Independent of the top-level range filter (always all
+// history); DOES respect the location filter -- pick one to inspect it,
+// or leave "All Locations" to default to the youngest one, since "is our
+// de novo location on target" is the more likely question when no
+// specific location is chosen. ──
+const RAMPUP_MATURE_MIN_MONTHS = 24; // a location needs at least this much of its own history to be a fair benchmark
+
+function monthsBetween(fromISO, toISO) {
+  const f = new Date(fromISO + 'T00:00:00'), t = new Date(toISO + 'T00:00:00');
+  return (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth());
+}
+
+async function loadRampUpChart() {
+  const titleEl = document.getElementById('rampup-title');
+  const note = document.getElementById('rampup-note');
+  const tilesEl = document.getElementById('rampup-tiles');
+  const chartEl = document.getElementById('rampup-chart');
+
+  const [locRows, volRows, profRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/locations?select=id,open_date&order=id.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_case_volume_monthly?select=location_id,month_start,case_count&order=month_start.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_location_demographic_profile?select=*`),
+  ]);
+  if (locRows === null || volRows === null || profRows === null) {
+    chartEl.innerHTML = '';
+    tilesEl.innerHTML = '';
+    note.innerHTML = `Couldn't load location/case-volume/demographic data — run
+      <code>scoutsync_case_volume_monthly.sql</code> and <code>scoutsync_location_demographic_profile.sql</code>
+      in the Supabase SQL editor if you haven't yet.`;
+    return;
+  }
+
+  const openDateByLoc = Object.fromEntries(locRows.filter(l => l.open_date).map(l => [l.id, l.open_date]));
+  const profileByLoc = Object.fromEntries(profRows.map(p => [p.location_id, p]));
+  const monthsByLoc = {};
+  volRows.forEach(r => { (monthsByLoc[r.location_id] = monthsByLoc[r.location_id] || []).push(r); });
+
+  const todayISO = isoDaysAgo(0);
+  const allLocUuids = LOCATIONS.map(l => l.uuid).filter(u => openDateByLoc[u]);
+  if (!allLocUuids.length) {
+    chartEl.innerHTML = '<div class="chart-note">No location open dates on file.</div>';
+    tilesEl.innerHTML = ''; note.innerHTML = '';
+    return;
+  }
+
+  const selectedLoc = selectedLocation();
+  const targetUuid = selectedLoc
+    ? selectedLoc.uuid
+    : allLocUuids.slice().sort((a, b) => openDateByLoc[b].localeCompare(openDateByLoc[a]))[0];
+  const targetLoc = LOCATIONS.find(l => l.uuid === targetUuid);
+  const targetOpenDate = openDateByLoc[targetUuid];
+  if (!targetOpenDate) {
+    chartEl.innerHTML = '<div class="chart-note">No open date on file for this location.</div>';
+    tilesEl.innerHTML = ''; note.innerHTML = '';
+    return;
+  }
+  const targetAgeMonths = monthsBetween(targetOpenDate, todayISO);
+  titleEl.textContent = `${targetLoc ? targetLoc.name : 'Location'} — months since opening (${fmtDate(targetOpenDate)})`;
+
+  const matureUuids = allLocUuids.filter(u =>
+    u !== targetUuid && monthsBetween(openDateByLoc[u], todayISO) >= RAMPUP_MATURE_MIN_MONTHS);
+
+  if (!matureUuids.length) {
+    chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
+    tilesEl.innerHTML = ''; note.innerHTML = '';
+    return;
+  }
+
+  // Similarity weights from the service-area demographic profile.
+  const DEMO_FIELDS = ['avg_median_household_income', 'avg_population', 'avg_median_age', 'avg_household_size'];
+  const targetProfile = profileByLoc[targetUuid];
+  const haveTargetDemo = targetProfile && DEMO_FIELDS.every(f => targetProfile[f] != null);
+  const usable = matureUuids.filter(u => {
+    const p = profileByLoc[u];
+    return p && DEMO_FIELDS.every(f => p[f] != null);
+  });
+
+  let weights;
+  if (haveTargetDemo && usable.length) {
+    const ranges = {};
+    DEMO_FIELDS.forEach(f => {
+      const vals = [targetProfile[f], ...usable.map(u => profileByLoc[u][f])];
+      ranges[f] = { min: Math.min(...vals), max: Math.max(...vals) };
+    });
+    const norm = (p, f) => {
+      const { min, max } = ranges[f];
+      return max > min ? (p[f] - min) / (max - min) : 0.5;
+    };
+    const rawWeights = {};
+    usable.forEach(u => {
+      const p = profileByLoc[u];
+      const dist = Math.sqrt(DEMO_FIELDS.reduce((sum, f) => sum + (norm(p, f) - norm(targetProfile, f)) ** 2, 0));
+      rawWeights[u] = 1 / (1 + dist);
+    });
+    // A mature location without a usable profile still counts, at the
+    // average weight, rather than being silently dropped from the cohort.
+    const avgRaw = Object.values(rawWeights).reduce((a, v) => a + v, 0) / (Object.keys(rawWeights).length || 1);
+    matureUuids.forEach(u => { if (!(u in rawWeights)) rawWeights[u] = avgRaw; });
+    const totalRaw = Object.values(rawWeights).reduce((a, v) => a + v, 0);
+    weights = Object.fromEntries(matureUuids.map(u => [u, rawWeights[u] / totalRaw]));
+    note.innerHTML = `Benchmark = ${matureUuids.length} mature location(s), weighted by service-area similarity
+      (median household income, population, median age, household size — U.S. Census ACS by client ZIP).`;
+  } else {
+    weights = Object.fromEntries(matureUuids.map(u => [u, 1 / matureUuids.length]));
+    note.innerHTML = `Benchmark = an unweighted average of ${matureUuids.length} mature location(s) — demographic
+      similarity weighting will apply automatically once <code>zip_demographics</code> is populated
+      (see <code>census_zip_demographics_sync.py</code>).`;
+  }
+
+  function monthlySeriesFor(uuid) {
+    const openDate = openDateByLoc[uuid];
+    const out = {};
+    (monthsByLoc[uuid] || []).forEach(r => { out[monthsBetween(openDate, r.month_start)] = r.case_count; });
+    return out;
+  }
+  const targetSeries = monthlySeriesFor(targetUuid);
+  const matureSeries = Object.fromEntries(matureUuids.map(u => [u, monthlySeriesFor(u)]));
+
+  // A little past "today" for context, capped so one very long-lived
+  // mature comparator doesn't stretch the x-axis out years past what's
+  // actually relevant to the target.
+  const maxMonth = Math.min(Math.max(targetAgeMonths + 6, 23), 60);
+  const xLabels = [], actualValues = [], projectedValues = [];
+  for (let m = 0; m <= maxMonth; m++) {
+    xLabels.push(`M${m}`);
+    actualValues.push(m <= targetAgeMonths ? (targetSeries[m] ?? 0) : null);
+    let wSum = 0, vSum = 0;
+    matureUuids.forEach(u => {
+      const v = matureSeries[u][m];
+      if (v !== undefined) { wSum += weights[u]; vSum += weights[u] * v; }
+    });
+    projectedValues.push(wSum > 0 ? vSum / wSum : null);
+  }
+
+  renderMultiSeriesLineChart(chartEl, [
+    { label: `${targetLoc ? targetLoc.name : 'This location'} (actual)`, color: `rgba(${CLINICAL_RGB},1)`, values: actualValues, strokeWidth: 2.5 },
+    { label: 'Cohort benchmark (projected)', color: `rgba(${CLINICAL_RGB},0.55)`, values: projectedValues, dashed: true },
+  ], xLabels, { formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases') });
+
+  // ── MoM / QoQ / YoY, computed from the target's own actual series --
+  // this needs no cohort at all, just its own history. ──
+  function pctChange(curr, prior) {
+    if (curr == null || prior == null || prior === 0) return null;
+    return ((curr - prior) / prior) * 100;
+  }
+  const latestMonth = targetAgeMonths;
+  const mom = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 1]);
+  const qoq = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 3]);
+  const yoy = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 12]);
+  const vsProjected = pctChange(targetSeries[latestMonth], projectedValues[latestMonth]);
+
+  const tile = (label, pct, caption) => `
+    <div class="hero-tile">
+      <div class="l">${esc(label)}</div>
+      <div class="v" style="${pct === null ? '' : `color:${pct >= 0 ? 'var(--s-good)' : 'var(--s-critical)'}`}">${pct === null ? '—' : (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%'}</div>
+      <div class="chart-note" style="margin-top:6px">${esc(pct === null ? 'Not enough history yet' : caption)}</div>
+    </div>`;
+  tilesEl.innerHTML =
+    tile('Month over month', mom, 'vs. previous month') +
+    tile('Quarter over quarter', qoq, 'vs. 3 months ago') +
+    tile('Year over year', yoy, 'vs. 12 months ago') +
+    tile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
+}
+
 // ── Clinical Operations (heatmaps + geo map) data + rendering ──
 async function loadClinicalGeo() {
   // Independent sections, fired without awaiting so they don't block the
@@ -2825,6 +3006,7 @@ async function loadClinicalGeo() {
   loadCancellationsReport();
   loadBillingConsistency();
   loadSeasonalChart();
+  loadRampUpChart();
 
   const { from, until } = selectedDateRange();
   const loc = selectedLocation();
