@@ -262,14 +262,16 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .panel { display: none; }
 .panel.active { display: block; }
 
-/* ── Heatmap grid (case volume / case dollar value) ── */
+/* ── Heatmap grid (case volume / case dollar value) --
+   days of week down the left (rows), hours of day across the top (columns) --
+   the more conventional orientation for a day/hour heatmap. ── */
 .heatmap-wrap { display: flex; gap: 6px; }
-.heatmap-hourlabels { display: grid; grid-auto-rows: 15px; gap: 2px; padding-top: 20px; width: 32px; flex-shrink: 0; }
-.heatmap-hourlabels span { font-size: 9.5px; color: var(--ink-3); line-height: 15px; text-align: right; }
+.heatmap-daylabels { display: grid; grid-auto-rows: 15px; gap: 2px; padding-top: 20px; width: 32px; flex-shrink: 0; }
+.heatmap-daylabels span { font-size: 9.5px; color: var(--ink-3); line-height: 15px; text-align: right; }
 .heatmap-grid-outer { flex: 1; overflow-x: auto; }
-.heatmap-daylabels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; height: 16px; margin-bottom: 4px; }
-.heatmap-daylabels span { font-size: 10.5px; color: var(--ink-3); text-align: center; font-weight: 600; }
-.heatmap-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 15px; gap: 2px; min-width: 340px; }
+.heatmap-hourlabels { display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px; height: 16px; margin-bottom: 4px; }
+.heatmap-hourlabels span { font-size: 10.5px; color: var(--ink-3); text-align: center; font-weight: 600; }
+.heatmap-grid { display: grid; grid-template-columns: repeat(14, 1fr); grid-auto-rows: 15px; gap: 2px; min-width: 340px; }
 .heatmap-cell { border-radius: 2px; cursor: pointer; }
 .heatmap-cell:hover { outline: 1.5px solid var(--axis); outline-offset: -1.5px; }
 .heatmap-cell.selected { outline: 2px solid var(--text); outline-offset: -2px; }
@@ -2248,6 +2250,16 @@ function renderHeatmapGrid(el, matrix, opts) {
   const wrap = document.createElement('div');
   wrap.className = 'heatmap-wrap';
 
+  const dayLabels = document.createElement('div');
+  dayLabels.className = 'heatmap-daylabels';
+  ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
+    const span = document.createElement('span'); span.textContent = d; dayLabels.appendChild(span);
+  });
+  wrap.appendChild(dayLabels);
+
+  const outer = document.createElement('div');
+  outer.className = 'heatmap-grid-outer';
+
   const hourLabels = document.createElement('div');
   hourLabels.className = 'heatmap-hourlabels';
   for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
@@ -2255,22 +2267,12 @@ function renderHeatmapGrid(el, matrix, opts) {
     if ((h - HEATMAP_HOUR_START) % 3 === 0) span.textContent = hourLabelShort(h);
     hourLabels.appendChild(span);
   }
-  wrap.appendChild(hourLabels);
-
-  const outer = document.createElement('div');
-  outer.className = 'heatmap-grid-outer';
-
-  const dayLabels = document.createElement('div');
-  dayLabels.className = 'heatmap-daylabels';
-  ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
-    const span = document.createElement('span'); span.textContent = d; dayLabels.appendChild(span);
-  });
-  outer.appendChild(dayLabels);
+  outer.appendChild(hourLabels);
 
   const grid = document.createElement('div');
   grid.className = 'heatmap-grid';
-  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
-    for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < 7; d++) {
+    for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
       const v = matrix[d][h] || 0;
       const cell = document.createElement('div');
       cell.className = 'heatmap-cell';
