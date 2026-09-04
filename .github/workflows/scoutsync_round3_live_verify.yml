@@ -1,0 +1,26 @@
+name: ScoutSync Round 3 Live Verify
+
+# Ground-truth pass before proposing round 3 recommendations: for each of
+# the top 80 uncategorized names, check Vetspire's CURRENT live category
+# directly (not Supabase's cached state), since we've now proven at
+# least one name ("Exam - Urgent Care") is a pipeline-staleness/
+# truncation artifact rather than a genuinely uncategorized product. See
+# scoutsync_round3_live_verify.py. Manual trigger only. Read-only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run round 3 live verify
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 scoutsync_round3_live_verify.py
