@@ -1,0 +1,21 @@
+name: ScoutSync Uncategorized Round 3 Probe
+
+# Round 3: what's left in the uncategorized long tail after two batches
+# (43 + 80 = 123 items) were applied? See
+# scoutsync_uncategorized_round3_probe.py. Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run round 3 uncategorized probe
+        run: python3 scoutsync_uncategorized_round3_probe.py
