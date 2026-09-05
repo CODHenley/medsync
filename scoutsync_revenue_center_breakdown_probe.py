@@ -38,7 +38,7 @@ def main():
         raise SystemExit("ERROR: VETSPIRE_API_TOKEN not set")
 
     end = date.today()
-    start = end - timedelta(days=7)
+    start = end - timedelta(days=90)
 
     print("=== 3-way breakdown: PROVIDER_ID + PRODUCT_CATEGORY_ID + REVENUE_CENTER_ID ===")
     query = """
@@ -54,8 +54,15 @@ def main():
         raw = r.get("data", {}).get("salesReport", "[]")
         rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
         print(f"  {len(rows)} rows over {start}..{end} (Wheaton)")
-        for row in rows[:10]:
+        uncategorized = [row for row in rows if row.get("product_category_id") in (None, 0)]
+        print(f"  {len(uncategorized)} of those rows are uncategorized (product_category_id null/0) -- "
+              f"does revenue_center_id populate for THESE specifically?")
+        for row in uncategorized[:15]:
             print(f"  - {row}")
+        if not uncategorized:
+            print("  (none in this 7-day window -- showing first 10 of all rows instead)")
+            for row in rows[:10]:
+                print(f"  - {row}")
     print()
 
     print("=== Root query fields matching 'revenueCenters' (for a full reference list) ===")
