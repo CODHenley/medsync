@@ -42,6 +42,11 @@ ACS_VARS = {
     "B25010_001E": "avg_household_size",
 }
 
+# zip_demographics.population is an integer column -- Postgres's integer
+# input parser rejects any decimal point (even a trailing ".0"), so this
+# field needs a real int, not the float used for the numeric-typed fields.
+INTEGER_FIELDS = {"population"}
+
 RETRY_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = 2
 
@@ -147,7 +152,12 @@ def fetch_acs_batch(zip_codes):
                 # Census uses large negative sentinel codes (e.g. -666666666)
                 # for "not available/not computed" -- never store those as a
                 # real figure.
-                rec[field_name] = val if val >= 0 else None
+                if val < 0:
+                    rec[field_name] = None
+                elif field_name in INTEGER_FIELDS:
+                    rec[field_name] = int(val)
+                else:
+                    rec[field_name] = val
             except (TypeError, ValueError):
                 rec[field_name] = None
         results.append(rec)
