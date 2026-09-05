@@ -1,0 +1,29 @@
+name: Vetspire Financial Category Investigation
+
+# One-off report: investigates the large "Uncategorized" bucket in the
+# dashboard's Revenue by Source chart -- see
+# vetspire_financial_category_investigation.py. Report-only, no Supabase
+# writes. Manual trigger only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Trailing window in days'
+        required: false
+        default: '90'
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run financial category investigation
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_financial_category_investigation.py --days "${{ inputs.days }}"
