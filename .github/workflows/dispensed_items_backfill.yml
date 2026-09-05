@@ -30,6 +30,14 @@ on:
         options:
           - "false"
           - "true"
+  schedule:
+    # Weekly re-sweep of the trailing 90 days, all locations. The routine
+    # intraday sync (every 5 min) only has a 21-day rolling lookback, so a
+    # category fixed manually in Vetspire outside that window never gets
+    # reflected in dispensed_items unless something re-syncs it -- this is
+    # that something, instead of relying on someone remembering to dispatch
+    # this workflow by hand.
+    - cron: '0 10 * * 1'   # 5am CT (UTC-5), every Monday
 
 jobs:
   backfill:
@@ -41,11 +49,22 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Compute date range
+        id: daterange
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "start_date=$(date -u -d '90 days ago' +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+            echo "end_date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          else
+            echo "start_date=${{ inputs.start_date }}" >> "$GITHUB_OUTPUT"
+            echo "end_date=${{ inputs.end_date }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run dispensed items backfill
         env:
           VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
         run: |
-          ARGS="--start ${{ inputs.start_date }} --end ${{ inputs.end_date }}"
+          ARGS="--start ${{ steps.daterange.outputs.start_date }} --end ${{ steps.daterange.outputs.end_date }}"
           if [ -n "${{ inputs.location }}" ]; then
             ARGS="$ARGS --location \"${{ inputs.location }}\""
           fi
