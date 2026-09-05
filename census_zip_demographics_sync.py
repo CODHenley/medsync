@@ -13,10 +13,12 @@ gets compared against mature locations' profiles, so the projection is
 benchmarked against demographically/economically similar locations, not a
 flat average of all of them.
 
-No API key required for this volume (Census allows a modest number of
-unauthenticated requests/day; this project's real ZIP count is nowhere near
-that ceiling) -- set CENSUS_API_KEY to raise the ceiling if that ever
-changes.
+Requires CENSUS_API_KEY -- Census now rejects this query pattern without one
+("Missing Key"/"Invalid Key" HTML response instead of JSON). Get a free key at
+https://api.census.gov/data/key_signup.html and set it as a GitHub repo
+secret; a freshly-issued key can take a while to propagate across Census's
+edge servers, so isolated "Invalid Key" errors on some batches right after
+signup are expected and should clear up on retry.
 
 Usage:
   python3 census_zip_demographics_sync.py
@@ -93,8 +95,16 @@ def supa_upsert(records):
         },
     )
     req.get_method = lambda: "POST"
-    body, status = _urlopen_with_retry(req, timeout=30)
-    return status
+    try:
+        body, status = _urlopen_with_retry(req, timeout=30)
+        return status
+    except urllib.error.HTTPError as e:
+        # A single-statement upsert containing the same zip_code twice (see
+        # the dedupe note in main()) errors as a 400 from Postgres's "ON
+        # CONFLICT DO UPDATE command cannot affect row a second time" --
+        # surface the real body instead of letting this crash the whole sync.
+        print(f"  Supabase upsert failed for a batch of {len(records)}: HTTP {e.code} -- {e.read().decode()[:300]}")
+        return e.code
 
 
 def fetch_acs_batch(zip_codes):
@@ -192,6 +202,18 @@ def main():
     missing = sorted(set(zip_codes) - found_zips)
     if missing:
         print(f"\n{len(missing)} ZIP(s) had no ACS match (invalid ZCTA, or too new/small to be tabulated): {missing[:20]}{' ...' if len(missing) > 20 else ''}")
+
+    # Census's national (no `in=state:`) ZCTA query can return the same ZCTA
+    # more than once for boundary ZIPs that straddle a state line -- harmless
+    # for our purposes (same demographics either way), but a single upsert
+    # statement containing the same zip_code twice fails with Postgres's "ON
+    # CONFLICT DO UPDATE command cannot affect row a second time" (a 400).
+    # Dedupe before writing.
+    deduped = list({r["zip_code"]: r for r in all_records}.values())
+    dupes = len(all_records) - len(deduped)
+    if dupes:
+        print(f"\n{dupes} duplicate ZCTA row(s) collapsed before upsert")
+    all_records = deduped
 
     upserted = 0
     for batch in chunks(all_records, 500):
