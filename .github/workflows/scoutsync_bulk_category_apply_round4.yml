@@ -1,0 +1,24 @@
+name: ScoutSync Bulk Category Apply Round 4
+
+# User-authorized: applies category recommendations for the full current
+# uncategorized long tail (173 distinct product names) to Vetspire via
+# updateProductProductCategory -- see
+# scoutsync_bulk_category_apply_round4.py. Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run round 4 bulk category apply
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 scoutsync_bulk_category_apply_round4.py
