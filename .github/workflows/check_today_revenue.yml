@@ -1,0 +1,23 @@
+name: Check Today Revenue
+
+# One-off report: checks whether v_financial_kpis_daily/invoice_line_items
+# have any rows for today's date, and whether the unattributed-provider
+# sentinel fix (scoutsync_financial_unattributed_provider.sql) has been
+# applied -- see check_today_revenue.py. Report-only, no Supabase writes.
+# Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run today-revenue check
+        run: python3 check_today_revenue.py
