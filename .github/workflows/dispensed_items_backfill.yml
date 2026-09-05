@@ -73,3 +73,19 @@ jobs:
           fi
           echo "Running: python3 dispensed_items_backfill.py $ARGS"
           eval python3 dispensed_items_backfill.py $ARGS
+
+      - name: Clean up any voided items reintroduced by this backfill
+        # dispensed_items_backfill.py upserts every order item Vetspire's
+        # historical usage report returns, with no awareness of items voided
+        # since -- a backfill over a range that already had voided items
+        # cleaned out of it (by this same script, run standalone) silently
+        # re-inserts them. Skipped for dry runs, since nothing was written.
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: |
+          start_epoch=$(date -u -d "${{ steps.daterange.outputs.start_date }}" +%s)
+          end_epoch=$(date -u -d "${{ steps.daterange.outputs.end_date }}" +%s)
+          days=$(( (end_epoch - start_epoch) / 86400 + 1 ))
+          echo "Backfilled range spans $days day(s) -- re-checking for voided items reintroduced by this run"
+          python3 detect_voided_items.py --days "$days" --qty-tolerance 5 --delete
