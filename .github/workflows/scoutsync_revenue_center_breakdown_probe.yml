@@ -1,0 +1,25 @@
+name: ScoutSync Revenue Center Breakdown Probe
+
+# One-off report: confirms whether salesReport accepts a 3-way breakdown
+# (PROVIDER_ID + PRODUCT_CATEGORY_ID + REVENUE_CENTER_ID) and fetches the
+# full revenueCenters reference list -- see
+# scoutsync_revenue_center_breakdown_probe.py. Report-only, no writes.
+# Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run revenue center breakdown probe
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 scoutsync_revenue_center_breakdown_probe.py
