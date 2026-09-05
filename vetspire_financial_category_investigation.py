@@ -139,6 +139,7 @@ def main():
     revenue_by_product = {}
     total_all = 0.0
     total_uncategorized = 0.0
+    sample_null_product_rows = []
     for vetspire_loc_id, loc_name in LOCATIONS.items():
         query = """
         query($lids:[ID!], $s:Date, $e:Date){
@@ -161,7 +162,85 @@ def main():
                 total_uncategorized += total
                 pid = row.get("product_id")
                 revenue_by_product[pid] = revenue_by_product.get(pid, 0.0) + total
+                if pid is None and len(sample_null_product_rows) < 10:
+                    sample_null_product_rows.append(row)
     print()
+
+    # 2b. The dominant uncategorized revenue has product_id=None entirely --
+    # not a mis-tagged product, something salesReport can't attribute to any
+    # product record at all. Print the raw row dicts (not just the fields
+    # this script has been extracting) in case salesReport already returns
+    # other identifying fields for this breakdown that were never examined.
+    print("=== Raw row dicts for a sample of product_id=None, uncategorized rows ===")
+    for row in sample_null_product_rows:
+        print(f"  {row}")
+    if not sample_null_product_rows:
+        print("  (none found)")
+    print()
+
+    # 2c. Characterize the product_id=None cohort along other dimensions --
+    # re-querying with REVENUE_CENTER_ID / DEPARTMENT_ID / PRODUCT_TYPE_ID
+    # paired with PRODUCT_CATEGORY_ID (kept in every combo so the
+    # "uncategorized" filter still applies) to see if this revenue
+    # concentrates under a specific revenue center, department, or product
+    # type even though it has no specific product attached.
+    dim_top_values = {}
+    for dim in ("REVENUE_CENTER_ID", "DEPARTMENT_ID", "PRODUCT_TYPE_ID"):
+        field_name = dim.lower()  # e.g. revenue_center_id
+        print(f"=== Uncategorized revenue by {dim} ===")
+        by_dim = {}
+        for vetspire_loc_id, loc_name in LOCATIONS.items():
+            query = f"""
+            query($lids:[ID!], $s:Date, $e:Date){{
+                salesReport(locationIds:$lids, startDate:$s, endDate:$e,
+                            breakdowns:[{dim}, PRODUCT_CATEGORY_ID], segment:DAY)
+            }}
+            """
+            r = gql(token, query, {"lids": [vetspire_loc_id], "s": start.isoformat(), "e": end.isoformat()})
+            if "errors" in r:
+                print(f"  ERROR ({loc_name}): {r['errors']}")
+                continue
+            raw = r.get("data", {}).get("salesReport", "[]")
+            rows = json.loads(raw) if isinstance(raw, str) else (raw or [])
+            for row in rows:
+                cat_id = row.get("product_category_id")
+                if cat_id is None or cat_id == 0:
+                    total = float(row.get("total") or 0)
+                    key = row.get(field_name)
+                    by_dim[key] = by_dim.get(key, 0.0) + total
+        top_vals = sorted(by_dim.items(), key=lambda kv: kv[1], reverse=True)[:10]
+        for key, total in top_vals:
+            print(f"  {field_name}={key!r}: ${total:,.2f}")
+        if not by_dim:
+            print("  (no rows)")
+        dim_top_values[dim] = top_vals
+        print()
+
+    # 2d. Try to resolve names for the top values in each dimension, using
+    # whatever root query field matches its vocabulary (discovered live,
+    # never assumed) -- same pattern as the product-name resolution below.
+    for dim, keyword in (("REVENUE_CENTER_ID", "revenue"), ("DEPARTMENT_ID", "department"), ("PRODUCT_TYPE_ID", "producttype")):
+        print(f"=== Root query fields matching {keyword!r} (for {dim} name resolution) ===")
+        matches = [f for f in fields if keyword.replace("producttype", "product") in f.get("name", "").lower()
+                   and ("type" in f.get("name", "").lower() if keyword == "producttype" else True)]
+        for f in matches:
+            print(f"  * {f['name']}: {f.get('description', '')}")
+        if not matches:
+            print("  (none)")
+        candidate = next((f["name"] for f in matches if f["name"].lower() in
+                           ("revenuecenter", "revenuecenters", "department", "departments", "producttype", "producttypes")), None)
+        if candidate:
+            print(f"  Attempting resolution via '{candidate}' for top {dim} values:")
+            for key, total in dim_top_values.get(dim, []):
+                if key is None:
+                    continue
+                q = f'{{ {candidate}(id: "{key}") {{ id name }} }}'
+                rr = gql(token, q)
+                if "errors" in rr:
+                    print(f"    {key}: ERROR {rr['errors']}")
+                else:
+                    print(f"    {key}: {rr.get('data')}")
+        print()
     print(f"  Total revenue (all categories, PRODUCT_ID breakdown): ${total_all:,.2f}")
     print(f"  Total uncategorized revenue (this breakdown):         ${total_uncategorized:,.2f}")
     print()
