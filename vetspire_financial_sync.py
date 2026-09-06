@@ -2,11 +2,12 @@
 """
 vetspire_financial_sync.py
 Syncs Vetspire's salesReport (day-level, broken down by provider + product
-category) into ScoutSync's invoice_line_items table — backs Revenue by
-Source and Revenue per Veterinarian. Average Cost per Transaction (ACT) is
-computed in the view layer as revenue ÷ encounter count for the same day/location,
-since salesReport returns pre-aggregated totals, not individual invoices —
-there's no invoice count to divide by directly.
+category + revenue center) into ScoutSync's invoice_line_items table —
+backs Revenue by Source and Revenue per Veterinarian. Average Cost per
+Transaction (ACT) is computed in the view layer as revenue ÷ encounter
+count for the same day/location, since salesReport returns pre-aggregated
+totals, not individual invoices — there's no invoice count to divide by
+directly.
 
 Field names and arguments confirmed via vetspire_clinical_schema_probe.py
 against the production schema:
@@ -14,7 +15,19 @@ against the production schema:
   - segment=DAY gives real daily rows (confirmed: matched Wheaton's actual
     Aug 16 total, $3,459.30, exactly)
   - row shape: {"total": "<decimal string>", "date": "YYYY-MM-DD",
-    "provider_id": <int>, "product_category_id": <int or null>}
+    "provider_id": <int>, "product_category_id": <int or null>,
+    "revenue_center_id": <int or null>}
+  - revenue_center_id added after confirming live that ~97% of what the
+    dashboard showed as "Uncategorized" ($539,758.90 of $556,660.67 over a
+    90-day sample) isn't a product-categorization gap at all: Vetspire
+    bills imaging/in-house lab/treatments as flat revenue-center-level
+    charges with no product record, so product_category_id is null on
+    these rows for a structural reason, not a data-quality one. A 3-way
+    breakdown ([PROVIDER_ID, PRODUCT_CATEGORY_ID, REVENUE_CENTER_ID])
+    confirmed live to actually populate revenue_center_id on exactly these
+    null-category rows, letting the dashboard label them by real revenue
+    center (Radiographs/Inhouse laboratory/Treatments) instead of one lump
+    sum.
 
 Usage:
   VETSPIRE_API_TOKEN="..." python3 vetspire_financial_sync.py
@@ -69,7 +82,7 @@ LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "3"))
 SALES_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     salesReport(locationIds:$lids, startDate:$s, endDate:$e,
-                breakdowns:[PROVIDER_ID, PRODUCT_CATEGORY_ID], segment:DAY)
+                breakdowns:[PROVIDER_ID, PRODUCT_CATEGORY_ID, REVENUE_CENTER_ID], segment:DAY)
 }
 """
 
@@ -78,6 +91,14 @@ query($lids:[ID!], $s:Date, $e:Date){
 # "Vaccines - Canine" instead of invoice_line_items' raw numeric
 # product_category_id. Synced every run so a rename in Vetspire is picked up.
 CATEGORIES_QUERY = "{ productCategories { id name } }"
+
+# Radiographs/Inhouse laboratory/Treatments et al -- confirmed live these are
+# the real source of ~97% of what the dashboard was showing as
+# "Uncategorized": Vetspire bills these as flat revenue-center-level charges
+# with no product record (product_category_id null), so the dashboard needs
+# this name lookup to label them instead of lumping them together. Synced
+# every run so a rename in Vetspire is picked up.
+REVENUE_CENTERS_QUERY = "{ revenueCenters { id name } }"
 
 
 def gql(token, query, variables=None):
@@ -159,6 +180,15 @@ def main():
         supa_upsert("product_categories", cat_rows, "id")
         print(f"  synced {len(cat_rows)} product categories")
 
+    rc_result = gql(token, REVENUE_CENTERS_QUERY)
+    if "errors" in rc_result:
+        print(f"  WARNING: revenueCenters fetch failed: {rc_result['errors']}")
+    else:
+        revenue_centers = rc_result.get("data", {}).get("revenueCenters") or []
+        rc_rows = [{"id": int(c["id"]), "name": c["name"]} for c in revenue_centers if c.get("id")]
+        supa_upsert("revenue_centers", rc_rows, "id")
+        print(f"  synced {len(rc_rows)} revenue centers")
+
     now = datetime.now(timezone.utc)
     since = (now - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
     until = now.strftime("%Y-%m-%d")
@@ -184,13 +214,19 @@ def main():
                 "location_id": loc_uuid,
                 "provider_id": provider_uuid or UNATTRIBUTED_PROVIDER,
                 "product_category_id": row.get("product_category_id") or 0,
+                # Same "0 = none" sentinel as product_category_id, for the
+                # same reason -- Postgres never matches NULL to NULL in the
+                # ON CONFLICT unique key, and a provider/day can carry more
+                # than one revenue-center row (Radiographs + Inhouse
+                # laboratory can both be product_category_id=0 the same day).
+                "revenue_center_id": row.get("revenue_center_id") or 0,
                 "amount": float(row.get("total") or 0),
                 "service_date": row.get("date"),
             })
 
         out = supa_upsert(
             "invoice_line_items", line_items,
-            "location_id,provider_id,product_category_id,service_date",
+            "location_id,provider_id,product_category_id,revenue_center_id,service_date",
         )
         print(f"  upserted {len(out)} rows")
         total_rows += len(out)

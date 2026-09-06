@@ -1783,13 +1783,14 @@ async function loadFinancial() {
   // range -- confirmed live (v_financial_kpis_daily alone needs ~1200+ rows
   // for a full year across today's 4 locations). fetchAllRows() paginates
   // properly, same fix already applied to v_revenue_per_provider below.
-  const [rows_, prevRows_, actRows_, provRevRows_, provRes, catRes, clinicalRows_, diagRows_] = await Promise.all([
+  const [rows_, prevRows_, actRows_, provRevRows_, provRes, catRes, rcRes, clinicalRows_, diagRows_] = await Promise.all([
     fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=*&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue,service_date&service_date=gte.${prevFrom}&service_date=lt.${prevUntil}&order=service_date.asc${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_avg_transaction_charge_daily?select=revenue,encounter_count&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_revenue_per_provider?select=provider_id,total_revenue&provider_id=neq.${UNATTRIBUTED_PROVIDER}&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
     fetch(`${SUPA_URL}/rest/v1/providers?select=id,full_name`, { headers: HEADERS }),
     fetch(`${SUPA_URL}/rest/v1/product_categories?select=id,name`, { headers: HEADERS }),
+    fetch(`${SUPA_URL}/rest/v1/revenue_centers?select=id,name`, { headers: HEADERS }),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_clinical_kpis_daily?select=visit_date,provider_id,encounter_count,avg_encounter_minutes&visit_date=gte.${from}&visit_date=lte.${until}&order=visit_date.asc${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/encounter_diagnostics?select=service_date,provider_id,name&service_date=gte.${from}&service_date=lte.${until}&order=service_date.asc${locFilter}`),
   ]);
@@ -1799,6 +1800,7 @@ async function loadFinancial() {
   const provRevRows = provRevRows_ || [];
   const provRows = provRes.ok ? await provRes.json() : [];
   const catRows = catRes.ok ? await catRes.json() : [];
+  const rcRows = rcRes.ok ? await rcRes.json() : [];
   const clinicalRows = clinicalRows_ || [];
   const diagRows = diagRows_ || [];
 
@@ -1863,16 +1865,24 @@ async function loadFinancial() {
 
   // ── Revenue by category: top 6 + Other, real names, categorical palette ──
   const categoryNameById = Object.fromEntries(catRows.map(c => [c.id, c.name.trim()]));
+  const revenueCenterNameById = Object.fromEntries(rcRows.map(c => [c.id, c.name.trim()]));
   const byCategory = {};
   rows.forEach(r => {
     // vetspire_financial_sync.py coalesces Vetspire's null PRODUCT_CATEGORY_ID
     // breakdown (a line item with no category assigned in Vetspire) to 0
     // before it ever reaches this table -- product_category_id is never
     // actually null/undefined here. 0 isn't a real Vetspire category id (the
-    // 18 real ones never include it), so it needs the same "Uncategorized"
-    // bucket as an actual null would get, or it renders as the meaningless
-    // literal label "Category 0".
-    const key = (r.product_category_id === null || r.product_category_id === undefined || r.product_category_id === 0) ? 'uncategorized' : r.product_category_id;
+    // 18 real ones never include it). But most product_category_id=0 revenue
+    // isn't a categorization gap at all -- it's Vetspire billing imaging/lab/
+    // treatments as flat revenue-center-level charges with no product record
+    // attached, confirmed live via a 3-way salesReport breakdown. Label those
+    // by their real revenue center (Radiographs/Inhouse laboratory/
+    // Treatments) instead of lumping them into "Uncategorized" -- only
+    // charges with neither a category nor a revenue center are genuinely
+    // unattributed.
+    const key = (r.product_category_id && r.product_category_id !== 0) ? r.product_category_id
+      : (r.revenue_center_id && r.revenue_center_id !== 0) ? `rc:${r.revenue_center_id}`
+      : 'uncategorized';
     byCategory[key] = (byCategory[key] || 0) + Number(r.revenue || 0);
   });
   const catEntries = Object.entries(byCategory).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
@@ -1880,10 +1890,17 @@ async function loadFinancial() {
   const top6 = catEntries.slice(0, 6);
   const rest = catEntries.slice(6);
   const otherTotal = rest.reduce((a, [, v]) => a + v, 0);
-  const catRowsForChart = top6.map(([id, v], i) => ({
-    label: id === 'uncategorized' ? 'Uncategorized' : (categoryNameById[id] || `Category ${id}`),
-    value: v, color: CAT_COLORS[i], key: id,
-  }));
+  const catRowsForChart = top6.map(([id, v], i) => {
+    const rcId = typeof id === 'string' && id.startsWith('rc:') ? id.slice(3) : null;
+    const label = id === 'uncategorized' ? 'Uncategorized'
+      : rcId !== null ? (revenueCenterNameById[rcId] || `Revenue Center ${rcId}`)
+      : (categoryNameById[id] || `Category ${id}`);
+    // Revenue-center charges have no per-service detail at all (that's the
+    // whole reason they show up this way) -- same as "Other" below, not
+    // clickable (no `key`), rather than drilling into dispensed_items with a
+    // filter that could never match anything real.
+    return { label, value: v, color: CAT_COLORS[i], key: rcId !== null ? undefined : id };
+  });
   // "Other" is several categories lumped together, not one -- not a
   // meaningful single thing to drill into, so it gets no `key` (not clickable).
   if (otherTotal > 0) catRowsForChart.push({ label: 'Other', value: otherTotal, color: 'var(--cat-other)' });
