@@ -374,7 +374,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot"></div><h2>Avg Cost per Transaction by Provider</h2>
-      <span class="sub">Its own period selector — independent of the range filter above</span></div>
+      <span class="sub">Its own period selector — independent of the range filter above. "Transactions" = cases (exam performed), not every Vetspire encounter row — a retail-only pickup (no exam) never counts as one.</span></div>
     <div class="chart-card">
       <div class="act-period-row">
         <select id="act-period-select">
@@ -1847,6 +1847,7 @@ async function loadFinancial() {
     <div class="hero-tile">
       <div class="l">Avg cost per transaction</div>
       <div class="v">${act ? fmt$(act) : '—'}</div>
+      <div class="chart-note" style="margin-top:2px">Revenue ÷ cases (exam performed) — a retail-only pickup with no exam doesn't count as a transaction here</div>
       ${actBenchmarkNote}
     </div>`;
 
