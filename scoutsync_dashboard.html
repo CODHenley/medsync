@@ -312,9 +312,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   <div class="range-filter">
     <select id="range-select">
       <option value="today">Today</option>
-      <option value="thismonth">This month</option>
+      <option value="thismonth">Month to date</option>
       <option value="lastmonth">Last month</option>
       <option value="thisquarter">This quarter</option>
+      <option value="thisyear">Year to date</option>
       <option value="30" selected>Trailing 30 days</option>
       <option value="7">Trailing 7 days</option>
       <option value="90">Trailing 90 days</option>
@@ -431,6 +432,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div class="chart-title">Cases by day of week &amp; hour of day (9am–11pm, Central)</div>
       <div class="chart-note">Darker = more cases started in that hour, selected range — click any cell for detail</div>
       <div id="volume-heatmap"></div>
+      <div class="insight-list" id="volume-heatmap-insight" style="margin-top:14px"></div>
       <div id="volume-cell-detail" class="cell-detail-panel"></div>
     </div>
 
@@ -459,6 +461,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div class="chart-title">Average case value by day of week &amp; hour of day (9am–11pm, Central)</div>
       <div class="chart-note">Darker = higher average invoice value per case started in that hour — not total revenue, so this is independent of how busy that hour is and highlights hours that draw disproportionately higher- or lower-value cases. Each case's full invoice total (Vetspire's own order total, not just the exam charge); voided/deleted invoices count as $0 — click any cell for detail</div>
       <div id="value-heatmap"></div>
+      <div class="insight-list" id="value-heatmap-insight" style="margin-top:14px"></div>
       <div id="value-cell-detail" class="cell-detail-panel"></div>
     </div>
 
@@ -741,7 +744,7 @@ function selectedRangeDays() { return parseInt(document.getElementById('range-se
 function isCustomRange() { return document.getElementById('range-select').value === 'custom'; }
 
 // { from, until, days } for whichever range is selected — a calendar preset
-// (today/this month/last month/this quarter), a trailing-N-days preset, or
+// (today/month to date/last month/this quarter/year to date), a trailing-N-days preset, or
 // the two custom date inputs. Falls back to the 30-day default if a custom
 // range is selected but incomplete, so every caller always gets a usable
 // range rather than having to special-case "not set yet". Mirrors the
@@ -770,6 +773,8 @@ function selectedDateRange() {
     from = startOfMonth(lastMonthEnd); until = lastMonthEnd;
   } else if (key === 'thisquarter') {
     from = startOfQuarter(today); until = today;
+  } else if (key === 'thisyear') {
+    from = startOfYear(today); until = today;
   } else {
     const days = selectedRangeDays();
     from = isoDaysAgo(days); until = today;
@@ -2138,6 +2143,83 @@ function buildCellIndex(rows) {
 
 let heatmapCellIndex = null;
 
+// One auto-generated sentence per heatmap (busiest day for volume, highest-
+// average-value day for the value heatmap) rather than a full insight list —
+// the heatmap grid itself already shows the full day x hour breakdown, this
+// is just the single headline callout. Computed straight from the same
+// heatRows fetch the grids use, so it always matches whatever range/location
+// filter is currently selected.
+function renderHeatmapDayInsight(elId, rows, metric) {
+  const el = document.getElementById(elId);
+  if (!rows.length) { el.innerHTML = ''; return; }
+
+  const dayCount = Array(7).fill(0);
+  const daySum = Array(7).fill(0);
+  const hourCountByDay = Array.from({ length: 7 }, () => Array(24).fill(0));
+  const hourSumByDay = Array.from({ length: 7 }, () => Array(24).fill(0));
+  rows.forEach(r => {
+    const d = Number(r.day_of_week), h = Number(r.hour_of_day);
+    if (Number.isNaN(d) || Number.isNaN(h) || d < 0 || d > 6 || h < 0 || h > 23) return;
+    dayCount[d] += 1;
+    daySum[d] += Number(r.case_value || 0);
+    hourCountByDay[d][h] += 1;
+    hourSumByDay[d][h] += Number(r.case_value || 0);
+  });
+
+  let topDay = -1;
+  if (metric === 'volume') {
+    for (let d = 0; d < 7; d++) if (topDay === -1 || dayCount[d] > dayCount[topDay]) topDay = d;
+  } else {
+    // Highest average case value, but only among days with enough volume
+    // that the average isn't just one or two outlier invoices.
+    const MIN_CASES = 5;
+    let topAvg = -Infinity;
+    for (let d = 0; d < 7; d++) {
+      if (dayCount[d] < MIN_CASES) continue;
+      const avg = daySum[d] / dayCount[d];
+      if (avg > topAvg) { topAvg = avg; topDay = d; }
+    }
+    if (topDay === -1) { el.innerHTML = ''; return; } // not enough volume anywhere to say something meaningful
+  }
+
+  // Peak hour within that day, by the same metric.
+  let topHour = -1, topHourAvg = -Infinity;
+  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
+    const c = hourCountByDay[topDay][h];
+    if (!c) continue;
+    if (metric === 'volume') {
+      if (topHour === -1 || c > hourCountByDay[topDay][topHour]) topHour = h;
+    } else if (c >= 2) {
+      const avg = hourSumByDay[topDay][h] / c;
+      if (avg > topHourAvg) { topHourAvg = avg; topHour = h; }
+    }
+  }
+
+  const dayName = DAY_NAMES[topDay];
+  let title, body;
+  if (metric === 'volume') {
+    const total = dayCount[topDay];
+    const share = (total / rows.length * 100).toFixed(0);
+    title = 'Busiest day';
+    body = `<b>${esc(dayName)}</b> is the busiest day this period — <b>${fmtN(total)}</b> cases (${share}% of the total)` +
+      (topHour !== -1 ? `, peaking around <b>${esc(hourLabelFull(topHour))}</b>.` : '.');
+  } else {
+    const avg = daySum[topDay] / dayCount[topDay];
+    title = 'Highest-value day';
+    body = `<b>${esc(dayName)}</b> carries the highest average case value this period — <b>${fmt$(avg)}</b> per case` +
+      (topHour !== -1 ? `, driven especially by the <b>${esc(hourLabelFull(topHour))}</b> slot.` : '.');
+  }
+
+  el.innerHTML = `
+    <div class="insight-item">
+      <div class="i-badge concentration">◉</div>
+      <div>
+        <div class="i-title">${esc(title)}</div>
+        <div class="i-body">${body}</div>
+      </div>
+    </div>`;
+}
+
 // started_at is a timestamptz (real UTC instant) — display it in the same
 // America/Chicago local time the heatmap buckets themselves now use
 // (scoutsync_case_heatmap_local_time.sql), not raw UTC, so a case doesn't
@@ -3054,6 +3136,8 @@ async function loadClinicalGeo() {
     </div>`;
     document.getElementById('volume-heatmap').innerHTML = '';
     document.getElementById('value-heatmap').innerHTML = '';
+    document.getElementById('volume-heatmap-insight').innerHTML = '';
+    document.getElementById('value-heatmap-insight').innerHTML = '';
     return;
   }
   document.getElementById('clinical-empty').innerHTML = '';
@@ -3063,6 +3147,8 @@ async function loadClinicalGeo() {
   if (!heatRows.length) {
     document.getElementById('volume-heatmap').innerHTML = '<div class="chart-note">No cases in this range.</div>';
     document.getElementById('value-heatmap').innerHTML = '<div class="chart-note">No cases in this range.</div>';
+    document.getElementById('volume-heatmap-insight').innerHTML = '';
+    document.getElementById('value-heatmap-insight').innerHTML = '';
   } else {
     const { volume, value } = buildHeatmapMatrices(heatRows);
     heatmapCellIndex = buildCellIndex(heatRows);
@@ -3074,6 +3160,8 @@ async function loadClinicalGeo() {
       rgb: FINANCIAL_RGB, formatValue: v => fmt$(v) + ' avg',
       detailPanel: document.getElementById('value-cell-detail'),
     });
+    renderHeatmapDayInsight('volume-heatmap-insight', heatRows, 'volume');
+    renderHeatmapDayInsight('value-heatmap-insight', heatRows, 'value');
   }
 
   renderChicagoMap(geoRows);
