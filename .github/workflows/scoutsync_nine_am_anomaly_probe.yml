@@ -1,0 +1,25 @@
+name: ScoutSync Nine AM Anomaly Probe
+
+# One-off report: digs into why the 9 AM heatmap bucket runs higher in
+# ScoutSync than an independently-pulled coworker appointment count (the
+# only hour running that direction) -- checks whether started_at values
+# cluster suspiciously at exact top-of-hour minute values, and compares
+# checked_in_at presence against a control hour. See
+# scoutsync_nine_am_anomaly_probe.py. Report-only, no writes. Manual
+# trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run nine AM anomaly probe
+        run: python3 scoutsync_nine_am_anomaly_probe.py
