@@ -197,6 +197,7 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
 .insight-item .i-badge.anomaly { background: var(--s-critical); }
 .insight-item .i-badge.concentration { background: var(--s-neutral); }
 .insight-item .i-badge.recommend { background: var(--s-good); }
+.insight-item .i-badge.risk { background: var(--s-warn); }
 .insight-item .i-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
 .insight-item .i-body { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; line-height: 1.5; }
 .insight-item .i-body b { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -373,6 +374,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .ip-empty .e-icon { font-size: 26px; margin-bottom: 8px; }
 .ip-empty .e-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
 .ip-empty .e-sub { font-size: 11.5px; line-height: 1.6; }
+
+/* ── Inventory Reports (migrated from medsync_reports_live.html) — no new
+   component classes needed; built entirely from .chart-card/.hero-tile/
+   .bar-row/.dd-table/.ip-badge/.insight-item already declared above. ── */
 </style>
 </head>
 <body>
@@ -931,6 +936,109 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         </table></div>
         <div id="ip-pc-empty" class="ip-empty" hidden>No price changes detected in this period.</div>
       </div>
+    </div>
+
+    <!-- ══ Inventory Reports — migrated from medsync_reports_live.html (stage 3 of 3, the
+         final stage of the MedSync→ScoutSync inventory migration; MedSync's own copy is
+         left untouched and still works exactly as before). Reuses the page's location
+         filter above; the report itself is always a full calendar year, so — unlike
+         Analytics/Procurement above — it keeps its own local year selector here rather
+         than the shared trailing-day/MTD/YTD/custom date-range picker, which has no
+         "annual" option to map this to. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Inventory Reports</h2>
+      <span class="sub">Annual report by location — counts on hand, spending, goods lost, order history &amp; integrity</span></div>
+
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="chart-title" id="ir-subtitle">Loading…</div>
+          <div class="chart-note" style="margin-bottom:0">Location from the filter above · report year is independent of the date-range filter above, since this report always covers a full calendar year</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="ir-year-select"></select>
+          <button class="ia-btn" id="ir-refresh-btn">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="ir-warning"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">📦 Counts on Hand</div>
+      <div class="chart-note" id="ir-coh-note">Live · lots with quantity remaining</div>
+      <div class="hero-row" id="ir-coh-tiles"></div>
+      <div style="overflow-x:auto;margin-top:12px"><table class="dd-table">
+        <thead><tr><th>Product</th><th style="text-align:right">Units on hand</th><th>Expires</th><th>Status</th></tr></thead>
+        <tbody id="ir-coh-tbody"><tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Loading…</td></tr></tbody>
+      </table></div>
+      <div class="chart-note" id="ir-coh-more" style="margin-top:8px;margin-bottom:0"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">💰 Spending</div>
+      <div class="chart-note" id="ir-sp-note">Loading…</div>
+      <div class="hero-row" id="ir-sp-tiles"></div>
+      <div class="dd-grid" style="margin-top:12px">
+        <div>
+          <div class="dd-subtitle">Monthly spend</div>
+          <div id="ir-sp-bars"></div>
+        </div>
+        <div>
+          <div class="dd-subtitle">By quarter</div>
+          <div style="overflow-x:auto"><table class="dd-table">
+            <thead><tr><th>Quarter</th><th style="text-align:right">Spend</th><th style="text-align:right">Orders</th><th style="text-align:right">Avg/order</th></tr></thead>
+            <tbody id="ir-sp-qtbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+      <div class="dd-subtitle" style="margin-top:14px">Top vendors</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Vendor</th><th style="text-align:right">Spend</th><th style="text-align:right">% of total</th></tr></thead>
+        <tbody id="ir-sp-vtbody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title" style="color:var(--s-critical)">🗑 Goods Lost</div>
+      <div class="chart-note" id="ir-gl-note">Loading…</div>
+      <div class="hero-row" id="ir-gl-tiles"></div>
+      <div class="dd-grid" style="margin-top:12px">
+        <div>
+          <div class="dd-subtitle">Monthly goods lost</div>
+          <div id="ir-gl-bars"></div>
+        </div>
+        <div>
+          <div class="dd-subtitle">By quarter</div>
+          <div style="overflow-x:auto"><table class="dd-table">
+            <thead><tr><th>Quarter</th><th style="text-align:right">Incidents</th><th style="text-align:right">Value</th></tr></thead>
+            <tbody id="ir-gl-qtbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+      <div class="dd-subtitle" style="margin-top:14px">By category</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Category</th><th style="text-align:right">Incidents</th><th style="text-align:right">Value</th><th style="text-align:right">% of total</th></tr></thead>
+        <tbody id="ir-gl-ctbody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">🛒 Order History</div>
+      <div class="chart-note" id="ir-oh-note">Loading…</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Week</th><th>Product</th><th>Vendor</th><th>Location</th><th style="text-align:right">Qty</th><th style="text-align:right">Total</th><th>Status</th></tr></thead>
+        <tbody id="ir-oh-tbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Loading…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">🛡 Integrity Assessment</div>
+      <div class="chart-note">Signals only, not a legal determination — under-reporting means a clean-looking report isn't proof nothing was missed</div>
+      <div class="hero-row" style="grid-template-columns:200px 1fr">
+        <div class="hero-tile"><div class="l">Risk level</div><div class="v" id="ir-int-score" style="font-size:21px">—</div></div>
+        <div class="hero-tile"><div class="l">Assessment</div><div id="ir-int-summary" style="margin-top:6px;font-size:12.5px;color:var(--ink-2);line-height:1.6"></div></div>
+      </div>
+      <div class="insight-list" id="ir-int-flags" style="margin-top:14px"></div>
     </div>
   </section>
 
@@ -3786,6 +3894,7 @@ async function loadInventory() {
 
   await loadInventoryAnalytics();
   await loadProcurement();
+  await loadInventoryReports();
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -5583,6 +5692,287 @@ function ipExportPriceChangesCsv() {
   iaExportCsv('price_changes.csv', headers, rows);
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// Inventory Reports — migrated from medsync_reports_live.html (stage 3 of
+// 3, the final stage of the MedSync→ScoutSync inventory migration; MedSync's
+// own copy is left untouched). Reuses selectedLocation()/fetchAllRows/esc/
+// fmt$/fmtN declared above and LOCATIONS' .uuid (the same column every other
+// table on this tab already filters location_id by). MedSync's own copy
+// applied a client-side location re-filter as a safety net against RLS
+// passing every row through on the anon key -- Analytics/Procurement above
+// never bothered with that same safety net against the same tables, so it's
+// dropped here too for consistency rather than reproduced selectively.
+// MedSync's report had no export/print/CSV button anywhere in this screen,
+// so none is added here either -- only its "Refresh" button carries over.
+// ══════════════════════════════════════════════════════════════════════
+
+function irPopulateYearSelect() {
+  const sel = document.getElementById('ir-year-select');
+  if (sel.options.length) return;
+  const curYear = new Date().getFullYear();
+  for (let y = curYear; y >= curYear - 3; y--) {
+    const o = document.createElement('option');
+    o.value = String(y); o.textContent = String(y);
+    sel.appendChild(o);
+  }
+}
+irPopulateYearSelect();
+function irSelectedYear() { return parseInt(document.getElementById('ir-year-select').value, 10); }
+
+function irPad(n) { return n < 10 ? '0' + n : String(n); }
+function irQuarterBounds(year, q) {
+  const starts = ['01-01', '04-01', '07-01', '10-01'];
+  const ends = ['03-31', '06-30', '09-30', '12-31'];
+  return { from: year + '-' + starts[q - 1], to: year + '-' + ends[q - 1] };
+}
+function irAllQuarters(year) { return [1, 2, 3, 4].map(q => ({ q, label: 'Q' + q, ...irQuarterBounds(year, q) })); }
+function irMonthsInYear(year) {
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return names.map((name, i) => ({
+    name,
+    from: year + '-' + irPad(i + 1) + '-01',
+    to: year + '-' + irPad(i + 1) + '-' + new Date(year, i + 1, 0).getDate(),
+  }));
+}
+
+async function loadInventoryReports() {
+  irPopulateYearSelect();
+  const year = irSelectedYear();
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  document.getElementById('ir-subtitle').textContent = (loc ? loc.name : 'All locations') + ' · ' + year;
+  document.getElementById('ir-warning').innerHTML = '';
+
+  const qs = irAllQuarters(year);
+  const ms = irMonthsInYear(year);
+
+  const [poRows, glRows, lotRows, phRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/po_items?select=week_start,product_name,vendor,qty_ordered,unit_price,gpo_price,status,location_id&status=in.(submitted,received)&week_start=gte.${year}-01-01&week_start=lte.${year}-12-31${locFilter}&order=week_start.asc,id.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/goods_lost?select=created_at,category,product_name,qty_lost,value_lost,location_id,notes&created_at=gte.${year}-01-01T00:00:00&created_at=lte.${year}-12-31T23:59:59${locFilter}&order=created_at.desc,id.desc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/lots?select=id,expiration_date,qty_remaining,location_id,product_name,products(name)${locFilter}&order=expiration_date.asc,id.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/purchase_history?select=purchased_at,amount,vendor,note,location_id,source&source=in.(vetcove,vetcove_weekly)&purchased_at=gte.${year}-01-01&purchased_at=lte.${year}-12-31${locFilter}&order=purchased_at.desc,id.desc`),
+  ]);
+
+  if (poRows === null || glRows === null || lotRows === null || phRows === null) {
+    document.getElementById('ir-warning').innerHTML = '<div class="empty-note">Couldn\'t load one or more datasets for this report — try refreshing.</div>';
+    return;
+  }
+
+  irRenderCountsOnHand(lotRows);
+  irRenderSpending(poRows, phRows, qs, ms, year);
+  irRenderGoodsLost(glRows, qs, ms, year);
+  irRenderOrderHistory(poRows);
+  irRenderIntegrity(glRows, poRows, lotRows);
+}
+
+// ── 1. Counts on Hand ──
+function irRenderCountsOnHand(lots) {
+  const activeLots = lots.filter(l => l.qty_remaining > 0);
+  const totalUnits = activeLots.reduce((s, l) => s + (l.qty_remaining || 0), 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
+  const in60 = new Date(today); in60.setDate(in60.getDate() + 60);
+  const exp30 = activeLots.filter(l => l.expiration_date && new Date(l.expiration_date) <= in30).length;
+  const exp60 = activeLots.filter(l => l.expiration_date && new Date(l.expiration_date) <= in60).length;
+  const expired = activeLots.filter(l => l.expiration_date && new Date(l.expiration_date) < today).length;
+
+  document.getElementById('ir-coh-note').textContent = `Live · ${fmtN(activeLots.length)} active lots`;
+  document.getElementById('ir-coh-tiles').innerHTML = `
+    <div class="hero-tile"><div class="l">Active lots</div><div class="v">${fmtN(activeLots.length)}</div></div>
+    <div class="hero-tile"><div class="l">Total units on hand</div><div class="v">${fmtN(totalUnits)}</div></div>
+    <div class="hero-tile"><div class="l">Expiring ≤30 days</div><div class="v" style="color:${exp30 > 0 ? 'var(--s-critical)' : 'var(--text)'}">${exp30}</div></div>
+    <div class="hero-tile"><div class="l">Expiring ≤60 days</div><div class="v" style="color:${exp60 > 0 ? 'var(--s-warn)' : 'var(--text)'}">${exp60}</div></div>
+    <div class="hero-tile"><div class="l">Expired (on hand)</div><div class="v" style="color:${expired > 0 ? 'var(--s-critical)' : 'var(--text)'}">${expired}</div></div>`;
+
+  const shown = activeLots.slice(0, 100);
+  document.getElementById('ir-coh-tbody').innerHTML = shown.map(l => {
+    const exp = l.expiration_date ? new Date(l.expiration_date) : null;
+    const days = exp ? Math.ceil((exp - today) / 86400000) : null;
+    const cls = days === null ? 'neutral' : days <= 30 ? 'crit' : days <= 60 ? 'warn' : 'good';
+    const label = days === null ? '—' : days < 0 ? 'Expired' : days + 'd';
+    const name = (l.products && l.products.name) || l.product_name || '—';
+    return `<tr><td>${esc(name)}</td><td style="text-align:right">${fmtN(l.qty_remaining)}</td>` +
+      `<td>${exp ? exp.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>` +
+      `<td><span class="ip-badge ${cls}">${label}</span></td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">No active lots found</td></tr>';
+
+  document.getElementById('ir-coh-more').textContent = activeLots.length > 100 ? `Showing top 100 of ${fmtN(activeLots.length)} lots` : '';
+}
+
+// ── 2. Spending ──
+function irRenderSpending(pos, ph, quarters, months, year) {
+  const poValue = r => (r.unit_price || r.gpo_price || 0) * (r.qty_ordered || 0);
+  const totalPO = pos.reduce((s, r) => s + poValue(r), 0);
+  const totalPH = ph.reduce((s, r) => s + (r.amount || 0), 0);
+  const totalSpend = totalPH || totalPO;
+
+  const qData = quarters.map(q => {
+    const qPO = pos.filter(r => r.week_start >= q.from && r.week_start <= q.to);
+    const qPH = ph.filter(r => r.purchased_at >= q.from && r.purchased_at <= q.to);
+    const spend = qPH.length ? qPH.reduce((s, r) => s + (r.amount || 0), 0) : qPO.reduce((s, r) => s + poValue(r), 0);
+    return { label: q.label, spend, orders: qPO.length };
+  });
+  const mData = months.map(m => {
+    const mPO = pos.filter(r => r.week_start >= m.from && r.week_start <= m.to);
+    const mPH = ph.filter(r => r.purchased_at >= m.from && r.purchased_at <= m.to);
+    const spend = mPH.length ? mPH.reduce((s, r) => s + (r.amount || 0), 0) : mPO.reduce((s, r) => s + poValue(r), 0);
+    return { label: m.name, spend, orders: mPO.length };
+  });
+
+  const vendorMap = {};
+  pos.forEach(r => { const v = r.vendor || 'Unknown'; vendorMap[v] = (vendorMap[v] || 0) + poValue(r); });
+  const topVendors = Object.entries(vendorMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const maxSpend = Math.max(...mData.map(m => m.spend), 1);
+
+  document.getElementById('ir-sp-note').textContent = `Total spend, orders and top vendors for ${year}`;
+  document.getElementById('ir-sp-tiles').innerHTML = `
+    <div class="hero-tile"><div class="l">Total spend (${year})</div><div class="v">${fmt$(totalSpend)}</div></div>
+    <div class="hero-tile"><div class="l">Total orders</div><div class="v">${fmtN(pos.length)}</div></div>
+    <div class="hero-tile"><div class="l">Avg per order</div><div class="v">${pos.length ? fmt$(totalSpend / pos.length) : '—'}</div></div>
+    <div class="hero-tile"><div class="l">Vendors used</div><div class="v">${fmtN(Object.keys(vendorMap).length)}</div></div>`;
+
+  document.getElementById('ir-sp-bars').innerHTML = mData.map(m => {
+    const w = Math.round((m.spend / maxSpend) * 100);
+    return `<div class="bar-row"><div class="b-name">${m.label}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--c-facilities)"></div></div><div class="b-value">${fmt$(m.spend)}</div></div>`;
+  }).join('');
+
+  document.getElementById('ir-sp-qtbody').innerHTML = qData.map(q =>
+    `<tr><td>${q.label}</td><td style="text-align:right">${fmt$(q.spend)}</td><td style="text-align:right">${fmtN(q.orders)}</td><td style="text-align:right">${q.orders ? fmt$(q.spend / q.orders) : '—'}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">No data</td></tr>';
+
+  document.getElementById('ir-sp-vtbody').innerHTML = topVendors.map(([v, amt]) =>
+    `<tr><td>${esc(v)}</td><td style="text-align:right">${fmt$(amt)}</td><td style="text-align:right">${totalSpend ? Math.round(amt / totalSpend * 100) + '%' : '—'}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">No data</td></tr>';
+}
+
+// ── 3. Goods Lost ──
+function irRenderGoodsLost(gl, quarters, months, year) {
+  const totalValue = gl.reduce((s, r) => s + (r.value_lost || 0), 0);
+  const totalQty = gl.reduce((s, r) => s + (r.qty_lost || 0), 0);
+
+  const catMap = {};
+  gl.forEach(r => { const c = r.category || 'Unknown'; catMap[c] = catMap[c] || { count: 0, value: 0 }; catMap[c].count++; catMap[c].value += (r.value_lost || 0); });
+  const cats = Object.entries(catMap).sort((a, b) => b[1].value - a[1].value);
+
+  const qData = quarters.map(q => {
+    const rows = gl.filter(r => r.created_at >= q.from && r.created_at <= q.to + 'T23:59:59');
+    return { label: q.label, value: rows.reduce((s, r) => s + (r.value_lost || 0), 0), count: rows.length };
+  });
+  const mData = months.map(m => {
+    const rows = gl.filter(r => r.created_at >= m.from && r.created_at <= m.to + 'T23:59:59');
+    return { label: m.name, value: rows.reduce((s, r) => s + (r.value_lost || 0), 0), count: rows.length };
+  });
+  const maxVal = Math.max(...mData.map(m => m.value), 1);
+
+  document.getElementById('ir-gl-note').textContent = `Total value lost, incidents and category breakdown for ${year}`;
+  document.getElementById('ir-gl-tiles').innerHTML = `
+    <div class="hero-tile"><div class="l">Total value lost (${year})</div><div class="v" style="color:var(--s-critical)">${fmt$(totalValue)}</div></div>
+    <div class="hero-tile"><div class="l">Total incidents</div><div class="v">${fmtN(gl.length)}</div></div>
+    <div class="hero-tile"><div class="l">Units lost</div><div class="v">${fmtN(totalQty)}</div></div>
+    <div class="hero-tile"><div class="l">Categories</div><div class="v">${fmtN(cats.length)}</div></div>`;
+
+  document.getElementById('ir-gl-bars').innerHTML = mData.map(m => {
+    const w = Math.round((m.value / maxVal) * 100);
+    return `<div class="bar-row"><div class="b-name">${m.label}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--s-critical)"></div></div><div class="b-value">${fmt$(m.value)}</div></div>`;
+  }).join('');
+
+  document.getElementById('ir-gl-qtbody').innerHTML = qData.map(q =>
+    `<tr><td>${q.label}</td><td style="text-align:right">${fmtN(q.count)}</td><td style="text-align:right">${fmt$(q.value)}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">No data</td></tr>';
+
+  document.getElementById('ir-gl-ctbody').innerHTML = cats.map(([c, d]) =>
+    `<tr><td>${esc(c)}</td><td style="text-align:right">${fmtN(d.count)}</td><td style="text-align:right">${fmt$(d.value)}</td><td style="text-align:right">${totalValue ? Math.round(d.value / totalValue * 100) + '%' : '—'}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">No data</td></tr>';
+}
+
+// ── 4. Order History ──
+function irRenderOrderHistory(pos) {
+  const recent = pos.slice(0, 200);
+  document.getElementById('ir-oh-note').textContent = `Most recent ${fmtN(Math.min(pos.length, 200))} of ${fmtN(pos.length)} orders`;
+  document.getElementById('ir-oh-tbody').innerHTML = recent.map(r => {
+    const price = r.unit_price || r.gpo_price || 0;
+    const total = price * (r.qty_ordered || 0);
+    // MedSync's badge colors (green/purple/amber) don't exist in ScoutSync's
+    // status palette -- mapped onto the closest equivalents already used
+    // elsewhere on this tab (good/info/warn), same three-way distinction.
+    const cls = r.status === 'received' ? 'good' : r.status === 'submitted' ? 'info' : 'warn';
+    const locName = (LOCATIONS.find(l => l.uuid === r.location_id) || {}).name || '—';
+    return `<tr><td>${esc(r.week_start || '—')}</td><td>${esc(r.product_name || '—')}</td><td>${esc(r.vendor || '—')}</td><td>${esc(locName)}</td>` +
+      `<td style="text-align:right">${fmtN(r.qty_ordered)}</td><td style="text-align:right">${fmt$(total)}</td>` +
+      `<td><span class="ip-badge ${cls}">${esc(r.status || '—')}</span></td></tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">No orders found</td></tr>';
+}
+
+// ── 5. Integrity Assessment — same six heuristic signals as MedSync's
+// original, reproduced as-is (this is pattern-matching on logged data, not a
+// finding of fact, exactly as MedSync's own copy). ──
+function irRenderIntegrity(gl, pos, lots) {
+  const flags = [];
+
+  const vague = gl.filter(r => r.category && /other|unknown|misc/i.test(r.category));
+  const vagueRatio = gl.length ? vague.length / gl.length : 0;
+  if (vagueRatio > 0.25) {
+    flags.push({ sev: 'high', icon: '🔍', title: 'High proportion of vague loss categories',
+      body: `${Math.round(vagueRatio * 100)}% of goods lost entries (${vague.length} of ${gl.length}) use an ambiguous category like "Other." Vague categories are harder to verify and are a common cover for unreported theft.` });
+  }
+
+  const controlled = gl.filter(r => r.category && /controlled|narcotic|schedule/i.test(r.category));
+  if (controlled.length > 0) {
+    const val = controlled.reduce((s, r) => s + (r.value_lost || 0), 0);
+    flags.push({ sev: 'high', icon: '⚠️', title: 'Controlled substance losses recorded',
+      body: `${controlled.length} controlled substance loss event(s) totaling ${fmt$(val)}. These require a corresponding DEA log entry. Each instance should be verified against physical inventory and signed off by a veterinarian.` });
+  }
+
+  const totalSpend = pos.reduce((s, r) => s + ((r.unit_price || r.gpo_price || 0) * (r.qty_ordered || 0)), 0);
+  const totalGL = gl.reduce((s, r) => s + (r.value_lost || 0), 0);
+  const glRatio = totalSpend ? totalGL / totalSpend : 0;
+  if (glRatio > 0.08) {
+    flags.push({ sev: 'high', icon: '📈', title: 'Goods lost exceeds 8% of procurement spend',
+      body: `${fmt$(totalGL)} lost against ${fmt$(totalSpend)} in spend — a ${Math.round(glRatio * 100)}% loss rate. Industry benchmark is 2–4%. Rates above 8% warrant physical inventory reconciliation.` });
+  } else if (glRatio > 0.04) {
+    flags.push({ sev: 'medium', icon: '📊', title: 'Goods lost above industry benchmark',
+      body: `Loss rate is ${Math.round(glRatio * 100)}% of procurement spend. The typical benchmark is 2–4%. Worth monitoring, especially if the rate is increasing month over month.` });
+  }
+
+  const today = new Date();
+  const expiredLots = lots.filter(l => l.expiration_date && new Date(l.expiration_date) < today && l.qty_remaining > 0);
+  if (expiredLots.length > 0) {
+    const totalExpiredUnits = expiredLots.reduce((s, l) => s + (l.qty_remaining || 0), 0);
+    flags.push({ sev: 'medium', icon: '🕵️', title: 'Expired lots with remaining quantity — possible under-reporting',
+      body: `${expiredLots.length} lot(s) are past expiration but still show ${fmtN(totalExpiredUnits)} units on hand with no depletion. If these weren't disposed of and logged, losses are being missed. This is the most common path for goods to disappear without a paper trail.` });
+  }
+
+  const locWithOrders = [...new Set(pos.map(r => r.location_id))];
+  const locWithGL = [...new Set(gl.map(r => r.location_id))];
+  const silentLocs = locWithOrders.filter(id => !locWithGL.includes(id));
+  if (silentLocs.length > 0) {
+    const names = silentLocs.map(id => (LOCATIONS.find(l => l.uuid === id) || {}).name || id).join(', ');
+    flags.push({ sev: 'medium', icon: '🤫', title: 'Location(s) with orders but zero goods lost reported',
+      body: `${esc(names)} submitted orders but logged zero goods lost events this year. No operation running live inventory is truly loss-free. This likely reflects under-reporting, not perfect compliance.` });
+  }
+
+  const vendorReturn = gl.filter(r => r.category && /vendor return|credit/i.test(r.category));
+  if (vendorReturn.length > 0) {
+    flags.push({ sev: 'low', icon: '✅', title: 'Vendor returns/credits tracked',
+      body: `${vendorReturn.length} vendor return or credit entries on record. Confirm these correspond to actual credits received. Credits that don't appear on reconciled invoices could indicate falsified entries.` });
+  }
+
+  const highCount = flags.filter(f => f.sev === 'high').length;
+  const medCount = flags.filter(f => f.sev === 'medium').length;
+  let score, scoreColor, summary;
+  if (highCount >= 2) { score = 'High Risk'; scoreColor = 'var(--s-critical)'; summary = 'Multiple high-risk signals detected. Physical inventory audit recommended.'; }
+  else if (highCount === 1 || medCount >= 2) { score = 'Needs Review'; scoreColor = 'var(--s-warn)'; summary = 'One or more risk signals present. Investigate flagged items.'; }
+  else { score = 'Low Risk'; scoreColor = 'var(--s-good)'; summary = 'No major integrity signals. Continue monitoring monthly.'; }
+
+  document.getElementById('ir-int-score').innerHTML = `<span style="color:${scoreColor}">${score}</span>`;
+  document.getElementById('ir-int-summary').innerHTML = `${esc(summary)}<br><span style="color:var(--ink-3);font-size:11px">Not everything gets reported — these are indicators, not proof. Under-reporting is often the first gap to close.</span>`;
+
+  const badgeCls = { high: 'anomaly', medium: 'risk', low: 'recommend' };
+  document.getElementById('ir-int-flags').innerHTML = flags.length === 0
+    ? '<div class="chart-note">No risk signals detected for the selected period.</div>'
+    : flags.map(f => `<div class="insight-item"><div class="i-badge ${badgeCls[f.sev]}">${f.icon}</div><div><div class="i-title">${esc(f.title)}</div><div class="i-body">${f.body}</div></div></div>`).join('');
+}
+
 // ── Static control wiring (elements exist once, in the initial HTML) ──
 document.getElementById('ip-view-select').addEventListener('change', e => ipSwitchView(e.target.value));
 document.getElementById('ip-product-search').addEventListener('input', ipRenderProductTable);
@@ -5619,6 +6009,12 @@ document.querySelectorAll('#ip-view-purchases th[data-psort]').forEach(th => {
 document.querySelectorAll('#ip-view-pricechanges th[data-pcsort]').forEach(th => {
   th.addEventListener('click', () => ipPcSort(th.dataset.pcsort));
 });
+
+// Local to Inventory Reports only -- the year picker has no shared
+// top-level equivalent, so it reloads just this section rather than going
+// through loadActiveTab()/loadInventory()'s full Inventory-tab refetch.
+document.getElementById('ir-year-select').addEventListener('change', loadInventoryReports);
+document.getElementById('ir-refresh-btn').addEventListener('click', loadInventoryReports);
 
 function loadActiveTab() {
   if (activeTab === 'clinical') return loadClinicalGeo();
