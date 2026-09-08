@@ -29,8 +29,23 @@ against the production schema:
     center (Radiographs/Inhouse laboratory/Treatments) instead of one lump
     sum.
 
+Also syncs a separate RDVM_ID breakdown (confirmed live: ReportBreakdown
+supports RDVM_ID alongside the three above) into rdvm_revenue_daily, for
+the new Marketing tab's Revenue by Referring Hospital section -- see
+scoutsync_referral_marketing_analytics.sql. Gated behind the
+SYNC_RDVM_REVENUE env var (default off): this is a brand-new, unverified
+sync, and the existing vetspire_financial_sync.yml workflow already runs
+this same script every 4 hours -- an unconditional addition would start
+hitting the untested query on that existing schedule the moment this
+merges, before a human gets to confirm it via a manual dispatch first. A
+separate vetspire_rdvm_revenue_sync.yml (workflow_dispatch-only, no
+schedule yet) sets SYNC_RDVM_REVENUE=true; the routine scheduled workflow
+does not, so it's unaffected until this is promoted to its own schedule
+as a later, separate change.
+
 Usage:
   VETSPIRE_API_TOKEN="..." python3 vetspire_financial_sync.py
+  SYNC_RDVM_REVENUE=true VETSPIRE_API_TOKEN="..." python3 vetspire_financial_sync.py
 """
 import json, os, time, urllib.request, urllib.error
 from datetime import datetime, timedelta, timezone
@@ -83,6 +98,23 @@ SALES_QUERY = """
 query($lids:[ID!], $s:Date, $e:Date){
     salesReport(locationIds:$lids, startDate:$s, endDate:$e,
                 breakdowns:[PROVIDER_ID, PRODUCT_CATEGORY_ID, REVENUE_CENTER_ID], segment:DAY)
+}
+"""
+
+# Brand-new, unverified sync -- see the module docstring for why this is
+# gated behind an env var rather than running unconditionally. Off by
+# default; vetspire_rdvm_revenue_sync.yml (workflow_dispatch-only, no
+# schedule yet) is the only thing that sets it to true.
+SYNC_RDVM_REVENUE = os.environ.get("SYNC_RDVM_REVENUE", "").strip().lower() == "true"
+
+# A separate query, not folded into the 3-way SALES_QUERY breakdown above --
+# RDVM_ID hasn't been confirmed live in combination with the other three
+# breakdowns the way [PROVIDER_ID, PRODUCT_CATEGORY_ID, REVENUE_CENTER_ID]
+# was, only on its own (see scoutsync_referral_marketing_analytics.sql).
+SALES_QUERY_RDVM = """
+query($lids:[ID!], $s:Date, $e:Date){
+    salesReport(locationIds:$lids, startDate:$s, endDate:$e,
+                breakdowns:[RDVM_ID], segment:DAY)
 }
 """
 
@@ -230,6 +262,38 @@ def main():
         )
         print(f"  upserted {len(out)} rows")
         total_rows += len(out)
+
+        if SYNC_RDVM_REVENUE:
+            rdvm_result = gql(token, SALES_QUERY_RDVM, {
+                "lids": [vetspire_loc_id], "s": since, "e": until,
+            })
+            if "errors" in rdvm_result:
+                print(f"  ERROR (rdvm revenue): {rdvm_result['errors']}")
+            else:
+                rdvm_raw = rdvm_result.get("data", {}).get("salesReport", "[]")
+                rdvm_rows = json.loads(rdvm_raw) if isinstance(rdvm_raw, str) else (rdvm_raw or [])
+                print(f"  fetched {len(rdvm_rows)} rdvm-revenue breakdown rows")
+
+                rdvm_revenue_rows = []
+                for row in rdvm_rows:
+                    rdvm_vs_id = row.get("rdvm_id")
+                    rdvm_revenue_rows.append({
+                        "location_id": loc_uuid,
+                        # '0' sentinel (a string, not the integer 0 used by
+                        # product_category_id/revenue_center_id above) --
+                        # vetspire_rdvm_id is a text column, since Vetspire's
+                        # Rdvm.id isn't guaranteed to be numeric. Same
+                        # NULL-never-matches-NULL-in-ON-CONFLICT reasoning.
+                        "vetspire_rdvm_id": str(rdvm_vs_id) if rdvm_vs_id else "0",
+                        "amount": float(row.get("total") or 0),
+                        "service_date": row.get("date"),
+                    })
+
+                rdvm_out = supa_upsert(
+                    "rdvm_revenue_daily", rdvm_revenue_rows,
+                    "location_id,vetspire_rdvm_id,service_date",
+                )
+                print(f"  upserted {len(rdvm_out)} rdvm_revenue_daily rows")
 
     print(f"\n=== Done — {total_rows} invoice_line_items rows upserted ===")
 
