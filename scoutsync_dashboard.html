@@ -808,7 +808,9 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         </div>
         <div class="report-group">
           <div class="report-group-title">Procurement</div>
-          <div class="report-empty">Coming soon</div>
+          <button class="report-item" data-report="ph">Purchase History</button>
+          <button class="report-item" data-report="dc">Daily COGS Roll-up</button>
+          <button class="report-item" data-report="pcr">Price Change Report</button>
         </div>
         <div class="report-group">
           <div class="report-group-title">Operations</div>
@@ -1057,6 +1059,109 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <div class="hero-tile"><div class="l">Assessment</div><div id="ir-int-summary" style="margin-top:6px;font-size:12.5px;color:var(--ink-2);line-height:1.6"></div></div>
       </div>
       <div class="insight-list" id="ir-int-flags" style="margin-top:14px"></div>
+    </div>
+        </div>
+
+        <div id="report-ph" hidden>
+    <!-- ══ Purchase History — ported from the pre-split Inventory
+         Procurement's "Purchase History" dropdown view (one of 6 views that
+         dropdown once had), deleted in the Inventory/Procurement split
+         (PR #585) and re-homed here as its own Reporting-tab report (stage 2
+         of the Reporting rollout). Reuses the page's own date-range/location
+         filters above and vetcove_orders — same query, same columns, same
+         sort behavior — instead of a new data source. No write/mutation
+         behavior. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Purchase History</h2>
+      <span class="sub">Vetcove order line items — same range and location as the filters above</span></div>
+
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="chart-note" id="rph-count" style="margin:0">Loading…</div>
+        <div class="subtab-row" id="rph-sort-tabs" style="margin-bottom:0">
+          <button class="subtab active" data-sort="week_start">Date</button>
+          <button class="subtab" data-sort="total_price">Spend</button>
+          <button class="subtab" data-sort="product_name">Product</button>
+          <button class="subtab" data-sort="vendor">Vendor</button>
+        </div>
+      </div>
+      <div class="hero-row" id="rph-summary" style="margin-bottom:10px"></div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr>
+          <th data-psort="week_start" style="cursor:pointer">Date ↕</th>
+          <th data-psort="product_name" style="cursor:pointer">Product ↕</th>
+          <th data-psort="vendor" style="cursor:pointer">Vendor ↕</th>
+          <th>Location</th>
+          <th data-psort="qty_ordered" style="cursor:pointer;text-align:right">Qty ↕</th>
+          <th data-psort="unit_price" style="cursor:pointer;text-align:right">Unit Cost ↕</th>
+          <th data-psort="total_price" style="cursor:pointer;text-align:right">Total Spend ↕</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody id="rph-tbody"><tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Select this report to load purchase history…</td></tr></tbody>
+      </table></div>
+    </div>
+        </div>
+
+        <div id="report-dc" hidden>
+    <!-- ══ Daily COGS Roll-up — ported from the pre-split Inventory
+         Procurement's "Daily COGS" dropdown view, deleted in the Inventory/
+         Procurement split (PR #585) and re-homed here as its own
+         Reporting-tab report (stage 2). Reuses the page's own date-range/
+         location filters and dispensed_items — same aggregation-by-day
+         logic as before, now fetched standalone rather than piggybacking on
+         Procurement's By-product fetch. No write/mutation behavior. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Daily COGS Roll-up</h2>
+      <span class="sub">True COGS and revenue by day — same range and location as the filters above</span></div>
+
+    <div class="chart-card">
+      <div class="chart-note" id="rdc-count" style="margin-bottom:8px">Loading…</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Date</th><th>Location</th><th style="text-align:right">Unique Products</th><th style="text-align:right">Total Qty</th><th style="text-align:right">True COGS</th><th style="text-align:right">Revenue</th><th style="text-align:right">COGS %</th></tr></thead>
+        <tbody id="rdc-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Select this report to load daily COGS…</td></tr></tbody>
+      </table></div>
+    </div>
+        </div>
+
+        <div id="report-pcr" hidden>
+    <!-- ══ Price Change Report — ported from the pre-split Inventory
+         Procurement's "Price Changes" dropdown view, deleted in the
+         Inventory/Procurement split (PR #585) and re-homed here as its own
+         Reporting-tab report (stage 2). Detects unit cost changes from
+         dispensed transaction history — same detection logic, sort, filter
+         and CSV export as before. No write/mutation behavior. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Price Change Report</h2>
+      <span class="sub">Unit cost changes detected from dispensed transaction history — same range and location as the filters above</span></div>
+
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="chart-note" id="rpc-subtitle" style="margin:0">Detects unit cost changes from dispensed transaction history</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="rpc-filter">
+            <option value="all">All changes</option>
+            <option value="increase">Price increases only</option>
+            <option value="decrease">Price decreases only</option>
+          </select>
+          <button class="ia-btn" onclick="rpcExportCsv()">↓ CSV</button>
+        </div>
+      </div>
+      <div id="rpc-loading" class="chart-note">Select this report to load price history…</div>
+      <div class="hero-row" id="rpc-summary" style="margin-bottom:10px" hidden></div>
+      <div style="overflow-x:auto" id="rpc-table-wrap" hidden><table class="dd-table">
+        <thead><tr>
+          <th data-pcsort="name" style="cursor:pointer">Product ↕</th>
+          <th data-pcsort="change_date" style="cursor:pointer">Change Date ↕</th>
+          <th style="text-align:right">Old Cost</th>
+          <th style="text-align:right">New Cost</th>
+          <th data-pcsort="pct" style="cursor:pointer;text-align:right">Change % ↕</th>
+          <th style="text-align:right">Units @ Old Price</th>
+          <th data-pcsort="impact" style="cursor:pointer;text-align:right">Est. Impact ↕</th>
+          <th style="text-align:right">Days at Old Price</th>
+        </tr></thead>
+        <tbody id="rpc-tbody"></tbody>
+      </table></div>
+      <div id="rpc-empty" class="ip-empty" hidden>No price changes detected in this period.</div>
     </div>
         </div>
       </div>
@@ -5892,6 +5997,323 @@ document.querySelectorAll('#ip-view-product th[data-sort]').forEach(th => {
 document.getElementById('ir-year-select').addEventListener('change', loadInventoryReports);
 document.getElementById('ir-refresh-btn').addEventListener('click', loadInventoryReports);
 
+// ══════════════════════════════════════════════════════════════════════
+// Purchase History — ported from the pre-split Inventory Procurement's
+// "Purchase History" dropdown view (ipLoadPurchaseHistory/ipRenderPurchase-
+// Summary/ipRenderPurchaseTable/ipSetPurchSort), deleted in the Inventory/
+// Procurement split (PR #585) and re-homed here as its own Reporting-tab
+// report. Reuses selectedDateRange()/selectedLocation()/ipQuery/IP_LOC_NAME/
+// ipFmt2/ipFmtQty already declared above instead of a duplicate set.
+// Read-only — no write/mutation behavior.
+// ══════════════════════════════════════════════════════════════════════
+
+let RPH_ALL_PURCHASES = [];
+let rphSort = 'week_start', rphDir = -1;
+
+async function loadPurchaseHistoryReport() {
+  document.getElementById('rph-tbody').innerHTML =
+    '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Loading purchase history…</td></tr>';
+
+  const { from: start, until: end } = selectedDateRange();
+  const loc = selectedLocation();
+  const locUuid = loc ? loc.uuid : null;
+
+  let params = `select=product_name,vendor,sku,qty_ordered,unit_price,order_date,status,location_id&unit_price=gt.0&order=order_date.desc&limit=5000`;
+  params += `&order_date=gte.${start}&order_date=lte.${end}`;
+  if (locUuid) params += `&location_id=eq.${locUuid}`;
+
+  try {
+    const rows = await ipQuery('vetcove_orders', params);
+    RPH_ALL_PURCHASES = rows.map(r => ({ ...r, week_start: r.order_date, total_price: (parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0) }));
+    rphRenderSummary();
+    rphRenderTable();
+  } catch (e) {
+    RPH_ALL_PURCHASES = [];
+    const msg = e.message || '';
+    const hint = msg.includes('relation "vetcove_orders" does not exist')
+      ? 'Run <strong>vetcove_ytd_import.sql</strong> in Supabase first to create this table.' : esc(msg);
+    document.getElementById('rph-tbody').innerHTML = `<tr><td colspan="8"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">Purchase history not yet imported</div><div class="e-sub">${hint}</div></div></td></tr>`;
+    document.getElementById('rph-count').textContent = 'Run SQL import first';
+  }
+}
+
+function rphRenderSummary() {
+  const rows = RPH_ALL_PURCHASES;
+  if (!rows.length) { document.getElementById('rph-summary').innerHTML = ''; return; }
+  const totalSpend = rows.reduce((s, r) => s + r.total_price, 0);
+  const byVendor = {}, byLoc = {};
+  for (const r of rows) {
+    byVendor[r.vendor || '—'] = (byVendor[r.vendor || '—'] || 0) + r.total_price;
+    const locName = IP_LOC_NAME[r.location_id] || r.location_id || '—';
+    byLoc[locName] = (byLoc[locName] || 0) + r.total_price;
+  }
+  const topVendor = Object.entries(byVendor).sort((a, b) => b[1] - a[1])[0];
+  const topLoc = Object.entries(byLoc).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('rph-summary').innerHTML = `
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Total Purchased</div><div class="v" style="font-size:20px">$${ipFmt2(totalSpend)}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Unique Products</div><div class="v" style="font-size:20px">${new Set(rows.map(r => r.product_name)).size}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Top Vendor</div><div class="v" style="font-size:16px">${esc(topVendor?.[0] || '—')}</div><div class="chart-note" style="margin:4px 0 0">${topVendor ? '$' + ipFmt2(topVendor[1]) : ''}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Top Location</div><div class="v" style="font-size:16px">${esc(topLoc?.[0] || '—')}</div><div class="chart-note" style="margin:4px 0 0">${topLoc ? '$' + ipFmt2(topLoc[1]) : ''}</div></div>`;
+}
+
+function rphRenderTable() {
+  const tbody = document.getElementById('rph-tbody');
+  const countEl = document.getElementById('rph-count');
+  let data = [...RPH_ALL_PURCHASES];
+  data.sort((a, b) => {
+    let av = a[rphSort], bv = b[rphSort];
+    if (rphSort === 'total_price' || rphSort === 'qty_ordered' || rphSort === 'unit_price') {
+      av = parseFloat(av) || 0; bv = parseFloat(bv) || 0;
+      return (av - bv) * rphDir;
+    }
+    return String(av || '').localeCompare(String(bv || '')) * rphDir;
+  });
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">No purchase history for this period</div><div class="e-sub">Try a wider range, or import Vetcove order history via the SQL migration.</div></div></td></tr>`;
+    countEl.textContent = '0 orders';
+    return;
+  }
+  const totalSpend = data.reduce((s, r) => s + r.total_price, 0);
+  countEl.textContent = `${data.length} line items · $${ipFmt2(totalSpend)} total spend`;
+
+  const statusBadge = { received: 'good', cancelled: 'neutral', ordered: 'warn' };
+  tbody.innerHTML = data.map(r => {
+    const locName = IP_LOC_NAME[r.location_id] || '—';
+    const status = (r.status || '').toLowerCase();
+    const badge = statusBadge[status] || 'neutral';
+    return `<tr>
+      <td>${esc(r.week_start || '—')}</td>
+      <td><div>${esc(r.product_name || '—')}</div>${r.sku ? `<div class="ip-prod-sub">SKU: ${esc(r.sku)}</div>` : ''}</td>
+      <td>${esc(r.vendor || '—')}</td>
+      <td>${esc(locName)}</td>
+      <td style="text-align:right">${ipFmtQty(r.qty_ordered)}</td>
+      <td style="text-align:right">$${ipFmt2(r.unit_price)}</td>
+      <td style="text-align:right;font-weight:700">$${ipFmt2(r.total_price)}</td>
+      <td><span class="ip-badge ${badge}">${esc(r.status || '—')}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function rphSetSort(col) {
+  if (rphSort === col) rphDir *= -1; else { rphSort = col; rphDir = -1; }
+  document.querySelectorAll('#rph-sort-tabs .subtab').forEach(b => b.classList.toggle('active', b.dataset.sort === col));
+  rphRenderTable();
+}
+document.querySelectorAll('#rph-sort-tabs .subtab').forEach(btn => {
+  btn.addEventListener('click', () => rphSetSort(btn.dataset.sort));
+});
+document.querySelectorAll('#report-ph th[data-psort]').forEach(th => {
+  th.addEventListener('click', () => rphSetSort(th.dataset.psort));
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// Daily COGS Roll-up — ported from the pre-split Inventory Procurement's
+// "Daily COGS" dropdown view (ipRenderDailyTable), deleted in the
+// Inventory/Procurement split (PR #585) and re-homed here as its own
+// Reporting-tab report. The original computed this aggregation inline from
+// the same dispensed_items fetch Procurement's By-product view issued;
+// here it's fetched standalone with only the columns this rollup needs.
+// Read-only — no write/mutation behavior.
+// ══════════════════════════════════════════════════════════════════════
+
+let RDC_ALL_DAILY = [];
+
+async function loadDailyCogsReport() {
+  document.getElementById('rdc-tbody').innerHTML =
+    '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Loading daily COGS…</td></tr>';
+  document.getElementById('rdc-count').textContent = 'Loading…';
+
+  const { from: start, until: end } = selectedDateRange();
+  const loc = selectedLocation();
+  const locVid = loc ? loc.vid : '';
+  const locFilter = locVid ? `&location_id=eq.${locVid}` : '';
+
+  try {
+    const raw = await fetchAllRows(
+      `${SUPA_URL}/rest/v1/dispensed_items?select=vetspire_product_id,product_name,quantity,unit_price,unit_cost,returned,refunded,dispensed_at,location_id,location_name` +
+      `&dispensed_at=gte.${start}T00:00:00&dispensed_at=lte.${end}T23:59:59` +
+      `&returned=eq.false&refunded=eq.false${locFilter}&order=dispensed_at.desc,id`
+    );
+    if (raw === null) throw new Error('dispensed_items fetch failed');
+
+    const byDay = {};
+    for (const row of raw) {
+      const qty = parseFloat(row.quantity) || 0;
+      const cost = parseFloat(row.unit_cost) || 0;
+      const price = parseFloat(row.unit_price) || 0;
+      const rev = ipAllocatedRevenue(row.product_name, price, qty);
+
+      const day = row.dispensed_at ? row.dispensed_at.slice(0, 10) : '—';
+      const dKey = day + '|' + (row.location_id || '');
+      if (!byDay[dKey]) {
+        byDay[dKey] = { date: day, location_id: row.location_id, location_name: row.location_name || '—', products: new Set(), total_qty: 0, true_cogs: 0, revenue: 0 };
+      }
+      const d = byDay[dKey];
+      d.products.add(row.vetspire_product_id);
+      d.total_qty += qty;
+      d.true_cogs += qty * cost;
+      d.revenue += rev;
+    }
+
+    RDC_ALL_DAILY = Object.values(byDay).map(d => ({ ...d, unique_products: d.products.size })).sort((a, b) => b.date.localeCompare(a.date));
+    rdcRenderTable();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('rdc-tbody').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--s-critical)">Couldn't load daily COGS — ${esc(err.message)}</td></tr>`;
+    document.getElementById('rdc-count').textContent = '—';
+  }
+}
+
+function rdcRenderTable() {
+  const tbody = document.getElementById('rdc-tbody');
+  document.getElementById('rdc-count').textContent = `${RDC_ALL_DAILY.length} days with activity`;
+  if (!RDC_ALL_DAILY.length) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">No daily data in selected range.</td></tr>`; return; }
+  tbody.innerHTML = RDC_ALL_DAILY.map(d => {
+    const cogsPC = d.revenue > 0 ? ((d.true_cogs / d.revenue) * 100).toFixed(1) + '%' : '—';
+    const pcColor = d.revenue > 0 ? (parseFloat(cogsPC) > 80 ? 'var(--s-critical)' : parseFloat(cogsPC) > 60 ? 'var(--s-warn)' : 'var(--s-good)') : 'var(--text)';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${esc(d.location_name)}</td>
+      <td style="text-align:right">${d.unique_products}</td>
+      <td style="text-align:right">${ipFmtQty(d.total_qty)}</td>
+      <td style="text-align:right;font-weight:700">$${ipFmt2(d.true_cogs)}</td>
+      <td style="text-align:right;color:var(--muted)">$${ipFmt2(d.revenue)}</td>
+      <td style="text-align:right;font-weight:700;color:${pcColor}">${cogsPC}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Price Change Report — ported from the pre-split Inventory Procurement's
+// "Price Changes" dropdown view (ipLoadPriceChanges/ipRenderPriceChanges/
+// ipPcSort/ipExportPriceChangesCsv), deleted in the Inventory/Procurement
+// split (PR #585) and re-homed here as its own Reporting-tab report.
+// Read-only — no write/mutation behavior.
+// ══════════════════════════════════════════════════════════════════════
+
+let rpcData = [];
+let rpcSortKey = 'impact', rpcSortDir = -1;
+
+async function loadPriceChangeReport() {
+  document.getElementById('rpc-loading').hidden = false;
+  document.getElementById('rpc-table-wrap').hidden = true;
+  document.getElementById('rpc-empty').hidden = true;
+  document.getElementById('rpc-summary').hidden = true;
+
+  try {
+    const { from: start, until: end } = selectedDateRange();
+    const loc = selectedLocation();
+    const locFilter = loc ? `&location_id=eq.${loc.vid}` : '';
+    // Look back a year before `start` to catch the "before" price of any
+    // change that lands inside the selected range.
+    const lookbackStart = (() => { const d = new Date(start); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10); })();
+
+    const rows = await ipQuery('dispensed_items',
+      `select=vetspire_product_id,product_name,sku,unit_cost,dispensed_at,location_id&unit_cost=gt.0` +
+      `&dispensed_at=gte.${lookbackStart}T00:00:00&dispensed_at=lte.${end}T23:59:59${locFilter}` +
+      `&order=product_name.asc,dispensed_at.asc&limit=10000`);
+
+    const byProduct = {};
+    for (const r of rows) {
+      const key = r.vetspire_product_id || r.product_name;
+      if (!byProduct[key]) byProduct[key] = { name: r.product_name, sku: r.sku, txns: [] };
+      byProduct[key].txns.push({ cost: parseFloat(r.unit_cost), date: r.dispensed_at.slice(0, 10) });
+    }
+
+    const changes = [];
+    for (const [, prod] of Object.entries(byProduct)) {
+      const txns = prod.txns; // already sorted by date asc
+      let prevCost = null, prevDate = null, unitsAtOldPrice = 0;
+      for (let i = 0; i < txns.length; i++) {
+        const { cost, date } = txns[i];
+        if (prevCost === null) { prevCost = cost; prevDate = date; unitsAtOldPrice = 1; continue; }
+        if (Math.abs(cost - prevCost) > 0.001) {
+          if (date >= start && date <= end) {
+            const pct = ((cost - prevCost) / prevCost) * 100;
+            const daysOld = Math.round((new Date(date) - new Date(prevDate)) / 864e5);
+            const unitsOld = txns.slice(0, i).filter(t => t.cost === prevCost && t.date >= start).length;
+            const impact = unitsOld * (cost - prevCost);
+            changes.push({ name: prod.name, sku: prod.sku || '—', change_date: date, old_cost: prevCost, new_cost: cost, pct, units_old: unitsAtOldPrice, impact: Math.abs(impact), impact_sign: impact, days_old: daysOld });
+          }
+          prevCost = cost; prevDate = date; unitsAtOldPrice = 1;
+        } else { unitsAtOldPrice++; }
+      }
+    }
+    rpcData = changes;
+    rpcRender();
+  } catch (err) {
+    document.getElementById('rpc-loading').hidden = true;
+    document.getElementById('rpc-subtitle').textContent = 'Error: ' + err.message;
+  }
+}
+
+function rpcRender() {
+  const filter = document.getElementById('rpc-filter')?.value || 'all';
+  let data = rpcData.filter(r => filter === 'all' ? true : filter === 'increase' ? r.pct > 0 : r.pct < 0);
+  data.sort((a, b) => rpcSortDir * (typeof a[rpcSortKey] === 'string' ? a[rpcSortKey].localeCompare(b[rpcSortKey]) : (a[rpcSortKey] - b[rpcSortKey])));
+
+  document.getElementById('rpc-loading').hidden = true;
+
+  if (!data.length) {
+    document.getElementById('rpc-empty').hidden = false;
+    document.getElementById('rpc-table-wrap').hidden = true;
+    document.getElementById('rpc-summary').hidden = true;
+    return;
+  }
+
+  const increases = data.filter(r => r.pct > 0);
+  const decreases = data.filter(r => r.pct < 0);
+  const totalImpact = data.reduce((s, r) => s + r.impact_sign, 0);
+  const summary = document.getElementById('rpc-summary');
+  summary.hidden = false;
+  summary.innerHTML = `
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Changes detected</div><div class="v" style="font-size:20px">${data.length}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Increases</div><div class="v" style="font-size:20px;color:var(--s-critical)">▲ ${increases.length}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Decreases</div><div class="v" style="font-size:20px;color:var(--s-good)">▼ ${decreases.length}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Net cost impact</div><div class="v" style="font-size:20px;color:${totalImpact > 0 ? 'var(--s-critical)' : 'var(--s-good)'}">${totalImpact > 0 ? '+' : ''}$${Math.abs(totalImpact).toFixed(2)}</div></div>`;
+  document.getElementById('rpc-subtitle').textContent = `${data.length} changes · sorted by ${rpcSortKey}`;
+
+  document.getElementById('rpc-tbody').innerHTML = data.map(r => {
+    const up = r.pct > 0;
+    const pctColor = up ? 'var(--s-critical)' : 'var(--s-good)';
+    const arrow = up ? '▲' : '▼';
+    return `<tr>
+      <td><div>${esc(r.name)}</div><div class="ip-prod-sub">SKU: ${esc(r.sku)}</div></td>
+      <td style="white-space:nowrap">${r.change_date}</td>
+      <td style="text-align:right">$${r.old_cost.toFixed(4)}</td>
+      <td style="text-align:right">$${r.new_cost.toFixed(4)}</td>
+      <td style="text-align:right;color:${pctColor};font-weight:700">${arrow} ${Math.abs(r.pct).toFixed(1)}%</td>
+      <td style="text-align:right">${r.units_old}</td>
+      <td style="text-align:right;color:${pctColor}">${r.impact_sign > 0 ? '+' : ''}$${Math.abs(r.impact_sign).toFixed(2)}</td>
+      <td style="text-align:right">${r.days_old}d</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('rpc-table-wrap').hidden = false;
+  document.getElementById('rpc-empty').hidden = true;
+}
+
+function rpcSort(key) {
+  if (rpcSortKey === key) rpcSortDir *= -1; else { rpcSortKey = key; rpcSortDir = key === 'name' ? 1 : -1; }
+  rpcRender();
+}
+
+function rpcExportCsv() {
+  if (!rpcData.length) return;
+  const filter = document.getElementById('rpc-filter')?.value || 'all';
+  const data = rpcData.filter(r => filter === 'all' ? true : filter === 'increase' ? r.pct > 0 : r.pct < 0);
+  const headers = ['Product', 'SKU', 'Change Date', 'Old Cost', 'New Cost', 'Change %', 'Units at Old Price', 'Est. Impact', 'Days at Old Price'];
+  const rows = data.map(r => [r.name, r.sku, r.change_date, r.old_cost.toFixed(4), r.new_cost.toFixed(4), r.pct.toFixed(2) + '%', r.units_old, r.impact_sign.toFixed(2), r.days_old]);
+  iaExportCsv('price_changes.csv', headers, rows);
+}
+
+document.getElementById('rpc-filter').addEventListener('change', rpcRender);
+document.querySelectorAll('#report-pcr th[data-pcsort]').forEach(th => {
+  th.addEventListener('click', () => rpcSort(th.dataset.pcsort));
+});
+
 // ── Reporting tab — report picker. Mirrors the rest of this dashboard's
 // tab-lazy-load convention: nothing fetches until a report is actually
 // selected, and selecting one (including re-selecting after switching away
@@ -5902,11 +6324,17 @@ function showReport(key) {
   document.getElementById('report-empty-state').hidden = key !== null;
   document.getElementById('report-ia').hidden = key !== 'ia';
   document.getElementById('report-ir').hidden = key !== 'ir';
+  document.getElementById('report-ph').hidden = key !== 'ph';
+  document.getElementById('report-dc').hidden = key !== 'dc';
+  document.getElementById('report-pcr').hidden = key !== 'pcr';
   document.querySelectorAll('#report-picker .report-item').forEach(b => b.classList.toggle('active', b.dataset.report === key));
 }
 function loadReporting() {
   if (selectedReport === 'ia') return loadInventoryAnalytics();
   if (selectedReport === 'ir') return loadInventoryReports();
+  if (selectedReport === 'ph') return loadPurchaseHistoryReport();
+  if (selectedReport === 'dc') return loadDailyCogsReport();
+  if (selectedReport === 'pcr') return loadPriceChangeReport();
 }
 document.querySelectorAll('#report-picker .report-item').forEach(btn => {
   btn.addEventListener('click', () => {
