@@ -76,24 +76,29 @@ def main():
         return
 
     print(f"{len(fields)} fields on Rdvm:")
-    address_like = []
+    field_types = {}
     for f in fields:
         tname = f['type'].get('name') or (f['type'].get('ofType') or {}).get('name') or f['type']['kind']
+        field_types[f['name']] = tname
         print(f"  {f['name']}: {tname}")
-        lname = f['name'].lower()
-        if any(k in lname for k in ('address', 'street', 'city', 'state', 'zip', 'postal', 'lat', 'lng', 'geo', 'location')):
-            address_like.append(f['name'])
-
     print()
-    if not address_like:
-        print('=== No address/geography-shaped field found on Rdvm. ===')
-        print('Recommendation: fall back to approximating rDVM location from referred clients\' ZIPs.')
-        return
 
-    print(f'=== Address-shaped field(s) found: {address_like} ===')
+    # Known from a first run of this probe: plain-scalar address fields plus
+    # a few marketing-relevant scalars worth sampling in the same pass. Kept
+    # as a fixed list (not the keyword-matching first draft) because that
+    # draft also caught `locations`/`primaryLocation` -- object-typed fields
+    # that need their own subfield selection and broke the whole query when
+    # mixed in with scalars (GraphQL fails the entire query on one bad
+    # field, so the scalars never got confirmed either).
+    scalar_fields = [f for f in (
+        'addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country',
+        'milesAway', 'numberOfVisitsLastNinetyDays', 'numberOfTrailingYearPatients', 'lastVisitDate',
+    ) if f in field_types]
+
+    print(f'=== Sampling scalar address/marketing fields: {scalar_fields} ===')
     print('Fetching a live sample to confirm population (not just schema presence)...\n')
 
-    field_selection = ' '.join(address_like)
+    field_selection = ' '.join(scalar_fields)
     sample_query = f"""
     {{
       rdvms(limit: 20) {{
@@ -111,13 +116,32 @@ def main():
     rows = (sample.get('data') or {}).get('rdvms') or []
     print(f'{len(rows)} sample rDVMs fetched:')
     populated = 0
+    address_fields = [f for f in scalar_fields if f in ('addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country')]
     for r in rows:
-        has_any = any(r.get(f) for f in address_like)
+        has_any = any(r.get(f) for f in address_fields)
         if has_any:
             populated += 1
-        print(f"  {r.get('name')}: " + ', '.join(f"{f}={r.get(f)!r}" for f in address_like))
+        print(f"  {r.get('name')}: " + ', '.join(f"{f}={r.get(f)!r}" for f in scalar_fields))
 
-    print(f'\n{populated} of {len(rows)} sample rDVMs have at least one populated address-like field.')
+    print(f'\n{populated} of {len(rows)} sample rDVMs have at least one populated address field.')
+
+    # `visits: RdvmVisit` on Rdvm's field list is a major finding in its own
+    # right -- if Vetspire already tracks rDVM visits natively, the "CRM"
+    # half of the Marketing tab ask (visit logs) might already be half-built
+    # on Vetspire's side rather than 100% ScoutSync-native. Introspect it.
+    print("\n=== Introspecting RdvmVisit type ===")
+    visit_type = gql(token, '{ __type(name: "RdvmVisit") { name fields { name type { name kind ofType { name kind } } } } }')
+    if 'errors' in visit_type:
+        print('GraphQL errors:', json.dumps(visit_type['errors'], indent=2))
+        return
+    visit_fields = (visit_type.get('data') or {}).get('__type', {}).get('fields') or []
+    if not visit_fields:
+        print('RdvmVisit type not found or has no fields.')
+        return
+    print(f'{len(visit_fields)} fields on RdvmVisit:')
+    for f in visit_fields:
+        tname = f['type'].get('name') or (f['type'].get('ofType') or {}).get('name') or f['type']['kind']
+        print(f"  {f['name']}: {tname}")
 
 
 if __name__ == '__main__':
