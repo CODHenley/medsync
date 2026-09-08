@@ -1,0 +1,24 @@
+name: Vetspire rDVM Address Probe
+
+# One-off introspection: checks whether Vetspire's Rdvm type exposes any
+# address/geography field, to decide how to plot rDVM origins on the
+# upcoming Marketing tab's referral map -- see
+# vetspire_rdvm_address_probe.py. Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire rDVM address probe
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_rdvm_address_probe.py --token "$VETSPIRE_API_TOKEN"
