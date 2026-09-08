@@ -381,6 +381,25 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 /* ── Inventory Reports (migrated from medsync_reports_live.html) — no new
    component classes needed; built entirely from .chart-card/.hero-tile/
    .bar-row/.dd-table/.ip-badge/.insight-item already declared above. ── */
+
+/* ── Reporting tab — report picker. Reuses .chart-card/.section-head's
+   existing component language; no new visual system introduced. ── */
+.report-layout { display: grid; grid-template-columns: 230px 1fr; gap: 16px; align-items: start; }
+.report-picker { padding: 16px; align-self: start; position: sticky; top: 12px; }
+.report-group + .report-group { margin-top: 20px; }
+.report-group-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+  color: var(--muted); margin-bottom: 8px;
+}
+.report-item {
+  display: block; width: 100%; text-align: left; border: none; background: none; font-family: inherit;
+  font-size: 12.5px; font-weight: 600; color: var(--text); padding: 8px 10px; border-radius: 8px; cursor: pointer;
+}
+.report-item + .report-item { margin-top: 2px; }
+.report-item:hover { background: var(--navy-lt); }
+.report-item.active { background: var(--navy); color: #fff; }
+.report-empty { font-size: 12px; color: var(--ink-3); padding: 2px 10px; }
+@media (max-width: 760px) { .report-layout { grid-template-columns: 1fr; } .report-picker { position: static; } }
 </style>
 </head>
 <body>
@@ -432,6 +451,8 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   <button class="active" data-tab="financial">Financial</button>
   <button data-tab="clinical">Clinical Operations</button>
   <button data-tab="inventory">Inventory</button>
+  <button data-tab="procurement">Procurement</button>
+  <button data-tab="reporting">Reporting</button>
   <button class="soon" disabled>Facilities Operations<span class="tag">Soon</span></button>
 </nav>
 
@@ -662,10 +683,148 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div id="inventory-empty"></div>
+  </section>
 
-    <!-- ══ Inventory Analytics — migrated from medsync_analytics_live.html (stage 1 of 3;
-         Procurement's own screen and the separate Reports screen migrate later). Reuses the
-         page's own date-range/location filters above rather than a second set. ══ -->
+  <section class="panel" id="panel-procurement">
+
+    <!-- ══ Procurement — split out of the former single Inventory tab
+         (stage 1 of ScoutSync's report restructuring) as its own top-level
+         tab. Keeps only the operational views: By product, Regional
+         roll-up, and Reorder Suggestions (with its Approve/Approve All
+         write-action), plus the KPIs and Cost Drift panel tied to them.
+         Purchase History, Daily COGS and Price Changes are headed to the
+         new Reporting tab in a later stage — removed from here rather than
+         left as dead/inaccessible options, not rebuilt there yet. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Procurement</h2>
+      <span class="sub">Purchasing, true COGS &amp; margin, by product — same range and location as above</span></div>
+
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="chart-title">Key metrics</div>
+        <button class="ia-btn" id="ip-drift-btn" hidden style="position:relative">⚠ Cost Drift<span id="ip-drift-count" style="position:absolute;top:-7px;right:-7px;background:var(--s-critical);color:#fff;font-size:10px;font-weight:800;border-radius:100px;padding:1px 6px"></span></button>
+      </div>
+      <div class="chart-note">Purchase Value comes from the in-app receiving log only (items that completed the reorder → receive workflow); True COGS is quantity × unit cost for everything dispensed in range; Remaining Inventory is YTD purchases minus period COGS; COGS % Revenue and Pharmacy Margin compare True COGS to pharmacy revenue (dispensed items), not total practice revenue; Depreciation Risk flags lots on pace to expire before they'll be used up.</div>
+      <div class="hero-row" id="ip-kpi-tiles"></div>
+    </div>
+
+    <div class="chart-card" id="ip-drift-panel" hidden>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div class="chart-title">Cost Drift &amp; Pricing Alerts</div>
+          <div class="chart-note">SKUs where the received invoice cost differs from Vetspire's recorded cost — margin impact &amp; a recommended price shown</div>
+        </div>
+        <button class="ia-btn" onclick="document.getElementById('ip-drift-panel').hidden=true">✕ Dismiss</button>
+      </div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Product</th><th style="text-align:right">Vetspire Cost</th><th style="text-align:right">Invoice Cost</th><th style="text-align:right">Cost Δ</th><th style="text-align:right">Sell Price</th><th style="text-align:right">Current Margin</th><th style="text-align:right">Margin at New Cost</th><th style="text-align:right">Target</th><th style="text-align:right">Recommended Price</th><th>Status</th></tr></thead>
+        <tbody id="ip-drift-tbody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="ip-toolbar">
+        <select id="ip-view-select">
+          <option value="product">By product</option>
+          <option value="regional">Regional roll-up</option>
+          <option value="reorder">Reorder Suggestions</option>
+        </select>
+        <span style="flex:1"></span>
+        <button class="ia-btn" onclick="ipPrintReport()">🖨 Print report</button>
+        <button class="ia-btn" onclick="ipExportCsv()">↓ CSV</button>
+      </div>
+
+      <div id="ip-view-product">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="chart-note" id="ip-tbl-count" style="margin:0">Loading…</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div class="ip-search-wrap">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <input id="ip-product-search" type="text" placeholder="Search products…">
+            </div>
+            <div class="subtab-row" id="ip-pfilter-tabs" style="margin-bottom:0">
+              <button class="subtab active" data-f="all">All</button>
+              <button class="subtab" data-f="active">Active lots</button>
+              <button class="subtab" data-f="full">Fully consumed</button>
+              <button class="subtab" data-f="cost">Has unit cost</button>
+            </div>
+          </div>
+        </div>
+        <div style="overflow-x:auto"><table class="dd-table">
+          <thead><tr>
+            <th data-sort="product_name" style="cursor:pointer">Product ↕</th>
+            <th data-sort="location_name" style="cursor:pointer">Location ↕</th>
+            <th data-sort="total_qty_dispensed" style="cursor:pointer;text-align:right">Dispensed Qty ↕</th>
+            <th data-sort="unit_cost" style="cursor:pointer;text-align:right">Unit Cost ↕</th>
+            <th data-sort="true_cogs" style="cursor:pointer;text-align:right">True COGS ↕</th>
+            <th style="text-align:right">Revenue Charged</th>
+            <th data-sort="pct" style="cursor:pointer;text-align:right">Margin ↕</th>
+            <th>Consumed</th>
+            <th data-sort="last_dispensed_at" style="cursor:pointer">Last Dispensed ↕</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="ip-product-tbody"><tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Loading procurement data…</td></tr></tbody>
+        </table></div>
+        <div class="ip-pagination" id="ip-product-pagination"></div>
+      </div>
+
+      <div id="ip-view-regional" hidden>
+        <div class="chart-note" style="margin-bottom:10px">Aggregate COGS by hospital — Chicagoland region</div>
+        <div class="ip-region-grid" id="ip-region-grid"></div>
+      </div>
+
+      <div id="ip-view-reorder" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="chart-note" id="ip-reorder-count" style="margin:0">—</div>
+          <button class="ia-btn solid" id="ip-approve-all-btn" hidden>✓ Approve All → Weekly Order</button>
+        </div>
+        <div id="ip-reorder-banner" hidden></div>
+        <div style="overflow-x:auto"><table class="dd-table">
+          <thead><tr><th>Product</th><th style="text-align:right">On Hand</th><th style="text-align:right">Avg Daily Use</th><th style="text-align:right">Days Left</th><th style="text-align:right">Suggested Order</th><th style="text-align:center">Action</th></tr></thead>
+          <tbody id="ip-reorder-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Select this view to load suggestions.</td></tr></tbody>
+        </table></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="panel" id="panel-reporting">
+
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Reports</h2>
+      <span class="sub">Browse by area · select a report below to view it here</span></div>
+
+    <div class="report-layout">
+      <div class="chart-card report-picker" id="report-picker">
+        <div class="report-group">
+          <div class="report-group-title">Finance</div>
+          <div class="report-empty">Coming soon</div>
+        </div>
+        <div class="report-group">
+          <div class="report-group-title">Inventory</div>
+          <button class="report-item" data-report="ia">Inventory Analytics</button>
+          <button class="report-item" data-report="ir">Inventory Reports</button>
+        </div>
+        <div class="report-group">
+          <div class="report-group-title">Procurement</div>
+          <div class="report-empty">Coming soon</div>
+        </div>
+        <div class="report-group">
+          <div class="report-group-title">Operations</div>
+          <div class="report-empty">Coming soon</div>
+        </div>
+      </div>
+
+      <div id="report-content">
+        <div id="report-empty-state" class="chart-card">
+          <div class="chart-note">Select a report from the list on the left to view it here.</div>
+        </div>
+
+        <div id="report-ia" hidden>
+    <!-- ══ Inventory Analytics — moved here, in full, from the old combined
+         Inventory tab (stage 1 of ScoutSync's report restructuring).
+         Reuses the page's own date-range/location filters above rather
+         than a second set. ══ -->
     <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
       <h2>Inventory Analytics</h2>
       <span class="sub">COGS, goods lost, order compliance &amp; procurement — same range and location as above</span></div>
@@ -794,177 +953,14 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <div id="ia-ph-table-wrap" style="overflow-x:auto"><div class="chart-note">Select the Purchases tab to load.</div></div>
       </div>
     </div>
-
-    <div id="ia-toast"></div>
-
-    <!-- ══ Inventory Procurement — migrated from medsync_procurement.html (stage 2 of 3;
-         the standalone Reports screen migrates separately as stage 3). Reuses the page's
-         own date-range/location filters above rather than a second set — only the view
-         switcher below has no equivalent top-level control, so it stays local. ══ -->
-    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
-      <h2>Inventory Procurement</h2>
-      <span class="sub">Purchasing, true COGS &amp; margin, by product — same range and location as above</span></div>
-
-    <div class="chart-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <div class="chart-title">Key metrics</div>
-        <button class="ia-btn" id="ip-drift-btn" hidden style="position:relative">⚠ Cost Drift<span id="ip-drift-count" style="position:absolute;top:-7px;right:-7px;background:var(--s-critical);color:#fff;font-size:10px;font-weight:800;border-radius:100px;padding:1px 6px"></span></button>
-      </div>
-      <div class="chart-note">Purchase Value comes from the in-app receiving log only (items that completed the reorder → receive workflow); True COGS is quantity × unit cost for everything dispensed in range; Remaining Inventory is YTD purchases minus period COGS; COGS % Revenue and Pharmacy Margin compare True COGS to pharmacy revenue (dispensed items), not total practice revenue; Depreciation Risk flags lots on pace to expire before they'll be used up.</div>
-      <div class="hero-row" id="ip-kpi-tiles"></div>
-    </div>
-
-    <div class="chart-card" id="ip-drift-panel" hidden>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-        <div>
-          <div class="chart-title">Cost Drift &amp; Pricing Alerts</div>
-          <div class="chart-note">SKUs where the received invoice cost differs from Vetspire's recorded cost — margin impact &amp; a recommended price shown</div>
         </div>
-        <button class="ia-btn" onclick="document.getElementById('ip-drift-panel').hidden=true">✕ Dismiss</button>
-      </div>
-      <div style="overflow-x:auto"><table class="dd-table">
-        <thead><tr><th>Product</th><th style="text-align:right">Vetspire Cost</th><th style="text-align:right">Invoice Cost</th><th style="text-align:right">Cost Δ</th><th style="text-align:right">Sell Price</th><th style="text-align:right">Current Margin</th><th style="text-align:right">Margin at New Cost</th><th style="text-align:right">Target</th><th style="text-align:right">Recommended Price</th><th>Status</th></tr></thead>
-        <tbody id="ip-drift-tbody"></tbody>
-      </table></div>
-    </div>
 
-    <div class="chart-card">
-      <div class="ip-toolbar">
-        <select id="ip-view-select">
-          <option value="product">By product</option>
-          <option value="purchases">Purchase History</option>
-          <option value="daily">Daily COGS</option>
-          <option value="regional">Regional roll-up</option>
-          <option value="reorder">Reorder Suggestions</option>
-          <option value="pricechanges">Price Changes</option>
-        </select>
-        <span style="flex:1"></span>
-        <button class="ia-btn" onclick="ipPrintReport()">🖨 Print report</button>
-        <button class="ia-btn" onclick="ipExportCsv()">↓ CSV</button>
-      </div>
-
-      <div id="ip-view-product">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-          <div class="chart-note" id="ip-tbl-count" style="margin:0">Loading…</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <div class="ip-search-wrap">
-              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              <input id="ip-product-search" type="text" placeholder="Search products…">
-            </div>
-            <div class="subtab-row" id="ip-pfilter-tabs" style="margin-bottom:0">
-              <button class="subtab active" data-f="all">All</button>
-              <button class="subtab" data-f="active">Active lots</button>
-              <button class="subtab" data-f="full">Fully consumed</button>
-              <button class="subtab" data-f="cost">Has unit cost</button>
-            </div>
-          </div>
-        </div>
-        <div style="overflow-x:auto"><table class="dd-table">
-          <thead><tr>
-            <th data-sort="product_name" style="cursor:pointer">Product ↕</th>
-            <th data-sort="location_name" style="cursor:pointer">Location ↕</th>
-            <th data-sort="total_qty_dispensed" style="cursor:pointer;text-align:right">Dispensed Qty ↕</th>
-            <th data-sort="unit_cost" style="cursor:pointer;text-align:right">Unit Cost ↕</th>
-            <th data-sort="true_cogs" style="cursor:pointer;text-align:right">True COGS ↕</th>
-            <th style="text-align:right">Revenue Charged</th>
-            <th data-sort="pct" style="cursor:pointer;text-align:right">Margin ↕</th>
-            <th>Consumed</th>
-            <th data-sort="last_dispensed_at" style="cursor:pointer">Last Dispensed ↕</th>
-            <th>Status</th>
-          </tr></thead>
-          <tbody id="ip-product-tbody"><tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Loading procurement data…</td></tr></tbody>
-        </table></div>
-        <div class="ip-pagination" id="ip-product-pagination"></div>
-      </div>
-
-      <div id="ip-view-daily" hidden>
-        <div class="chart-note" id="ip-daily-count" style="margin-bottom:8px">—</div>
-        <div style="overflow-x:auto"><table class="dd-table">
-          <thead><tr><th>Date</th><th>Location</th><th style="text-align:right">Unique Products</th><th style="text-align:right">Total Qty</th><th style="text-align:right">True COGS</th><th style="text-align:right">Revenue</th><th style="text-align:right">COGS %</th></tr></thead>
-          <tbody id="ip-daily-tbody"></tbody>
-        </table></div>
-      </div>
-
-      <div id="ip-view-regional" hidden>
-        <div class="chart-note" style="margin-bottom:10px">Aggregate COGS by hospital — Chicagoland region</div>
-        <div class="ip-region-grid" id="ip-region-grid"></div>
-      </div>
-
-      <div id="ip-view-purchases" hidden>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-          <div class="chart-note" id="ip-purch-count" style="margin:0">Loading…</div>
-          <div class="subtab-row" id="ip-purch-sort-tabs" style="margin-bottom:0">
-            <button class="subtab active" data-sort="week_start">Date</button>
-            <button class="subtab" data-sort="total_price">Spend</button>
-            <button class="subtab" data-sort="product_name">Product</button>
-            <button class="subtab" data-sort="vendor">Vendor</button>
-          </div>
-        </div>
-        <div class="hero-row" id="ip-purch-summary" style="margin-bottom:10px"></div>
-        <div style="overflow-x:auto"><table class="dd-table">
-          <thead><tr>
-            <th data-psort="week_start" style="cursor:pointer">Date ↕</th>
-            <th data-psort="product_name" style="cursor:pointer">Product ↕</th>
-            <th data-psort="vendor" style="cursor:pointer">Vendor ↕</th>
-            <th>Location</th>
-            <th data-psort="qty_ordered" style="cursor:pointer;text-align:right">Qty ↕</th>
-            <th data-psort="unit_price" style="cursor:pointer;text-align:right">Unit Cost ↕</th>
-            <th data-psort="total_price" style="cursor:pointer;text-align:right">Total Spend ↕</th>
-            <th>Status</th>
-          </tr></thead>
-          <tbody id="ip-purch-tbody"></tbody>
-        </table></div>
-      </div>
-
-      <div id="ip-view-reorder" hidden>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-          <div class="chart-note" id="ip-reorder-count" style="margin:0">—</div>
-          <button class="ia-btn solid" id="ip-approve-all-btn" hidden>✓ Approve All → Weekly Order</button>
-        </div>
-        <div id="ip-reorder-banner" hidden></div>
-        <div style="overflow-x:auto"><table class="dd-table">
-          <thead><tr><th>Product</th><th style="text-align:right">On Hand</th><th style="text-align:right">Avg Daily Use</th><th style="text-align:right">Days Left</th><th style="text-align:right">Suggested Order</th><th style="text-align:center">Action</th></tr></thead>
-          <tbody id="ip-reorder-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Select this view to load suggestions.</td></tr></tbody>
-        </table></div>
-      </div>
-
-      <div id="ip-view-pricechanges" hidden>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-          <div class="chart-note" id="ip-pc-subtitle" style="margin:0">Detects unit cost changes from dispensed transaction history</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select id="ip-pc-filter">
-              <option value="all">All changes</option>
-              <option value="increase">Price increases only</option>
-              <option value="decrease">Price decreases only</option>
-            </select>
-            <button class="ia-btn" onclick="ipExportPriceChangesCsv()">↓ CSV</button>
-          </div>
-        </div>
-        <div id="ip-pc-loading" class="chart-note">Loading price history…</div>
-        <div class="hero-row" id="ip-pc-summary" style="margin-bottom:10px" hidden></div>
-        <div style="overflow-x:auto" id="ip-pc-table-wrap" hidden><table class="dd-table">
-          <thead><tr>
-            <th data-pcsort="name" style="cursor:pointer">Product ↕</th>
-            <th data-pcsort="change_date" style="cursor:pointer">Change Date ↕</th>
-            <th style="text-align:right">Old Cost</th>
-            <th style="text-align:right">New Cost</th>
-            <th data-pcsort="pct" style="cursor:pointer;text-align:right">Change % ↕</th>
-            <th style="text-align:right">Units @ Old Price</th>
-            <th data-pcsort="impact" style="cursor:pointer;text-align:right">Est. Impact ↕</th>
-            <th style="text-align:right">Days at Old Price</th>
-          </tr></thead>
-          <tbody id="ip-pc-tbody"></tbody>
-        </table></div>
-        <div id="ip-pc-empty" class="ip-empty" hidden>No price changes detected in this period.</div>
-      </div>
-    </div>
-
-    <!-- ══ Inventory Reports — migrated from medsync_reports_live.html (stage 3 of 3, the
-         final stage of the MedSync→ScoutSync inventory migration; MedSync's own copy is
-         left untouched and still works exactly as before). Reuses the page's location
-         filter above; the report itself is always a full calendar year, so — unlike
-         Analytics/Procurement above — it keeps its own local year selector here rather
-         than the shared trailing-day/MTD/YTD/custom date-range picker, which has no
+        <div id="report-ir" hidden>
+    <!-- ══ Inventory Reports — moved here, in full, from the old combined
+         Inventory tab in this same restructuring pass. Reuses the page's
+         location filter above; the report itself is always a full calendar
+         year, so it keeps its own local year selector here rather than the
+         shared trailing-day/MTD/YTD/custom date-range picker, which has no
          "annual" option to map this to. ══ -->
     <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
       <h2>Inventory Reports</h2>
@@ -1061,6 +1057,9 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       </div>
       <div class="insight-list" id="ir-int-flags" style="margin-top:14px"></div>
     </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <div class="foot-note">
@@ -1069,6 +1068,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     Clinical Operations and Facilities Operations sections are next.
   </div>
 </main>
+<div id="ia-toast"></div>
 
 <!-- ── Goods Lost CSV/Excel Import Modal (Inventory Analytics) —
      ported from medsync_analytics_live.html; writes to the same goods_lost
@@ -3998,17 +3998,15 @@ async function loadInventory() {
       </div>`;
   }
 
-  await loadInventoryAnalytics();
-  await loadProcurement();
-  await loadInventoryReports();
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// Inventory Analytics — migrated from medsync_analytics_live.html (stage 1
-// of 3; Procurement's own screen and the standalone Reports screen migrate
-// separately later). Reuses selectedDateRange()/selectedLocation() and
-// LOCATIONS/fetchAllRows/fetchCogsTarget already declared above instead of
-// a second, redundant set of filters or a duplicate location table.
+// Inventory Analytics — rendered inside the Reporting tab's report picker
+// (moved there, in full, from the old combined Inventory tab as part of
+// this restructuring; Procurement is now its own top-level tab too).
+// Reuses selectedDateRange()/selectedLocation() and LOCATIONS/fetchAllRows/
+// fetchCogsTarget already declared above instead of a second, redundant set
+// of filters or a duplicate location table.
 // ══════════════════════════════════════════════════════════════════════
 
 let _iaCache = null;
@@ -4799,7 +4797,7 @@ document.getElementById('ia-ph-export-btn').addEventListener('click', iaExportPu
     if (failed === 0) {
       showStatus('✓ ' + inserted + ' rows imported successfully. Refreshing…', 'var(--s-good)', '#f0faf2');
       btn.textContent = 'Done ✓';
-      setTimeout(() => { document.getElementById('ia-gl-import-modal').style.display = 'none'; loadInventory(); }, 1500);
+      setTimeout(() => { document.getElementById('ia-gl-import-modal').style.display = 'none'; loadInventoryAnalytics(); }, 1500);
     } else {
       showStatus(inserted + ' rows imported, ' + failed + ' failed. Check console for details.', 'var(--s-critical)', '#fdf0ef');
       btn.disabled = false; btn.textContent = 'Retry';
@@ -4808,12 +4806,17 @@ document.getElementById('ia-ph-export-btn').addEventListener('click', iaExportPu
 })();
 
 // ══════════════════════════════════════════════════════════════════════
-// Inventory Procurement — migrated from medsync_procurement.html (stage 2
-// of 3; the standalone Reports screen migrates separately as stage 3).
-// Reuses SUPA_URL/HEADERS/LOCATIONS/fetchAllRows/esc/isoDaysAgo and the
-// page's own selectedDateRange()/selectedLocation() instead of a second,
-// redundant set of filters — only the view switcher below has no
-// equivalent top-level control and stays local to this section.
+// Procurement — its own top-level tab as of this restructuring (previously
+// nested inside the combined Inventory tab as "Inventory Procurement").
+// Keeps only the operational views: By product, Regional roll-up, and
+// Reorder Suggestions (with its Approve/Approve All write-action), plus the
+// KPIs and Cost Drift panel tied to them. Purchase History, Daily COGS and
+// Price Changes were removed from this tab's view picker — they're headed
+// to the Reporting tab in a later stage, not rebuilt here. Reuses
+// SUPA_URL/HEADERS/LOCATIONS/fetchAllRows/esc/isoDaysAgo and the page's own
+// selectedDateRange()/selectedLocation() instead of a second, redundant set
+// of filters — only the view switcher below has no equivalent top-level
+// control and stays local to this section.
 // ══════════════════════════════════════════════════════════════════════
 
 // location vetspire-id (vid) <-> location uuid, built off the shared
@@ -4851,13 +4854,10 @@ function ipFmtUnit(v) { return Number(v || 0).toFixed(4); }
 function ipFmtQty(v)  { const n = Number(v || 0); return n % 1 === 0 ? n.toLocaleString() : n.toFixed(2); }
 
 let IP_ALL_PRODUCTS = [];
-let IP_ALL_DAILY = [];
-let IP_ALL_PURCHASES = [];
 let ipSortCol = 'true_cogs', ipSortDir = -1;
 let ipPFilter = 'all';
 let ipProductPage = 1;
 const IP_PRODUCT_PAGE_SIZE = 15;
-let ipPurchSort = 'week_start', ipPurchDir = -1;
 let ipCurrentView = 'product';
 let IP_REORDER_ITEMS = [];
 
@@ -4884,7 +4884,6 @@ async function loadProcurement() {
     if (raw === null) throw new Error('dispensed_items fetch failed');
 
     const byProduct = {};
-    const byDay = {};
     for (const row of raw) {
       const qty = parseFloat(row.quantity) || 0;
       const cost = parseFloat(row.unit_cost) || 0;
@@ -4916,16 +4915,6 @@ async function loadProcurement() {
       if (row.unit_cost !== null) p.unit_cost = row.unit_cost;
       if (row.sku && row.sku.trim()) p.sku = row.sku.trim();
 
-      const day = row.dispensed_at ? row.dispensed_at.slice(0, 10) : '—';
-      const dKey = day + '|' + (row.location_id || '');
-      if (!byDay[dKey]) {
-        byDay[dKey] = { date: day, location_id: row.location_id, location_name: row.location_name || '—', products: new Set(), total_qty: 0, true_cogs: 0, revenue: 0 };
-      }
-      const d = byDay[dKey];
-      d.products.add(row.vetspire_product_id);
-      d.total_qty += qty;
-      d.true_cogs += qty * cost;
-      d.revenue += rev;
     }
 
     IP_ALL_PRODUCTS = Object.values(byProduct).map(p => ({
@@ -4933,7 +4922,6 @@ async function loadProcurement() {
       avg_unit_price: p._price_qty > 0 ? p._price_sum / p._price_qty : 0,
       pct: p.total_revenue > 0 ? Math.round(((p.total_revenue - p.true_cogs) / p.total_revenue) * 100) : null,
     }));
-    IP_ALL_DAILY = Object.values(byDay).map(d => ({ ...d, unique_products: d.products.size })).sort((a, b) => b.date.localeCompare(a.date));
 
     // Lots for qty_remaining (consumption % + "fully consumed" filter)
     try {
@@ -4953,11 +4941,9 @@ async function loadProcurement() {
 
     await ipUpdateKpis(start, end, locVid, locUuid, loc);
     ipRenderProductTable();
-    ipRenderDailyTable();
     await ipRenderRegionalCards();
     ipLoadHealthRisk(locVid, locUuid);
     ipLoadCostDrift(start, locUuid);
-    ipLoadPurchaseHistory();
   } catch (err) {
     console.error(err);
     document.getElementById('ip-product-tbody').innerHTML =
@@ -5305,25 +5291,6 @@ function ipRenderProductTable() {
   }).join('');
 }
 
-function ipRenderDailyTable() {
-  const tbody = document.getElementById('ip-daily-tbody');
-  document.getElementById('ip-daily-count').textContent = `${IP_ALL_DAILY.length} days with activity`;
-  if (!IP_ALL_DAILY.length) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">No daily data in selected range.</td></tr>`; return; }
-  tbody.innerHTML = IP_ALL_DAILY.map(d => {
-    const cogsPC = d.revenue > 0 ? ((d.true_cogs / d.revenue) * 100).toFixed(1) + '%' : '—';
-    const pcColor = d.revenue > 0 ? (parseFloat(cogsPC) > 80 ? 'var(--s-critical)' : parseFloat(cogsPC) > 60 ? 'var(--s-warn)' : 'var(--s-good)') : 'var(--text)';
-    return `<tr>
-      <td>${d.date}</td>
-      <td>${esc(d.location_name)}</td>
-      <td style="text-align:right">${d.unique_products}</td>
-      <td style="text-align:right">${ipFmtQty(d.total_qty)}</td>
-      <td style="text-align:right;font-weight:700">$${ipFmt2(d.true_cogs)}</td>
-      <td style="text-align:right;color:var(--muted)">$${ipFmt2(d.revenue)}</td>
-      <td style="text-align:right;font-weight:700;color:${pcColor}">${cogsPC}</td>
-    </tr>`;
-  }).join('');
-}
-
 async function ipRenderRegionalCards() {
   const grid = document.getElementById('ip-region-grid');
   const regionByVid = {};
@@ -5372,14 +5339,9 @@ async function ipRenderRegionalCards() {
 function ipSwitchView(view) {
   ipCurrentView = view;
   document.getElementById('ip-view-product').hidden = view !== 'product';
-  document.getElementById('ip-view-purchases').hidden = view !== 'purchases';
-  document.getElementById('ip-view-daily').hidden = view !== 'daily';
   document.getElementById('ip-view-regional').hidden = view !== 'regional';
   document.getElementById('ip-view-reorder').hidden = view !== 'reorder';
-  document.getElementById('ip-view-pricechanges').hidden = view !== 'pricechanges';
   if (view === 'reorder') ipRenderReorderSuggestions();
-  if (view === 'purchases') ipRenderPurchaseTable();
-  if (view === 'pricechanges') ipLoadPriceChanges();
 }
 
 // ── Reorder Suggestions ──
@@ -5507,89 +5469,6 @@ async function ipPushToWeeklyOrder(items) {
   iaShowToast(`✓ ${pushed} item${pushed !== 1 ? 's' : ''} added to weekly order`);
 }
 
-// ── Purchase History (Vetcove Orders) ──
-async function ipLoadPurchaseHistory() {
-  const { from: start, until: end } = selectedDateRange();
-  const loc = selectedLocation();
-  const locUuid = loc ? loc.uuid : null;
-
-  let params = `select=product_name,vendor,sku,qty_ordered,unit_price,order_date,status,location_id&unit_price=gt.0&order=order_date.desc&limit=5000`;
-  params += `&order_date=gte.${start}&order_date=lte.${end}`;
-  if (locUuid) params += `&location_id=eq.${locUuid}`;
-
-  try {
-    const rows = await ipQuery('vetcove_orders', params);
-    IP_ALL_PURCHASES = rows.map(r => ({ ...r, week_start: r.order_date, total_price: (parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0) }));
-    ipRenderPurchaseSummary();
-    ipRenderPurchaseTable();
-  } catch (e) {
-    IP_ALL_PURCHASES = [];
-    const msg = e.message || '';
-    const hint = msg.includes('relation "vetcove_orders" does not exist')
-      ? 'Run <strong>vetcove_ytd_import.sql</strong> in Supabase first to create this table.' : esc(msg);
-    document.getElementById('ip-purch-tbody').innerHTML = `<tr><td colspan="8"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">Purchase history not yet imported</div><div class="e-sub">${hint}</div></div></td></tr>`;
-    document.getElementById('ip-purch-count').textContent = 'Run SQL import first';
-  }
-}
-
-function ipRenderPurchaseSummary() {
-  const rows = IP_ALL_PURCHASES;
-  if (!rows.length) { document.getElementById('ip-purch-summary').innerHTML = ''; return; }
-  const totalSpend = rows.reduce((s, r) => s + r.total_price, 0);
-  const byVendor = {}, byLoc = {};
-  for (const r of rows) {
-    byVendor[r.vendor || '—'] = (byVendor[r.vendor || '—'] || 0) + r.total_price;
-    const locName = IP_LOC_NAME[r.location_id] || r.location_id || '—';
-    byLoc[locName] = (byLoc[locName] || 0) + r.total_price;
-  }
-  const topVendor = Object.entries(byVendor).sort((a, b) => b[1] - a[1])[0];
-  const topLoc = Object.entries(byLoc).sort((a, b) => b[1] - a[1])[0];
-  document.getElementById('ip-purch-summary').innerHTML = `
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Total Purchased</div><div class="v" style="font-size:20px">$${ipFmt2(totalSpend)}</div></div>
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Unique Products</div><div class="v" style="font-size:20px">${new Set(rows.map(r => r.product_name)).size}</div></div>
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Top Vendor</div><div class="v" style="font-size:16px">${esc(topVendor?.[0] || '—')}</div><div class="chart-note" style="margin:4px 0 0">${topVendor ? '$' + ipFmt2(topVendor[1]) : ''}</div></div>
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Top Location</div><div class="v" style="font-size:16px">${esc(topLoc?.[0] || '—')}</div><div class="chart-note" style="margin:4px 0 0">${topLoc ? '$' + ipFmt2(topLoc[1]) : ''}</div></div>`;
-}
-
-function ipRenderPurchaseTable() {
-  const tbody = document.getElementById('ip-purch-tbody');
-  const countEl = document.getElementById('ip-purch-count');
-  let data = [...IP_ALL_PURCHASES];
-  data.sort((a, b) => {
-    let av = a[ipPurchSort], bv = b[ipPurchSort];
-    if (ipPurchSort === 'total_price' || ipPurchSort === 'qty_ordered' || ipPurchSort === 'unit_price') {
-      av = parseFloat(av) || 0; bv = parseFloat(bv) || 0;
-      return (av - bv) * ipPurchDir;
-    }
-    return String(av || '').localeCompare(String(bv || '')) * ipPurchDir;
-  });
-
-  if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">No purchase history for this period</div><div class="e-sub">Try a wider range, or import Vetcove order history via the SQL migration.</div></div></td></tr>`;
-    countEl.textContent = '0 orders';
-    return;
-  }
-  const totalSpend = data.reduce((s, r) => s + r.total_price, 0);
-  countEl.textContent = `${data.length} line items · $${ipFmt2(totalSpend)} total spend`;
-
-  const statusBadge = { received: 'good', cancelled: 'neutral', ordered: 'warn' };
-  tbody.innerHTML = data.map(r => {
-    const locName = IP_LOC_NAME[r.location_id] || '—';
-    const status = (r.status || '').toLowerCase();
-    const badge = statusBadge[status] || 'neutral';
-    return `<tr>
-      <td>${esc(r.week_start || '—')}</td>
-      <td><div>${esc(r.product_name || '—')}</div>${r.sku ? `<div class="ip-prod-sub">SKU: ${esc(r.sku)}</div>` : ''}</td>
-      <td>${esc(r.vendor || '—')}</td>
-      <td>${esc(locName)}</td>
-      <td style="text-align:right">${ipFmtQty(r.qty_ordered)}</td>
-      <td style="text-align:right">$${ipFmt2(r.unit_price)}</td>
-      <td style="text-align:right;font-weight:700">$${ipFmt2(r.total_price)}</td>
-      <td><span class="ip-badge ${badge}">${esc(r.status || '—')}</span></td>
-    </tr>`;
-  }).join('');
-}
-
 // ── CSV export & print report ──
 function ipExportCsv() {
   if (!IP_ALL_PRODUCTS.length) { iaShowToast('No data to export'); return; }
@@ -5702,132 +5581,15 @@ function ipPrintReport() {
   if (w) { w.document.write(html); w.document.close(); } else iaShowToast('⚠ Pop-up blocked — allow pop-ups to print');
 }
 
-// ── Price Change Report ──
-let ipPcData = [];
-let ipPcSortKey = 'impact', ipPcSortDir = -1;
-
-async function ipLoadPriceChanges() {
-  document.getElementById('ip-pc-loading').hidden = false;
-  document.getElementById('ip-pc-table-wrap').hidden = true;
-  document.getElementById('ip-pc-empty').hidden = true;
-  document.getElementById('ip-pc-summary').hidden = true;
-
-  try {
-    const { from: start, until: end } = selectedDateRange();
-    const loc = selectedLocation();
-    const locFilter = loc ? `&location_id=eq.${loc.vid}` : '';
-    // Look back a year before `start` to catch the "before" price of any
-    // change that lands inside the selected range.
-    const lookbackStart = (() => { const d = new Date(start); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10); })();
-
-    const rows = await ipQuery('dispensed_items',
-      `select=vetspire_product_id,product_name,sku,unit_cost,dispensed_at,location_id&unit_cost=gt.0` +
-      `&dispensed_at=gte.${lookbackStart}T00:00:00&dispensed_at=lte.${end}T23:59:59${locFilter}` +
-      `&order=product_name.asc,dispensed_at.asc&limit=10000`);
-
-    const byProduct = {};
-    for (const r of rows) {
-      const key = r.vetspire_product_id || r.product_name;
-      if (!byProduct[key]) byProduct[key] = { name: r.product_name, sku: r.sku, txns: [] };
-      byProduct[key].txns.push({ cost: parseFloat(r.unit_cost), date: r.dispensed_at.slice(0, 10) });
-    }
-
-    const changes = [];
-    for (const [, prod] of Object.entries(byProduct)) {
-      const txns = prod.txns; // already sorted by date asc
-      let prevCost = null, prevDate = null, unitsAtOldPrice = 0;
-      for (let i = 0; i < txns.length; i++) {
-        const { cost, date } = txns[i];
-        if (prevCost === null) { prevCost = cost; prevDate = date; unitsAtOldPrice = 1; continue; }
-        if (Math.abs(cost - prevCost) > 0.001) {
-          if (date >= start && date <= end) {
-            const pct = ((cost - prevCost) / prevCost) * 100;
-            const daysOld = Math.round((new Date(date) - new Date(prevDate)) / 864e5);
-            const unitsOld = txns.slice(0, i).filter(t => t.cost === prevCost && t.date >= start).length;
-            const impact = unitsOld * (cost - prevCost);
-            changes.push({ name: prod.name, sku: prod.sku || '—', change_date: date, old_cost: prevCost, new_cost: cost, pct, units_old: unitsAtOldPrice, impact: Math.abs(impact), impact_sign: impact, days_old: daysOld });
-          }
-          prevCost = cost; prevDate = date; unitsAtOldPrice = 1;
-        } else { unitsAtOldPrice++; }
-      }
-    }
-    ipPcData = changes;
-    ipRenderPriceChanges();
-  } catch (err) {
-    document.getElementById('ip-pc-loading').hidden = true;
-    document.getElementById('ip-pc-subtitle').textContent = 'Error: ' + err.message;
-  }
-}
-
-function ipRenderPriceChanges() {
-  const filter = document.getElementById('ip-pc-filter')?.value || 'all';
-  let data = ipPcData.filter(r => filter === 'all' ? true : filter === 'increase' ? r.pct > 0 : r.pct < 0);
-  data.sort((a, b) => ipPcSortDir * (typeof a[ipPcSortKey] === 'string' ? a[ipPcSortKey].localeCompare(b[ipPcSortKey]) : (a[ipPcSortKey] - b[ipPcSortKey])));
-
-  document.getElementById('ip-pc-loading').hidden = true;
-
-  if (!data.length) {
-    document.getElementById('ip-pc-empty').hidden = false;
-    document.getElementById('ip-pc-table-wrap').hidden = true;
-    document.getElementById('ip-pc-summary').hidden = true;
-    return;
-  }
-
-  const increases = data.filter(r => r.pct > 0);
-  const decreases = data.filter(r => r.pct < 0);
-  const totalImpact = data.reduce((s, r) => s + r.impact_sign, 0);
-  const summary = document.getElementById('ip-pc-summary');
-  summary.hidden = false;
-  summary.innerHTML = `
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Changes detected</div><div class="v" style="font-size:20px">${data.length}</div></div>
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Increases</div><div class="v" style="font-size:20px;color:var(--s-critical)">▲ ${increases.length}</div></div>
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Decreases</div><div class="v" style="font-size:20px;color:var(--s-good)">▼ ${decreases.length}</div></div>
-    <div class="hero-tile" style="padding:12px 14px"><div class="l">Net cost impact</div><div class="v" style="font-size:20px;color:${totalImpact > 0 ? 'var(--s-critical)' : 'var(--s-good)'}">${totalImpact > 0 ? '+' : ''}$${Math.abs(totalImpact).toFixed(2)}</div></div>`;
-  document.getElementById('ip-pc-subtitle').textContent = `${data.length} changes · sorted by ${ipPcSortKey}`;
-
-  document.getElementById('ip-pc-tbody').innerHTML = data.map(r => {
-    const up = r.pct > 0;
-    const pctColor = up ? 'var(--s-critical)' : 'var(--s-good)';
-    const arrow = up ? '▲' : '▼';
-    return `<tr>
-      <td><div>${esc(r.name)}</div><div class="ip-prod-sub">SKU: ${esc(r.sku)}</div></td>
-      <td style="white-space:nowrap">${r.change_date}</td>
-      <td style="text-align:right">$${r.old_cost.toFixed(4)}</td>
-      <td style="text-align:right">$${r.new_cost.toFixed(4)}</td>
-      <td style="text-align:right;color:${pctColor};font-weight:700">${arrow} ${Math.abs(r.pct).toFixed(1)}%</td>
-      <td style="text-align:right">${r.units_old}</td>
-      <td style="text-align:right;color:${pctColor}">${r.impact_sign > 0 ? '+' : ''}$${Math.abs(r.impact_sign).toFixed(2)}</td>
-      <td style="text-align:right">${r.days_old}d</td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('ip-pc-table-wrap').hidden = false;
-  document.getElementById('ip-pc-empty').hidden = true;
-}
-
-function ipPcSort(key) {
-  if (ipPcSortKey === key) ipPcSortDir *= -1; else { ipPcSortKey = key; ipPcSortDir = key === 'name' ? 1 : -1; }
-  ipRenderPriceChanges();
-}
-
-function ipExportPriceChangesCsv() {
-  if (!ipPcData.length) return;
-  const filter = document.getElementById('ip-pc-filter')?.value || 'all';
-  const data = ipPcData.filter(r => filter === 'all' ? true : filter === 'increase' ? r.pct > 0 : r.pct < 0);
-  const headers = ['Product', 'SKU', 'Change Date', 'Old Cost', 'New Cost', 'Change %', 'Units at Old Price', 'Est. Impact', 'Days at Old Price'];
-  const rows = data.map(r => [r.name, r.sku, r.change_date, r.old_cost.toFixed(4), r.new_cost.toFixed(4), r.pct.toFixed(2) + '%', r.units_old, r.impact_sign.toFixed(2), r.days_old]);
-  iaExportCsv('price_changes.csv', headers, rows);
-}
-
 // ══════════════════════════════════════════════════════════════════════
-// Inventory Reports — migrated from medsync_reports_live.html (stage 3 of
-// 3, the final stage of the MedSync→ScoutSync inventory migration; MedSync's
-// own copy is left untouched). Reuses selectedLocation()/fetchAllRows/esc/
-// fmt$/fmtN declared above and LOCATIONS' .uuid (the same column every other
-// table on this tab already filters location_id by). MedSync's own copy
+// Inventory Reports — rendered inside the Reporting tab's report picker
+// (moved there, in full, from the old combined Inventory tab in this same
+// restructuring pass). Reuses selectedLocation()/fetchAllRows/esc/fmt$/fmtN
+// declared above and LOCATIONS' .uuid (the same column every other table on
+// this dashboard already filters location_id by). MedSync's own copy
 // applied a client-side location re-filter as a safety net against RLS
-// passing every row through on the anon key -- Analytics/Procurement above
-// never bothered with that same safety net against the same tables, so it's
+// passing every row through on the anon key -- Analytics/Procurement never
+// bothered with that same safety net against the same tables, so it's
 // dropped here too for consistency rather than reproduced selectively.
 // MedSync's report had no export/print/CSV button anywhere in this screen,
 // so none is added here either -- only its "Refresh" button carries over.
@@ -6103,7 +5865,6 @@ function irRenderIntegrity(gl, pos, lots) {
 // ── Static control wiring (elements exist once, in the initial HTML) ──
 document.getElementById('ip-view-select').addEventListener('change', e => ipSwitchView(e.target.value));
 document.getElementById('ip-product-search').addEventListener('input', () => { ipProductPage = 1; ipRenderProductTable(); });
-document.getElementById('ip-pc-filter').addEventListener('change', ipRenderPriceChanges);
 document.getElementById('ip-approve-all-btn').addEventListener('click', ipApproveAllReorders);
 
 document.querySelectorAll('#ip-pfilter-tabs .subtab').forEach(btn => {
@@ -6124,30 +5885,41 @@ document.querySelectorAll('#ip-view-product th[data-sort]').forEach(th => {
   });
 });
 
-function ipSetPurchSort(col) {
-  if (ipPurchSort === col) ipPurchDir *= -1; else { ipPurchSort = col; ipPurchDir = -1; }
-  document.querySelectorAll('#ip-purch-sort-tabs .subtab').forEach(b => b.classList.toggle('active', b.dataset.sort === col));
-  ipRenderPurchaseTable();
-}
-document.querySelectorAll('#ip-purch-sort-tabs .subtab').forEach(btn => {
-  btn.addEventListener('click', () => ipSetPurchSort(btn.dataset.sort));
-});
-document.querySelectorAll('#ip-view-purchases th[data-psort]').forEach(th => {
-  th.addEventListener('click', () => ipSetPurchSort(th.dataset.psort));
-});
-document.querySelectorAll('#ip-view-pricechanges th[data-pcsort]').forEach(th => {
-  th.addEventListener('click', () => ipPcSort(th.dataset.pcsort));
-});
-
 // Local to Inventory Reports only -- the year picker has no shared
-// top-level equivalent, so it reloads just this section rather than going
-// through loadActiveTab()/loadInventory()'s full Inventory-tab refetch.
+// top-level equivalent, so it reloads just this report rather than going
+// through loadActiveTab()/loadReporting()'s full Reporting-tab refetch.
 document.getElementById('ir-year-select').addEventListener('change', loadInventoryReports);
 document.getElementById('ir-refresh-btn').addEventListener('click', loadInventoryReports);
+
+// ── Reporting tab — report picker. Mirrors the rest of this dashboard's
+// tab-lazy-load convention: nothing fetches until a report is actually
+// selected, and selecting one (including re-selecting after switching away
+// and back) always refetches, same as every other tab here refetches on
+// every activation rather than caching. ──
+let selectedReport = null;
+function showReport(key) {
+  document.getElementById('report-empty-state').hidden = key !== null;
+  document.getElementById('report-ia').hidden = key !== 'ia';
+  document.getElementById('report-ir').hidden = key !== 'ir';
+  document.querySelectorAll('#report-picker .report-item').forEach(b => b.classList.toggle('active', b.dataset.report === key));
+}
+function loadReporting() {
+  if (selectedReport === 'ia') return loadInventoryAnalytics();
+  if (selectedReport === 'ir') return loadInventoryReports();
+}
+document.querySelectorAll('#report-picker .report-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedReport = btn.dataset.report;
+    showReport(selectedReport);
+    loadReporting();
+  });
+});
 
 function loadActiveTab() {
   if (activeTab === 'clinical') return loadClinicalGeo();
   if (activeTab === 'inventory') return loadInventory();
+  if (activeTab === 'procurement') return loadProcurement();
+  if (activeTab === 'reporting') return loadReporting();
   return loadFinancial();
 }
 
