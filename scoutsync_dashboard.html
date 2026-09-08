@@ -344,6 +344,9 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .ip-badge.crit { background: rgba(180,35,24,.1); color: var(--s-critical); }
 .ip-badge.info { background: rgba(43,108,176,.12); color: var(--c-clinical); }
 .ip-badge.neutral { background: var(--navy-lt); color: var(--muted); }
+.ip-pagination { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }
+.ip-pagination .ia-btn:disabled { opacity: .4; cursor: default; }
+.ip-pagination .ip-page-info { font-size: 12px; color: var(--muted); }
 .ip-pbar-wrap { width: 74px; height: 6px; background: var(--navy-lt); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; }
 .ip-pbar-fill { height: 100%; border-radius: 3px; }
 .ip-region-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
@@ -871,6 +874,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
           </tr></thead>
           <tbody id="ip-product-tbody"><tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Loading procurement data…</td></tr></tbody>
         </table></div>
+        <div class="ip-pagination" id="ip-product-pagination"></div>
       </div>
 
       <div id="ip-view-daily" hidden>
@@ -4851,6 +4855,8 @@ let IP_ALL_DAILY = [];
 let IP_ALL_PURCHASES = [];
 let ipSortCol = 'true_cogs', ipSortDir = -1;
 let ipPFilter = 'all';
+let ipProductPage = 1;
+const IP_PRODUCT_PAGE_SIZE = 15;
 let ipPurchSort = 'week_start', ipPurchDir = -1;
 let ipCurrentView = 'product';
 let IP_REORDER_ITEMS = [];
@@ -5247,15 +5253,34 @@ function ipRenderProductTable() {
   });
 
   const tbody = document.getElementById('ip-product-tbody');
+  const pager = document.getElementById('ip-product-pagination');
   const { from, until } = selectedDateRange();
   document.getElementById('ip-tbl-count').textContent = `${data.length} products · ${from} → ${until}`;
 
   if (!data.length) {
     tbody.innerHTML = `<tr><td colspan="10"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">No dispensed items yet</div><div class="e-sub">Data syncs from Vetspire hourly. Switch ranges or refresh to pull the latest.</div></div></td></tr>`;
+    pager.innerHTML = '';
     return;
   }
 
-  tbody.innerHTML = data.map(p => {
+  // 15 rows per page rather than dumping the whole (sometimes
+  // thousand-plus-row) product list into the DOM at once.
+  const totalPages = Math.max(1, Math.ceil(data.length / IP_PRODUCT_PAGE_SIZE));
+  if (ipProductPage > totalPages) ipProductPage = totalPages;
+  if (ipProductPage < 1) ipProductPage = 1;
+  const pageStart = (ipProductPage - 1) * IP_PRODUCT_PAGE_SIZE;
+  const pageData = data.slice(pageStart, pageStart + IP_PRODUCT_PAGE_SIZE);
+
+  pager.innerHTML = totalPages <= 1 ? '' : `
+    <button class="ia-btn" id="ip-product-page-prev" ${ipProductPage <= 1 ? 'disabled' : ''}>‹ Prev</button>
+    <span class="ip-page-info">Page ${ipProductPage} of ${totalPages}</span>
+    <button class="ia-btn" id="ip-product-page-next" ${ipProductPage >= totalPages ? 'disabled' : ''}>Next ›</button>`;
+  if (totalPages > 1) {
+    document.getElementById('ip-product-page-prev').onclick = () => { ipProductPage--; ipRenderProductTable(); };
+    document.getElementById('ip-product-page-next').onclick = () => { ipProductPage++; ipRenderProductTable(); };
+  }
+
+  tbody.innerHTML = pageData.map(p => {
     const margin = p.pct !== null ? p.pct + '%' : '—';
     const mColor = p.pct === null ? 'var(--muted)' : p.pct > 40 ? 'var(--s-good)' : p.pct > 20 ? 'var(--s-warn)' : 'var(--s-critical)';
     const totalThrough = p.total_qty_dispensed + (p.qty_remaining || 0);
@@ -6077,13 +6102,14 @@ function irRenderIntegrity(gl, pos, lots) {
 
 // ── Static control wiring (elements exist once, in the initial HTML) ──
 document.getElementById('ip-view-select').addEventListener('change', e => ipSwitchView(e.target.value));
-document.getElementById('ip-product-search').addEventListener('input', ipRenderProductTable);
+document.getElementById('ip-product-search').addEventListener('input', () => { ipProductPage = 1; ipRenderProductTable(); });
 document.getElementById('ip-pc-filter').addEventListener('change', ipRenderPriceChanges);
 document.getElementById('ip-approve-all-btn').addEventListener('click', ipApproveAllReorders);
 
 document.querySelectorAll('#ip-pfilter-tabs .subtab').forEach(btn => {
   btn.addEventListener('click', () => {
     ipPFilter = btn.dataset.f;
+    ipProductPage = 1;
     document.querySelectorAll('#ip-pfilter-tabs .subtab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     ipRenderProductTable();
@@ -6093,6 +6119,7 @@ document.querySelectorAll('#ip-view-product th[data-sort]').forEach(th => {
   th.addEventListener('click', () => {
     const col = th.dataset.sort;
     if (ipSortCol === col) ipSortDir *= -1; else { ipSortCol = col; ipSortDir = -1; }
+    ipProductPage = 1;
     ipRenderProductTable();
   });
 });
