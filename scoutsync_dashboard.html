@@ -289,6 +289,41 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .zip-popup table { width: 100%; border-collapse: collapse; }
 .zip-popup td { padding: 2px 0; font-size: 11.5px; color: var(--ink-2); }
 .zip-popup td:last-child { text-align: right; font-weight: 700; color: var(--text); }
+
+/* ── Inventory Analytics (migrated from medsync_analytics_live.html) ── */
+.subtab-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.subtab-row .subtab {
+  border: 1px solid var(--border); background: var(--card); color: var(--muted);
+  border-radius: 100px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.subtab-row .subtab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.ia-btn {
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  border-radius: 8px; padding: 6px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; font-family: inherit;
+}
+.ia-btn:hover { background: var(--navy-lt); }
+.ia-btn.solid { background: var(--c-facilities); color: #fff; border-color: var(--c-facilities); }
+.ia-btn.solid:hover { opacity: .9; background: var(--c-facilities); }
+.ia-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.ia-mrow { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
+.ia-mrow:last-child { border-bottom: none; }
+.ia-mrow .ia-k { color: var(--muted); }
+.ia-mrow .ia-v { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.ia-exp-row { margin-bottom: 10px; }
+.ia-exp-head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.ia-exp-head .n { color: var(--text); }
+.ia-exp-head .c { font-weight: 700; }
+.ia-exp-track { height: 9px; border-radius: 4px; overflow: hidden; display: flex; background: var(--navy-lt); }
+.ia-trend { display: flex; align-items: flex-end; gap: 4px; height: 60px; margin: 6px 0 4px; }
+.ia-trend .tb { flex: 1; border-radius: 3px 3px 0 0; min-width: 6px; }
+.ia-trend-labels { display: flex; gap: 4px; }
+.ia-trend-labels span { flex: 1; font-size: 10px; color: var(--ink-3); text-align: center; }
+#ia-toast {
+  position: fixed; bottom: 22px; right: 22px; background: var(--navy); color: #fff; padding: 11px 18px;
+  border-radius: 9px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+  transition: opacity .2s; z-index: 999;
+}
 </style>
 </head>
 <body>
@@ -553,6 +588,140 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div id="inventory-empty"></div>
+
+    <!-- ══ Inventory Analytics — migrated from medsync_analytics_live.html (stage 1 of 3;
+         Procurement's own screen and the separate Reports screen migrate later). Reuses the
+         page's own date-range/location filters above rather than a second set. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Inventory Analytics</h2>
+      <span class="sub">COGS, goods lost, order compliance &amp; procurement — same range and location as above</span></div>
+
+    <div class="chart-card">
+      <div class="chart-title">Key metrics</div>
+      <div class="chart-note" id="ia-kpi-note">Portfolio COGS, savings vs. the prior period of equal length, goods lost, and lots expiring or expired.</div>
+      <div class="hero-row" id="ia-kpi-tiles"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title" id="ia-cogs-title">COGS by location</div>
+      <div class="chart-note" id="ia-cogs-note">Target set below · gross production denominator</div>
+      <div id="ia-cogs-bars" class="bar-chart-wrap"></div>
+      <div class="hero-row" id="ia-cogs-rev-tiles" style="margin-top:12px"></div>
+    </div>
+
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="chart-title" id="ia-gl-title">Goods lost</div>
+          <div class="chart-note" id="ia-gl-note">Top products &amp; top reasons for loss</div>
+        </div>
+        <button class="ia-btn" id="ia-gl-import-btn" style="flex-shrink:0">⬆ Import CSV</button>
+      </div>
+      <div id="ia-gl-body"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title" id="ia-comp-title">Order compliance</div>
+      <div class="chart-note">1pm Vetcove cutoff · rolling submission rate for the selected range</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Location</th><th>On time</th><th>Late</th><th>Rate</th><th>Status</th></tr></thead>
+        <tbody id="ia-comp-tbody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Lot expiry risk — next 90 days</div>
+      <div class="chart-note">Products with lots expiring soon</div>
+      <div class="legend-row" style="margin-top:0;padding-top:0;border-top:none">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--s-critical)"></span>Expired</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--c-financial)"></span>0–30d</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--c-clinical)"></span>30–90d</div>
+      </div>
+      <div id="ia-exp-body" style="margin-top:10px">Loading…</div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Inventory Analytics — detail views</h2>
+      <span class="sub">Overview, COGS trend, and deep-dive breakdowns</span></div>
+
+    <div class="chart-card">
+      <div class="subtab-row" id="ia-subtabs">
+        <button class="subtab active" data-sub="ov">Overview</button>
+        <button class="subtab" data-sub="cogs">COGS Trend</button>
+        <button class="subtab" data-sub="gl">Goods Lost</button>
+        <button class="subtab" data-sub="proc">Procurement</button>
+        <button class="subtab" data-sub="comp">Order Compliance</button>
+        <button class="subtab" data-sub="wg">White Goods</button>
+        <button class="subtab" data-sub="purch">Purchases</button>
+      </div>
+
+      <div id="ia-sub-ov" class="ia-subpanel">
+        <div id="ia-ov-rows"></div>
+        <div class="hero-row" style="margin-top:14px;grid-template-columns:repeat(4,1fr)">
+          <button class="ia-btn" onclick="iaExport('PDF')">↓ PDF</button>
+          <button class="ia-btn" onclick="iaExport('CSV')">↓ CSV</button>
+          <button class="ia-btn" onclick="iaExport('QuickBooks')">QuickBooks</button>
+          <button class="ia-btn" onclick="iaExport('Power BI')">Power BI</button>
+        </div>
+      </div>
+
+      <div id="ia-sub-cogs" class="ia-subpanel" hidden>
+        <div class="chart-note">COGS % — last 6 months, portfolio</div>
+        <div class="ia-trend" id="ia-cogs-trend-bars"><div class="chart-note">Loading…</div></div>
+        <div class="ia-trend-labels" id="ia-cogs-trend-labels"></div>
+        <div id="ia-cogs-loc-rows" style="margin-top:10px"></div>
+      </div>
+
+      <div id="ia-sub-gl" class="ia-subpanel" hidden>
+        <div class="ia-mrow"><span class="ia-k">Total loss</span><span class="ia-v" id="ia-gl-total" style="color:var(--s-critical)">…</span></div>
+        <div id="ia-gl-cat-rows"></div>
+        <div style="border-top:1px solid var(--grid);padding-top:10px;margin-top:6px">
+          <div class="chart-note" style="margin-bottom:6px">Top 5 by frequency</div>
+          <div id="ia-gl-top-rows"></div>
+        </div>
+      </div>
+
+      <div id="ia-sub-proc" class="ia-subpanel" hidden>
+        <div class="chart-note" id="ia-proc-sub">This period · GPO vs. list</div>
+        <div id="ia-proc-body"></div>
+      </div>
+
+      <div id="ia-sub-comp" class="ia-subpanel" hidden>
+        <div class="ia-mrow"><span class="ia-k">Portfolio rate</span><span class="ia-v" id="ia-comp-rate">…</span></div>
+        <div id="ia-comp-bars" style="margin-top:6px"></div>
+        <div id="ia-comp-insight" style="margin-top:10px"></div>
+      </div>
+
+      <div id="ia-sub-wg" class="ia-subpanel" hidden>
+        <div class="ia-mrow"><span class="ia-k">Total spend</span><span class="ia-v" id="ia-wg-total">…</span></div>
+        <div class="ia-mrow"><span class="ia-k">Orders</span><span class="ia-v" id="ia-wg-orders">…</span></div>
+        <div class="chart-note" style="margin:10px 0 4px">By vendor</div>
+        <div id="ia-wg-bars"></div>
+        <div id="ia-wg-insight" style="margin-top:10px"></div>
+      </div>
+
+      <div id="ia-sub-purch" class="ia-subpanel" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="hero-row" style="grid-template-columns:repeat(4,1fr);flex:1">
+            <div class="hero-tile" style="padding:12px 14px"><div class="l">Total spend</div><div class="v" style="font-size:20px" id="ia-ph-total">—</div></div>
+            <div class="hero-tile" style="padding:12px 14px"><div class="l">Transactions</div><div class="v" style="font-size:20px" id="ia-ph-count">—</div></div>
+            <div class="hero-tile" style="padding:12px 14px"><div class="l">via MedSync PO</div><div class="v" style="font-size:20px;color:var(--s-good)" id="ia-ph-medsync">—</div></div>
+            <div class="hero-tile" style="padding:12px 14px"><div class="l">External</div><div class="v" style="font-size:20px;color:var(--s-warn)" id="ia-ph-external">—</div></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="display:flex;gap:6px" id="ia-ph-filters">
+            <button class="ia-btn active" data-src="all">All</button>
+            <button class="ia-btn" data-src="medsync_po">MedSync POs</button>
+            <button class="ia-btn" data-src="external">External</button>
+          </div>
+          <button class="ia-btn" id="ia-ph-export-btn">↓ CSV</button>
+        </div>
+        <div id="ia-ph-table-wrap" style="overflow-x:auto"><div class="chart-note">Select the Purchases tab to load.</div></div>
+      </div>
+    </div>
+
+    <div id="ia-toast"></div>
   </section>
 
   <div class="foot-note">
@@ -561,6 +730,59 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     Clinical Operations and Facilities Operations sections are next.
   </div>
 </main>
+
+<!-- ── Goods Lost CSV/Excel Import Modal (Inventory Analytics) —
+     ported from medsync_analytics_live.html; writes to the same goods_lost
+     table MedSync's own copy of this import still writes to. ── -->
+<div id="ia-gl-import-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:28px 32px;width:520px;max-width:94vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.22);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);">Import Goods Lost from CSV / Excel</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Rows are upserted — duplicates won't stack.</div>
+      </div>
+      <button id="ia-gl-close-btn" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;">✕</button>
+    </div>
+
+    <div style="background:var(--navy-lt);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:11px;color:var(--ink-2);line-height:1.7;">
+      <strong style="color:var(--text);">Accepted formats:</strong><br>
+      • <strong>Microsoft Forms export</strong> — upload directly from your Forms response spreadsheet. Columns are auto-detected.<br>
+      • <strong>Custom CSV/XLSX</strong> — include columns:
+      <code style="background:var(--border);padding:1px 4px;border-radius:3px;">date</code>
+      <code style="background:var(--border);padding:1px 4px;border-radius:3px;">product_name</code>
+      <code style="background:var(--border);padding:1px 4px;border-radius:3px;">category</code>
+      <code style="background:var(--border);padding:1px 4px;border-radius:3px;">value_lost</code> (optional)
+      <code style="background:var(--border);padding:1px 4px;border-radius:3px;">location</code>
+      <code style="background:var(--border);padding:1px 4px;border-radius:3px;">notes</code><br>
+      <span style="color:var(--ink-3);">• value_lost defaults to $0 if blank &nbsp;•&nbsp; Excel files (.xlsx) are supported</span>
+    </div>
+
+    <div id="ia-gl-drop-zone"
+      style="border:2px dashed var(--border);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;color:var(--muted);transition:border-color .2s;">
+      <div style="font-size:28px;margin-bottom:6px;">📂</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text);">Drop CSV or Excel file here</div>
+      <div style="font-size:11px;margin-top:4px;">or click to browse</div>
+    </div>
+    <input type="file" id="ia-gl-file-input" accept=".csv,.xlsx,.xls" style="display:none;">
+
+    <div id="ia-gl-import-preview" style="display:none;margin-top:16px;">
+      <div id="ia-gl-import-preview-label" style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;"></div>
+      <div style="overflow-x:auto;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead id="ia-gl-preview-head" style="position:sticky;top:0;background:var(--navy-lt);"></thead>
+          <tbody id="ia-gl-preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="ia-gl-import-status" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:12px;"></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+      <button id="ia-gl-cancel-btn" style="padding:8px 18px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;">Cancel</button>
+      <button id="ia-gl-import-submit" disabled style="padding:8px 20px;border:none;border-radius:8px;background:var(--c-facilities);color:#fff;font-size:13px;font-weight:600;cursor:pointer;opacity:.45;">Import rows</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Supabase config (same project + anon key as the rest of MedSync — RLS-scoped) ──
@@ -3351,7 +3573,813 @@ async function loadInventory() {
         <div class="v">${fmt$(lostValue)}</div>
       </div>`;
   }
+
+  await loadInventoryAnalytics();
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// Inventory Analytics — migrated from medsync_analytics_live.html (stage 1
+// of 3; Procurement's own screen and the standalone Reports screen migrate
+// separately later). Reuses selectedDateRange()/selectedLocation() and
+// LOCATIONS/fetchAllRows/fetchCogsTarget already declared above instead of
+// a second, redundant set of filters or a duplicate location table.
+// ══════════════════════════════════════════════════════════════════════
+
+let _iaCache = null;
+let _iaToastTimer = null;
+let _iaSub = 'ov';
+let _iaPurchaseRows = [];
+let _iaPurchaseFilter = 'all';
+
+function iaShowToast(msg) {
+  const t = document.getElementById('ia-toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  if (_iaToastTimer) clearTimeout(_iaToastTimer);
+  _iaToastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
+}
+
+// ── Minimal CSV/PDF export, mirroring medsync_export.js's two real export
+// paths (the QuickBooks/Power BI buttons below never had a real backend in
+// MedSync either — see iaExport()'s else branch, reproduced as-is). ──
+function iaExportCsv(filename, headers, rows) {
+  const escape = v => { const s = String(v ?? '').replace(/"/g, '""'); return /[,"\n\r]/.test(s) ? '"' + s + '"' : s; };
+  const lines = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))];
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+}
+function iaExportPdf(title, meta, headers, rows) {
+  const thCells = headers.map(h => `<th>${esc(h)}</th>`).join('');
+  const trRows = rows.map(r => '<tr>' + r.map(v => `<td>${esc(v)}</td>`).join('') + '</tr>').join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title><style>
+    @page { margin: 18mm 15mm; } body { font-family: Arial, sans-serif; font-size: 11px; color: #1C2B4A; margin: 0; }
+    .hdr { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; border-bottom: 1.5px solid #1C2B4A; padding-bottom: 8px; }
+    .hdr-left h1 { font-size: 16px; font-weight: 700; margin: 0 0 2px; } .hdr-left p { font-size: 11px; color: #6B7A99; margin: 0; }
+    .hdr-right { font-size: 10px; color: #6B7A99; text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    thead tr { background: #1C2B4A; color: #fff; }
+    thead th { padding: 6px 8px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    tbody tr:nth-child(even) { background: #F9F9F7; } tbody td { padding: 6px 8px; font-size: 11px; border-bottom: 0.5px solid #E1E0D9; }
+    .ftr { margin-top: 12px; font-size: 9px; color: #6B7A99; border-top: 0.5px solid #C5CDD8; padding-top: 6px; display: flex; justify-content: space-between; }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style></head><body>
+    <div class="hdr"><div class="hdr-left"><h1>${esc(title)}</h1><p>${esc(meta)}</p></div>
+    <div class="hdr-right">ScoutSync — Inventory Analytics<br>Exported ${esc(new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}))}</div></div>
+    <table><thead><tr>${thCells}</tr></thead><tbody>${trRows}</tbody></table>
+    <div class="ftr"><span>${rows.length} record${rows.length !== 1 ? 's' : ''}</span><span>ScoutSync — confidential</span></div>
+    <script>window.onload = function(){ window.print(); }<\/script></body></html>`;
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
+  else iaShowToast('⚠ Pop-up blocked — allow pop-ups to export PDF');
+}
+
+function iaExport(type) {
+  if (!_iaCache) { iaShowToast('⚠ Load data first'); return; }
+  const d = _iaCache;
+  if (type === 'CSV') {
+    const headers = ['Section', 'Detail', 'Value'];
+    const rows = [
+      ['Summary', 'Period', d.period],
+      ['Summary', 'GPO Savings', fmt$(d.totalSav)],
+      ['Summary', 'Goods Lost', fmt$(d.totalGL)],
+      ['Summary', 'Expiring Lots', d.expiringCount + ' flagged'],
+      ['', '', ''],
+      ...d.glByCategory.map(([cat, amt]) => ['Goods Lost by Category', cat, '$' + amt.toFixed(2)]),
+      ['', '', ''],
+      ...d.cogsRows.map(([loc, pct]) => ['COGs by Location', loc, pct]),
+    ];
+    iaExportCsv('scoutsync_inventory_analytics_' + new Date().toISOString().slice(0,10) + '.csv', headers, rows);
+  } else if (type === 'PDF') {
+    const headers = ['Metric', 'Value'];
+    const rows = [
+      ['Period', d.period],
+      ['GPO Savings (est.)', fmt$(d.totalSav)],
+      ['Total Goods Lost', fmt$(d.totalGL)],
+      ['Expiring Lots', d.expiringCount + ' flagged'],
+      ['', ''],
+      ...d.glByCategory.map(([cat, amt]) => ['GL — ' + cat, '$' + amt.toFixed(2)]),
+      ['', ''],
+      ...d.cogsRows.map(([loc, pct]) => ['COGs — ' + loc, pct]),
+    ];
+    iaExportPdf('Inventory Analytics Summary', d.period, headers, rows);
+  } else {
+    // QuickBooks / Power BI: MedSync's own buttons never had a real backend behind
+    // them either — this is a faithful stub, not a placeholder we forgot to wire up.
+    iaShowToast('✓ ' + type + ' exported — ' + d.period);
+  }
+}
+
+// ── GL category colors — dataviz categorical palette (--cat-1..6), assigned
+// by first-seen rank so the same category gets the same hue across renders. ──
+const IA_CAT_COLORS = ['var(--cat-1)','var(--cat-2)','var(--cat-3)','var(--cat-4)','var(--cat-5)','var(--cat-6)'];
+function iaCatColor(rank) { return IA_CAT_COLORS[rank] || 'var(--cat-other)'; }
+
+async function iaLocSpendRevenue(vid, from, untilEndOfDay, until) {
+  const [di, revRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/dispensed_items?select=unit_cost,quantity&location_id=eq.${vid}&dispensed_at=gte.${from}&dispensed_at=lte.${untilEndOfDay}&sku=not.is.null&order=id`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/daily_revenue?select=revenue&location_id=eq.${vid}&date=gte.${from}&date=lte.${until}&order=date`),
+  ]);
+  const spend = Array.isArray(di) ? di.reduce((s,r) => s + (Number(r.unit_cost)||0)*(Number(r.quantity)||0), 0) : 0;
+  const revenue = Array.isArray(revRows) ? revRows.reduce((s,r) => s + (Number(r.revenue)||0), 0) : 0;
+  return { spend, revenue };
+}
+
+async function loadInventoryAnalytics() {
+  const { from, until } = selectedDateRange();
+  const loc = selectedLocation();
+  const untilEndOfDay = until + 'T23:59:59';
+  const locUuidFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const periodLabel = `${fmtDate(from)}–${fmtDate(until)} · ${loc ? loc.name : 'All locations'}`;
+  const cogsTarget = await fetchCogsTarget();
+
+  document.getElementById('ia-cogs-title').textContent = 'COGS by location — ' + fmtDate(from) + '–' + fmtDate(until);
+  document.getElementById('ia-cogs-note').textContent = `Target: ${cogsTarget.min.toFixed(1)}–${cogsTarget.max.toFixed(1)}% · gross production denominator`;
+  document.getElementById('ia-gl-title').textContent = 'Goods lost — ' + fmtDate(from) + '–' + fmtDate(until);
+
+  // ── Goods lost totals + breakdown ──
+  const glRows = await fetchAllRows(`${SUPA_URL}/rest/v1/goods_lost?select=category,value_lost,location_id,product_name,notes&created_at=gte.${from}&created_at=lte.${untilEndOfDay}${locUuidFilter}`) || [];
+  const _SKIP_NAMES = ['Monthly Summary Import', 'Summary Import'];
+  const realGLRows = glRows.filter(r => {
+    const cat = (r.category || '').trim(), prod = (r.product_name || '').trim();
+    return !_SKIP_NAMES.includes(cat) && !_SKIP_NAMES.includes(prod);
+  });
+  const totalGL = realGLRows.reduce((s, r) => s + (Number(r.value_lost) || 0), 0);
+  const byCategory = {}, byProduct = {};
+  realGLRows.forEach(r => {
+    const cat = r.category || 'Other';
+    byCategory[cat] = (byCategory[cat] || 0) + (Number(r.value_lost) || 0);
+    const prod = (r.product_name || '').trim();
+    if (prod) { if (!byProduct[prod]) byProduct[prod] = { v: 0, n: 0 }; byProduct[prod].v += Number(r.value_lost) || 0; byProduct[prod].n += 1; }
+  });
+  const hasImportOnly = glRows.length > 0 && realGLRows.length === 0;
+  iaRenderGoodsLost(byCategory, byProduct, totalGL, hasImportOnly);
+
+  // ── PO items — procurement savings, white goods, order compliance ──
+  const poItems = await fetchAllRows(`${SUPA_URL}/rest/v1/po_items?select=qty_ordered,unit_price,gpo_price,vendor,product_name,week_start,status,location_id&week_start=gte.${from}&week_start=lte.${until}&status=in.(submitted,received)${locUuidFilter}`) || [];
+  const totalSav = iaRenderProcurement(poItems, from, until);
+  iaRenderWhiteGoods(poItems);
+
+  // Order compliance is derived the same way medsync_analytics_live.html derives it: any
+  // week with at least one submitted/received po_items row counts as "on time" for that
+  // location — po_items carries no actual late/on-time flag, so a "Late" status (and the
+  // resulting non-100% rate) never actually occurs. Reproduced as-is for parity, not fixed.
+  const weeksSeen = {};
+  poItems.forEach(i => { if (!i.week_start || !i.location_id) return; weeksSeen[i.location_id + '|' + i.week_start] = true; });
+  const syntheticOrders = Object.keys(weeksSeen).map(k => ({ location_id: k.split('|')[0], submitted_at: true, status: 'On time' }));
+  const compRate = iaRenderCompliance(syntheticOrders, loc);
+
+  // ── Lots — expiring KPI + expiry-risk chart ──
+  const lots = await fetchAllRows(`${SUPA_URL}/rest/v1/lots?select=location_id,status,qty_remaining${locUuidFilter}&status=neq.Disposed`) || [];
+  const expiring = lots.filter(l => l.status === 'Expiring soon' || l.status === 'Expired');
+  iaLoadExpiry(loc);
+
+  // ── COGS by location (live, dispensed_items + daily_revenue) ──
+  const targetLocs = loc ? [loc] : LOCATIONS;
+  const locData = await Promise.all(targetLocs.map(async l => ({ l, ...(await iaLocSpendRevenue(l.vid, from, untilEndOfDay, until)) })));
+  let totalRev = 0, totalSpend = 0;
+  const cogsBarsEl = document.getElementById('ia-cogs-bars');
+  const max = 15;
+  const barsData = locData.map(({ l, spend, revenue }) => {
+    totalRev += revenue; totalSpend += spend;
+    const pct = revenue > 0 ? (spend / revenue) * 100 : null;
+    return { name: l.name, revenue, spend, pct };
+  });
+  cogsBarsEl.innerHTML = barsData.map(l => {
+    if (l.pct === null) {
+      return `<div class="bar-row"><div class="b-name">${esc(l.name)}</div><div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--ink-3)"></div></div><div class="b-value" style="color:var(--ink-3)">No data</div></div>`;
+    }
+    const color = l.pct > cogsTarget.max ? 'var(--s-critical)' : l.pct >= cogsTarget.min ? 'var(--s-warn)' : 'var(--s-good)';
+    const w = Math.min(Math.round((l.pct / max) * 100), 100);
+    return `<div class="bar-row"><div class="b-name">${esc(l.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${color}"></div></div><div class="b-value" style="color:${color}">${l.pct.toFixed(1)}%</div></div>`;
+  }).join('') || '<div class="chart-note">No active locations.</div>';
+  document.getElementById('ia-cogs-rev-tiles').innerHTML = barsData.map(l =>
+    `<div class="hero-tile" style="padding:12px 14px"><div class="l">${esc(l.name)} revenue</div><div class="v" style="font-size:18px">${l.revenue > 0 ? fmt$(l.revenue) : '—'}</div></div>`
+  ).join('');
+
+  const portCogs = totalRev > 0 ? (totalSpend / totalRev) * 100 : null;
+  const cogsColor = portCogs === null ? 'var(--text)' : portCogs > cogsTarget.max ? 'var(--s-critical)' : portCogs >= cogsTarget.min ? 'var(--s-warn)' : 'var(--s-good)';
+  const cogsText = portCogs !== null ? portCogs.toFixed(1) + '%' : '—';
+  const cogsRowsForExport = barsData.filter(l => l.pct !== null).map(l => [l.name, l.pct.toFixed(1) + '%']);
+
+  // ── COGs savings vs. prior period — Wheaton-only, matching
+  // medsync_analytics_live.html's source exactly: that KPI was only ever wired up
+  // against Wheaton's dispensed_items/daily_revenue, never generalized to the other
+  // three locations even though the COGS-by-location bars above cover all four.
+  // Reproduced faithfully rather than "fixed" to preserve parity with MedSync's copy. ──
+  const wheaton = LOCATIONS.find(l => l.key === 'wh');
+  let savText = '—', savColor = 'var(--muted)', savSub = 'Live data · Wheaton only';
+  if (!loc || loc.key === 'wh') {
+    const curFrom = new Date(from + 'T00:00:00'), curTo = new Date(untilEndOfDay);
+    const spanMs = curTo - curFrom;
+    const prevTo = new Date(curFrom.getTime() - 1);
+    const prevFrom = new Date(prevTo.getTime() - spanMs);
+    const pFrom = prevFrom.toISOString().slice(0,10), pUntilEod = prevTo.toISOString().slice(0,10) + 'T23:59:59', pUntil = prevTo.toISOString().slice(0,10);
+    const [{ spend: whSpend, revenue: whRev }, { spend: priorSpend, revenue: priorRev }] = await Promise.all([
+      iaLocSpendRevenue(wheaton.vid, from, untilEndOfDay, until),
+      iaLocSpendRevenue(wheaton.vid, pFrom, pUntilEod, pUntil),
+    ]);
+    const whPct = whRev > 0 ? whSpend / whRev * 100 : null;
+    const priorPct = priorRev > 0 ? priorSpend / priorRev * 100 : null;
+    if (priorPct !== null && whRev > 0 && whPct !== null) {
+      const delta = priorPct - whPct;
+      const dollarDelta = (delta / 100) * whRev;
+      savText = (dollarDelta >= 0 ? '+' : '') + fmt$(dollarDelta);
+      savColor = dollarDelta >= 0 ? 'var(--s-good)' : 'var(--s-critical)';
+      savSub = (delta >= 0 ? '▼ ' : '▲ ') + Math.abs(delta).toFixed(1) + '% COGs vs. prior period' + (loc ? '' : ' · Wheaton');
+    } else {
+      savText = '—'; savColor = 'var(--muted)'; savSub = 'No prior period data';
+    }
+  }
+
+  // ── Cycle count compliance (Overview sub-panel) ──
+  const ccRows = await fetchAllRows(`${SUPA_URL}/rest/v1/cycle_counts?select=location_id,status&created_at=gte.${from}&created_at=lte.${untilEndOfDay}${locUuidFilter}`);
+  let ccText = '—', ccColor = 'var(--muted)';
+  if (Array.isArray(ccRows) && ccRows.length > 0) {
+    const done = new Set(ccRows.filter(r => r.status === 'completed' || r.status === 'submitted').map(r => r.location_id)).size;
+    const total = new Set(ccRows.map(r => r.location_id)).size || 4;
+    ccText = done + ' of ' + total + ' ✓';
+    ccColor = done >= total ? 'var(--s-good)' : done > 0 ? 'var(--s-warn)' : 'var(--s-critical)';
+  }
+
+  // ── KPI tiles ──
+  document.getElementById('ia-kpi-tiles').innerHTML = `
+    <div class="hero-tile"><div class="l">Portfolio COGS</div><div class="v" style="color:${cogsColor}">${cogsText}</div></div>
+    <div class="hero-tile"><div class="l">COGs savings vs. prior period</div><div class="v" style="color:${savColor}">${savText}</div><div class="chart-note" style="margin-top:4px">${esc(savSub)}</div></div>
+    <div class="hero-tile"><div class="l">Goods lost</div><div class="v" style="color:${totalGL > 0 ? 'var(--s-warn)' : 'var(--muted)'}">${fmt$(totalGL)}</div></div>
+    <div class="hero-tile"><div class="l">Expiring lots</div><div class="v" style="color:${expiring.length > 0 ? 'var(--s-warn)' : 'var(--s-good)'}">${expiring.length} lot${expiring.length !== 1 ? 's' : ''}</div><div class="chart-note" style="margin-top:4px">${expiring.length > 0 ? 'expiring or expired' : 'All lots current'}</div></div>`;
+
+  // ── Overview sub-panel ──
+  document.getElementById('ia-ov-rows').innerHTML = `
+    <div class="ia-mrow"><span class="ia-k">Portfolio COGs</span><span class="ia-v" style="color:${cogsColor}">${cogsText}</span></div>
+    <div class="ia-mrow"><span class="ia-k">Target range</span><span class="ia-v">${cogsTarget.min.toFixed(1)}–${cogsTarget.max.toFixed(1)}%</span></div>
+    <div class="ia-mrow"><span class="ia-k" title="Paid/collected revenue from the daily revenue sync — excludes open and due invoices.">Total revenue (collected)</span><span class="ia-v">${totalRev > 0 ? fmt$(totalRev) : '—'}</span></div>
+    <div class="ia-mrow"><span class="ia-k">Drug spend</span><span class="ia-v">${totalSpend > 0 ? fmt$(totalSpend) : '—'}</span></div>
+    <div class="ia-mrow"><span class="ia-k">Goods lost</span><span class="ia-v" style="color:var(--s-warn)">${fmt$(totalGL)}</span></div>
+    <div class="ia-mrow"><span class="ia-k">Cycle count compliance</span><span class="ia-v" style="color:${ccColor}">${ccText}</span></div>
+    <div class="ia-mrow"><span class="ia-k">Order compliance</span><span class="ia-v">${compRate}%</span></div>
+    <div class="ia-mrow"><span class="ia-k">Lots flagged</span><span class="ia-v" style="color:var(--s-warn)">${expiring.length} flagged</span></div>`;
+
+  // ── GL top-5 by frequency (Goods Lost sub-panel) ──
+  const byProd = {};
+  glRows.forEach(r => { const n = r.product_name || r.notes || 'Unknown'; byProd[n] = (byProd[n]||0) + 1; });
+  const top5 = Object.entries(byProd).sort((a,b) => b[1]-a[1]).slice(0,5);
+  document.getElementById('ia-gl-top-rows').innerHTML = top5.length
+    ? top5.map(([n,c]) => `<div class="ia-mrow"><span class="ia-k">${esc(n.length > 30 ? n.slice(0,28)+'…' : n)}</span><span class="ia-v">${c} entr${c===1?'y':'ies'}</span></div>`).join('')
+    : '<div class="chart-note">No goods lost entries.</div>';
+  document.getElementById('ia-gl-total').textContent = fmt$(totalGL);
+  document.getElementById('ia-gl-cat-rows').innerHTML = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([cat,v]) => {
+    const pct = totalGL > 0 ? Math.round((v/totalGL)*100) : 0;
+    return `<div class="ia-mrow"><span class="ia-k">${esc(cat)}</span><span class="ia-v">${fmt$(v)} · ${pct}%</span></div>`;
+  }).join('') || '<div class="chart-note">No goods lost entries.</div>';
+
+  _iaCache = {
+    period: periodLabel,
+    totalGL, totalSav,
+    expiringCount: expiring.length,
+    glByCategory: Object.entries(byCategory).sort((a,b) => b[1]-a[1]),
+    cogsRows: cogsRowsForExport,
+  };
+
+  // These two sub-panels are otherwise lazy-loaded on first click (like MedSync's
+  // sidebar tabs were) — but if the range/location filter changes while one of them
+  // is already open, it should reflect the new filter too, not go stale silently.
+  if (_iaSub === 'cogs') iaLoadCogsTrend();
+  if (_iaSub === 'purch') iaLoadPurchaseHistory();
+}
+
+function iaRenderGoodsLost(byCategory, byProduct, total, importOnly) {
+  const container = document.getElementById('ia-gl-body');
+  if (!total) {
+    container.innerHTML = importOnly
+      ? '<div class="chart-note">Goods lost this period came from a summary import — no individual product or category data available. Log losses in Goods Lost to see a full breakdown here.</div>'
+      : '<div class="chart-note">No goods lost entries for this period.</div>';
+    return;
+  }
+  const topProds = Object.entries(byProduct).sort((a,b) => b[1].v - a[1].v).slice(0, 6);
+  const maxProd = topProds[0] ? topProds[0][1].v : 1;
+  const topCats = Object.entries(byCategory).sort((a,b) => b[1]-a[1]).slice(0, 3);
+
+  const prodHTML = topProds.length ? topProds.map(([prod, d]) => {
+    const pct = Math.max(Math.round(d.v / maxProd * 100), 1.5);
+    return `<div class="bar-row" style="grid-template-columns:130px 1fr 70px">
+      <div class="b-name">${esc(prod.length > 26 ? prod.slice(0,24)+'…' : prod)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--s-critical)"></div></div>
+      <div class="b-value">${fmt$(d.v)}</div>
+    </div>`;
+  }).join('') : '<div class="chart-note">No product-level data.</div>';
+
+  const stackSegs = topCats.map(([cat, v], i) => `<div style="width:${Math.round(v/total*100)}%;height:100%;background:${iaCatColor(i)}"></div>`).join('')
+    + `<div style="flex:1;height:100%;background:var(--navy-lt)"></div>`;
+  const catsHTML = topCats.map(([cat, v], i) => {
+    const pct = Math.round(v / total * 100), clr = iaCatColor(i);
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="width:3px;min-width:3px;height:28px;border-radius:2px;background:${clr};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:12.5px;font-weight:700;color:var(--text)">${esc(cat.length > 30 ? cat.slice(0,28)+'…' : cat)}</span>
+          <span style="font-size:12.5px;font-weight:700;color:${clr};font-variant-numeric:tabular-nums">${fmt$(v)}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">${pct}% of total loss</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;margin-top:8px">
+      <div>
+        <div class="chart-note" style="margin-bottom:8px">Top products</div>
+        ${prodHTML}
+      </div>
+      <div>
+        <div class="chart-note" style="margin-bottom:8px">Top ${topCats.length} reason${topCats.length!==1?'s':''}</div>
+        <div style="height:7px;display:flex;border-radius:3px;overflow:hidden;margin-bottom:10px">${stackSegs}</div>
+        ${catsHTML}
+      </div>
+    </div>`;
+}
+
+function iaRenderCompliance(orders, loc) {
+  const filtered = loc ? LOCATIONS.filter(l => l.uuid === loc.uuid) : LOCATIONS;
+  document.getElementById('ia-comp-tbody').innerHTML = filtered.map(l => {
+    const locOrders = orders.filter(o => o.location_id === l.uuid);
+    const late = locOrders.filter(o => o.status === 'Late').length;
+    const onTime = locOrders.length - late;
+    const rate = locOrders.length > 0 ? Math.round((onTime/locOrders.length)*100) : 100;
+    const color = rate === 100 ? 'var(--s-good)' : rate >= 80 ? 'var(--s-warn)' : 'var(--s-critical)';
+    const status = rate === 100 ? '<span style="color:var(--s-good);font-weight:700">✓ Perfect</span>' : `<span style="color:var(--s-warn);font-weight:700">${late} late</span>`;
+    return `<tr><td><b>${esc(l.name)}</b></td><td>${onTime}</td><td>${late}</td><td style="color:${color};font-weight:700">${rate}%</td><td>${status}</td></tr>`;
+  }).join('');
+
+  const compBars = document.getElementById('ia-comp-bars');
+  const lateLocations = [];
+  compBars.innerHTML = filtered.map(l => {
+    const locOrders = orders.filter(o => o.location_id === l.uuid);
+    const late = locOrders.filter(o => o.status === 'Late').length;
+    const rate = locOrders.length > 0 ? Math.round(((locOrders.length-late)/locOrders.length)*100) : 100;
+    if (late > 0) lateLocations.push(l.name);
+    const color = rate === 100 ? 'var(--s-good)' : 'var(--s-warn)';
+    return `<div class="bar-row"><div class="b-name">${esc(l.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${rate}%;background:${color}"></div></div><div class="b-value" style="color:${color}">${rate}%</div></div>`;
+  }).join('');
+  document.getElementById('ia-comp-insight').innerHTML = `<div class="insight-item"><div class="i-badge recommend">⚡</div><div>
+    <div class="i-title">Compliance insight</div>
+    <div class="i-body">${lateLocations.length ? esc(lateLocations.join(', ')) + ' had late submissions this period. Review order timing to avoid next-day delivery risk.' : 'All locations submitted on time this period.'}</div>
+  </div></div>`;
+
+  const onTimeAll = orders.filter(o => o.status !== 'Late').length;
+  const compRate = orders.length > 0 ? Math.round(onTimeAll / orders.length * 100) : 100;
+  document.getElementById('ia-comp-rate').textContent = compRate + '%';
+  document.getElementById('ia-comp-rate').style.color = compRate >= 90 ? 'var(--s-good)' : compRate >= 70 ? 'var(--s-warn)' : 'var(--s-critical)';
+  return compRate;
+}
+
+function iaRenderProcurement(poItems, from, until) {
+  const body = document.getElementById('ia-proc-body');
+  const sub = document.getElementById('ia-proc-sub');
+  if (!poItems.length) { body.innerHTML = '<div class="chart-note">No order data for this period.</div>'; return 0; }
+
+  let totalSavings = 0, totalSpend = 0, topByProduct = {}, topByVendor = {};
+  poItems.forEach(r => {
+    const qty = Number(r.qty_ordered) || 1, list = Number(r.unit_price) || 0, gpo = Number(r.gpo_price) || list;
+    const saved = Math.max(0, (list - gpo) * qty);
+    totalSavings += saved; totalSpend += gpo * qty;
+    if (saved > 0) {
+      topByProduct[r.product_name || 'Unknown'] = (topByProduct[r.product_name || 'Unknown'] || 0) + saved;
+      topByVendor[r.vendor || 'Unknown'] = (topByVendor[r.vendor || 'Unknown'] || 0) + saved;
+    }
+  });
+  sub.textContent = `${fmtDate(from)}–${fmtDate(until)} · GPO vs. list`;
+  if (totalSavings === 0) {
+    body.innerHTML = '<div class="chart-note">GPO savings will appear once <code>gpo_price</code> differs from <code>unit_price</code> on PO items.</div>';
+    return 0;
+  }
+  const topProduct = Object.entries(topByProduct).sort((a,b) => b[1]-a[1])[0];
+  const topVendor = Object.entries(topByVendor).sort((a,b) => b[1]-a[1])[0];
+  const periodDays = Math.max(1, (new Date(until) - new Date(from)) / 864e5 + 1);
+  const pace = totalSavings / periodDays * 365;
+  body.innerHTML = `
+    <div class="ia-mrow"><span class="ia-k">Total saved</span><span class="ia-v" style="color:var(--s-good)">${fmt$(totalSavings)}</span></div>
+    <div class="ia-mrow"><span class="ia-k">Annual pace</span><span class="ia-v" style="color:var(--s-good)">~${fmt$(pace)}</span></div>
+    <div class="ia-mrow"><span class="ia-k">Total spend</span><span class="ia-v">${fmt$(totalSpend)}</span></div>
+    ${topProduct ? `<div class="ia-mrow"><span class="ia-k">Top product</span><span class="ia-v">${esc(topProduct[0].length>26?topProduct[0].slice(0,24)+'…':topProduct[0])}</span></div>` : ''}
+    ${topVendor ? `<div class="ia-mrow"><span class="ia-k">Top vendor</span><span class="ia-v">${esc(topVendor[0])}</span></div>` : ''}
+    <div class="insight-item" style="margin-top:10px"><div class="i-badge recommend">⚡</div><div>
+      <div class="i-title">Procurement insight</div>
+      <div class="i-body">GPO pricing saved <b>${fmt$(totalSavings)}</b> vs. list this period${pace>1000?' · on pace for '+fmt$(pace)+'/yr':''}.${topProduct?' '+esc(topProduct[0])+' was the top savings driver.':''}</div>
+    </div></div>`;
+  return totalSavings;
+}
+
+function iaRenderWhiteGoods(poItems) {
+  const body = document.getElementById('ia-wg-bars');
+  if (!poItems.length) {
+    document.getElementById('ia-wg-total').textContent = '—';
+    document.getElementById('ia-wg-orders').textContent = '0';
+    body.innerHTML = '<div class="chart-note">No supply orders found for this period.</div>';
+    document.getElementById('ia-wg-insight').innerHTML = '';
+    return;
+  }
+  const byVendor = {};
+  let totalSpend = 0;
+  poItems.forEach(r => {
+    const qty = Number(r.qty_ordered) || 1, price = Number(r.gpo_price) || Number(r.unit_price) || 0;
+    const spend = qty * price;
+    totalSpend += spend;
+    byVendor[r.vendor || 'Unknown vendor'] = (byVendor[r.vendor || 'Unknown vendor'] || 0) + spend;
+  });
+  const topVendors = Object.entries(byVendor).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const maxVend = topVendors[0] ? topVendors[0][1] : 1;
+  document.getElementById('ia-wg-total').textContent = fmt$(totalSpend);
+  document.getElementById('ia-wg-orders').textContent = fmtN(poItems.length);
+  body.innerHTML = topVendors.map(([v,s]) => {
+    const pct = Math.max(Math.round(s/maxVend*100), 1.5);
+    return `<div class="bar-row"><div class="b-name">${esc(v.length>22?v.slice(0,20)+'…':v)}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--c-facilities)"></div></div><div class="b-value">${fmt$(s)}</div></div>`;
+  }).join('');
+  document.getElementById('ia-wg-insight').innerHTML = topVendors.length ? `<div class="insight-item"><div class="i-badge recommend">⚡</div><div>
+    <div class="i-title">Supply insight</div>
+    <div class="i-body">${esc(topVendors[0][0])} accounts for ${Math.round(topVendors[0][1]/totalSpend*100)}% of supply spend this period.</div>
+  </div></div>` : '';
+}
+
+async function iaLoadExpiry(loc) {
+  const el = document.getElementById('ia-exp-body');
+  const now = new Date(), today = now.toISOString().split('T')[0];
+  const d30 = new Date(now.getTime()+30*864e5).toISOString().split('T')[0];
+  const d90 = new Date(now.getTime()+90*864e5).toISOString().split('T')[0];
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const lots = await fetchAllRows(`${SUPA_URL}/rest/v1/lots?select=expiration_date,qty_remaining,products(name)&expiration_date=lte.${d90}${locFilter}&order=expiration_date`);
+  if (!Array.isArray(lots) || !lots.length) { el.innerHTML = '<div class="chart-note">No lots expiring in the next 90 days.</div>'; return; }
+
+  // Buckets: exp = already expired; d30 = expires within 30 days; d60 = everything
+  // from 31-90 days out (both branches below feed the same bucket) — matches
+  // medsync_analytics_live.html's loadExpiry() exactly, including its "60-90d"
+  // legend label actually spanning 30-90d in this rollup.
+  const by = {};
+  lots.forEach(l => {
+    const n = (l.products && l.products.name) ? l.products.name : 'Unknown', e = l.expiration_date, q = l.qty_remaining || 1;
+    if (!by[n]) by[n] = { exp: 0, d30: 0, d60: 0 };
+    if (e <= today) by[n].exp += q;
+    else if (e <= d30) by[n].d30 += q;
+    else by[n].d60 += q;
+  });
+  const products = Object.keys(by);
+  const mx = Math.max(...products.map(p => by[p].exp + by[p].d30 + by[p].d60), 1);
+  el.innerHTML = products.map(p => {
+    const b = by[p], t = b.exp + b.d30 + b.d60;
+    const color = b.exp > 0 ? 'var(--s-critical)' : b.d30 > 0 ? 'var(--c-financial)' : 'var(--text)';
+    return `<div class="ia-exp-row">
+      <div class="ia-exp-head"><span class="n">${esc(p.length>32?p.slice(0,30)+'…':p)}</span><span class="c" style="color:${color}">${t} lot${t!==1?'s':''}${b.exp>0?' · '+b.exp+' expired':''}</span></div>
+      <div class="ia-exp-track">
+        ${b.exp>0?`<div style="width:${Math.round(b.exp/mx*100)}%;background:var(--s-critical)"></div>`:''}
+        ${b.d30>0?`<div style="width:${Math.round(b.d30/mx*100)}%;background:var(--c-financial)"></div>`:''}
+        ${b.d60>0?`<div style="width:${Math.round(b.d60/mx*100)}%;background:var(--c-clinical)"></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function iaLoadCogsTrend() {
+  const bars = document.getElementById('ia-cogs-trend-bars');
+  const labels = document.getElementById('ia-cogs-trend-labels');
+  const locRows = document.getElementById('ia-cogs-loc-rows');
+  bars.innerHTML = '<div class="chart-note">Loading…</div>';
+
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ label: d.toLocaleString('default', { month: 'short' }), from: d.toISOString().split('T')[0], to: new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().split('T')[0] });
+  }
+
+  const monthResults = await Promise.all(months.map(async m => {
+    const locResults = await Promise.all(LOCATIONS.map(l => iaLocSpendRevenue(l.vid, m.from, m.to + 'T23:59:59', m.to)));
+    const spend = locResults.reduce((s,r) => s + r.spend, 0);
+    const revenue = locResults.reduce((s,r) => s + r.revenue, 0);
+    return { label: m.label, pct: revenue > 0 ? spend / revenue * 100 : null };
+  }));
+
+  const validPcts = monthResults.filter(r => r.pct !== null).map(r => r.pct);
+  const maxPct = validPcts.length ? Math.max(...validPcts, 12) : 12;
+  bars.innerHTML = monthResults.map(r => {
+    if (r.pct === null) return `<div class="tb" style="height:10%;background:var(--border);opacity:.4" title="${esc(r.label)}: no data"></div>`;
+    const h = Math.round((r.pct / maxPct) * 100);
+    const color = r.pct > 9 ? 'var(--s-critical)' : r.pct > 7 ? 'var(--s-warn)' : 'var(--s-good)';
+    return `<div class="tb" style="height:${h}%;background:${color}" title="${esc(r.label)}: ${r.pct.toFixed(1)}%"></div>`;
+  }).join('');
+  labels.innerHTML = monthResults.map(r => `<span>${esc(r.label)}</span>`).join('');
+
+  const curMon = months[months.length-1];
+  const locResults = await Promise.all(LOCATIONS.map(async l => {
+    const { spend, revenue } = await iaLocSpendRevenue(l.vid, curMon.from, curMon.to + 'T23:59:59', curMon.to);
+    return { name: l.name, pct: revenue > 0 ? spend / revenue * 100 : null };
+  }));
+  const latestValid = monthResults.filter(r => r.pct !== null).pop();
+  locRows.innerHTML = locResults.map(l => {
+    const color = l.pct === null ? 'var(--muted)' : l.pct > 9 ? 'var(--s-critical)' : l.pct > 7 ? 'var(--s-warn)' : 'var(--s-good)';
+    return `<div class="ia-mrow"><span class="ia-k">${esc(l.name)}</span><span class="ia-v" style="color:${color}">${l.pct !== null ? l.pct.toFixed(1)+'%' : '—'}</span></div>`;
+  }).join('') + (latestValid ? `<div class="ia-mrow"><span class="ia-k">Portfolio avg</span><span class="ia-v" style="color:var(--s-good)">${latestValid.pct.toFixed(1)}%</span></div>` : '');
+}
+
+async function iaLoadPurchaseHistory() {
+  const { from, until } = selectedDateRange();
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const wrap = document.getElementById('ia-ph-table-wrap');
+  wrap.innerHTML = '<div class="chart-note">Loading…</div>';
+
+  const [extRows, poRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/purchase_history?select=id,purchased_at,vendor,note,amount,location_id,source&purchased_at=gte.${from}&purchased_at=lte.${until}${locFilter}&order=purchased_at.desc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/po_items?select=week_start,location_id,gpo_price,qty_ordered,status&week_start=gte.${from}&week_start=lte.${until}&status=in.(submitted,received)${locFilter}&order=week_start.desc`),
+  ]);
+
+  const nameByUuid = Object.fromEntries(LOCATIONS.map(l => [l.uuid, l.name]));
+  const poGroups = {};
+  (poRows || []).forEach(r => {
+    const key = (r.week_start||'').slice(0,10) + '|' + r.location_id;
+    if (!poGroups[key]) poGroups[key] = { week_start: (r.week_start||'').slice(0,10), location_id: r.location_id, amount: 0, items: 0 };
+    poGroups[key].amount += (parseFloat(r.gpo_price)||0) * (parseInt(r.qty_ordered)||0);
+    poGroups[key].items++;
+  });
+
+  const combined = [];
+  (extRows || []).forEach(r => combined.push({ date: (r.purchased_at||'').slice(0,10), location: nameByUuid[r.location_id] || '—', source: 'external', vendor: r.vendor || 'External', note: r.note || '', amount: parseFloat(r.amount)||0 }));
+  Object.values(poGroups).forEach(g => combined.push({ date: g.week_start, location: nameByUuid[g.location_id] || '—', source: 'medsync_po', vendor: 'MedSync PO', note: g.items + ' item' + (g.items!==1?'s':''), amount: g.amount }));
+  combined.sort((a,b) => b.date.localeCompare(a.date));
+
+  _iaPurchaseRows = combined;
+  iaRenderPurchaseTable();
+
+  const totalSpend = combined.reduce((s,r) => s + r.amount, 0);
+  const msSpend = combined.filter(r => r.source === 'medsync_po').reduce((s,r) => s + r.amount, 0);
+  const extSpend = combined.filter(r => r.source === 'external').reduce((s,r) => s + r.amount, 0);
+  document.getElementById('ia-ph-total').textContent = fmt$(totalSpend);
+  document.getElementById('ia-ph-count').textContent = fmtN(combined.length);
+  document.getElementById('ia-ph-medsync').textContent = fmt$(msSpend);
+  document.getElementById('ia-ph-external').textContent = fmt$(extSpend);
+}
+
+function iaRenderPurchaseTable() {
+  const wrap = document.getElementById('ia-ph-table-wrap');
+  const rows = _iaPurchaseRows.filter(r => _iaPurchaseFilter === 'all' || r.source === _iaPurchaseFilter);
+  if (!rows.length) { wrap.innerHTML = '<div class="chart-note">No purchases found for this period.</div>'; return; }
+  wrap.innerHTML = `<table class="dd-table">
+    <thead><tr><th>Date</th><th>Location</th><th>Source</th><th>Vendor / Note</th><th>Amount</th></tr></thead>
+    <tbody>${rows.map(r => {
+      const srcBadge = r.source === 'medsync_po'
+        ? `<span style="background:var(--navy-lt);color:var(--text);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">MedSync</span>`
+        : `<span style="background:#FFF4E5;color:var(--s-warn);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">External</span>`;
+      return `<tr><td>${esc(r.date)}</td><td>${esc(r.location)}</td><td>${srcBadge}</td><td>${esc(r.vendor)}${r.note ? ' · <span style="color:var(--muted)">'+esc(r.note)+'</span>' : ''}</td><td style="text-align:right;font-weight:700">${fmt$(r.amount)}</td></tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function iaExportPurchaseHistory() {
+  const rows = _iaPurchaseRows.filter(r => _iaPurchaseFilter === 'all' || r.source === _iaPurchaseFilter);
+  if (!rows.length) { iaShowToast('⚠ No data to export'); return; }
+  const headers = ['Date', 'Location', 'Source', 'Vendor', 'Note', 'Amount'];
+  const data = rows.map(r => [r.date, r.location, r.source === 'medsync_po' ? 'MedSync PO' : 'External', r.vendor, r.note, r.amount.toFixed(2)]);
+  iaExportCsv('scoutsync_purchases_' + new Date().toISOString().slice(0,10) + '.csv', headers, data);
+}
+
+// ── Sub-tab switcher — lazy-loads COGS Trend and Purchases the first time
+// each is opened, same as medsync_analytics_live.html's sidebar tabs did. ──
+document.getElementById('ia-subtabs').addEventListener('click', e => {
+  const btn = e.target.closest('.subtab');
+  if (!btn || btn.classList.contains('active')) return;
+  document.querySelectorAll('#ia-subtabs .subtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const sub = btn.dataset.sub;
+  _iaSub = sub;
+  ['ov','cogs','gl','proc','comp','wg','purch'].forEach(p => { document.getElementById('ia-sub-'+p).hidden = p !== sub; });
+  if (sub === 'cogs') iaLoadCogsTrend();
+  if (sub === 'purch') iaLoadPurchaseHistory();
+});
+
+document.getElementById('ia-ph-filters').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-src]');
+  if (!btn) return;
+  document.querySelectorAll('#ia-ph-filters button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _iaPurchaseFilter = btn.dataset.src;
+  iaRenderPurchaseTable();
+});
+document.getElementById('ia-ph-export-btn').addEventListener('click', iaExportPurchaseHistory);
+
+// ── Goods Lost CSV/Excel import — writes to the same goods_lost table
+// MedSync's own copy of this import writes to (new write capability on
+// ScoutSync; the rest of this dashboard has been read-only until now). ──
+(function() {
+  let parsedRows = [], importSession = 0;
+
+  document.getElementById('ia-gl-import-btn').addEventListener('click', () => {
+    importSession++; parsedRows = [];
+    document.getElementById('ia-gl-import-preview').style.display = 'none';
+    const status = document.getElementById('ia-gl-import-status');
+    status.style.display = 'none'; status.textContent = '';
+    const submit = document.getElementById('ia-gl-import-submit');
+    submit.disabled = true; submit.style.opacity = '.45'; submit.textContent = 'Import rows';
+    document.getElementById('ia-gl-file-input').value = '';
+    document.getElementById('ia-gl-import-modal').style.display = 'flex';
+  });
+  function closeModal() {
+    importSession++; parsedRows = [];
+    document.getElementById('ia-gl-import-modal').style.display = 'none';
+  }
+  document.getElementById('ia-gl-close-btn').addEventListener('click', closeModal);
+  document.getElementById('ia-gl-cancel-btn').addEventListener('click', closeModal);
+
+  const dropZone = document.getElementById('ia-gl-drop-zone');
+  const fileInput = document.getElementById('ia-gl-file-input');
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--c-facilities)'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--border)'; handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fileInput.value = ''; });
+
+  function handleFile(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const sessionAtStart = importSession;
+    if (ext === 'csv') {
+      const reader = new FileReader();
+      reader.onload = e => { if (importSession !== sessionAtStart) return; parseCSV(e.target.result, sessionAtStart); };
+      reader.readAsText(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      showStatus('Excel detected — reading…', 'var(--ink-2)', 'var(--navy-lt)');
+      const loadAndRead = () => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          if (importSession !== sessionAtStart) return;
+          try {
+            const wb = XLSX.read(e.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const jsonRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (!jsonRows.length) { showStatus('File is empty.', 'var(--s-critical)', '#fdf0ef'); return; }
+            const headers = jsonRows[0].map(h => normHeader(String(h == null ? '' : h)));
+            const dataRows = jsonRows.slice(1).map(row => { const obj = {}; headers.forEach((h,i) => { obj[h] = String(row[i] == null ? '' : row[i]).trim(); }); return obj; });
+            parseObjects(headers, dataRows, sessionAtStart).catch(err => showStatus('Parse error: ' + err.message, 'var(--s-critical)', '#fdf0ef'));
+          } catch (err) { showStatus('Could not read Excel file: ' + err.message, 'var(--s-critical)', '#fdf0ef'); }
+        };
+        reader.readAsArrayBuffer(file);
+      };
+      if (typeof XLSX === 'undefined') {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = loadAndRead;
+        s.onerror = () => showStatus('Could not load Excel library. Please convert to CSV first.', 'var(--s-critical)', '#fdf0ef');
+        document.head.appendChild(s);
+      } else loadAndRead();
+    } else {
+      showStatus('Unsupported file type. Please upload a .csv, .xlsx, or .xls file.', 'var(--s-critical)', '#fdf0ef');
+    }
+  }
+
+  function normHeader(h) {
+    h = h.trim().toLowerCase();
+    if (/completion.time/.test(h)) return 'date';
+    if (/location.of.goods.lost/.test(h)) return 'location';
+    if (/type.of.loss/.test(h)) return 'category';
+    if (/name.of.product.lost/.test(h)) return 'product_name';
+    if (/how.much.product.has.been.lost/.test(h)) return 'qty';
+    if (/unit.price/.test(h)) return 'unit_price';
+    if (/total.loss/.test(h)) return 'value_lost';
+    return h.replace(/\s+/g,'_');
+  }
+  function splitCSVRow(row) {
+    const result = []; let cur = '', inQ = false;
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (c === '"') { if (inQ && row[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+      else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+      else cur += c;
+    }
+    result.push(cur); return result;
+  }
+  function parseCSV(text, session) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) { showStatus('File is empty or has no data rows.', 'var(--s-critical)', '#fdf0ef'); return; }
+    const headers = splitCSVRow(lines[0]).map(normHeader);
+    const dataRows = lines.slice(1).filter(l => l.trim()).map(line => {
+      const cols = splitCSVRow(line); const obj = {};
+      headers.forEach((h,i) => { obj[h] = (cols[i] || '').trim(); });
+      return obj;
+    });
+    parseObjects(headers, dataRows, session).catch(err => showStatus('Parse error: ' + err.message, 'var(--s-critical)', '#fdf0ef'));
+  }
+
+  async function parseObjects(headers, dataRows, session) {
+    if (session !== undefined && session !== importSession) return;
+    const need = ['date','product_name','category'];
+    const missing = need.filter(n => !headers.includes(n));
+    if (missing.length) { showStatus('Missing required columns: ' + missing.join(', '), 'var(--s-critical)', '#fdf0ef'); return; }
+
+    const locMap = {};
+    LOCATIONS.forEach(l => { locMap[l.key] = l.uuid; locMap[l.name.toLowerCase()] = l.uuid; });
+
+    const rows = [], errors = [];
+    dataRows.forEach((obj, idx) => {
+      if (!obj.product_name && !obj.category) return;
+      let rawDate = obj.date || '', isoDate = null;
+      if (/^\d{5}$/.test(rawDate.trim())) {
+        isoDate = new Date(Date.UTC(1899, 11, 30) + parseInt(rawDate) * 864e5).toISOString().slice(0,10);
+      } else if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+        isoDate = rawDate.slice(0,10);
+      } else if (/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(rawDate)) {
+        const [m,d,y] = rawDate.split('/'); const year = y.length === 2 ? '20'+y : y;
+        isoDate = year + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+      }
+      if (!isoDate) { errors.push('Row ' + (idx+2) + ': invalid date "' + rawDate + '"'); return; }
+
+      const rawVal = (obj.value_lost || '').replace(/[$,]/g,'').trim();
+      const val = rawVal === '' ? 0 : parseFloat(rawVal);
+      if (isNaN(val)) { errors.push('Row ' + (idx+2) + ': invalid value_lost "' + obj.value_lost + '"'); return; }
+
+      const locRaw = (obj.location || obj.location_id || '').toLowerCase().trim();
+      const locShort = locRaw.replace(/scout\s+veterinary\s+care\s*[–-]\s*/i, '').trim();
+      const locId = locMap[locShort] || locMap[locRaw] || null;
+
+      rows.push({ created_at: isoDate + 'T12:00:00', product_name: obj.product_name || 'Unknown', category: obj.category || 'Other', value_lost: val, location_id: locId, notes: obj.notes || null });
+    });
+
+    if (rows.length === 0) { showStatus('No valid rows found.' + (errors.length ? ' Errors: ' + errors.slice(0,3).join('; ') : ''), 'var(--s-critical)', '#fdf0ef'); return; }
+
+    showStatus('Checking for duplicates…', 'var(--ink-2)', 'var(--navy-lt)');
+    const dates = rows.map(r => r.created_at.slice(0,10)).sort();
+    const minDate = dates[0], maxDate = dates[dates.length-1];
+    const fingerprint = (ts, product, category, locId) => ts.slice(0,10) + '|' + (product||'').toLowerCase().trim() + '|' + (category||'').toLowerCase().trim() + '|' + (locId||'');
+
+    const existingFingerprints = new Set();
+    try {
+      const exRows = await fetchAllRows(`${SUPA_URL}/rest/v1/goods_lost?select=created_at,product_name,category,location_id&created_at=gte.${minDate}T00:00:00&created_at=lte.${maxDate}T23:59:59`);
+      (exRows || []).forEach(r => existingFingerprints.add(fingerprint(r.created_at, r.product_name, r.category, r.location_id)));
+    } catch (e) { console.warn('GL dedup prefetch failed — importing without dedup check:', e); }
+
+    if (session !== undefined && session !== importSession) return;
+
+    const fresh = [], dups = [];
+    rows.forEach(r => { (existingFingerprints.has(fingerprint(r.created_at, r.product_name, r.category, r.location_id)) ? dups : fresh).push(r); });
+
+    if (fresh.length === 0) {
+      showStatus('⚠ All ' + rows.length + ' rows already exist in the database for ' + minDate + ' – ' + maxDate + '. Nothing to import.', 'var(--s-warn)', '#FFF4E5');
+      const submit = document.getElementById('ia-gl-import-submit'); submit.disabled = true; submit.style.opacity = '.45';
+      return;
+    }
+
+    parsedRows = fresh;
+    showPreview(fresh);
+    const dupNote = dups.length ? ' · ' + dups.length + ' duplicate' + (dups.length>1?'s':'') + ' skipped' : '';
+    const errNote = errors.length ? ' · ' + errors.length + ' parse error' + (errors.length>1?'s':'') + ' skipped' : '';
+    const dateNote = dups.length ? ' (date range ' + minDate + ' – ' + maxDate + ')' : '';
+    showStatus('✓ ' + fresh.length + ' rows ready to import' + dupNote + errNote + dateNote, 'var(--s-good)', '#f0faf2');
+    const submit = document.getElementById('ia-gl-import-submit'); submit.disabled = false; submit.style.opacity = '1';
+  }
+
+  function showPreview(rows) {
+    const dispCols = ['created_at','product_name','category','value_lost','location_id','notes'];
+    document.getElementById('ia-gl-import-preview-label').textContent = 'Preview — first ' + Math.min(rows.length,5) + ' of ' + rows.length + ' rows';
+    document.getElementById('ia-gl-preview-head').innerHTML = '<tr>' + dispCols.map(c => `<th style="padding:5px 8px;text-align:left;color:var(--muted);font-weight:600">${esc(c)}</th>`).join('') + '</tr>';
+    document.getElementById('ia-gl-preview-body').innerHTML = rows.slice(0,5).map(r =>
+      '<tr style="border-top:1px solid var(--grid)">' + dispCols.map(c => `<td style="padding:5px 8px;color:var(--ink-2)">${esc(r[c] ?? '')}</td>`).join('') + '</tr>'
+    ).join('');
+    document.getElementById('ia-gl-import-preview').style.display = 'block';
+  }
+  function showStatus(msg, color, bg) {
+    const el = document.getElementById('ia-gl-import-status');
+    el.style.display = 'block'; el.style.color = color; el.style.background = bg; el.style.border = '1px solid ' + color + '33';
+    el.textContent = msg;
+  }
+
+  document.getElementById('ia-gl-import-submit').addEventListener('click', async () => {
+    if (!parsedRows.length) return;
+    const btn = document.getElementById('ia-gl-import-submit');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    const BATCH = 50;
+    let inserted = 0, failed = 0;
+    for (let i = 0; i < parsedRows.length; i += BATCH) {
+      const chunk = parsedRows.slice(i, i + BATCH);
+      try {
+        const res = await fetch(`${SUPA_URL}/rest/v1/goods_lost`, {
+          method: 'POST',
+          headers: { ...HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(chunk),
+        });
+        if (res.ok) inserted += chunk.length;
+        else { console.error('GL import chunk failed:', await res.text()); failed += chunk.length; }
+      } catch (e) { failed += chunk.length; }
+    }
+    if (failed === 0) {
+      showStatus('✓ ' + inserted + ' rows imported successfully. Refreshing…', 'var(--s-good)', '#f0faf2');
+      btn.textContent = 'Done ✓';
+      setTimeout(() => { document.getElementById('ia-gl-import-modal').style.display = 'none'; loadInventory(); }, 1500);
+    } else {
+      showStatus(inserted + ' rows imported, ' + failed + ' failed. Check console for details.', 'var(--s-critical)', '#fdf0ef');
+      btn.disabled = false; btn.textContent = 'Retry';
+    }
+  });
+})();
 
 function loadActiveTab() {
   if (activeTab === 'clinical') return loadClinicalGeo();
