@@ -263,6 +263,17 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .panel { display: none; }
 .panel.active { display: block; }
 
+/* ── Top-of-content loading indicator — shown only while a real (non-cached)
+   tab/report fetch is in flight; reuses #refresh-btn's own .spin/@keyframes
+   spin treatment (same icon, same rotation) rather than inventing new
+   loading UI. Sits above the active panel, inside <main>, so it reads as
+   "this content is refreshing" without blocking or hiding anything. ── */
+#load-indicator {
+  display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600;
+  color: var(--muted); margin: 0 0 14px;
+}
+#load-indicator .spin { display: inline-block; color: var(--c-financial); animation: spin .8s linear infinite; }
+
 /* ── Heatmap grid (case volume / case dollar value) --
    days of week down the left (rows), hours of day across the top (columns) --
    the more conventional orientation for a day/hour heatmap. ── */
@@ -458,6 +469,8 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 </div>
 
 <main>
+
+  <div id="load-indicator" hidden><span class="spin">↻</span> Loading…</div>
 
   <section class="panel active" id="panel-financial">
 
@@ -1448,6 +1461,61 @@ function selectedDateRange() {
   }
   const days = Math.round((new Date(until) - new Date(from)) / 86400000) + 1;
   return { from, until, days };
+}
+
+// ── Skip-refetch cache: tab/report + filter snapshot ──
+// Keyed by tab name ('financial'/'clinical'/'inventory'/'procurement') or,
+// within Reporting, 'reporting:<report>' ('reporting:ia'/'reporting:ir').
+// Value = a JSON snapshot of the filters that were in effect the last time
+// that tab/report finished a REAL fetch. Tab activation and report
+// selection only skip the fetch when today's snapshot is identical to the
+// stored one -- panels are just hidden/shown via .panel.active/[hidden], so
+// last time's rendered DOM is still sitting there and is exactly what an
+// "instant" re-visit should show.
+//
+// `extra` carries whatever else a given loader reads besides the shared
+// loc/date-range filters (e.g. Inventory Reports' own #ir-year-select) --
+// see filterSnapshot() call sites below for which loader gets what.
+let dashCache = {};
+function filterSnapshot(extra) {
+  const loc = selectedLocation();
+  const { from, until } = selectedDateRange();
+  return JSON.stringify({ loc: loc ? loc.key : '', from, until, ...(extra || {}) });
+}
+// Changing the location or date-range filter can affect every tab/report,
+// not just the one on screen -- simplest correct move is to drop the whole
+// cache rather than try to reason about which entries are still valid.
+function clearDashCache() { dashCache = {}; }
+
+// Shows/hides the top-of-content loading indicator. A counter (not a flag)
+// so overlapping real loads -- e.g. a filter change firing a new load
+// before the previous one's promise has settled -- can't hide the
+// indicator out from under a load that's still in flight.
+let loadIndicatorDepth = 0;
+function showLoadIndicator() {
+  loadIndicatorDepth++;
+  document.getElementById('load-indicator').hidden = false;
+}
+function hideLoadIndicator() {
+  loadIndicatorDepth = Math.max(0, loadIndicatorDepth - 1);
+  if (loadIndicatorDepth === 0) document.getElementById('load-indicator').hidden = true;
+}
+
+// Runs `loaderFn` only when `snapshot` differs from the last snapshot that
+// successfully completed under `key`, or when `force` is set (the Refresh
+// button's whole point is "pull fresh data now" -- never shadowed by this
+// cache). Shows the loading indicator only around a real fetch; a
+// cache-served skip touches neither the indicator nor the DOM, so it's
+// instant.
+async function runCached(key, snapshot, loaderFn, force) {
+  if (!force && dashCache[key] === snapshot) return;
+  showLoadIndicator();
+  try {
+    await loaderFn();
+    dashCache[key] = snapshot;
+  } finally {
+    hideLoadIndicator();
+  }
 }
 
 // ── Tiny reusable SVG chart builders (per dataviz skill: thin marks, 2px
@@ -5994,8 +6062,17 @@ document.querySelectorAll('#ip-view-product th[data-sort]').forEach(th => {
 // Local to Inventory Reports only -- the year picker has no shared
 // top-level equivalent, so it reloads just this report rather than going
 // through loadActiveTab()/loadReporting()'s full Reporting-tab refetch.
-document.getElementById('ir-year-select').addEventListener('change', loadInventoryReports);
-document.getElementById('ir-refresh-btn').addEventListener('click', loadInventoryReports);
+// Always a real fetch (the year itself just changed, or Refresh was
+// clicked) -- but the cache snapshot is updated afterward too, so switching
+// away and back to this report with that same year doesn't refetch again.
+document.getElementById('ir-year-select').addEventListener('change', async () => {
+  await loadInventoryReports();
+  dashCache['reporting:ir'] = filterSnapshot({ year: document.getElementById('ir-year-select').value });
+});
+document.getElementById('ir-refresh-btn').addEventListener('click', async () => {
+  await loadInventoryReports();
+  dashCache['reporting:ir'] = filterSnapshot({ year: document.getElementById('ir-year-select').value });
+});
 
 // ══════════════════════════════════════════════════════════════════════
 // Purchase History — ported from the pre-split Inventory Procurement's
@@ -6314,11 +6391,11 @@ document.querySelectorAll('#report-pcr th[data-pcsort]').forEach(th => {
   th.addEventListener('click', () => rpcSort(th.dataset.pcsort));
 });
 
-// ── Reporting tab — report picker. Mirrors the rest of this dashboard's
-// tab-lazy-load convention: nothing fetches until a report is actually
-// selected, and selecting one (including re-selecting after switching away
-// and back) always refetches, same as every other tab here refetches on
-// every activation rather than caching. ──
+// ── Reporting tab — report picker. Nothing fetches until a report is
+// actually selected; re-selecting one (including after switching away and
+// back) skips the refetch when the loc/date-range/year filters are exactly
+// what they were the last time this report actually loaded -- see
+// runCached()/filterSnapshot() above. ──
 let selectedReport = null;
 function showReport(key) {
   document.getElementById('report-empty-state').hidden = key !== null;
@@ -6329,12 +6406,18 @@ function showReport(key) {
   document.getElementById('report-pcr').hidden = key !== 'pcr';
   document.querySelectorAll('#report-picker .report-item').forEach(b => b.classList.toggle('active', b.dataset.report === key));
 }
-function loadReporting() {
-  if (selectedReport === 'ia') return loadInventoryAnalytics();
-  if (selectedReport === 'ir') return loadInventoryReports();
-  if (selectedReport === 'ph') return loadPurchaseHistoryReport();
-  if (selectedReport === 'dc') return loadDailyCogsReport();
-  if (selectedReport === 'pcr') return loadPriceChangeReport();
+function loadReporting(force) {
+  if (selectedReport === 'ia') return runCached('reporting:ia', filterSnapshot(), loadInventoryAnalytics, force);
+  if (selectedReport === 'ir') {
+    // Populate the year <select> (a one-time, idempotent no-op after the
+    // first call) before reading its value, so the very first visit to this
+    // report doesn't cache a snapshot keyed to a not-yet-populated "".
+    irPopulateYearSelect();
+    return runCached('reporting:ir', filterSnapshot({ year: document.getElementById('ir-year-select').value }), loadInventoryReports, force);
+  }
+  if (selectedReport === 'ph') return runCached('reporting:ph', filterSnapshot(), loadPurchaseHistoryReport, force);
+  if (selectedReport === 'dc') return runCached('reporting:dc', filterSnapshot(), loadDailyCogsReport, force);
+  if (selectedReport === 'pcr') return runCached('reporting:pcr', filterSnapshot(), loadPriceChangeReport, force);
 }
 document.querySelectorAll('#report-picker .report-item').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -6344,18 +6427,20 @@ document.querySelectorAll('#report-picker .report-item').forEach(btn => {
   });
 });
 
-function loadActiveTab() {
-  if (activeTab === 'clinical') return loadClinicalGeo();
-  if (activeTab === 'inventory') return loadInventory();
-  if (activeTab === 'procurement') return loadProcurement();
-  if (activeTab === 'reporting') return loadReporting();
-  return loadFinancial();
+// `force` (true only from the Refresh button) always runs the active
+// tab/report's real fetch regardless of what's cached for it.
+function loadActiveTab(force) {
+  if (activeTab === 'clinical') return runCached('clinical', filterSnapshot(), loadClinicalGeo, force);
+  if (activeTab === 'inventory') return runCached('inventory', filterSnapshot(), loadInventory, force);
+  if (activeTab === 'procurement') return runCached('procurement', filterSnapshot(), loadProcurement, force);
+  if (activeTab === 'reporting') return loadReporting(force);
+  return runCached('financial', filterSnapshot(), loadFinancial, force);
 }
 
 async function refreshNow() {
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true; btn.classList.add('loading');
-  try { await loadActiveTab(); }
+  try { await loadActiveTab(true); } // force: Refresh always pulls fresh data, cache or no cache
   finally { btn.disabled = false; btn.classList.remove('loading'); }
 }
 
@@ -6367,15 +6452,21 @@ document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn => {
     document.querySelectorAll('main > .panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
     activeTab = btn.dataset.tab;
-    loadActiveTab();
+    loadActiveTab(); // unforced: serves the cache when this tab's filters haven't moved
     // Leaflet sizes itself off the container's layout at init time — if that
     // happened while the panel was still display:none this recovers it.
     if (activeTab === 'clinical' && chicagoMap) setTimeout(() => chicagoMap.invalidateSize(), 0);
   });
 });
 
-document.getElementById('loc-select').addEventListener('change', loadActiveTab);
+// A location or date-range change can change what every tab/report would
+// show, not just the one on screen -- rather than reason about which cache
+// entries are still valid, drop all of them so every tab refetches fresh
+// the next time it's visited. The tab visible right now still reloads
+// immediately below, same as before this cache existed.
+document.getElementById('loc-select').addEventListener('change', () => { clearDashCache(); loadActiveTab(); });
 document.getElementById('range-select').addEventListener('change', () => {
+  clearDashCache();
   const custom = isCustomRange();
   document.getElementById('custom-range').hidden = !custom;
   const fromInput = document.getElementById('custom-from'), toInput = document.getElementById('custom-to');
@@ -6387,8 +6478,8 @@ document.getElementById('range-select').addEventListener('change', () => {
   }
   if (!custom || (fromInput.value && toInput.value)) loadActiveTab();
 });
-document.getElementById('custom-from').addEventListener('change', () => { if (isCustomRange()) loadActiveTab(); });
-document.getElementById('custom-to').addEventListener('change', () => { if (isCustomRange()) loadActiveTab(); });
+document.getElementById('custom-from').addEventListener('change', () => { if (isCustomRange()) { clearDashCache(); loadActiveTab(); } });
+document.getElementById('custom-to').addEventListener('change', () => { if (isCustomRange()) { clearDashCache(); loadActiveTab(); } });
 document.getElementById('overlay-toggle').addEventListener('change', renderTrendSection);
 
 document.getElementById('act-period-select').addEventListener('change', () => {
@@ -6408,12 +6499,14 @@ document.getElementById('refresh-btn').addEventListener('click', refreshNow);
 
 // Auto-refresh twice a day (every 12h) so insights stay current on a tab left
 // open on a screen — the underlying Vetspire syncs run every 4 hours, this is
-// just how often this open page re-polls and recomputes against them.
-setInterval(loadActiveTab, 12 * 60 * 60 * 1000);
+// just how often this open page re-polls and recomputes against them. Forced
+// so the skip-refetch cache (whose whole point is skipping fetches when
+// nothing's actually changed) can't quietly turn this into a no-op.
+setInterval(() => loadActiveTab(true), 12 * 60 * 60 * 1000);
 
 document.getElementById('custom-from').max = document.getElementById('custom-to').max = isoDaysAgo(0);
 
-loadFinancial();
+loadActiveTab(); // financial is the default active tab — same effect as loadFinancial(), but also seeds its cache entry
 </script>
 
 </body>
