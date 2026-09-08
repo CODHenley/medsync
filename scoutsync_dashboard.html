@@ -324,6 +324,55 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   border-radius: 9px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
   transition: opacity .2s; z-index: 999;
 }
+
+/* ── Inventory Procurement (migrated from medsync_procurement.html) ── */
+.ip-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.ip-toolbar select {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px; font-family: inherit; color: var(--text); background: var(--card);
+}
+.ip-search-wrap { position: relative; display: flex; align-items: center; }
+.ip-search-wrap svg { position: absolute; left: 9px; opacity: .4; pointer-events: none; }
+.ip-search-wrap input[type="text"] {
+  padding: 6px 10px 6px 28px; border: 1px solid var(--border); border-radius: 100px;
+  font-size: 12.5px; font-family: inherit; color: var(--text); background: var(--card); width: 190px;
+}
+.ip-badge { font-size: 10.5px; padding: 2px 9px; border-radius: 100px; font-weight: 700; white-space: nowrap; }
+.ip-badge.good { background: rgba(0,99,0,.1); color: var(--s-good); }
+.ip-badge.warn { background: rgba(154,91,0,.1); color: var(--s-warn); }
+.ip-badge.crit { background: rgba(180,35,24,.1); color: var(--s-critical); }
+.ip-badge.info { background: rgba(43,108,176,.12); color: var(--c-clinical); }
+.ip-badge.neutral { background: var(--navy-lt); color: var(--muted); }
+.ip-pbar-wrap { width: 74px; height: 6px; background: var(--navy-lt); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; }
+.ip-pbar-fill { height: 100%; border-radius: 3px; }
+.ip-region-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.ip-region-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.ip-rc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ip-rc-name { font-size: 13.5px; font-weight: 800; color: var(--text); }
+.ip-rc-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--grid); font-size: 12px; }
+.ip-rc-row:last-child { border-bottom: none; }
+.ip-rc-k { color: var(--muted); }
+.ip-rc-v { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.ip-rc-bar { height: 4px; background: var(--navy-lt); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.ip-rc-bar-fill { height: 100%; background: var(--c-facilities); border-radius: 2px; }
+.ip-reorder-banner {
+  background: #FFF4E5; border: 1px solid #F0D090; border-radius: 10px; padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.ip-days-pill { font-size: 10px; padding: 2px 9px; border-radius: 100px; font-weight: 800; white-space: nowrap; }
+.ip-days-pill.crit { background: rgba(180,35,24,.12); color: var(--s-critical); }
+.ip-days-pill.warn { background: rgba(154,91,0,.12); color: var(--s-warn); }
+.ip-btn-approve {
+  padding: 4px 12px; border-radius: 7px; font-size: 11.5px; font-weight: 700; cursor: pointer;
+  border: none; background: var(--navy); color: #fff; font-family: inherit;
+}
+.ip-btn-approve:hover { background: var(--navy-md); }
+.ip-btn-approve:disabled { opacity: .5; cursor: default; }
+.ip-prod-sub { font-size: 10.5px; color: var(--ink-3); margin-top: 1px; }
+.ip-empty { text-align: center; padding: 34px 18px; color: var(--muted); }
+.ip-empty .e-icon { font-size: 26px; margin-bottom: 8px; }
+.ip-empty .e-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.ip-empty .e-sub { font-size: 11.5px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -722,6 +771,167 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div id="ia-toast"></div>
+
+    <!-- ══ Inventory Procurement — migrated from medsync_procurement.html (stage 2 of 3;
+         the standalone Reports screen migrates separately as stage 3). Reuses the page's
+         own date-range/location filters above rather than a second set — only the view
+         switcher below has no equivalent top-level control, so it stays local. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Inventory Procurement</h2>
+      <span class="sub">Purchasing, true COGS &amp; margin, by product — same range and location as above</span></div>
+
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="chart-title">Key metrics</div>
+        <button class="ia-btn" id="ip-drift-btn" hidden style="position:relative">⚠ Cost Drift<span id="ip-drift-count" style="position:absolute;top:-7px;right:-7px;background:var(--s-critical);color:#fff;font-size:10px;font-weight:800;border-radius:100px;padding:1px 6px"></span></button>
+      </div>
+      <div class="chart-note">Purchase Value comes from the in-app receiving log only (items that completed the reorder → receive workflow); True COGS is quantity × unit cost for everything dispensed in range; Remaining Inventory is YTD purchases minus period COGS; COGS % Revenue and Pharmacy Margin compare True COGS to pharmacy revenue (dispensed items), not total practice revenue; Depreciation Risk flags lots on pace to expire before they'll be used up.</div>
+      <div class="hero-row" id="ip-kpi-tiles"></div>
+    </div>
+
+    <div class="chart-card" id="ip-drift-panel" hidden>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div class="chart-title">Cost Drift &amp; Pricing Alerts</div>
+          <div class="chart-note">SKUs where the received invoice cost differs from Vetspire's recorded cost — margin impact &amp; a recommended price shown</div>
+        </div>
+        <button class="ia-btn" onclick="document.getElementById('ip-drift-panel').hidden=true">✕ Dismiss</button>
+      </div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Product</th><th style="text-align:right">Vetspire Cost</th><th style="text-align:right">Invoice Cost</th><th style="text-align:right">Cost Δ</th><th style="text-align:right">Sell Price</th><th style="text-align:right">Current Margin</th><th style="text-align:right">Margin at New Cost</th><th style="text-align:right">Target</th><th style="text-align:right">Recommended Price</th><th>Status</th></tr></thead>
+        <tbody id="ip-drift-tbody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="ip-toolbar">
+        <select id="ip-view-select">
+          <option value="product">By product</option>
+          <option value="purchases">Purchase History</option>
+          <option value="daily">Daily COGS</option>
+          <option value="regional">Regional roll-up</option>
+          <option value="reorder">Reorder Suggestions</option>
+          <option value="pricechanges">Price Changes</option>
+        </select>
+        <span style="flex:1"></span>
+        <button class="ia-btn" onclick="ipPrintReport()">🖨 Print report</button>
+        <button class="ia-btn" onclick="ipExportCsv()">↓ CSV</button>
+      </div>
+
+      <div id="ip-view-product">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="chart-note" id="ip-tbl-count" style="margin:0">Loading…</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div class="ip-search-wrap">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/><line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <input id="ip-product-search" type="text" placeholder="Search products…">
+            </div>
+            <div class="subtab-row" id="ip-pfilter-tabs" style="margin-bottom:0">
+              <button class="subtab active" data-f="all">All</button>
+              <button class="subtab" data-f="active">Active lots</button>
+              <button class="subtab" data-f="full">Fully consumed</button>
+              <button class="subtab" data-f="cost">Has unit cost</button>
+            </div>
+          </div>
+        </div>
+        <div style="overflow-x:auto"><table class="dd-table">
+          <thead><tr>
+            <th data-sort="product_name" style="cursor:pointer">Product ↕</th>
+            <th data-sort="location_name" style="cursor:pointer">Location ↕</th>
+            <th data-sort="total_qty_dispensed" style="cursor:pointer;text-align:right">Dispensed Qty ↕</th>
+            <th data-sort="unit_cost" style="cursor:pointer;text-align:right">Unit Cost ↕</th>
+            <th data-sort="true_cogs" style="cursor:pointer;text-align:right">True COGS ↕</th>
+            <th style="text-align:right">Revenue Charged</th>
+            <th data-sort="pct" style="cursor:pointer;text-align:right">Margin ↕</th>
+            <th>Consumed</th>
+            <th data-sort="last_dispensed_at" style="cursor:pointer">Last Dispensed ↕</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="ip-product-tbody"><tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Loading procurement data…</td></tr></tbody>
+        </table></div>
+      </div>
+
+      <div id="ip-view-daily" hidden>
+        <div class="chart-note" id="ip-daily-count" style="margin-bottom:8px">—</div>
+        <div style="overflow-x:auto"><table class="dd-table">
+          <thead><tr><th>Date</th><th>Location</th><th style="text-align:right">Unique Products</th><th style="text-align:right">Total Qty</th><th style="text-align:right">True COGS</th><th style="text-align:right">Revenue</th><th style="text-align:right">COGS %</th></tr></thead>
+          <tbody id="ip-daily-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <div id="ip-view-regional" hidden>
+        <div class="chart-note" style="margin-bottom:10px">Aggregate COGS by hospital — Chicagoland region</div>
+        <div class="ip-region-grid" id="ip-region-grid"></div>
+      </div>
+
+      <div id="ip-view-purchases" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="chart-note" id="ip-purch-count" style="margin:0">Loading…</div>
+          <div class="subtab-row" id="ip-purch-sort-tabs" style="margin-bottom:0">
+            <button class="subtab active" data-sort="week_start">Date</button>
+            <button class="subtab" data-sort="total_price">Spend</button>
+            <button class="subtab" data-sort="product_name">Product</button>
+            <button class="subtab" data-sort="vendor">Vendor</button>
+          </div>
+        </div>
+        <div class="hero-row" id="ip-purch-summary" style="margin-bottom:10px"></div>
+        <div style="overflow-x:auto"><table class="dd-table">
+          <thead><tr>
+            <th data-psort="week_start" style="cursor:pointer">Date ↕</th>
+            <th data-psort="product_name" style="cursor:pointer">Product ↕</th>
+            <th data-psort="vendor" style="cursor:pointer">Vendor ↕</th>
+            <th>Location</th>
+            <th data-psort="qty_ordered" style="cursor:pointer;text-align:right">Qty ↕</th>
+            <th data-psort="unit_price" style="cursor:pointer;text-align:right">Unit Cost ↕</th>
+            <th data-psort="total_price" style="cursor:pointer;text-align:right">Total Spend ↕</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="ip-purch-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <div id="ip-view-reorder" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="chart-note" id="ip-reorder-count" style="margin:0">—</div>
+          <button class="ia-btn solid" id="ip-approve-all-btn" hidden>✓ Approve All → Weekly Order</button>
+        </div>
+        <div id="ip-reorder-banner" hidden></div>
+        <div style="overflow-x:auto"><table class="dd-table">
+          <thead><tr><th>Product</th><th style="text-align:right">On Hand</th><th style="text-align:right">Avg Daily Use</th><th style="text-align:right">Days Left</th><th style="text-align:right">Suggested Order</th><th style="text-align:center">Action</th></tr></thead>
+          <tbody id="ip-reorder-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Select this view to load suggestions.</td></tr></tbody>
+        </table></div>
+      </div>
+
+      <div id="ip-view-pricechanges" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="chart-note" id="ip-pc-subtitle" style="margin:0">Detects unit cost changes from dispensed transaction history</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="ip-pc-filter">
+              <option value="all">All changes</option>
+              <option value="increase">Price increases only</option>
+              <option value="decrease">Price decreases only</option>
+            </select>
+            <button class="ia-btn" onclick="ipExportPriceChangesCsv()">↓ CSV</button>
+          </div>
+        </div>
+        <div id="ip-pc-loading" class="chart-note">Loading price history…</div>
+        <div class="hero-row" id="ip-pc-summary" style="margin-bottom:10px" hidden></div>
+        <div style="overflow-x:auto" id="ip-pc-table-wrap" hidden><table class="dd-table">
+          <thead><tr>
+            <th data-pcsort="name" style="cursor:pointer">Product ↕</th>
+            <th data-pcsort="change_date" style="cursor:pointer">Change Date ↕</th>
+            <th style="text-align:right">Old Cost</th>
+            <th style="text-align:right">New Cost</th>
+            <th data-pcsort="pct" style="cursor:pointer;text-align:right">Change % ↕</th>
+            <th style="text-align:right">Units @ Old Price</th>
+            <th data-pcsort="impact" style="cursor:pointer;text-align:right">Est. Impact ↕</th>
+            <th style="text-align:right">Days at Old Price</th>
+          </tr></thead>
+          <tbody id="ip-pc-tbody"></tbody>
+        </table></div>
+        <div id="ip-pc-empty" class="ip-empty" hidden>No price changes detected in this period.</div>
+      </div>
+    </div>
   </section>
 
   <div class="foot-note">
@@ -3575,6 +3785,7 @@ async function loadInventory() {
   }
 
   await loadInventoryAnalytics();
+  await loadProcurement();
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -4380,6 +4591,1034 @@ document.getElementById('ia-ph-export-btn').addEventListener('click', iaExportPu
     }
   });
 })();
+
+// ══════════════════════════════════════════════════════════════════════
+// Inventory Procurement — migrated from medsync_procurement.html (stage 2
+// of 3; the standalone Reports screen migrates separately as stage 3).
+// Reuses SUPA_URL/HEADERS/LOCATIONS/fetchAllRows/esc/isoDaysAgo and the
+// page's own selectedDateRange()/selectedLocation() instead of a second,
+// redundant set of filters — only the view switcher below has no
+// equivalent top-level control and stays local to this section.
+// ══════════════════════════════════════════════════════════════════════
+
+// location vetspire-id (vid) <-> location uuid, built off the shared
+// LOCATIONS array instead of a second hardcoded copy of the same 4 rows.
+const IP_LOC_UUID = Object.fromEntries(LOCATIONS.map(l => [l.vid, l.uuid]));
+const IP_LOC_NAME = Object.fromEntries(LOCATIONS.map(l => [l.uuid, l.name]));
+
+// Bundle revenue allocation — when a component is dispensed as part of a
+// bundle (unit_price = 0), allocate the bundle's charge price proportionally
+// by unit cost. totalCost = sum of unit costs for a typical procedure.
+const IP_BUNDLE_COMPONENTS = {
+  'Catalyst Chem 17': { bundlePrice: 325, totalCost: 73.44, unitCost: 55.65 },
+  'Catalyst Lytes 4': { bundlePrice: 325, totalCost: 73.44, unitCost: 15.10 },
+  'ProCyte Dx CBC':   { bundlePrice: 325, totalCost: 73.44, unitCost:  2.69 },
+  'Propofol Inj 10 mg/ml':         { bundlePrice: 120, totalCost: 18.98, unitCost: 15.55 },
+  'Euthasol':                       { bundlePrice: 120, totalCost: 18.98, unitCost:  0.85 },
+  'Fatal-Plus Solu Inj 390 mg/ml': { bundlePrice: 120, totalCost: 18.98, unitCost:  0.85 },
+};
+function ipAllocatedRevenue(productName, unitPrice, qty) {
+  const bc = IP_BUNDLE_COMPONENTS[productName];
+  if (bc && unitPrice === 0) return bc.bundlePrice * (bc.unitCost / bc.totalCost) * qty;
+  return unitPrice * qty;
+}
+
+// Single-page fetch (no pagination) — mirrors medsync_procurement.html's own
+// query() helper for the several endpoints it never paginated either.
+async function ipQuery(table, params) {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, { headers: HEADERS });
+  if (!res.ok) throw new Error(`${table}: HTTP ${res.status}`);
+  return res.json();
+}
+
+function ipFmt2(v)    { return Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function ipFmtUnit(v) { return Number(v || 0).toFixed(4); }
+function ipFmtQty(v)  { const n = Number(v || 0); return n % 1 === 0 ? n.toLocaleString() : n.toFixed(2); }
+
+let IP_ALL_PRODUCTS = [];
+let IP_ALL_DAILY = [];
+let IP_ALL_PURCHASES = [];
+let ipSortCol = 'true_cogs', ipSortDir = -1;
+let ipPFilter = 'all';
+let ipPurchSort = 'week_start', ipPurchDir = -1;
+let ipCurrentView = 'product';
+let IP_REORDER_ITEMS = [];
+
+async function loadProcurement() {
+  const { from: start, until: end } = selectedDateRange();
+  const loc = selectedLocation();
+  const locVid = loc ? loc.vid : '';
+  const locUuid = loc ? loc.uuid : null;
+  const locFilter = locVid ? `&location_id=eq.${locVid}` : '';
+
+  document.getElementById('ip-product-tbody').innerHTML =
+    '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Loading procurement data…</td></tr>';
+
+  try {
+    // One fetch covers both the by-product and daily-COGS aggregations below
+    // — medsync_procurement.html issued two separate, identically-filtered
+    // dispensed_items queries here; this select already carries every column
+    // both aggregations need, so one paginated fetch replaces both.
+    const raw = await fetchAllRows(
+      `${SUPA_URL}/rest/v1/dispensed_items?select=vetspire_product_id,product_name,sku,quantity,unit_price,unit_cost,returned,refunded,dispensed_at,location_id,location_name` +
+      `&dispensed_at=gte.${start}T00:00:00&dispensed_at=lte.${end}T23:59:59` +
+      `&returned=eq.false&refunded=eq.false${locFilter}&order=dispensed_at.desc,id`
+    );
+    if (raw === null) throw new Error('dispensed_items fetch failed');
+
+    const byProduct = {};
+    const byDay = {};
+    for (const row of raw) {
+      const qty = parseFloat(row.quantity) || 0;
+      const cost = parseFloat(row.unit_cost) || 0;
+      const price = parseFloat(row.unit_price) || 0;
+      const rev = ipAllocatedRevenue(row.product_name, price, qty);
+
+      const pKey = row.vetspire_product_id + '|' + (row.location_id || '');
+      if (!byProduct[pKey]) {
+        byProduct[pKey] = {
+          vetspire_product_id: row.vetspire_product_id,
+          product_name: row.product_name || '—',
+          sku: row.sku,
+          location_id: row.location_id,
+          location_name: row.location_name || '—',
+          total_qty_dispensed: 0, true_cogs: 0, total_revenue: 0,
+          unit_cost: row.unit_cost, events: 0,
+          last_dispensed_at: null, first_dispensed_at: null,
+          _price_sum: 0, _price_qty: 0,
+        };
+      }
+      const p = byProduct[pKey];
+      p.total_qty_dispensed += qty;
+      p.true_cogs += qty * cost;
+      p.total_revenue += rev;
+      p.events++;
+      if (price > 0) { p._price_sum += price * qty; p._price_qty += qty; }
+      if (!p.last_dispensed_at || row.dispensed_at > p.last_dispensed_at) p.last_dispensed_at = row.dispensed_at;
+      if (!p.first_dispensed_at || row.dispensed_at < p.first_dispensed_at) p.first_dispensed_at = row.dispensed_at;
+      if (row.unit_cost !== null) p.unit_cost = row.unit_cost;
+      if (row.sku && row.sku.trim()) p.sku = row.sku.trim();
+
+      const day = row.dispensed_at ? row.dispensed_at.slice(0, 10) : '—';
+      const dKey = day + '|' + (row.location_id || '');
+      if (!byDay[dKey]) {
+        byDay[dKey] = { date: day, location_id: row.location_id, location_name: row.location_name || '—', products: new Set(), total_qty: 0, true_cogs: 0, revenue: 0 };
+      }
+      const d = byDay[dKey];
+      d.products.add(row.vetspire_product_id);
+      d.total_qty += qty;
+      d.true_cogs += qty * cost;
+      d.revenue += rev;
+    }
+
+    IP_ALL_PRODUCTS = Object.values(byProduct).map(p => ({
+      ...p,
+      avg_unit_price: p._price_qty > 0 ? p._price_sum / p._price_qty : 0,
+      pct: p.total_revenue > 0 ? Math.round(((p.total_revenue - p.true_cogs) / p.total_revenue) * 100) : null,
+    }));
+    IP_ALL_DAILY = Object.values(byDay).map(d => ({ ...d, unique_products: d.products.size })).sort((a, b) => b.date.localeCompare(a.date));
+
+    // Lots for qty_remaining (consumption % + "fully consumed" filter)
+    try {
+      const lotsQ = locUuid ? `select=notes,qty_remaining&location_id=eq.${locUuid}&limit=1000` : `select=notes,qty_remaining&limit=1000`;
+      const lotsData = await ipQuery('lots', lotsQ);
+      const lotsByName = {};
+      for (const lot of lotsData) {
+        const name = (lot.notes || '').replace(/^Vetspire inventory:\s*/, '').trim();
+        if (!name) continue;
+        lotsByName[name] = (lotsByName[name] || 0) + (parseFloat(lot.qty_remaining) || 0);
+      }
+      for (const p of IP_ALL_PRODUCTS) {
+        const rem = lotsByName[p.product_name];
+        if (rem !== undefined) p.qty_remaining = rem;
+      }
+    } catch (e) { /* lots not available */ }
+
+    await ipUpdateKpis(start, end, locVid, locUuid, loc);
+    ipRenderProductTable();
+    ipRenderDailyTable();
+    await ipRenderRegionalCards();
+    ipLoadHealthRisk(locVid, locUuid);
+    ipLoadCostDrift(start, locUuid);
+    ipLoadPurchaseHistory();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('ip-product-tbody').innerHTML =
+      `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--s-critical)">Couldn't load procurement data — ${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function ipUpdateKpis(start, end, locVid, locUuid, loc) {
+  const totalCOGS = IP_ALL_PRODUCTS.reduce((s, p) => s + p.true_cogs, 0);
+  const pharmacyRevenue = IP_ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
+  const totalItems = IP_ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
+
+  // Purchase value from po_items — only items received via the in-app
+  // receiving log (auto_flagged=true means the reorder → receive workflow).
+  let purchaseValue = 0;
+  try {
+    const poItems = await ipQuery('po_items',
+      `select=qty_ordered,unit_price&status=eq.received&auto_flagged=eq.true` +
+      `&week_start=gte.${start}&week_start=lte.${end}` +
+      (locUuid ? `&location_id=eq.${locUuid}` : '') + `&limit=1000`);
+    purchaseValue = poItems.reduce((s, r) => s + (parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0), 0);
+  } catch (e) { /* purchase value unavailable — show dash */ }
+
+  let totalPracticeRevenue = null;
+  try {
+    let revParams = `select=revenue,date&date=gte.${start}&date=lte.${end}&limit=1000`;
+    if (locVid) revParams += `&location_id=eq.${locVid}`;
+    const revRows = await ipQuery('daily_revenue', revParams);
+    totalPracticeRevenue = revRows.reduce((s, r) => s + (parseFloat(r.revenue) || 0), 0);
+  } catch (e) { console.warn('daily_revenue fetch failed:', e); }
+
+  let inventoryValue = null, inventorySource = 'snapshot';
+
+  // 1st priority: inventory_snapshots — only when a specific location is
+  // selected (avoids silently defaulting to one location for "All").
+  if (locVid) {
+    try {
+      const snapRows = await ipQuery('inventory_snapshots', `select=on_hand,unit_cost&vetspire_location_id=eq.${locVid}&limit=500`);
+      const iv = snapRows.reduce((t, r) => t + ((parseFloat(r.on_hand) || 0) * (parseFloat(r.unit_cost) || 0)), 0);
+      if (iv > 0) inventoryValue = iv;
+    } catch (e) {}
+  }
+  // 2nd priority: lots table × product unit_cost
+  if (inventoryValue === null && locUuid) {
+    try {
+      const lotsRows = await ipQuery('lots', `select=qty_remaining,products(unit_cost)&location_id=eq.${locUuid}&qty_remaining=gt.0&limit=2000`);
+      const iv = lotsRows.reduce((t, r) => t + (parseFloat(r.qty_remaining) || 0) * (parseFloat(r.products?.unit_cost) || 0), 0);
+      if (iv > 0) { inventoryValue = iv; inventorySource = 'lots'; }
+    } catch (e) {}
+  }
+  // 3rd priority: vetcove_orders YTD spend
+  if (inventoryValue === null) {
+    try {
+      const locUuidFilter = locUuid ? `&location_id=eq.${locUuid}` : '';
+      const vcRows = await ipQuery('vetcove_orders', `select=qty_ordered,unit_price&unit_price=gt.0&order_date=gte.2026-01-01&order_date=lte.${end}${locUuidFilter}&limit=5000`);
+      const ytdSpend = vcRows.reduce((s, r) => s + (parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0), 0);
+      if (ytdSpend > 0) { inventoryValue = ytdSpend; inventorySource = 'ytd-purchases'; }
+    } catch (e) {}
+  }
+  // 4th priority: hardcoded Vetcove YTD baseline (Jan–Jul 8 2026), same
+  // fallback medsync_procurement.html uses until vetcove_orders is fully
+  // populated for every location.
+  if (inventoryValue === null) {
+    const VETCOVE_YTD = {
+      '11111111-0000-0000-0000-000000000001': 106037.42,
+      '11111111-0000-0000-0000-000000000002': 107540.73,
+      '11111111-0000-0000-0000-000000000003':  62140.13,
+      '11111111-0000-0000-0000-000000000004':  90503.23,
+    };
+    const baseline = locUuid ? (VETCOVE_YTD[locUuid] || 0) : Object.values(VETCOVE_YTD).reduce((a, b) => a + b, 0);
+    if (baseline > 0) { inventoryValue = baseline; inventorySource = 'ytd-purchases'; }
+  }
+  const remaining = inventoryValue !== null ? Math.max(0, inventoryValue - totalCOGS) : null;
+  const remSub = inventorySource === 'ytd-purchases' ? 'YTD purchases · minus COGS' : inventorySource === 'lots' ? 'active lots · minus COGS' : 'snapshot minus period COGS';
+
+  // COGS % uses pharmacy revenue (dispensed items) for an apples-to-apples
+  // margin; falls back to total practice revenue if pharmacy revenue is 0.
+  const cogsBase = pharmacyRevenue > 0 ? pharmacyRevenue : totalPracticeRevenue;
+  const cogsPC = cogsBase > 0 ? ((totalCOGS / cogsBase) * 100).toFixed(1) : null;
+  const cogsPCNum = cogsPC !== null ? parseFloat(cogsPC) : null;
+  const cogsColor = cogsPCNum === null ? 'var(--text)' : cogsPCNum > 30 ? 'var(--s-critical)' : cogsPCNum > 25 ? 'var(--s-warn)' : 'var(--s-good)';
+
+  const pharmaMarginPct = pharmacyRevenue > 0 ? (((pharmacyRevenue - totalCOGS) / pharmacyRevenue) * 100).toFixed(1) : null;
+  const pmNum = pharmaMarginPct !== null ? parseFloat(pharmaMarginPct) : null;
+  const marginColor = pmNum === null ? 'var(--text)' : pmNum < 70 ? 'var(--s-critical)' : pmNum < 75 ? 'var(--s-warn)' : 'var(--s-good)';
+
+  const locText = loc ? loc.name : 'All locations';
+
+  document.getElementById('ip-kpi-tiles').innerHTML = `
+    <div class="hero-tile"><div class="l">Purchase Value</div><div class="v" id="ip-kv-purchase" style="font-size:22px;color:var(--muted)">${purchaseValue > 0 ? '$' + ipFmt2(purchaseValue) : '—'}</div><div class="chart-note" style="margin:4px 0 0">from receiving log</div></div>
+    <div class="hero-tile"><div class="l">True COGS</div><div class="v" id="ip-kv-cogs" style="font-size:22px">$${ipFmt2(totalCOGS)}</div><div class="chart-note" id="ip-ks-cogs" style="margin:4px 0 0">${totalItems} dispense events</div></div>
+    <div class="hero-tile"><div class="l">Remaining Inventory</div><div class="v" id="ip-kv-remaining" style="font-size:22px;color:var(--s-good)">${remaining !== null ? '$' + ipFmt2(remaining) : '—'}</div><div class="chart-note" style="margin:4px 0 0">${remSub}</div></div>
+    <div class="hero-tile"><div class="l">Total Revenue (Collected)</div><div class="v" id="ip-kv-totalrev" style="font-size:22px">${totalPracticeRevenue !== null ? '$' + ipFmt2(totalPracticeRevenue) : '—'}</div><div class="chart-note" style="margin:4px 0 0">${totalPracticeRevenue !== null ? esc(locText) : 'syncing hourly'}</div></div>
+    <div class="hero-tile"><div class="l">COGS % Revenue</div><div class="v" id="ip-kv-cogspc" style="font-size:22px;color:${cogsColor}">${cogsPC !== null ? cogsPC + '%' : '—'}</div><div class="chart-note" style="margin:4px 0 0">${pharmacyRevenue > 0 ? 'lower is better · industry avg 18–25%' : 'awaiting pharmacy revenue'}</div></div>
+    <div class="hero-tile"><div class="l">Pharmacy Margin</div><div class="v" id="ip-kv-pharmamargin" style="font-size:22px;color:${marginColor}">${pharmaMarginPct !== null ? pharmaMarginPct + '%' : '—'}</div><div class="chart-note" style="margin:4px 0 0">${pharmacyRevenue > 0 ? 'higher is better · industry avg 75–82%' : 'no pharmacy revenue'}</div></div>
+    <div class="hero-tile"><div class="l">Depreciation Risk</div><div class="v" id="ip-kv-risk" style="font-size:22px;color:var(--s-critical)">—</div><div class="chart-note" id="ip-ks-risk" style="margin:4px 0 0;color:var(--s-critical)">loading…</div></div>
+  `;
+}
+
+// Depreciation Risk — lots on pace to expire before they'll be used up,
+// given each product's dispensing velocity over the trailing 60 days.
+async function ipLoadHealthRisk(locVid, locUuid) {
+  try {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const from60 = isoDaysAgo(60);
+
+    const lots = await ipQuery('lots',
+      `select=notes,qty_remaining,received_date,expiration_date,products(name,unit_cost)&status=not.eq.Disposed` +
+      (locUuid ? `&location_id=eq.${locUuid}` : '') + `&limit=500`);
+    const riskTile = document.getElementById('ip-kv-risk')?.closest('.hero-tile');
+    if (!Array.isArray(lots) || !lots.length) {
+      document.getElementById('ip-kv-risk').textContent = '0';
+      document.getElementById('ip-ks-risk').textContent = 'no active lots';
+      return;
+    }
+
+    const diRows = await ipQuery('dispensed_items',
+      `select=product_name,quantity,unit_cost&dispensed_at=gte.${from60}T00:00:00&returned=eq.false&refunded=eq.false` +
+      (locVid ? `&location_id=eq.${locVid}` : '') + `&limit=5000`);
+    const velocity = {};
+    for (const r of diRows) {
+      if (!r.product_name) continue;
+      if (!velocity[r.product_name]) velocity[r.product_name] = { qty: 0, cost: 0 };
+      velocity[r.product_name].qty += parseFloat(r.quantity) || 0;
+      velocity[r.product_name].cost = parseFloat(r.unit_cost) || velocity[r.product_name].cost;
+    }
+
+    let atRisk = 0, exposure = 0;
+    for (const lot of lots) {
+      const name = lot.products?.name || (lot.notes || '').replace(/^Vetspire inventory:\s*/, '').trim();
+      const qtyRem = parseFloat(lot.qty_remaining) || 0;
+      const daysToExp = lot.expiration_date ? Math.round((new Date(lot.expiration_date) - today) / 864e5) : null;
+      const vel = velocity[name];
+      const dailyRate = vel ? vel.qty / 60 : 0;
+      const daysToDeplete = dailyRate > 0 ? Math.round(qtyRem / dailyRate) : null;
+      const unitCost = vel?.cost || parseFloat(lot.products?.unit_cost) || 0;
+      if (daysToExp !== null && daysToDeplete !== null && daysToExp < daysToDeplete && qtyRem > 0) {
+        atRisk++; exposure += qtyRem * unitCost;
+      }
+    }
+
+    document.getElementById('ip-kv-risk').textContent = atRisk;
+    document.getElementById('ip-ks-risk').textContent = atRisk > 0
+      ? '$' + Number(exposure).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' exposure'
+      : 'no at-risk lots';
+    if (atRisk === 0) {
+      if (riskTile) riskTile.style.borderColor = '#B8E8C8';
+      document.getElementById('ip-kv-risk').style.color = 'var(--s-good)';
+      document.getElementById('ip-ks-risk').style.color = 'var(--s-good)';
+    }
+  } catch (e) { console.warn('Depreciation risk badge error', e); }
+}
+
+// ── Cost Drift & Pricing Alerts ──
+function ipLoadMarginTargets() {
+  try {
+    const s = JSON.parse(localStorage.getItem('medsync_settings') || '{}');
+    return {
+      global:   { min: parseFloat(s.margin_global_min   || 35), max: parseFloat(s.margin_global_max   || 55) },
+      pharma:   { min: parseFloat(s.margin_pharma_min   || 40), max: parseFloat(s.margin_pharma_max   || 60) },
+      diag:     { min: parseFloat(s.margin_diag_min     || 30), max: parseFloat(s.margin_diag_max     || 50) },
+      supplies: { min: parseFloat(s.margin_supplies_min || 30), max: parseFloat(s.margin_supplies_max || 50) },
+      driftPct: parseFloat(s.margin_drift_pct || 5),
+    };
+  } catch (e) {
+    return { global: { min: 35, max: 55 }, pharma: { min: 40, max: 60 }, diag: { min: 30, max: 50 }, supplies: { min: 30, max: 50 }, driftPct: 5 };
+  }
+}
+function ipInferCategory(name) {
+  const n = (name || '').toLowerCase();
+  if (/cytolog|consult|exam|recheck|surgery|surgic|anesthes|ultrasound|radiograph|x-ray|xray|hospitali|boarding|groom|culture|fecal|urinalysis|biopsy|necropsy|euthanas|office visit|physical|dental clean|prophy|titer|recheck|follow.?up|visit|wellness|nail trim|anal gland|ear clean|renal diet counsel|behavior|training|blood draw|sample collect|processing fee|handling fee|sedation|block|nerve block|monitor|ecg|ekg|blood pressure|intraocular|ophthalmolog|dermatolog|cardio|oncolog|orthoped|spec|panel.*with culture|realpcr|pcr.*panel|culture.*panel/.test(n)) return 'service';
+  if (/reagent|catalyst|procyte|snap|idexx|abaxis|test kit|lyte|analyzer/.test(n)) return 'diag';
+  if (/shampoo|spray|flea|tick|worm|supplement|otics|collar|leash|cone|bandage|gauze|suture|syringe|glove|mask|gown|drape|wrap|tape/.test(n)) return 'supplies';
+  return 'pharma';
+}
+function ipTargetForProduct(name, targets) { return targets[ipInferCategory(name)] || targets.global; }
+function ipRecommendedPrice(newCost, targetMin) { return (!newCost || newCost <= 0) ? null : newCost / (1 - targetMin / 100); }
+
+async function ipLoadCostDrift(start, locUuid) {
+  const targets = ipLoadMarginTargets();
+  let poRows = [];
+  try {
+    let pq = `select=product_name,sku,unit_price,qty_ordered,received_at&status=eq.received&auto_flagged=eq.true&unit_price=gt.0&received_at=gte.${start}&order=received_at.desc&limit=500`;
+    if (locUuid) pq += `&location_id=eq.${locUuid}`;
+    poRows = await ipQuery('po_items', pq);
+  } catch (e) { return; }
+  if (!poRows.length) { document.getElementById('ip-drift-btn').hidden = true; document.getElementById('ip-drift-panel').hidden = true; return; }
+
+  const invoiceCostBySku = {}, invoiceDateBySku = {};
+  for (const r of poRows) {
+    if (!r.sku) continue;
+    const key = r.sku.trim();
+    if (!invoiceCostBySku[key] || r.received_at > invoiceDateBySku[key]) {
+      invoiceCostBySku[key] = parseFloat(r.unit_price) || 0;
+      invoiceDateBySku[key] = r.received_at;
+    }
+  }
+
+  const alerts = [];
+  for (const p of IP_ALL_PRODUCTS) {
+    const sku = (p.sku || '').trim();
+    if (!sku || !(sku in invoiceCostBySku)) continue;
+    const vetspireCost = parseFloat(p.unit_cost) || 0;
+    const invoiceCost = invoiceCostBySku[sku];
+    if (vetspireCost <= 0 || invoiceCost <= 0) continue;
+    const driftPct = ((invoiceCost - vetspireCost) / vetspireCost) * 100;
+    const sellPrice = parseFloat(p.avg_unit_price) || 0;
+    const target = ipTargetForProduct(p.product_name, targets);
+    const currentMargin = sellPrice > 0 ? ((sellPrice - vetspireCost) / sellPrice) * 100 : null;
+    const newMargin = sellPrice > 0 ? ((sellPrice - invoiceCost) / sellPrice) * 100 : null;
+    const recPrice = ipRecommendedPrice(invoiceCost, target.min);
+    const costIncreased = driftPct >= targets.driftPct;
+    const marginBelow = currentMargin !== null && currentMargin < target.min;
+    if (costIncreased || marginBelow) {
+      alerts.push({ product_name: p.product_name, sku, vetspireCost, invoiceCost, driftPct, sellPrice, currentMargin, newMargin, target, recPrice, costIncreased, marginBelow });
+    }
+  }
+
+  if (!alerts.length) { document.getElementById('ip-drift-btn').hidden = true; document.getElementById('ip-drift-panel').hidden = true; return; }
+
+  const btn = document.getElementById('ip-drift-btn');
+  btn.hidden = false;
+  document.getElementById('ip-drift-count').textContent = alerts.length;
+  btn.onclick = () => { const p = document.getElementById('ip-drift-panel'); p.hidden = !p.hidden; };
+
+  document.getElementById('ip-drift-tbody').innerHTML = alerts.map(a => {
+    const dSign = a.driftPct >= 0 ? '+' : '';
+    const dColor = a.driftPct > 0 ? 'var(--s-critical)' : 'var(--s-good)';
+    const curMCol = a.currentMargin === null ? '' : a.currentMargin < a.target.min ? 'color:var(--s-critical);font-weight:700' : 'color:var(--s-good)';
+    const newMCol = a.newMargin === null ? '' : a.newMargin < a.target.min ? 'color:var(--s-critical);font-weight:700' : 'color:var(--s-good)';
+    const recCell = a.recPrice ? `<span style="font-weight:700">$${ipFmt2(a.recPrice)}</span>` : '—';
+    const pills = [
+      a.costIncreased ? `<span class="ip-badge crit">Cost ↑ ${dSign}${a.driftPct.toFixed(1)}%</span>` : '',
+      a.marginBelow ? `<span class="ip-badge warn">Below target</span>` : '',
+    ].filter(Boolean).join(' ');
+    return `<tr>
+      <td><div style="font-weight:600">${esc(a.product_name)}</div><div style="font-size:11px;color:var(--muted)">${esc(a.sku)}</div></td>
+      <td style="text-align:right">$${ipFmt2(a.vetspireCost)}</td>
+      <td style="text-align:right;color:${dColor};font-weight:600">$${ipFmt2(a.invoiceCost)}</td>
+      <td style="text-align:right;color:${dColor}">${dSign}${a.driftPct.toFixed(1)}%</td>
+      <td style="text-align:right">${a.sellPrice > 0 ? '$' + ipFmt2(a.sellPrice) : '—'}</td>
+      <td style="text-align:right;${curMCol}">${a.currentMargin !== null ? a.currentMargin.toFixed(1) + '%' : '—'}</td>
+      <td style="text-align:right;${newMCol}">${a.newMargin !== null ? a.newMargin.toFixed(1) + '%' : '—'}</td>
+      <td style="text-align:right;color:var(--muted)">${a.target.min}–${a.target.max}%</td>
+      <td style="text-align:right">${recCell}</td>
+      <td>${pills}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── By-product table ──
+function ipConsolidateByProduct(rows) {
+  const map = {};
+  rows.forEach(p => {
+    const key = p.product_name;
+    if (!map[key]) { map[key] = { ...p, _locs: new Set([p.location_name]) }; }
+    else {
+      const g = map[key];
+      g._locs.add(p.location_name);
+      g.total_qty_dispensed += p.total_qty_dispensed;
+      g.true_cogs += p.true_cogs;
+      g.total_revenue += p.total_revenue;
+      g.pct = g.total_revenue > 0 ? Math.round((1 - g.true_cogs / g.total_revenue) * 100) : null;
+      if (p.last_dispensed_at && (!g.last_dispensed_at || p.last_dispensed_at > g.last_dispensed_at)) g.last_dispensed_at = p.last_dispensed_at;
+      if (p.sku && p.sku.trim()) g.sku = p.sku.trim();
+      if (p.unit_cost !== null && p.unit_cost !== undefined) g.unit_cost = p.unit_cost;
+    }
+  });
+  return Object.values(map).map(p => ({ ...p, location_name: [...p._locs].join(', ') }));
+}
+
+function ipRenderProductTable() {
+  let data = [...IP_ALL_PRODUCTS];
+  if (ipPFilter === 'active') data = data.filter(p => p.total_qty_dispensed > 0);
+  else if (ipPFilter === 'full') data = data.filter(p => p.qty_remaining !== undefined && p.qty_remaining === 0 && p.total_qty_dispensed > 0);
+  else if (ipPFilter === 'cost') data = data.filter(p => p.unit_cost !== null && p.unit_cost > 0);
+
+  const searchQ = (document.getElementById('ip-product-search')?.value || '').trim().toLowerCase();
+  if (searchQ) data = data.filter(p => p.product_name.toLowerCase().includes(searchQ));
+
+  // Consolidate across locations first, then exclude products with no SKU
+  // anywhere (services/procedures never carry one; real inventory items
+  // always have a SKU on at least one dispense event).
+  data = ipConsolidateByProduct(data);
+  data = data.filter(p => p.sku && p.sku.trim() !== '');
+
+  data.sort((a, b) => {
+    let va = a[ipSortCol], vb = b[ipSortCol];
+    if (va === null || va === undefined) va = '';
+    if (vb === null || vb === undefined) vb = '';
+    if (typeof va === 'number') return (va - vb) * ipSortDir;
+    return String(va).localeCompare(String(vb)) * ipSortDir;
+  });
+
+  const tbody = document.getElementById('ip-product-tbody');
+  const { from, until } = selectedDateRange();
+  document.getElementById('ip-tbl-count').textContent = `${data.length} products · ${from} → ${until}`;
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">No dispensed items yet</div><div class="e-sub">Data syncs from Vetspire hourly. Switch ranges or refresh to pull the latest.</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map(p => {
+    const margin = p.pct !== null ? p.pct + '%' : '—';
+    const mColor = p.pct === null ? 'var(--muted)' : p.pct > 40 ? 'var(--s-good)' : p.pct > 20 ? 'var(--s-warn)' : 'var(--s-critical)';
+    const totalThrough = p.total_qty_dispensed + (p.qty_remaining || 0);
+    const consumed = totalThrough > 0 ? Math.round((p.total_qty_dispensed / totalThrough) * 100) : (p.total_qty_dispensed > 0 ? 100 : 0);
+    const barColor = consumed >= 90 ? 'var(--c-clinical)' : consumed >= 50 ? 'var(--c-facilities)' : 'var(--s-good)';
+    const status = consumed >= 100 ? 'info' : p.total_qty_dispensed > 0 ? 'good' : 'neutral';
+    const statusTx = consumed >= 100 ? 'Consumed' : p.total_qty_dispensed > 0 ? 'Active' : 'Pending';
+    const lastDate = p.last_dispensed_at ? p.last_dispensed_at.slice(0, 10) : '—';
+    const hasCost = p.unit_cost !== null && p.unit_cost > 0;
+    return `<tr>
+      <td><div>${esc(p.product_name)}</div>${p.sku ? `<div class="ip-prod-sub">SKU: ${esc(p.sku)}</div>` : ''}</td>
+      <td style="color:var(--ink-2)">${esc(p.location_name)}</td>
+      <td style="text-align:right">${ipFmtQty(p.total_qty_dispensed)}</td>
+      <td style="text-align:right">${hasCost ? '$' + ipFmtUnit(p.unit_cost) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td style="text-align:right">${hasCost ? '$' + ipFmt2(p.true_cogs) : '<span style="color:var(--muted);font-size:10px">no cost data</span>'}</td>
+      <td style="text-align:right;color:var(--muted)">$${ipFmt2(p.total_revenue)}</td>
+      <td style="text-align:right;color:${mColor};font-weight:700">${margin}</td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div class="ip-pbar-wrap"><div class="ip-pbar-fill" style="width:${Math.min(consumed, 100)}%;background:${barColor}"></div></div><span style="color:var(--muted);font-size:10px">${Math.round(consumed)}%</span></div></td>
+      <td style="color:var(--muted)">${lastDate}</td>
+      <td><span class="ip-badge ${status}">${statusTx}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function ipRenderDailyTable() {
+  const tbody = document.getElementById('ip-daily-tbody');
+  document.getElementById('ip-daily-count').textContent = `${IP_ALL_DAILY.length} days with activity`;
+  if (!IP_ALL_DAILY.length) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">No daily data in selected range.</td></tr>`; return; }
+  tbody.innerHTML = IP_ALL_DAILY.map(d => {
+    const cogsPC = d.revenue > 0 ? ((d.true_cogs / d.revenue) * 100).toFixed(1) + '%' : '—';
+    const pcColor = d.revenue > 0 ? (parseFloat(cogsPC) > 80 ? 'var(--s-critical)' : parseFloat(cogsPC) > 60 ? 'var(--s-warn)' : 'var(--s-good)') : 'var(--text)';
+    return `<tr>
+      <td>${d.date}</td>
+      <td>${esc(d.location_name)}</td>
+      <td style="text-align:right">${d.unique_products}</td>
+      <td style="text-align:right">${ipFmtQty(d.total_qty)}</td>
+      <td style="text-align:right;font-weight:700">$${ipFmt2(d.true_cogs)}</td>
+      <td style="text-align:right;color:var(--muted)">$${ipFmt2(d.revenue)}</td>
+      <td style="text-align:right;font-weight:700;color:${pcColor}">${cogsPC}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function ipRenderRegionalCards() {
+  const grid = document.getElementById('ip-region-grid');
+  const regionByVid = {};
+  try {
+    const rows = await ipQuery('locations', 'select=id,name,vetspire_location_id,regions(name)&order=name&limit=50');
+    for (const r of rows) if (r.vetspire_location_id) regionByVid[r.vetspire_location_id] = (r.regions && r.regions.name) || '';
+  } catch (e) { /* fall through to the hardcoded region names below */ }
+
+  const rcLocations = LOCATIONS.map(l => ({
+    name: l.name, id: l.vid,
+    region: regionByVid[l.vid] || (l.vid === '28253' ? 'Chicagoland West' : 'Chicagoland'),
+  }));
+
+  const byLoc = {};
+  for (const p of IP_ALL_PRODUCTS) {
+    const lid = p.location_id;
+    if (!byLoc[lid]) byLoc[lid] = { cogs: 0, revenue: 0, products: 0, events: 0 };
+    byLoc[lid].cogs += p.true_cogs;
+    byLoc[lid].revenue += p.total_revenue;
+    byLoc[lid].products += 1;
+    byLoc[lid].events += p.events;
+  }
+  const totalCOGS = Object.values(byLoc).reduce((s, v) => s + v.cogs, 0);
+
+  grid.innerHTML = rcLocations.map(loc => {
+    const d = byLoc[loc.id];
+    const hasData = !!d;
+    const cogs = d ? d.cogs : 0, rev = d ? d.revenue : 0;
+    const cogsPC = rev > 0 ? ((cogs / rev) * 100).toFixed(1) + '%' : '—';
+    const barPct = totalCOGS > 0 ? Math.round((cogs / totalCOGS) * 100) : 0;
+    const pilotBadge = loc.id === '28253' ? '<span class="ip-badge info">Pilot</span>' : '';
+    return `<div class="ip-region-card">
+      <div class="ip-rc-head"><div class="ip-rc-name">${loc.name}</div>${pilotBadge}</div>
+      <div class="ip-rc-row"><span class="ip-rc-k">Region</span><span class="ip-rc-v" style="color:var(--muted)">${loc.region}</span></div>
+      <div class="ip-rc-row"><span class="ip-rc-k">True COGS</span><span class="ip-rc-v">${hasData ? '$' + ipFmt2(cogs) : '—'}</span></div>
+      <div class="ip-rc-row"><span class="ip-rc-k">Revenue</span><span class="ip-rc-v" style="color:var(--muted)">${hasData ? '$' + ipFmt2(rev) : '—'}</span></div>
+      <div class="ip-rc-row"><span class="ip-rc-k">COGS %</span><span class="ip-rc-v">${cogsPC}</span></div>
+      <div class="ip-rc-row"><span class="ip-rc-k">Products tracked</span><span class="ip-rc-v">${d ? d.products : '—'}</span></div>
+      <div class="ip-rc-bar"><div class="ip-rc-bar-fill" style="width:${barPct}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${barPct}% of regional COGS</div>
+    </div>`;
+  }).join('');
+}
+
+// ── View switcher ──
+function ipSwitchView(view) {
+  ipCurrentView = view;
+  document.getElementById('ip-view-product').hidden = view !== 'product';
+  document.getElementById('ip-view-purchases').hidden = view !== 'purchases';
+  document.getElementById('ip-view-daily').hidden = view !== 'daily';
+  document.getElementById('ip-view-regional').hidden = view !== 'regional';
+  document.getElementById('ip-view-reorder').hidden = view !== 'reorder';
+  document.getElementById('ip-view-pricechanges').hidden = view !== 'pricechanges';
+  if (view === 'reorder') ipRenderReorderSuggestions();
+  if (view === 'purchases') ipRenderPurchaseTable();
+  if (view === 'pricechanges') ipLoadPriceChanges();
+}
+
+// ── Reorder Suggestions ──
+async function ipRenderReorderSuggestions() {
+  const tbody = document.getElementById('ip-reorder-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Calculating reorder needs…</td></tr>';
+  document.getElementById('ip-reorder-count').textContent = '—';
+  document.getElementById('ip-approve-all-btn').hidden = true;
+  document.getElementById('ip-reorder-banner').hidden = true;
+
+  const loc = selectedLocation();
+  const locVid = loc ? loc.vid : '28253';
+  const locUuid = loc ? loc.uuid : IP_LOC_UUID['28253'];
+
+  try {
+    const lotsData = await ipQuery('lots', `select=notes,qty_remaining&location_id=eq.${locUuid}&qty_remaining=gt.0&limit=1000`);
+    const onHandMap = {};
+    for (const lot of lotsData) {
+      const name = (lot.notes || '').replace(/^Vetspire inventory:\s*/, '').trim();
+      if (!name) continue;
+      onHandMap[name] = (onHandMap[name] || 0) + (parseFloat(lot.qty_remaining) || 0);
+    }
+
+    const fromStr = isoDaysAgo(30), toStr = isoDaysAgo(0);
+    const usageRows = await ipQuery('dispensed_items',
+      `select=product_name,quantity&location_id=eq.${locVid}&dispensed_at=gte.${fromStr}T00:00:00&dispensed_at=lte.${toStr}T23:59:59&returned=eq.false&refunded=eq.false&limit=5000`);
+    const usageMap = {};
+    for (const row of usageRows) { const n = row.product_name || ''; usageMap[n] = (usageMap[n] || 0) + (parseFloat(row.quantity) || 0); }
+
+    IP_REORDER_ITEMS = [];
+    for (const [name, onHand] of Object.entries(onHandMap)) {
+      const totalUsed30 = usageMap[name] || 0;
+      if (totalUsed30 <= 0) continue;
+      const avgDaily = totalUsed30 / 30;
+      const daysLeft = onHand / avgDaily;
+      if (daysLeft < 14) {
+        const suggestQty = Math.max(1, Math.ceil((30 * avgDaily) - onHand));
+        IP_REORDER_ITEMS.push({ product_name: name, on_hand: onHand, avg_daily: avgDaily, days_left: daysLeft, suggest_qty: suggestQty });
+      }
+    }
+    IP_REORDER_ITEMS.sort((a, b) => a.days_left - b.days_left);
+
+    document.getElementById('ip-reorder-count').textContent =
+      `${IP_REORDER_ITEMS.length} product${IP_REORDER_ITEMS.length !== 1 ? 's' : ''} need reordering · based on last 30 days usage`;
+
+    if (!IP_REORDER_ITEMS.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="ip-empty"><div class="e-icon">✓</div><div class="e-title">All products have 14+ days of supply</div><div class="e-sub">No reorders needed right now.</div></div></td></tr>`;
+      return;
+    }
+
+    document.getElementById('ip-approve-all-btn').hidden = false;
+
+    tbody.innerHTML = IP_REORDER_ITEMS.map((item, i) => {
+      const daysCls = item.days_left < 7 ? 'crit' : 'warn';
+      return `<tr id="ip-reorder-row-${i}">
+        <td>${esc(item.product_name)}</td>
+        <td style="text-align:right">${ipFmtQty(item.on_hand)}</td>
+        <td style="text-align:right">${item.avg_daily.toFixed(2)}/day</td>
+        <td style="text-align:right"><span class="ip-days-pill ${daysCls}">${item.days_left < 1 ? '<1' : Math.floor(item.days_left)} days</span></td>
+        <td style="text-align:right;font-weight:700">${ipFmtQty(item.suggest_qty)}</td>
+        <td style="text-align:center"><button class="ip-btn-approve" onclick="ipApproveReorder(${i})">Approve →</button></td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--s-critical)">Error: ${esc(err.message)}</td></tr>`;
+    iaShowToast('⚠ Reorder suggestions failed: ' + err.message);
+  }
+}
+
+async function ipApproveReorder(idx) {
+  const item = IP_REORDER_ITEMS[idx];
+  if (!item) return;
+  await ipPushToWeeklyOrder([item]);
+}
+async function ipApproveAllReorders() {
+  if (!IP_REORDER_ITEMS.length) return;
+  await ipPushToWeeklyOrder(IP_REORDER_ITEMS);
+}
+
+// Writes new rows to po_items (status: 'queued', auto_flagged: true) — the
+// same weekly-order queue MedSync's own Reorder Suggestions writes to via
+// medsync_procurement.html. This is new write behavior for ScoutSync: every
+// other report on this dashboard (including the rest of this Inventory tab)
+// is read-only.
+async function ipPushToWeeklyOrder(items) {
+  const loc = selectedLocation();
+  const locUuid = loc ? loc.uuid : IP_LOC_UUID['28253'];
+
+  const now = new Date();
+  const day = now.getDay() || 7;
+  const mon = new Date(now); mon.setDate(now.getDate() - day + 1);
+  const weekStart = mon.toISOString().slice(0, 10);
+
+  let pushed = 0;
+  for (const item of items) {
+    let productId = null, vendor = null, unitPrice = null;
+    try {
+      const prods = await ipQuery('products', `select=id,vendor,unit_price&name=eq.${encodeURIComponent(item.product_name)}&limit=1`);
+      if (prods.length) { productId = prods[0].id; vendor = prods[0].vendor || null; unitPrice = prods[0].unit_price || null; }
+    } catch (e) {}
+
+    const record = {
+      location_id: locUuid, product_id: productId, product_name: item.product_name, vendor,
+      qty_ordered: item.suggest_qty, unit_price: unitPrice, gpo_price: null, on_hand: item.on_hand,
+      week_start: weekStart, status: 'queued', auto_flagged: true,
+    };
+
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/po_items`, {
+        method: 'POST', headers: { ...HEADERS, 'Prefer': 'return=minimal' }, body: JSON.stringify(record),
+      });
+      if (!res.ok) { const body = await res.text(); throw new Error(`HTTP ${res.status}: ${body.slice(0, 120)}`); }
+      pushed++;
+      const row = document.getElementById(`ip-reorder-row-${IP_REORDER_ITEMS.indexOf(item)}`);
+      if (row) {
+        row.style.opacity = '0.4';
+        const btn = row.querySelector('.ip-btn-approve');
+        if (btn) { btn.textContent = '✓ Queued'; btn.disabled = true; }
+      }
+    } catch (e) {
+      iaShowToast(`⚠ Failed to queue ${item.product_name}: ${e.message}`);
+      return;
+    }
+  }
+  iaShowToast(`✓ ${pushed} item${pushed !== 1 ? 's' : ''} added to weekly order`);
+}
+
+// ── Purchase History (Vetcove Orders) ──
+async function ipLoadPurchaseHistory() {
+  const { from: start, until: end } = selectedDateRange();
+  const loc = selectedLocation();
+  const locUuid = loc ? loc.uuid : null;
+
+  let params = `select=product_name,vendor,sku,qty_ordered,unit_price,order_date,status,location_id&unit_price=gt.0&order=order_date.desc&limit=5000`;
+  params += `&order_date=gte.${start}&order_date=lte.${end}`;
+  if (locUuid) params += `&location_id=eq.${locUuid}`;
+
+  try {
+    const rows = await ipQuery('vetcove_orders', params);
+    IP_ALL_PURCHASES = rows.map(r => ({ ...r, week_start: r.order_date, total_price: (parseFloat(r.qty_ordered) || 0) * (parseFloat(r.unit_price) || 0) }));
+    ipRenderPurchaseSummary();
+    ipRenderPurchaseTable();
+  } catch (e) {
+    IP_ALL_PURCHASES = [];
+    const msg = e.message || '';
+    const hint = msg.includes('relation "vetcove_orders" does not exist')
+      ? 'Run <strong>vetcove_ytd_import.sql</strong> in Supabase first to create this table.' : esc(msg);
+    document.getElementById('ip-purch-tbody').innerHTML = `<tr><td colspan="8"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">Purchase history not yet imported</div><div class="e-sub">${hint}</div></div></td></tr>`;
+    document.getElementById('ip-purch-count').textContent = 'Run SQL import first';
+  }
+}
+
+function ipRenderPurchaseSummary() {
+  const rows = IP_ALL_PURCHASES;
+  if (!rows.length) { document.getElementById('ip-purch-summary').innerHTML = ''; return; }
+  const totalSpend = rows.reduce((s, r) => s + r.total_price, 0);
+  const byVendor = {}, byLoc = {};
+  for (const r of rows) {
+    byVendor[r.vendor || '—'] = (byVendor[r.vendor || '—'] || 0) + r.total_price;
+    const locName = IP_LOC_NAME[r.location_id] || r.location_id || '—';
+    byLoc[locName] = (byLoc[locName] || 0) + r.total_price;
+  }
+  const topVendor = Object.entries(byVendor).sort((a, b) => b[1] - a[1])[0];
+  const topLoc = Object.entries(byLoc).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('ip-purch-summary').innerHTML = `
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Total Purchased</div><div class="v" style="font-size:20px">$${ipFmt2(totalSpend)}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Unique Products</div><div class="v" style="font-size:20px">${new Set(rows.map(r => r.product_name)).size}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Top Vendor</div><div class="v" style="font-size:16px">${esc(topVendor?.[0] || '—')}</div><div class="chart-note" style="margin:4px 0 0">${topVendor ? '$' + ipFmt2(topVendor[1]) : ''}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Top Location</div><div class="v" style="font-size:16px">${esc(topLoc?.[0] || '—')}</div><div class="chart-note" style="margin:4px 0 0">${topLoc ? '$' + ipFmt2(topLoc[1]) : ''}</div></div>`;
+}
+
+function ipRenderPurchaseTable() {
+  const tbody = document.getElementById('ip-purch-tbody');
+  const countEl = document.getElementById('ip-purch-count');
+  let data = [...IP_ALL_PURCHASES];
+  data.sort((a, b) => {
+    let av = a[ipPurchSort], bv = b[ipPurchSort];
+    if (ipPurchSort === 'total_price' || ipPurchSort === 'qty_ordered' || ipPurchSort === 'unit_price') {
+      av = parseFloat(av) || 0; bv = parseFloat(bv) || 0;
+      return (av - bv) * ipPurchDir;
+    }
+    return String(av || '').localeCompare(String(bv || '')) * ipPurchDir;
+  });
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="ip-empty"><div class="e-icon">📦</div><div class="e-title">No purchase history for this period</div><div class="e-sub">Try a wider range, or import Vetcove order history via the SQL migration.</div></div></td></tr>`;
+    countEl.textContent = '0 orders';
+    return;
+  }
+  const totalSpend = data.reduce((s, r) => s + r.total_price, 0);
+  countEl.textContent = `${data.length} line items · $${ipFmt2(totalSpend)} total spend`;
+
+  const statusBadge = { received: 'good', cancelled: 'neutral', ordered: 'warn' };
+  tbody.innerHTML = data.map(r => {
+    const locName = IP_LOC_NAME[r.location_id] || '—';
+    const status = (r.status || '').toLowerCase();
+    const badge = statusBadge[status] || 'neutral';
+    return `<tr>
+      <td>${esc(r.week_start || '—')}</td>
+      <td><div>${esc(r.product_name || '—')}</div>${r.sku ? `<div class="ip-prod-sub">SKU: ${esc(r.sku)}</div>` : ''}</td>
+      <td>${esc(r.vendor || '—')}</td>
+      <td>${esc(locName)}</td>
+      <td style="text-align:right">${ipFmtQty(r.qty_ordered)}</td>
+      <td style="text-align:right">$${ipFmt2(r.unit_price)}</td>
+      <td style="text-align:right;font-weight:700">$${ipFmt2(r.total_price)}</td>
+      <td><span class="ip-badge ${badge}">${esc(r.status || '—')}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── CSV export & print report ──
+function ipExportCsv() {
+  if (!IP_ALL_PRODUCTS.length) { iaShowToast('No data to export'); return; }
+  const { from: csvStart, until: csvEnd } = selectedDateRange();
+  const loc = selectedLocation();
+  const locTxt = loc ? loc.name : 'All locations';
+  const g = id => document.getElementById(id)?.textContent?.trim() || '';
+
+  const byProduct = {};
+  IP_ALL_PRODUCTS.forEach(p => {
+    const key = p.product_name;
+    if (!byProduct[key]) byProduct[key] = { product_name: p.product_name, qty: 0, cogs: 0, revenue: 0, unit_cost: p.unit_cost, last_dispensed: p.last_dispensed_at };
+    const grp = byProduct[key];
+    grp.qty += p.total_qty_dispensed; grp.cogs += p.true_cogs; grp.revenue += p.total_revenue;
+    if (p.last_dispensed_at && (!grp.last_dispensed || p.last_dispensed_at > grp.last_dispensed)) grp.last_dispensed = p.last_dispensed_at;
+  });
+  const consolidated = Object.values(byProduct).sort((a, b) => b.cogs - a.cogs);
+  const totalQty = consolidated.reduce((s, p) => s + p.qty, 0);
+  const totalCOGS = consolidated.reduce((s, p) => s + p.cogs, 0);
+  const totalRev = consolidated.reduce((s, p) => s + p.revenue, 0);
+  const totalMargin = totalRev > 0 ? ((1 - totalCOGS / totalRev) * 100).toFixed(1) + '%' : '';
+
+  const headers = ['ScoutSync Inventory Procurement Export'];
+  const rows = [
+    ['Period', csvStart + ' → ' + csvEnd],
+    ['Location', locTxt],
+    ['Exported', new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }) + ' CT'],
+    [],
+    ['KPI', 'Value'],
+    ['Purchase Value', g('ip-kv-purchase')],
+    ['True COGS', g('ip-kv-cogs')],
+    ['Dispense Events', g('ip-ks-cogs')],
+    ['Remaining Inventory', g('ip-kv-remaining')],
+    ['Total Revenue (Collected)', g('ip-kv-totalrev')],
+    ['COGS % Revenue', g('ip-kv-cogspc')],
+    ['Pharmacy Margin', g('ip-kv-pharmamargin')],
+    [],
+    ['Product', 'Qty Dispensed', 'Unit Cost', 'True COGS', 'Total Revenue', 'Margin %', 'Last Dispensed'],
+    ...consolidated.map(p => {
+      const margin = p.revenue > 0 ? ((1 - p.cogs / p.revenue) * 100).toFixed(1) + '%' : '';
+      return [p.product_name, p.qty.toFixed(2), p.unit_cost ? p.unit_cost.toFixed(4) : '', p.cogs.toFixed(2), p.revenue.toFixed(2), margin, p.last_dispensed ? p.last_dispensed.slice(0, 10) : ''];
+    }),
+    [],
+    ['TOTALS', totalQty.toFixed(2), '', totalCOGS.toFixed(2), totalRev.toFixed(2), totalMargin, ''],
+  ];
+  iaExportCsv('scoutsync_procurement_' + csvStart + '_' + csvEnd + '.csv', headers, rows);
+}
+
+function ipPrintReport() {
+  if (!IP_ALL_PRODUCTS.length) { iaShowToast('No data to print'); return; }
+  const loc = selectedLocation();
+  const locName = loc ? loc.name : 'All locations';
+  const { from, until } = selectedDateRange();
+  const now = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  const totalCOGS = IP_ALL_PRODUCTS.reduce((s, p) => s + p.true_cogs, 0);
+  const pharmacyRev = IP_ALL_PRODUCTS.reduce((s, p) => s + p.total_revenue, 0);
+  const totalItems = IP_ALL_PRODUCTS.reduce((s, p) => s + p.events, 0);
+  const totalQty = IP_ALL_PRODUCTS.reduce((s, p) => s + p.total_qty_dispensed, 0);
+  const g = id => document.getElementById(id)?.textContent?.trim() || '—';
+
+  const rows = IP_ALL_PRODUCTS.map(p => `
+    <tr>
+      <td>${esc(p.product_name)}</td>
+      <td>${esc(p.location_name || locName)}</td>
+      <td style="text-align:right">${ipFmtQty(p.total_qty_dispensed)}</td>
+      <td style="text-align:right">${p.unit_cost ? '$' + ipFmtUnit(p.unit_cost) : '—'}</td>
+      <td style="text-align:right">$${ipFmt2(p.true_cogs)}</td>
+      <td style="text-align:right">$${ipFmt2(p.total_revenue)}</td>
+      <td style="text-align:right;${p.pct !== null && p.pct < 50 ? 'color:#B42318' : ''}">${p.pct !== null ? p.pct + '%' : '—'}</td>
+      <td style="text-align:right">${p.last_dispensed_at ? p.last_dispensed_at.slice(0, 10) : '—'}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>ScoutSync Procurement Report — ${esc(locName)} — ${from} to ${until}</title>
+  <style>
+    @page { margin: 0.75in; } body { font-family: Arial, sans-serif; font-size: 11px; color: #1C2B4A; margin: 0; }
+    h1 { font-size: 18px; font-weight: 700; margin: 0 0 2px; } .sub { font-size: 12px; color: #6B7A99; margin: 0 0 20px; }
+    .kpis { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 24px; }
+    .kpi { border: 1px solid #C5CDD8; border-radius: 8px; padding: 10px 12px; }
+    .kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #6B7A99; margin-bottom: 4px; }
+    .kpi-val { font-size: 16px; font-weight: 700; color: #1C2B4A; } .kpi-sub { font-size: 9px; color: #6B7A99; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    thead th { background: #1C2B4A; color: #fff; padding: 6px 8px; text-align: left; font-weight: 600; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+    tbody td { padding: 5px 8px; border-bottom: 0.5px solid #E1E0D9; vertical-align: middle; }
+    tbody tr:nth-child(even) { background: #F9F9F7; } tbody tr:last-child td { border-bottom: none; }
+    .footer { margin-top: 20px; font-size: 9px; color: #6B7A99; border-top: 0.5px solid #C5CDD8; padding-top: 8px; display: flex; justify-content: space-between; }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style></head><body>
+  <h1>Procurement &amp; COGS Report</h1>
+  <div class="sub">${esc(locName)} &nbsp;·&nbsp; ${from} → ${until} &nbsp;·&nbsp; Generated ${now}</div>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-label">Purchase Value</div><div class="kpi-val">${g('ip-kv-purchase')}</div><div class="kpi-sub">from receiving log</div></div>
+    <div class="kpi"><div class="kpi-label">True COGS</div><div class="kpi-val">$${ipFmt2(totalCOGS)}</div><div class="kpi-sub">${totalItems} dispense events</div></div>
+    <div class="kpi"><div class="kpi-label">Remaining Inventory</div><div class="kpi-val">${g('ip-kv-remaining')}</div><div class="kpi-sub">estimated on-hand value</div></div>
+    <div class="kpi"><div class="kpi-label">Total Revenue (Collected)</div><div class="kpi-val">${g('ip-kv-totalrev')}</div><div class="kpi-sub">practice P&amp;L, cash collected</div></div>
+    <div class="kpi"><div class="kpi-label">COGS % Revenue</div><div class="kpi-val">${g('ip-kv-cogspc')}</div><div class="kpi-sub">pharmacy cost vs total rev</div></div>
+    <div class="kpi"><div class="kpi-label">Pharmacy Margin</div><div class="kpi-val">${g('ip-kv-pharmamargin')}</div><div class="kpi-sub">$${ipFmt2(pharmacyRev)} pharmacy rev</div></div>
+    <div class="kpi"><div class="kpi-label">Items Dispensed</div><div class="kpi-val">${ipFmtQty(totalQty)}</div><div class="kpi-sub">${IP_ALL_PRODUCTS.length} unique products</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Product</th><th>Location</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">True COGS</th><th style="text-align:right">Revenue</th><th style="text-align:right">Margin</th><th style="text-align:right">Last Dispensed</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer"><span>ScoutSync · Inventory Procurement · ${esc(locName)}</span><span>${now}</span></div>
+  <script>window.onload = function() { window.print(); }<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); } else iaShowToast('⚠ Pop-up blocked — allow pop-ups to print');
+}
+
+// ── Price Change Report ──
+let ipPcData = [];
+let ipPcSortKey = 'impact', ipPcSortDir = -1;
+
+async function ipLoadPriceChanges() {
+  document.getElementById('ip-pc-loading').hidden = false;
+  document.getElementById('ip-pc-table-wrap').hidden = true;
+  document.getElementById('ip-pc-empty').hidden = true;
+  document.getElementById('ip-pc-summary').hidden = true;
+
+  try {
+    const { from: start, until: end } = selectedDateRange();
+    const loc = selectedLocation();
+    const locFilter = loc ? `&location_id=eq.${loc.vid}` : '';
+    // Look back a year before `start` to catch the "before" price of any
+    // change that lands inside the selected range.
+    const lookbackStart = (() => { const d = new Date(start); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10); })();
+
+    const rows = await ipQuery('dispensed_items',
+      `select=vetspire_product_id,product_name,sku,unit_cost,dispensed_at,location_id&unit_cost=gt.0` +
+      `&dispensed_at=gte.${lookbackStart}T00:00:00&dispensed_at=lte.${end}T23:59:59${locFilter}` +
+      `&order=product_name.asc,dispensed_at.asc&limit=10000`);
+
+    const byProduct = {};
+    for (const r of rows) {
+      const key = r.vetspire_product_id || r.product_name;
+      if (!byProduct[key]) byProduct[key] = { name: r.product_name, sku: r.sku, txns: [] };
+      byProduct[key].txns.push({ cost: parseFloat(r.unit_cost), date: r.dispensed_at.slice(0, 10) });
+    }
+
+    const changes = [];
+    for (const [, prod] of Object.entries(byProduct)) {
+      const txns = prod.txns; // already sorted by date asc
+      let prevCost = null, prevDate = null, unitsAtOldPrice = 0;
+      for (let i = 0; i < txns.length; i++) {
+        const { cost, date } = txns[i];
+        if (prevCost === null) { prevCost = cost; prevDate = date; unitsAtOldPrice = 1; continue; }
+        if (Math.abs(cost - prevCost) > 0.001) {
+          if (date >= start && date <= end) {
+            const pct = ((cost - prevCost) / prevCost) * 100;
+            const daysOld = Math.round((new Date(date) - new Date(prevDate)) / 864e5);
+            const unitsOld = txns.slice(0, i).filter(t => t.cost === prevCost && t.date >= start).length;
+            const impact = unitsOld * (cost - prevCost);
+            changes.push({ name: prod.name, sku: prod.sku || '—', change_date: date, old_cost: prevCost, new_cost: cost, pct, units_old: unitsAtOldPrice, impact: Math.abs(impact), impact_sign: impact, days_old: daysOld });
+          }
+          prevCost = cost; prevDate = date; unitsAtOldPrice = 1;
+        } else { unitsAtOldPrice++; }
+      }
+    }
+    ipPcData = changes;
+    ipRenderPriceChanges();
+  } catch (err) {
+    document.getElementById('ip-pc-loading').hidden = true;
+    document.getElementById('ip-pc-subtitle').textContent = 'Error: ' + err.message;
+  }
+}
+
+function ipRenderPriceChanges() {
+  const filter = document.getElementById('ip-pc-filter')?.value || 'all';
+  let data = ipPcData.filter(r => filter === 'all' ? true : filter === 'increase' ? r.pct > 0 : r.pct < 0);
+  data.sort((a, b) => ipPcSortDir * (typeof a[ipPcSortKey] === 'string' ? a[ipPcSortKey].localeCompare(b[ipPcSortKey]) : (a[ipPcSortKey] - b[ipPcSortKey])));
+
+  document.getElementById('ip-pc-loading').hidden = true;
+
+  if (!data.length) {
+    document.getElementById('ip-pc-empty').hidden = false;
+    document.getElementById('ip-pc-table-wrap').hidden = true;
+    document.getElementById('ip-pc-summary').hidden = true;
+    return;
+  }
+
+  const increases = data.filter(r => r.pct > 0);
+  const decreases = data.filter(r => r.pct < 0);
+  const totalImpact = data.reduce((s, r) => s + r.impact_sign, 0);
+  const summary = document.getElementById('ip-pc-summary');
+  summary.hidden = false;
+  summary.innerHTML = `
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Changes detected</div><div class="v" style="font-size:20px">${data.length}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Increases</div><div class="v" style="font-size:20px;color:var(--s-critical)">▲ ${increases.length}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Decreases</div><div class="v" style="font-size:20px;color:var(--s-good)">▼ ${decreases.length}</div></div>
+    <div class="hero-tile" style="padding:12px 14px"><div class="l">Net cost impact</div><div class="v" style="font-size:20px;color:${totalImpact > 0 ? 'var(--s-critical)' : 'var(--s-good)'}">${totalImpact > 0 ? '+' : ''}$${Math.abs(totalImpact).toFixed(2)}</div></div>`;
+  document.getElementById('ip-pc-subtitle').textContent = `${data.length} changes · sorted by ${ipPcSortKey}`;
+
+  document.getElementById('ip-pc-tbody').innerHTML = data.map(r => {
+    const up = r.pct > 0;
+    const pctColor = up ? 'var(--s-critical)' : 'var(--s-good)';
+    const arrow = up ? '▲' : '▼';
+    return `<tr>
+      <td><div>${esc(r.name)}</div><div class="ip-prod-sub">SKU: ${esc(r.sku)}</div></td>
+      <td style="white-space:nowrap">${r.change_date}</td>
+      <td style="text-align:right">$${r.old_cost.toFixed(4)}</td>
+      <td style="text-align:right">$${r.new_cost.toFixed(4)}</td>
+      <td style="text-align:right;color:${pctColor};font-weight:700">${arrow} ${Math.abs(r.pct).toFixed(1)}%</td>
+      <td style="text-align:right">${r.units_old}</td>
+      <td style="text-align:right;color:${pctColor}">${r.impact_sign > 0 ? '+' : ''}$${Math.abs(r.impact_sign).toFixed(2)}</td>
+      <td style="text-align:right">${r.days_old}d</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('ip-pc-table-wrap').hidden = false;
+  document.getElementById('ip-pc-empty').hidden = true;
+}
+
+function ipPcSort(key) {
+  if (ipPcSortKey === key) ipPcSortDir *= -1; else { ipPcSortKey = key; ipPcSortDir = key === 'name' ? 1 : -1; }
+  ipRenderPriceChanges();
+}
+
+function ipExportPriceChangesCsv() {
+  if (!ipPcData.length) return;
+  const filter = document.getElementById('ip-pc-filter')?.value || 'all';
+  const data = ipPcData.filter(r => filter === 'all' ? true : filter === 'increase' ? r.pct > 0 : r.pct < 0);
+  const headers = ['Product', 'SKU', 'Change Date', 'Old Cost', 'New Cost', 'Change %', 'Units at Old Price', 'Est. Impact', 'Days at Old Price'];
+  const rows = data.map(r => [r.name, r.sku, r.change_date, r.old_cost.toFixed(4), r.new_cost.toFixed(4), r.pct.toFixed(2) + '%', r.units_old, r.impact_sign.toFixed(2), r.days_old]);
+  iaExportCsv('price_changes.csv', headers, rows);
+}
+
+// ── Static control wiring (elements exist once, in the initial HTML) ──
+document.getElementById('ip-view-select').addEventListener('change', e => ipSwitchView(e.target.value));
+document.getElementById('ip-product-search').addEventListener('input', ipRenderProductTable);
+document.getElementById('ip-pc-filter').addEventListener('change', ipRenderPriceChanges);
+document.getElementById('ip-approve-all-btn').addEventListener('click', ipApproveAllReorders);
+
+document.querySelectorAll('#ip-pfilter-tabs .subtab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ipPFilter = btn.dataset.f;
+    document.querySelectorAll('#ip-pfilter-tabs .subtab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ipRenderProductTable();
+  });
+});
+document.querySelectorAll('#ip-view-product th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    if (ipSortCol === col) ipSortDir *= -1; else { ipSortCol = col; ipSortDir = -1; }
+    ipRenderProductTable();
+  });
+});
+
+function ipSetPurchSort(col) {
+  if (ipPurchSort === col) ipPurchDir *= -1; else { ipPurchSort = col; ipPurchDir = -1; }
+  document.querySelectorAll('#ip-purch-sort-tabs .subtab').forEach(b => b.classList.toggle('active', b.dataset.sort === col));
+  ipRenderPurchaseTable();
+}
+document.querySelectorAll('#ip-purch-sort-tabs .subtab').forEach(btn => {
+  btn.addEventListener('click', () => ipSetPurchSort(btn.dataset.sort));
+});
+document.querySelectorAll('#ip-view-purchases th[data-psort]').forEach(th => {
+  th.addEventListener('click', () => ipSetPurchSort(th.dataset.psort));
+});
+document.querySelectorAll('#ip-view-pricechanges th[data-pcsort]').forEach(th => {
+  th.addEventListener('click', () => ipPcSort(th.dataset.pcsort));
+});
 
 function loadActiveTab() {
   if (activeTab === 'clinical') return loadClinicalGeo();
