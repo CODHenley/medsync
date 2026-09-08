@@ -489,7 +489,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div class="section-head"><div class="dot"></div><h2>Revenue by Source</h2></div>
     <div class="chart-card">
       <div class="chart-title">By product category</div>
-      <div class="chart-note">Top 6 categories by revenue; the rest grouped as Other. Click a category for the services in it.</div>
+      <div class="chart-note">Top 6 categories by revenue; the rest grouped as Other. Click any bar — most drill into individual services; a few (revenue-center-billed charges, and Other) explain why they can't.</div>
       <div id="category-chart" class="bar-chart-wrap"></div>
       <div id="category-drilldown" class="cell-detail-panel"></div>
     </div>
@@ -1804,9 +1804,12 @@ function renderBarChart(el, rows, opts) {
       tt.innerHTML = `<div class="tt-label">${esc(r.label)}</div><div class="tt-value">${esc(fmt$(r.value))}</div>`;
     });
     fill.addEventListener('mouseleave', () => { tt.style.opacity = '0'; });
-    if (opts.onClick && r.key !== undefined) {
-      row.style.cursor = 'pointer';
-      row.title = `Click for services in ${r.label}`;
+    if (opts.onClick) {
+      // Every bar responds to a click -- rows with no `key` aren't silently
+      // inert, they explain (via the caller's onClick) why there's nothing
+      // to drill into, rather than looking broken when nothing happens.
+      row.style.cursor = r.key !== undefined ? 'pointer' : 'help';
+      row.title = r.key !== undefined ? `Click for services in ${r.label}` : `Click to see why ${r.label} has no service-level detail`;
       row.addEventListener('click', () => opts.onClick(r));
     }
     el.appendChild(row);
@@ -1824,6 +1827,28 @@ function renderBarChart(el, rows, opts) {
 // UUID every other table on this dashboard uses -- must filter on loc.vid.
 async function showCategoryDrilldown(catRow, from, until, loc) {
   const panel = document.getElementById('category-drilldown');
+
+  // Revenue-center-billed categories (Radiographs/Inhouse laboratory/
+  // Treatments) and "Other" have no `key` -- there's genuinely no
+  // service-level detail to fetch for them, so explain why instead of
+  // either doing nothing (looks broken) or querying dispensed_items with a
+  // filter that could never match anything real.
+  if (catRow.key === undefined) {
+    const isOther = catRow.label === 'Other';
+    panel.innerHTML = `
+      <div class="dd-head">
+        <div class="dd-title">${esc(catRow.label)} — ${fmt$(catRow.value)}</div>
+        <button class="dd-close" title="Close">×</button>
+      </div>
+      <div class="chart-note" style="margin-top:-4px">
+        ${isOther
+          ? 'This bar groups several smaller categories together, not one — there\'s no single category to show services for. Narrow the date range or pick a specific location; a category buried in "Other" here may be large enough to break out on its own under a narrower view.'
+          : `Vetspire bills ${esc(catRow.label)} as a flat revenue-center charge, not against an individual product or service record — so there's no per-service breakdown to show, only the total above.`}
+      </div>`;
+    panel.querySelector('.dd-close').addEventListener('click', () => { panel.innerHTML = ''; });
+    return;
+  }
+
   panel.innerHTML = '<div class="chart-note">Loading services…</div>';
 
   const catFilter = catRow.key === 'uncategorized' ? 'product_category_id=is.null' : `product_category_id=eq.${catRow.key}`;
