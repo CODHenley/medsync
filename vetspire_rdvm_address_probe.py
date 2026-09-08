@@ -143,6 +143,51 @@ def main():
         tname = f['type'].get('name') or (f['type'].get('ofType') or {}).get('name') or f['type']['kind']
         print(f"  {f['name']}: {tname}")
 
+    # Sample real visits (via a few rdvms known to have some) to see actual
+    # visitType/visitRating/notes usage patterns.
+    print("\n=== Sampling real RdvmVisit data (first 10 rDVMs with any visits) ===")
+    visits_sample = gql(token, """
+    {
+      rdvms(limit: 30) {
+        id
+        name
+        visits {
+          id
+          visitDate
+          visitType
+          visitRating
+          notes
+          insertedAt
+        }
+      }
+    }
+    """)
+    if 'errors' in visits_sample:
+        print('GraphQL errors:', json.dumps(visits_sample['errors'], indent=2))
+    else:
+        rdvms = (visits_sample.get('data') or {}).get('rdvms') or []
+        with_visits = [r for r in rdvms if r.get('visits')]
+        print(f'{len(with_visits)} of {len(rdvms)} sampled rDVMs have at least one logged visit.')
+        for r in with_visits[:10]:
+            print(f"  {r['name']}:")
+            for v in r['visits']:
+                print(f"    {v.get('visitDate')} | type={v.get('visitType')!r} | rating={v.get('visitRating')!r} | notes={v.get('notes')!r}")
+
+    # Check whether ScoutSync could write new visits back into Vetspire
+    # (keeping Vetspire as the single source of truth) vs. read-only.
+    print("\n=== Checking for a mutation to create/update RdvmVisit ===")
+    mutation_check = gql(token, '{ __type(name: "RootMutationType") { fields { name } } }')
+    if 'errors' in mutation_check:
+        # Some schemas name the root mutation type differently -- try Mutation as a fallback.
+        mutation_check = gql(token, '{ __type(name: "Mutation") { fields { name } } }')
+    if 'errors' in mutation_check:
+        print('GraphQL errors on mutation introspection:', json.dumps(mutation_check['errors'], indent=2))
+    else:
+        mut_fields = (mutation_check.get('data') or {}).get('__type', {}).get('fields') or []
+        rdvm_visit_mutations = [f['name'] for f in mut_fields if 'rdvmvisit' in f['name'].lower() or ('rdvm' in f['name'].lower() and 'visit' in f['name'].lower())]
+        print(f'Total root mutations: {len(mut_fields)}')
+        print(f'rDVM-visit-related mutations found: {rdvm_visit_mutations or "NONE"}')
+
 
 if __name__ == '__main__':
     main()
