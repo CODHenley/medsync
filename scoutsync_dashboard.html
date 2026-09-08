@@ -58,12 +58,12 @@ body {
   margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--surface); color: var(--text);
 }
+.app-header-frozen { position: sticky; top: 0; z-index: 50; }
 header.top {
   background: var(--navy); color: #fff;
   display: flex; align-items: center; gap: 14px;
   padding: 14px 24px;
 }
-header.top img.logo { height: 32px; width: auto; border-radius: 6px; }
 header.top .word { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; }
 header.top .word span { color: var(--orange); }
 header.top .tagline { font-size: 12px; color: rgba(255,255,255,.6); margin-left: 2px; }
@@ -385,7 +385,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 /* ── Reporting tab — report picker. Reuses .chart-card/.section-head's
    existing component language; no new visual system introduced. ── */
 .report-layout { display: grid; grid-template-columns: 230px 1fr; gap: 16px; align-items: start; }
-.report-picker { padding: 16px; align-self: start; position: sticky; top: 12px; }
+.report-picker { padding: 16px; align-self: start; position: sticky; top: 120px; } /* clears the now-frozen header+tab bar (.app-header-frozen) */
 .report-group + .report-group { margin-top: 20px; }
 .report-group-title {
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
@@ -404,8 +404,8 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 </head>
 <body>
 
+<div class="app-header-frozen">
 <header class="top">
-  <img class="logo" src="Scout Logo.png" alt="Scout" onerror="this.style.display='none'">
   <div>
     <div class="word">Scout<span>Sync</span></div>
     <div class="tagline">Executive dashboard</div>
@@ -455,6 +455,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   <button data-tab="reporting">Reporting</button>
   <button class="soon" disabled>Facilities Operations<span class="tag">Soon</span></button>
 </nav>
+</div>
 
 <main>
 
