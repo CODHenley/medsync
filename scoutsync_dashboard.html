@@ -827,7 +827,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         </div>
         <div class="report-group">
           <div class="report-group-title">Operations</div>
-          <div class="report-empty">Coming soon</div>
+          <button class="report-item" data-report="apt">Appointment Types</button>
         </div>
       </div>
 
@@ -1175,6 +1175,42 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <tbody id="rpc-tbody"></tbody>
       </table></div>
       <div id="rpc-empty" class="ip-empty" hidden>No price changes detected in this period.</div>
+    </div>
+        </div>
+
+        <div id="report-apt" hidden>
+    <!-- ══ Appointment Types — new Operations-group report (stage 3 of the
+         Reporting rollout, first entry under Operations; Finance stays
+         "Coming soon" for now). Queries appointment_events directly, same
+         table and columns the Cancellations & Deletions report (Clinical
+         Operations tab) already reads: location_id, appointment_type,
+         scheduled_start, status, deleted. Blockoff-typed rows (Lunch,
+         internal scheduling placeholders) are already excluded at sync
+         time, so every row here is a real clinical appointment type.
+         Reuses the page's own date-range/location filters above. No
+         write/mutation behavior. ══ -->
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Appointment Types</h2>
+      <span class="sub">Volume and outcome by appointment type — same range and location as the filters above</span></div>
+
+    <div class="chart-card">
+      <div class="chart-title">Key metrics</div>
+      <div class="hero-row" id="apt-kpi-tiles"><div class="chart-note">Select this report to load appointment types…</div></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Volume by appointment type</div>
+      <div class="chart-note" id="apt-chart-note">Top types by appointment count; the rest grouped as Other.</div>
+      <div id="apt-type-chart" class="bar-chart-wrap"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Outcomes by type</div>
+      <div class="chart-note">Kept vs. cancelled/no-show/deleted for every type in range — see the Cancellations &amp; Deletions report (Clinical Operations tab) for per-appointment detail and deletion reasons.</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Type</th><th style="text-align:right">Total</th><th style="text-align:right">Kept</th><th style="text-align:right">Cancelled</th><th style="text-align:right">No-show</th><th style="text-align:right">Deleted</th><th style="text-align:right">% kept</th></tr></thead>
+        <tbody id="apt-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Select this report to load appointment types…</td></tr></tbody>
+      </table></div>
     </div>
         </div>
       </div>
@@ -6391,6 +6427,86 @@ document.querySelectorAll('#report-pcr th[data-pcsort]').forEach(th => {
   th.addEventListener('click', () => rpcSort(th.dataset.pcsort));
 });
 
+// ── Appointment Types (appointment_events) — new Operations-group report.
+// Same table/columns/exclusions as the Cancellations & Deletions report on
+// the Clinical Operations tab (isAffectedEvent() is that report's own
+// status===CANCELLED||status===NOSHOW||deleted helper, reused as-is here so
+// "kept" means the same thing in both places). This report asks a different
+// question though: not "how much fell through overall" but "how much of
+// each *type* of appointment happened vs. fell through" -- so it's grouped
+// by appointment_type first, with kept/cancelled/no-show/deleted as a
+// breakdown within each type rather than the other report's per-location
+// rollup. No write/mutation behavior.
+async function loadAppointmentTypesReport() {
+  const kpiEl = document.getElementById('apt-kpi-tiles');
+  const chartEl = document.getElementById('apt-type-chart');
+  const tbody = document.getElementById('apt-tbody');
+
+  const { from, until } = selectedDateRange();
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const untilEndOfDay = until + 'T23:59:59';
+
+  const rows = await fetchAllRows(`${SUPA_URL}/rest/v1/appointment_events?select=location_id,appointment_type,scheduled_start,status,deleted&scheduled_start=gte.${from}&scheduled_start=lte.${untilEndOfDay}${locFilter}&order=scheduled_start.asc`);
+
+  if (rows === null) {
+    kpiEl.innerHTML = '';
+    chartEl.innerHTML = '<div class="chart-note">Couldn\'t load appointment data — run scoutsync_appointment_events.sql and vetspire_appointment_events_sync.py if you haven\'t yet.</div>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">No data.</td></tr>';
+    return;
+  }
+
+  const byType = {};
+  rows.forEach(r => {
+    const type = r.appointment_type || 'Unspecified';
+    const b = byType[type] || (byType[type] = { type, total: 0, cancelled: 0, noshow: 0, deleted: 0, kept: 0 });
+    b.total++;
+    if (r.status === 'CANCELLED') b.cancelled++;
+    if (r.status === 'NOSHOW') b.noshow++;
+    if (r.deleted) b.deleted++;
+    if (!isAffectedEvent(r)) b.kept++;
+  });
+  const typeRows = Object.values(byType).sort((a, b) => b.total - a.total);
+
+  const totalAll = rows.length;
+  const totalKept = typeRows.reduce((a, t) => a + t.kept, 0);
+
+  kpiEl.innerHTML = `
+    <div class="hero-tile"><div class="l">Total appointments</div><div class="v">${fmtN(totalAll)}</div></div>
+    <div class="hero-tile"><div class="l">Distinct types</div><div class="v">${fmtN(typeRows.length)}</div></div>
+    <div class="hero-tile"><div class="l">Overall % kept</div><div class="v" style="color:${totalAll ? (totalKept / totalAll >= 0.85 ? 'var(--s-good)' : 'var(--s-warn)') : 'var(--text)'}">${totalAll ? ((totalKept / totalAll) * 100).toFixed(1) + '%' : '—'}</div></div>`;
+
+  // Volume by type — top 6 by count plotted individually (dataviz categorical
+  // palette, same convention as Revenue by Source), remainder grouped as
+  // "Other" so a long tail of one-off types doesn't crowd out the real
+  // picture.
+  const CAT_COLORS = ['var(--cat-1)', 'var(--cat-2)', 'var(--cat-3)', 'var(--cat-4)', 'var(--cat-5)', 'var(--cat-6)'];
+  const top6 = typeRows.slice(0, 6);
+  const rest = typeRows.slice(6);
+  const otherTotal = rest.reduce((a, t) => a + t.total, 0);
+  const chartRows = top6.map((t, i) => ({ label: t.type, value: t.total, color: CAT_COLORS[i] }));
+  if (otherTotal > 0) chartRows.push({ label: `Other (${rest.length} types)`, value: otherTotal, color: 'var(--cat-other)' });
+
+  chartEl.innerHTML = '';
+  if (!chartRows.length) {
+    chartEl.innerHTML = '<div class="chart-note">No data in this range.</div>';
+  } else {
+    const max = Math.max(...chartRows.map(r => r.value), 1);
+    chartRows.forEach(r => {
+      const pct = totalAll ? (r.value / totalAll) * 100 : 0;
+      const w = Math.max((r.value / max) * 100, 1.5);
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML = `<div class="b-name" title="${esc(r.label)}">${esc(r.label)}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${r.color}"></div></div><div class="b-value">${fmtN(r.value)} (${pct.toFixed(1)}%)</div>`;
+      chartEl.appendChild(row);
+    });
+  }
+
+  tbody.innerHTML = typeRows.length
+    ? typeRows.map(t => `<tr><td>${esc(t.type)}</td><td style="text-align:right">${fmtN(t.total)}</td><td style="text-align:right">${fmtN(t.kept)}</td><td style="text-align:right">${fmtN(t.cancelled)}</td><td style="text-align:right">${fmtN(t.noshow)}</td><td style="text-align:right">${fmtN(t.deleted)}</td><td style="text-align:right;color:${t.total && t.kept / t.total >= 0.85 ? 'var(--s-good)' : 'var(--s-warn)'}">${t.total ? ((t.kept / t.total) * 100).toFixed(1) + '%' : '—'}</td></tr>`).join('')
+    : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">No appointments in this range.</td></tr>';
+}
+
 // ── Reporting tab — report picker. Nothing fetches until a report is
 // actually selected; re-selecting one (including after switching away and
 // back) skips the refetch when the loc/date-range/year filters are exactly
@@ -6404,6 +6520,7 @@ function showReport(key) {
   document.getElementById('report-ph').hidden = key !== 'ph';
   document.getElementById('report-dc').hidden = key !== 'dc';
   document.getElementById('report-pcr').hidden = key !== 'pcr';
+  document.getElementById('report-apt').hidden = key !== 'apt';
   document.querySelectorAll('#report-picker .report-item').forEach(b => b.classList.toggle('active', b.dataset.report === key));
 }
 function loadReporting(force) {
@@ -6418,6 +6535,7 @@ function loadReporting(force) {
   if (selectedReport === 'ph') return runCached('reporting:ph', filterSnapshot(), loadPurchaseHistoryReport, force);
   if (selectedReport === 'dc') return runCached('reporting:dc', filterSnapshot(), loadDailyCogsReport, force);
   if (selectedReport === 'pcr') return runCached('reporting:pcr', filterSnapshot(), loadPriceChangeReport, force);
+  if (selectedReport === 'apt') return runCached('reporting:apt', filterSnapshot(), loadAppointmentTypesReport, force);
 }
 document.querySelectorAll('#report-picker .report-item').forEach(btn => {
   btn.addEventListener('click', () => {
