@@ -632,6 +632,23 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <span id="cogs-target-status" class="chart-note"></span>
       </div>
     </div>
+    <div class="chart-card">
+      <div class="chart-title">Margin targets by category</div>
+      <div class="chart-note">Shared with MedSync's Admin Settings — used to flag cost drift and recommend selling-price adjustments when a Vetcove invoice arrives at a higher unit cost.</div>
+      <div class="cogs-target-form">
+        <label>Global min %<input type="number" id="margin-global-min-input" min="0" max="100"></label>
+        <label>Global max %<input type="number" id="margin-global-max-input" min="0" max="100"></label>
+        <label>Pharma min %<input type="number" id="margin-pharma-min-input" min="0" max="100"></label>
+        <label>Pharma max %<input type="number" id="margin-pharma-max-input" min="0" max="100"></label>
+        <label>Diagnostics min %<input type="number" id="margin-diag-min-input" min="0" max="100"></label>
+        <label>Diagnostics max %<input type="number" id="margin-diag-max-input" min="0" max="100"></label>
+        <label>Supplies min %<input type="number" id="margin-supplies-min-input" min="0" max="100"></label>
+        <label>Supplies max %<input type="number" id="margin-supplies-max-input" min="0" max="100"></label>
+        <label>Cost drift alert %<input type="number" id="margin-drift-pct-input" min="0" max="100" step="0.5"></label>
+        <button id="margin-targets-save">Save</button>
+        <span id="margin-targets-status" class="chart-note"></span>
+      </div>
+    </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
       <h2>Purchase vs. Usage</h2>
@@ -3770,6 +3787,61 @@ async function saveCogsTarget(min, max) {
   }
 }
 
+// Same super-admin-only setting as MedSync's Admin Settings "Margin
+// targets (Super Admin)" section -- ported here without its email-domain
+// gate, since ScoutSync has no login of its own to gate anything behind
+// (see medsync_settings_live.html for the original, and the migration
+// discussion around it). Stored in the same organization_settings.id=1
+// row as the COGS target above, just different keys within settings_json.
+const MARGIN_TARGET_DEFAULT = {
+  global: { min: 35, max: 55 }, pharma: { min: 40, max: 60 },
+  diag: { min: 30, max: 50 }, supplies: { min: 30, max: 50 }, driftPct: 5,
+};
+
+async function fetchMarginTargets() {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/organization_settings?id=eq.1&select=settings_json`, { headers: HEADERS });
+    if (!res.ok) return { ...MARGIN_TARGET_DEFAULT };
+    const rows = await res.json();
+    const s = (rows[0] || {}).settings_json || {};
+    const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+    return {
+      global:   { min: num(s.margin_global_min,   MARGIN_TARGET_DEFAULT.global.min),   max: num(s.margin_global_max,   MARGIN_TARGET_DEFAULT.global.max) },
+      pharma:   { min: num(s.margin_pharma_min,   MARGIN_TARGET_DEFAULT.pharma.min),   max: num(s.margin_pharma_max,   MARGIN_TARGET_DEFAULT.pharma.max) },
+      diag:     { min: num(s.margin_diag_min,     MARGIN_TARGET_DEFAULT.diag.min),     max: num(s.margin_diag_max,     MARGIN_TARGET_DEFAULT.diag.max) },
+      supplies: { min: num(s.margin_supplies_min, MARGIN_TARGET_DEFAULT.supplies.min), max: num(s.margin_supplies_max, MARGIN_TARGET_DEFAULT.supplies.max) },
+      driftPct: num(s.margin_drift_pct, MARGIN_TARGET_DEFAULT.driftPct),
+    };
+  } catch (e) {
+    return { ...MARGIN_TARGET_DEFAULT };
+  }
+}
+
+async function saveMarginTargets(values) {
+  const status = document.getElementById('margin-targets-status');
+  status.textContent = 'Saving…';
+  try {
+    // Fetch-then-merge, same reasoning as saveCogsTarget() above -- don't
+    // clobber cogs_min/cogs_max or any other key already in settings_json.
+    const existingRes = await fetch(`${SUPA_URL}/rest/v1/organization_settings?id=eq.1&select=settings_json`, { headers: HEADERS });
+    const existingRows = existingRes.ok ? await existingRes.json() : [];
+    const merged = Object.assign({}, (existingRows[0] || {}).settings_json || {}, values);
+
+    const res = await fetch(`${SUPA_URL}/rest/v1/organization_settings`, {
+      method: 'POST',
+      headers: Object.assign({}, HEADERS, { 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify({ id: 1, settings_json: merged, updated_at: new Date().toISOString() }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    status.textContent = '✓ Saved';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+    return true;
+  } catch (e) {
+    status.textContent = 'Error saving — try again';
+    return false;
+  }
+}
+
 async function loadInventory() {
   const note = document.getElementById('inventory-note');
   const tiles = document.getElementById('inventory-tiles');
@@ -3780,12 +3852,13 @@ async function loadInventory() {
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
 
   const untilEndOfDay = until + 'T23:59:59';
-  const [revRows, spendRows, cogsTarget, usageRows, lostRows] = await Promise.all([
+  const [revRows, spendRows, cogsTarget, usageRows, lostRows, marginTargets] = await Promise.all([
     fetchAllRows(`${SUPA_URL}/rest/v1/v_financial_kpis_daily?select=revenue&service_date=gte.${from}&service_date=lte.${until}${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/purchase_history?select=amount&purchased_at=gte.${from}&purchased_at=lte.${until}${locFilter}`),
     fetchCogsTarget(),
     fetchAllRows(`${SUPA_URL}/rest/v1/procurement_daily_cogs?select=true_cogs&dispense_date=gte.${from}&dispense_date=lte.${until}${locFilter}`),
     fetchAllRows(`${SUPA_URL}/rest/v1/goods_lost?select=value_lost&created_at=gte.${from}&created_at=lte.${untilEndOfDay}${locFilter}`),
+    fetchMarginTargets(),
   ]);
 
   document.getElementById('cogs-target-input').value = cogsTarget.min;
@@ -3799,6 +3872,35 @@ async function loadInventory() {
     }
     const ok = await saveCogsTarget(newMin, newMax);
     if (ok) loadInventory(); // recompute Budget/Actual COGS% against the new target
+  };
+
+  document.getElementById('margin-global-min-input').value = marginTargets.global.min;
+  document.getElementById('margin-global-max-input').value = marginTargets.global.max;
+  document.getElementById('margin-pharma-min-input').value = marginTargets.pharma.min;
+  document.getElementById('margin-pharma-max-input').value = marginTargets.pharma.max;
+  document.getElementById('margin-diag-min-input').value = marginTargets.diag.min;
+  document.getElementById('margin-diag-max-input').value = marginTargets.diag.max;
+  document.getElementById('margin-supplies-min-input').value = marginTargets.supplies.min;
+  document.getElementById('margin-supplies-max-input').value = marginTargets.supplies.max;
+  document.getElementById('margin-drift-pct-input').value = marginTargets.driftPct;
+  document.getElementById('margin-targets-save').onclick = async () => {
+    const ids = ['margin-global-min-input', 'margin-global-max-input', 'margin-pharma-min-input', 'margin-pharma-max-input',
+      'margin-diag-min-input', 'margin-diag-max-input', 'margin-supplies-min-input', 'margin-supplies-max-input', 'margin-drift-pct-input'];
+    const vals = ids.map(id => parseFloat(document.getElementById(id).value));
+    if (vals.some(v => !Number.isFinite(v))) {
+      document.getElementById('margin-targets-status').textContent = 'Enter valid numbers';
+      return;
+    }
+    const [gMin, gMax, pMin, pMax, dMin, dMax, sMin, sMax, driftPct] = vals;
+    // Keys match medsync_settings_live.html's saveSettings() exactly, so
+    // either app's editor reads/writes the same organization_settings row.
+    await saveMarginTargets({
+      margin_global_min: gMin, margin_global_max: gMax,
+      margin_pharma_min: pMin, margin_pharma_max: pMax,
+      margin_diag_min: dMin, margin_diag_max: dMax,
+      margin_supplies_min: sMin, margin_supplies_max: sMax,
+      margin_drift_pct: driftPct,
+    });
   };
 
   if (revRows === null || spendRows === null) {
