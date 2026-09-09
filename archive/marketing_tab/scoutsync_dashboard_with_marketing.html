@@ -25,6 +25,13 @@
   --c-clinical:   #2B6CB0;
   --c-financial:  #C83803;
   --c-facilities: #3C5A99;
+  /* Marketing (referral/rDVM analytics) — neither existing section color
+     fit: --c-clinical (blue) is already a distinct tab concept and
+     --c-facilities is a close, easily-confused navy-blue neighbor.
+     Validated against all three: node scripts/validate_palette.js
+     "#2B6CB0,#C83803,#3C5A99,#0F8B6C" --mode light --surface "#fcfcfb"
+     → ALL CHECKS PASS */
+  --c-marketing:  #0F8B6C;
 
   /* categorical (Revenue by Source) — dataviz skill default 8-hue theme,
      first 6 slots — validated: node scripts/validate_palette.js
@@ -292,7 +299,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .heatmap-legend-scale span { flex: 1; }
 
 /* ── Chicagoland map ── */
-#chicago-map { height: 480px; border-radius: 10px; z-index: 0; }
+#chicago-map, #referral-map { height: 480px; border-radius: 10px; z-index: 0; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 11.5px; color: var(--ink-2); }
 .map-legend .legend-item .legend-swatch { border-radius: 50%; }
 .zip-popup { font-size: 12.5px; min-width: 190px; }
@@ -464,6 +471,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   <button data-tab="inventory">Inventory</button>
   <button data-tab="procurement">Procurement</button>
   <button data-tab="reporting">Reporting</button>
+  <button data-tab="marketing">Marketing</button>
   <button class="soon" disabled>Facilities Operations<span class="tag">Soon</span></button>
 </nav>
 </div>
@@ -1215,6 +1223,52 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- ══ Marketing (referral/rDVM analytics) — stage 1 of 2. Stage 2
+       (rDVM visit-logging synced to/from Vetspire's own RdvmVisit feature)
+       is separate future work, not built here. Read-only, same
+       range/location filters and runCached() caching as every other tab. ══ -->
+  <section class="panel" id="panel-marketing">
+
+    <div class="section-head"><div class="dot" style="background:var(--c-marketing)"></div>
+      <h2>Case Volume by Referring Vet</h2>
+      <span class="sub">Cases with an exam, selected range — real rDVM referral sources only (competitor urgent care/ER practices are a different signal, on the Clinical Operations tab)</span></div>
+    <div class="chart-card">
+      <div class="chart-title">Ranked by case count</div>
+      <div class="chart-note" id="referral-volume-note"></div>
+      <div id="referral-volume-chart" class="bar-chart-wrap"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-marketing)"></div>
+      <h2>Revenue by Referring Hospital</h2>
+      <span class="sub">Vetspire salesReport broken down by rDVM, selected range</span></div>
+    <div class="chart-card">
+      <div class="chart-title">Ranked by revenue</div>
+      <div class="chart-note" id="referral-revenue-note"></div>
+      <div id="referral-revenue-chart" class="bar-chart-wrap"></div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-marketing)"></div>
+      <h2>Referral Origin Map</h2>
+      <span class="sub">Referring hospitals by ZIP code, selected range</span></div>
+    <div class="chart-card">
+      <div class="chart-note" id="referral-map-note">Circle size = case count referred from that ZIP. Click a circle for its top referring hospitals.</div>
+      <div id="referral-map"></div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="legend-swatch" style="width:12px;height:12px;background:var(--c-financial)"></span>Practice location</div>
+        <div class="legend-item"><span class="legend-swatch" style="width:12px;height:12px;background:var(--c-marketing);opacity:.55"></span>Referring hospital ZIP (sized by case count)</div>
+      </div>
+    </div>
+
+    <div class="section-head"><div class="dot" style="background:var(--c-marketing)"></div>
+      <h2>Weekly Marketing Insights</h2>
+      <span class="sub">Most recent 7 days vs. the 7 days before, computed live from the charts above</span></div>
+    <div class="chart-card">
+      <div class="insight-list" id="marketing-insights-panel"></div>
+    </div>
+
+    <div id="marketing-empty"></div>
   </section>
 
   <div class="foot-note">
@@ -2880,7 +2934,11 @@ async function loadActPerProviderReport() {
   </table></div>`;
 }
 
-// ── Case heatmaps (day-of-week x half-hour) ──
+// ── Case heatmaps (day-of-week x hour-of-day) ──
+function hourLabelFull(h) {
+  const fmt = x => { const period = x < 12 ? 'AM' : 'PM'; let d = x % 12; if (d === 0) d = 12; return d + ':00 ' + period; };
+  return `${fmt(h)}–${fmt((h + 1) % 24)}`;
+}
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // Scout is open 10am–9pm CST; cases occasionally check out as early as 9am
@@ -2972,15 +3030,15 @@ function renderHeatmapDayInsight(elId, rows, metric) {
 
   const dayCount = Array(7).fill(0);
   const daySum = Array(7).fill(0);
-  const slotCountByDay = Array.from({ length: 7 }, () => Array(48).fill(0));
-  const slotSumByDay = Array.from({ length: 7 }, () => Array(48).fill(0));
+  const hourCountByDay = Array.from({ length: 7 }, () => Array(24).fill(0));
+  const hourSumByDay = Array.from({ length: 7 }, () => Array(24).fill(0));
   rows.forEach(r => {
-    const d = Number(r.day_of_week), s = slotOf(r);
-    if (Number.isNaN(d) || Number.isNaN(s) || d < 0 || d > 6 || s < 0 || s > 47) return;
+    const d = Number(r.day_of_week), h = Number(r.hour_of_day);
+    if (Number.isNaN(d) || Number.isNaN(h) || d < 0 || d > 6 || h < 0 || h > 23) return;
     dayCount[d] += 1;
     daySum[d] += Number(r.case_value || 0);
-    slotCountByDay[d][s] += 1;
-    slotSumByDay[d][s] += Number(r.case_value || 0);
+    hourCountByDay[d][h] += 1;
+    hourSumByDay[d][h] += Number(r.case_value || 0);
   });
 
   let topDay = -1;
@@ -2999,17 +3057,16 @@ function renderHeatmapDayInsight(elId, rows, metric) {
     if (topDay === -1) { el.innerHTML = ''; return; } // not enough volume anywhere to say something meaningful
   }
 
-  // Peak half-hour slot within that day, by the same metric -- matches the
-  // grid's own half-hour resolution rather than rounding back up to hours.
-  let topSlot = -1, topSlotAvg = -Infinity;
-  for (let s = HEATMAP_SLOT_START; s <= HEATMAP_SLOT_END; s++) {
-    const c = slotCountByDay[topDay][s];
+  // Peak hour within that day, by the same metric.
+  let topHour = -1, topHourAvg = -Infinity;
+  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
+    const c = hourCountByDay[topDay][h];
     if (!c) continue;
     if (metric === 'volume') {
-      if (topSlot === -1 || c > slotCountByDay[topDay][topSlot]) topSlot = s;
+      if (topHour === -1 || c > hourCountByDay[topDay][topHour]) topHour = h;
     } else if (c >= 2) {
-      const avg = slotSumByDay[topDay][s] / c;
-      if (avg > topSlotAvg) { topSlotAvg = avg; topSlot = s; }
+      const avg = hourSumByDay[topDay][h] / c;
+      if (avg > topHourAvg) { topHourAvg = avg; topHour = h; }
     }
   }
 
@@ -3020,12 +3077,12 @@ function renderHeatmapDayInsight(elId, rows, metric) {
     const share = (total / rows.length * 100).toFixed(0);
     title = 'Busiest day';
     body = `<b>${esc(dayName)}</b> is the busiest day this period — <b>${fmtN(total)}</b> cases (${share}% of the total)` +
-      (topSlot !== -1 ? `, peaking around <b>${esc(slotLabelFull(topSlot))}</b>.` : '.');
+      (topHour !== -1 ? `, peaking around <b>${esc(hourLabelFull(topHour))}</b>.` : '.');
   } else {
     const avg = daySum[topDay] / dayCount[topDay];
     title = 'Highest-value day';
     body = `<b>${esc(dayName)}</b> carries the highest average case value this period — <b>${fmt$(avg)}</b> per case` +
-      (topSlot !== -1 ? `, driven especially by the <b>${esc(slotLabelFull(topSlot))}</b> slot.` : '.');
+      (topHour !== -1 ? `, driven especially by the <b>${esc(hourLabelFull(topHour))}</b> slot.` : '.');
   }
 
   el.innerHTML = `
@@ -3987,6 +4044,354 @@ async function loadClinicalGeo() {
   renderChicagoMap(geoRows);
 }
 
+// ── Referral Origin Map (Marketing tab) — same Leaflet + ZIP_CENTROIDS
+// approach as the Chicagoland case map above (no new geocoding dependency,
+// no lat/lng storage), own map instance/container since it lives on a
+// different tab/panel. Circle radius uses the same sqrt(count)-scaling
+// convention as renderChicagoMap. ──
+let referralMap = null, referralMarkersLayer = null;
+function initReferralMap() {
+  if (referralMap) return;
+  referralMap = L.map('referral-map', { scrollWheelZoom: false }).setView([41.95, -87.85], 9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18,
+  }).addTo(referralMap);
+  PRACTICE_LOCATIONS.forEach(loc => {
+    L.circleMarker([loc.lat, loc.lng], {
+      radius: 8, color: '#C83803', fillColor: '#C83803', fillOpacity: 1, weight: 2,
+    }).bindTooltip(loc.name, { direction: 'top' }).addTo(referralMap);
+  });
+  referralMarkersLayer = L.layerGroup().addTo(referralMap);
+}
+
+// caseRows: v_referral_case_volume rows (already range/location-filtered),
+// now including vetspire_rdvm_id. directoryByRdvmId: the COMPLETE,
+// standalone rdvm_directory lookup (vetspire_rdvm_id -> {postal_code,
+// city, name}) -- the primary address source, since it's independent of
+// whether the referring client has had a recent encounter. referralMeta
+// (vetspire_referral_id -> {postal_code, city, referral_name}) is only a
+// fallback for rows predating the directory sync; either being null (not
+// both) means the relevant migration hasn't been run yet.
+function renderReferralMap(caseRows, referralMeta, directoryByRdvmId) {
+  initReferralMap();
+  referralMarkersLayer.clearLayers();
+  const note = document.getElementById('referral-map-note');
+
+  if (referralMeta === null && !directoryByRdvmId) {
+    note.innerHTML = `Couldn't load rDVM address data — run <code>scoutsync_referral_marketing_analytics.sql</code>
+      and <code>scoutsync_rdvm_directory.sql</code> in the Supabase SQL editor if you haven't yet.`;
+    return;
+  }
+
+  const byZip = {};
+  caseRows.forEach(r => {
+    const dir = directoryByRdvmId && directoryByRdvmId[r.vetspire_rdvm_id];
+    const fallbackMeta = referralMeta && referralMeta[r.vetspire_referral_id];
+    const zip = ((dir && dir.postal_code) || (fallbackMeta && fallbackMeta.postal_code) || '').trim();
+    if (!zip) return;
+    const city = (dir && dir.city) || (fallbackMeta && fallbackMeta.city);
+    const b = byZip[zip] = byZip[zip] || { count: 0, hospitals: {}, city };
+    const n = Number(r.case_count) || 0;
+    b.count += n;
+    const name = r.referral_name || 'Unknown';
+    b.hospitals[name] = (b.hospitals[name] || 0) + n;
+  });
+
+  const zipEntries = Object.entries(byZip);
+  const known = zipEntries.filter(([zip]) => ZIP_CENTROIDS[zip]);
+  const unknown = zipEntries.filter(([zip]) => !ZIP_CENTROIDS[zip]);
+  const maxCount = Math.max(...known.map(([, b]) => b.count), 1);
+
+  known.forEach(([zip, b]) => {
+    const c = ZIP_CENTROIDS[zip];
+    const radius = 4 + Math.sqrt(b.count / maxCount) * 22;
+    const topHospitals = Object.entries(b.hospitals).sort((a, b2) => b2[1] - a[1]).slice(0, 5);
+    L.circleMarker([c.lat, c.lng], {
+      radius, color: '#0F8B6C', fillColor: '#0F8B6C', fillOpacity: 0.45, weight: 1,
+    }).bindPopup(`
+      <div class="zip-popup">
+        <div class="zp-title">${esc(zip)} — ${esc(c.city || '')}</div>
+        <div class="zp-count">${fmtN(b.count)} case${b.count === 1 ? '' : 's'}</div>
+        ${topHospitals.length
+          ? `<table>${topHospitals.map(([n, ct]) => `<tr><td>${esc(n)}</td><td>${fmtN(ct)}</td></tr>`).join('')}</table>`
+          : ''}
+      </div>`).addTo(referralMarkersLayer);
+  });
+
+  const mappedCount = known.reduce((a, [, b]) => a + b.count, 0);
+  const totalCount = zipEntries.reduce((a, [, b]) => a + b.count, 0);
+  const unknownCount = unknown.reduce((a, [, b]) => a + b.count, 0);
+  note.textContent = totalCount
+    ? `Circle size = case count referred from that ZIP (${fmtN(mappedCount)} of ${fmtN(totalCount)} ZIP-coded referral cases mapped` +
+      (unknownCount ? `; ${fmtN(unknownCount)} in ZIP codes outside this map's coverage area` : '') +
+      `). Click a circle for its top referring hospitals.`
+    : 'No rDVM postal codes on file yet for the referring hospitals in this range.';
+}
+
+// ── Weekly Marketing Insights ── compares the most recent 7 days of the
+// selected range against the 7 days before that, using the same caseRows/
+// revenueRows loadMarketing() already fetched (no extra queries). Needs a
+// range of at least 14 days for a real week-over-week comparison -- shorter
+// ranges (Today, Trailing 7 days) get a plain note instead of a false
+// comparison against a partial or empty prior window.
+function renderMarketingInsights(caseRows, revenueRows, from, until) {
+  const panel = document.getElementById('marketing-insights-panel');
+  const addDays = (iso, n) => {
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const curEnd = until, curStart = addDays(curEnd, -6);
+  const prevEnd = addDays(curStart, -1), prevStart = addDays(prevEnd, -6);
+  if (prevStart < from) {
+    panel.innerHTML = `<div class="chart-note">Select a range of at least 2 weeks (e.g. Trailing 30 days) to see week-over-week marketing insights.</div>`;
+    return;
+  }
+  const inWindow = (date, start, end) => date >= start && date <= end;
+
+  const items = [];
+
+  // 1. Referral case volume, week over week.
+  let curCases = 0, prevCases = 0;
+  caseRows.forEach(r => {
+    const n = Number(r.case_count) || 0;
+    if (inWindow(r.case_date, curStart, curEnd)) curCases += n;
+    else if (inWindow(r.case_date, prevStart, prevEnd)) prevCases += n;
+  });
+  const casePct = prevCases ? ((curCases - prevCases) / prevCases) * 100 : (curCases ? 100 : 0);
+  items.push({
+    cls: casePct >= 0 ? 'recommend' : 'risk', badge: casePct >= 0 ? '▲' : '▼',
+    title: 'Referral case volume — week over week',
+    body: `<b>${fmtN(curCases)}</b> referred case${curCases === 1 ? '' : 's'} in the week ending <b>${esc(fmtDate(curEnd))}</b>,
+      vs <b>${fmtN(prevCases)}</b> the week before — ${casePct >= 0 ? 'up' : 'down'} <b>${Math.abs(casePct).toFixed(0)}%</b>.
+      Referral volume is a leading indicator; revenue from these cases often lands with a short lag.`,
+  });
+
+  // 2. Referral revenue, week over week.
+  let curRev = 0, prevRev = 0;
+  revenueRows.forEach(r => {
+    const amt = Number(r.amount) || 0;
+    if (inWindow(r.service_date, curStart, curEnd)) curRev += amt;
+    else if (inWindow(r.service_date, prevStart, prevEnd)) prevRev += amt;
+  });
+  const revPct = prevRev ? ((curRev - prevRev) / prevRev) * 100 : (curRev ? 100 : 0);
+  items.push({
+    cls: revPct >= 0 ? 'recommend' : 'risk', badge: revPct >= 0 ? '▲' : '▼',
+    title: 'Referral revenue — week over week',
+    body: `<b>${esc(fmt$(curRev))}</b> in rDVM-attributed revenue this week vs <b>${esc(fmt$(prevRev))}</b> the week before —
+      ${revPct >= 0 ? 'up' : 'down'} <b>${Math.abs(revPct).toFixed(0)}%</b>.`,
+  });
+
+  // 3. New referring hospitals — sent their first case(s) in the current
+  // week, with no cases anywhere earlier in the selected range.
+  const curNames = {}, priorNames = new Set();
+  caseRows.forEach(r => {
+    const name = r.referral_name || 'Unknown';
+    const n = Number(r.case_count) || 0;
+    if (inWindow(r.case_date, curStart, curEnd)) curNames[name] = (curNames[name] || 0) + n;
+    else if (r.case_date < curStart) priorNames.add(name);
+  });
+  const newHospitals = Object.entries(curNames)
+    .filter(([name]) => !priorNames.has(name))
+    .sort((a, b) => b[1] - a[1]);
+  if (newHospitals.length) {
+    const top3 = newHospitals.slice(0, 3).map(([name, n]) => `<b>${esc(name)}</b> (${fmtN(n)})`).join(', ');
+    items.push({
+      cls: 'recommend', badge: '★',
+      title: `${newHospitals.length} new referring hospital${newHospitals.length === 1 ? '' : 's'} this week`,
+      body: `First case${newHospitals.length === 1 ? '' : 's'} in this range from ${top3}${newHospitals.length > 3 ? `, and ${newHospitals.length - 3} more` : ''} —
+        worth a welcome outreach while the relationship is fresh.`,
+    });
+  }
+
+  // 4. Lapsing referrer — one of the range's top-volume hospitals that had
+  // cases in the prior week but sent zero this week (a real drop-off, not
+  // just a naturally low-volume referrer having a quiet week).
+  const totalByName = {}, prevWeekByName = {};
+  caseRows.forEach(r => {
+    const name = r.referral_name || 'Unknown';
+    const n = Number(r.case_count) || 0;
+    totalByName[name] = (totalByName[name] || 0) + n;
+    if (inWindow(r.case_date, prevStart, prevEnd)) prevWeekByName[name] = (prevWeekByName[name] || 0) + n;
+  });
+  const lapsed = Object.entries(prevWeekByName)
+    .filter(([name]) => !curNames[name])
+    .sort((a, b) => (totalByName[b[0]] || 0) - (totalByName[a[0]] || 0));
+  if (lapsed.length) {
+    const [lapsedName, lapsedPrevCount] = lapsed[0];
+    items.push({
+      cls: 'risk', badge: '⚠',
+      title: 'Lapsing referrer',
+      body: `<b>${esc(lapsedName)}</b> sent <b>${fmtN(lapsedPrevCount)}</b> case${lapsedPrevCount === 1 ? '' : 's'} the week before but
+        none this week${totalByName[lapsedName] > lapsedPrevCount ? ` — one of the range's more active referral sources (${fmtN(totalByName[lapsedName])} cases total)` : ''}.
+        Worth a quick check-in before the relationship goes cold.`,
+    });
+  }
+
+  // 5. Recommendation — grounded in whichever finding above is most actionable.
+  let recBody;
+  if (lapsed.length) {
+    recBody = `Prioritize outreach to <b>${esc(lapsed[0][0])}</b> — a check-in call or visit (once rDVM visit logging is live) is
+      the highest-leverage action available this week.`;
+  } else if (newHospitals.length) {
+    recBody = `Send a welcome/thank-you to ${newHospitals.length === 1 ? 'the new referring hospital' : 'the new referring hospitals'}
+      above — early engagement is what turns a first case into a recurring referral relationship.`;
+  } else if (casePct <= -15) {
+    recBody = `Referral volume is down <b>${Math.abs(casePct).toFixed(0)}%</b> week over week with no single hospital driving it — worth
+      a broader check on referral-source engagement rather than one outreach call.`;
+  } else if (casePct >= 15) {
+    recBody = `Referral volume is up <b>${casePct.toFixed(0)}%</b> week over week — a good moment to confirm capacity can absorb the
+      extra case load without hurting turnaround time for these referring hospitals.`;
+  } else {
+    recBody = `Referral activity is steady week over week — no urgent action, but this is a good baseline week to reach out to a
+      mid-volume referrer you haven't heard from recently.`;
+  }
+  items.push({ cls: 'recommend', badge: '→', title: 'Recommendation', body: recBody });
+
+  panel.innerHTML = items.map(it => `
+    <div class="insight-item">
+      <div class="i-badge ${it.cls}">${it.badge}</div>
+      <div>
+        <div class="i-title">${esc(it.title)}</div>
+        <div class="i-body">${it.body}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Marketing tab (referral/rDVM analytics) — stage 1 of 2. Read-only;
+// reuses the page's own date-range/location filters and runCached()
+// caching, same as every other tab. Stage 2 (rDVM visit-logging synced
+// to/from Vetspire's own RdvmVisit feature) is separate future work, not
+// built here.
+async function loadMarketing() {
+  const { from, until } = selectedDateRange();
+  const loc = selectedLocation();
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+
+  const [caseRows, revenueRows, metaRows, directoryRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_referral_case_volume?select=location_id,case_date,vetspire_referral_id,vetspire_rdvm_id,referral_name,referral_type,case_count&case_date=gte.${from}&case_date=lte.${until}${locFilter}&order=case_date.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/rdvm_revenue_daily?select=location_id,vetspire_rdvm_id,service_date,amount&service_date=gte.${from}&service_date=lte.${until}${locFilter}&order=service_date.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/referral_relationships?select=vetspire_referral_id,vetspire_rdvm_id,referral_name,postal_code,city,state&referral_type=eq.rdvm_primary_care&order=vetspire_referral_id.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/rdvm_directory?select=vetspire_rdvm_id,name,city,state,postal_code`),
+  ]);
+
+  document.getElementById('marketing-empty').innerHTML = '';
+
+  const metaByRdvmId = {}, metaByReferralId = {};
+  (metaRows || []).forEach(m => {
+    if (m.vetspire_rdvm_id) metaByRdvmId[m.vetspire_rdvm_id] = m;
+    if (m.vetspire_referral_id) metaByReferralId[m.vetspire_referral_id] = m;
+  });
+  // rdvm_directory is a COMPLETE, standalone listing of every rDVM Vetspire
+  // has on file (vetspire_rdvm_directory_sync.py), independent of whether
+  // any client referred by them has had a recent encounter -- unlike
+  // referral_relationships (metaByRdvmId/metaByReferralId above), which
+  // only has a row/populated address for rDVMs touched by the
+  // encounter-triggered clinical sync. This is the primary name/address
+  // source below; referral_relationships is only a fallback.
+  const directoryByRdvmId = {};
+  (directoryRows || []).forEach(d => { if (d.vetspire_rdvm_id) directoryByRdvmId[d.vetspire_rdvm_id] = d; });
+
+  // ── Case Volume by Referring Vet ──
+  const volNote = document.getElementById('referral-volume-note');
+  const volChart = document.getElementById('referral-volume-chart');
+  if (caseRows === null) {
+    volNote.textContent = '';
+    volChart.innerHTML = `<div class="chart-note">Couldn't load <code>v_referral_case_volume</code> — run
+      <code>scoutsync_referral_marketing_analytics.sql</code> in the Supabase SQL editor if you haven't yet.</div>`;
+  } else {
+    // Summed across days in range and across vetspire_referral_id rows
+    // that share a referral_name -- the same rDVM referring more than one
+    // client is one relationship row per client in the source view; this
+    // merges them the same way Revenue per Veterinarian already merges
+    // same-name providers.
+    const byName = {};
+    caseRows.forEach(r => {
+      const name = r.referral_name || 'Unknown';
+      byName[name] = (byName[name] || 0) + (Number(r.case_count) || 0);
+    });
+    const ranked = Object.entries(byName)
+      .map(([name, count]) => ({ label: name, value: count }))
+      .sort((a, b) => b.value - a.value);
+    const TOP_N = 15;
+    const top = ranked.slice(0, TOP_N);
+    volNote.textContent = ranked.length
+      ? `Top ${Math.min(TOP_N, ranked.length)} of ${fmtN(ranked.length)} referring rDVMs by case count, selected range.`
+      : 'No referred cases in this range.';
+    volChart.innerHTML = '';
+    if (!top.length) {
+      volChart.innerHTML = '<div class="chart-note">No referred cases in this range.</div>';
+    } else {
+      const max = Math.max(...top.map(r => r.value), 1);
+      top.forEach(r => {
+        const w = Math.max((r.value / max) * 100, 1.5);
+        const row = document.createElement('div');
+        row.className = 'bar-row';
+        row.innerHTML = `<div class="b-name" title="${esc(r.label)}">${esc(r.label)}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--c-marketing)"></div></div><div class="b-value">${fmtN(r.value)} ${r.value === 1 ? 'case' : 'cases'}</div>`;
+        volChart.appendChild(row);
+      });
+    }
+  }
+
+  // ── Revenue by Referring Hospital ──
+  const revNote = document.getElementById('referral-revenue-note');
+  const revChart = document.getElementById('referral-revenue-chart');
+  if (revenueRows === null) {
+    revNote.textContent = '';
+    revChart.innerHTML = `<div class="chart-note">Couldn't load <code>rdvm_revenue_daily</code> — run
+      <code>scoutsync_referral_marketing_analytics.sql</code> in the Supabase SQL editor if you haven't yet.</div>`;
+  } else if (!revenueRows.length) {
+    revNote.textContent = '';
+    revChart.innerHTML = `<div class="chart-note">No revenue data yet — this is a brand-new sync. Dispatch
+      <code>vetspire_rdvm_revenue_sync.yml</code> (GitHub Actions → Run workflow) to backfill it from Vetspire.</div>`;
+  } else {
+    // vetspire_rdvm_id ('0' sentinel = no rDVM attributed on that row) is
+    // the real Vetspire Rdvm.id -- resolved to a name via rdvm_directory
+    // (a complete, standalone listing of every rDVM, independent of client/
+    // encounter activity) first, falling back to referral_relationships
+    // (only populated for rDVMs the encounter-triggered clinical sync has
+    // touched) and finally the bare id if neither has a name on file.
+    const byRdvm = {};
+    revenueRows.forEach(r => {
+      const id = r.vetspire_rdvm_id || '0';
+      byRdvm[id] = (byRdvm[id] || 0) + (Number(r.amount) || 0);
+    });
+    const ranked = Object.entries(byRdvm)
+      .map(([id, amount]) => ({
+        key: id,
+        label: id === '0' ? 'Unattributed' :
+          ((directoryByRdvmId[id] && directoryByRdvmId[id].name) ||
+           (metaByRdvmId[id] && metaByRdvmId[id].referral_name) ||
+           `rDVM ${id}`),
+        value: amount,
+        color: 'var(--c-marketing)',
+      }))
+      .sort((a, b) => b.value - a.value);
+    const TOP_N = 15;
+    const top = ranked.slice(0, TOP_N);
+    revNote.textContent = `Top ${Math.min(TOP_N, ranked.length)} of ${fmtN(ranked.length)} referring hospitals by revenue, selected range.`;
+    renderBarChart(revChart, top, {});
+  }
+
+  // ── Referral Origin Map ── (never clears the #referral-map container's
+  // own innerHTML -- that's Leaflet's own DOM once initialized; wiping it
+  // out from under an existing map instance would break re-init on the
+  // next successful load, same reason the Chicagoland case map above never
+  // does that either)
+  if (caseRows === null) {
+    document.getElementById('referral-map-note').innerHTML = `Couldn't load <code>v_referral_case_volume</code> — run
+      <code>scoutsync_referral_marketing_analytics.sql</code> in the Supabase SQL editor if you haven't yet.`;
+  } else {
+    renderReferralMap(caseRows, metaRows === null ? null : metaByReferralId, directoryRows === null ? null : directoryByRdvmId);
+  }
+
+  // ── Weekly Marketing Insights ──
+  if (caseRows === null || revenueRows === null) {
+    document.getElementById('marketing-insights-panel').innerHTML = '';
+  } else {
+    renderMarketingInsights(caseRows, revenueRows, from, until);
+  }
+}
 
 // Manual refresh — pulls fresh data and recomputes hero stats, all three
 // charts, and every insight. Button shows a spin + disables itself mid-fetch
@@ -6602,6 +7007,7 @@ function loadActiveTab(force) {
   if (activeTab === 'inventory') return runCached('inventory', filterSnapshot(), loadInventory, force);
   if (activeTab === 'procurement') return runCached('procurement', filterSnapshot(), loadProcurement, force);
   if (activeTab === 'reporting') return loadReporting(force);
+  if (activeTab === 'marketing') return runCached('marketing', filterSnapshot(), loadMarketing, force);
   return runCached('financial', filterSnapshot(), loadFinancial, force);
 }
 
@@ -6624,6 +7030,7 @@ document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn => {
     // Leaflet sizes itself off the container's layout at init time — if that
     // happened while the panel was still display:none this recovers it.
     if (activeTab === 'clinical' && chicagoMap) setTimeout(() => chicagoMap.invalidateSize(), 0);
+    if (activeTab === 'marketing' && referralMap) setTimeout(() => referralMap.invalidateSize(), 0);
   });
 });
 
