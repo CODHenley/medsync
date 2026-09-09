@@ -1,0 +1,24 @@
+name: Vetspire rDVM Visit Mutation Probe
+
+# One-off introspection: confirms createRdvmVisit/updateRdvmVisit's exact
+# input shape before building a sync script against it -- see
+# vetspire_rdvm_visit_mutation_probe.py. Report-only, no writes (does not
+# call the mutation, only introspects it). Manual trigger only.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire rDVM visit mutation probe
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_rdvm_visit_mutation_probe.py --token "$VETSPIRE_API_TOKEN"
