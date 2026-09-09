@@ -165,9 +165,6 @@ query($locationId: ID, $updatedAtStart: NaiveDateTime, $updatedAtEnd: NaiveDateT
             name
             tags { name }
             documents { id name insertedAt }
-            city
-            state
-            postalCode
           }
         }
         addresses { id city state postalCode isPrimary }
@@ -298,31 +295,12 @@ def main():
                         # ClientRdvm/document reappears once per encounter for that
                         # client, and Postgres's ON CONFLICT DO UPDATE errors out if
                         # a single upsert call contains the same conflict key twice.
-                        #
-                        # vetspire_referral_id (cr["id"]) is the ClientRdvm join
-                        # record's own id, NOT the Rdvm entity's id -- the two are
-                        # different Vetspire records. vetspire_rdvm_id (rdvm["id"])
-                        # is the real hospital/vet entity id, which is what
-                        # salesReport's RDVM_ID breakdown (rdvm_revenue_daily) keys
-                        # on -- captured separately here so the Marketing tab's
-                        # revenue-by-hospital section can join on the right id
-                        # instead of silently mismatching on cr["id"].
                         referrals[cr["id"]] = {
                             "vetspire_referral_id": cr["id"],
-                            "vetspire_rdvm_id": rdvm.get("id"),
                             "vetspire_client_id": client["id"],  # resolved to client_id below
                             "referral_name": rdvm.get("name"),
                             "referral_type": classify_referral_type(rdvm.get("tags")),
                             "listed_at": cr.get("insertedAt"),
-                            # Rdvm's own address fields -- confirmed live and
-                            # populated (20/20 sampled) via GraphQL introspection.
-                            # Feeds the Referral Origin Map's ZIP-centroid lookup,
-                            # same approach as clients.postal_code already used by
-                            # the Chicagoland case map -- no street line, matching
-                            # this schema's existing no-full-PII convention.
-                            "city": rdvm.get("city"),
-                            "state": rdvm.get("state"),
-                            "postal_code": rdvm.get("postalCode"),
                         }
                         for doc in (rdvm.get("documents") or []):
                             releases[doc["id"]] = {
