@@ -646,6 +646,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <div class="legend-item"><span class="legend-swatch" style="width:12px;height:12px;background:var(--c-financial)"></span>Practice location</div>
         <div class="legend-item"><span class="legend-swatch" style="width:12px;height:12px;background:var(--c-clinical);opacity:.55"></span>Client ZIP (sized by case count)</div>
       </div>
+      <div class="insight-list" id="geo-cannibalization-insight" style="margin-top:14px"></div>
     </div>
 
     <div id="clinical-empty"></div>
@@ -3449,6 +3450,132 @@ function renderChicagoMap(geoRows) {
     `). Click a circle for its top reasons for visit (free-text, not a coded diagnosis).`;
 }
 
+// ── Cross-location cannibalization signal ── For each ZIP, the "expected"
+// location is whichever practice sits closest to that ZIP's centroid
+// (straight-line distance -- driving distance/traffic aren't available, so
+// this is a proxy same as everything else on this map that leans on
+// ZIP_CENTROIDS). A case whose client ZIP is closest to Location A but was
+// actually seen at Location B is a "cross-shopped" case -- not proof of
+// cannibalization (a preferred doctor, work schedule, or insurance network
+// can just as easily explain it), but a real, minimal proxy for catchment
+// overlap between two Scout locations: if opening/growing one location is
+// substantially drawing from a ZIP that geographically "belongs" to
+// another, that's demand moving between two Scout locations, not new
+// demand coming in from outside.
+function haversineMiles(lat1, lng1, lat2, lng2) {
+  const R = 3958.8; // Earth radius, miles
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// uuid -> {lat, lng} -- merges LOCATIONS (has uuid, not coords) with
+// PRACTICE_LOCATIONS (has coords, not uuid) by matching name, since both
+// arrays already exist for other purposes and neither carries both fields.
+const LOCATION_COORDS_BY_UUID = {};
+LOCATIONS.forEach(l => {
+  const p = PRACTICE_LOCATIONS.find(pl => pl.name === l.name);
+  if (p) LOCATION_COORDS_BY_UUID[l.uuid] = p;
+});
+
+function nearestLocationUuid(lat, lng) {
+  let best = null, bestDist = Infinity;
+  LOCATIONS.forEach(l => {
+    const p = LOCATION_COORDS_BY_UUID[l.uuid];
+    if (!p) return;
+    const d = haversineMiles(lat, lng, p.lat, p.lng);
+    if (d < bestDist) { bestDist = d; best = l.uuid; }
+  });
+  return best;
+}
+
+// geoRows: same v_case_geo rows the case map already fetched (now including
+// location_id) -- no extra query. Only meaningful with 2+ locations present
+// in the data (i.e. "All Locations" selected) -- a single-location filter
+// has nothing to cross-shop against.
+function renderCannibalizationInsight(geoRows) {
+  const el = document.getElementById('geo-cannibalization-insight');
+  const loc = selectedLocation();
+  if (loc) {
+    el.innerHTML = `<div class="chart-note">Switch to All Locations to see cross-location catchment overlap.</div>`;
+    return;
+  }
+
+  const locNameByUuid = Object.fromEntries(LOCATIONS.map(l => [l.uuid, l.name]));
+  const byZip = {}; // zip -> { nearest: uuid|null, byLocation: {uuid: count}, total }
+  geoRows.forEach(r => {
+    const zip = (r.postal_code || '').trim();
+    const c = zip && ZIP_CENTROIDS[zip];
+    if (!c || !r.location_id) return;
+    const b = byZip[zip] = byZip[zip] || { nearest: nearestLocationUuid(c.lat, c.lng), byLocation: {}, total: 0, city: c.city };
+    b.byLocation[r.location_id] = (b.byLocation[r.location_id] || 0) + 1;
+    b.total += 1;
+  });
+
+  const zipEntries = Object.entries(byZip);
+  if (!zipEntries.length) { el.innerHTML = ''; return; }
+
+  // Cross-shopped = seen at a location other than the one nearest to the
+  // client's ZIP. Tallied both overall and per (nearest -> actual) pair so
+  // the worst-offending pair can be named specifically.
+  let totalMapped = 0, totalCrossShopped = 0;
+  const pairCounts = {}; // "nearestUuid|actualUuid" -> count
+  const pairTopZip = {}; // same key -> {zip, city, count} for the single biggest contributor
+
+  zipEntries.forEach(([zip, b]) => {
+    if (!b.nearest) return;
+    totalMapped += b.total;
+    Object.entries(b.byLocation).forEach(([actualUuid, count]) => {
+      if (actualUuid === b.nearest) return;
+      totalCrossShopped += count;
+      const key = `${b.nearest}|${actualUuid}`;
+      pairCounts[key] = (pairCounts[key] || 0) + count;
+      if (!pairTopZip[key] || count > pairTopZip[key].count) {
+        pairTopZip[key] = { zip, city: b.city, count };
+      }
+    });
+  });
+
+  if (!totalMapped) { el.innerHTML = ''; return; }
+
+  const items = [];
+  const overallPct = (totalCrossShopped / totalMapped) * 100;
+  items.push({
+    cls: overallPct >= 20 ? 'risk' : 'congruency', badge: overallPct >= 20 ? '⚠' : '◉',
+    title: 'Cross-location catchment overlap',
+    body: `<b>${overallPct.toFixed(0)}%</b> of ZIP-coded cases this period (<b>${fmtN(totalCrossShopped)}</b> of <b>${fmtN(totalMapped)}</b>)
+      were seen at a Scout location other than the one geographically closest to that client's ZIP. This is a proxy, not proof of
+      lost/cannibalized demand — a preferred provider, work schedule, or insurance network can also explain it — but a high rate
+      means two locations are substantially drawing from the same population rather than genuinely distinct territories.`,
+  });
+
+  const topPairEntries = Object.entries(pairCounts).sort((a, b) => b[1] - a[1]);
+  if (topPairEntries.length) {
+    const [topKey, topCount] = topPairEntries[0];
+    const [nearestUuid, actualUuid] = topKey.split('|');
+    const nearestName = locNameByUuid[nearestUuid], actualName = locNameByUuid[actualUuid];
+    const topZip = pairTopZip[topKey];
+    items.push({
+      cls: 'concentration', badge: '◉',
+      title: 'Most-overlapping pair',
+      body: `<b>${esc(nearestName)}</b> → <b>${esc(actualName)}</b>: <b>${fmtN(topCount)}</b> cases whose client ZIP sits closer to
+        ${esc(nearestName)} were instead seen at ${esc(actualName)} this period` +
+        (topZip ? `, led by ZIP <b>${esc(topZip.zip)}</b> (${esc(topZip.city || '')}, ${fmtN(topZip.count)} cases).` : '.') +
+        ` Worth checking whether this is scheduling availability, a specific provider, or a real gap in ${esc(nearestName)}'s coverage.`,
+    });
+  }
+
+  el.innerHTML = items.map(it => `
+    <div class="insight-item">
+      <div class="i-badge ${it.cls}">${it.badge}</div>
+      <div>
+        <div class="i-title">${esc(it.title)}</div>
+        <div class="i-body">${it.body}</div>
+      </div>
+    </div>`).join('');
+}
+
 // ── Cancellations & Deletions (appointment_events) ──
 let cancellationsDetailByLocation = {}; // uuid -> {name, rows} -- for the drill-down panel
 
@@ -3939,7 +4066,7 @@ async function loadClinicalGeo() {
   // the query string does NOT override that cap -- see fetchAllRows).
   const [heatRows, geoRows] = await Promise.all([
     fetchAllRows(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,minute_of_hour,case_value,started_at,location_id,chief_complaint&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&order=started_at.asc`),
-    fetchAllRows(`${SUPA_URL}/rest/v1/v_case_geo?select=postal_code,city,state,chief_complaint&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}&order=postal_code.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_case_geo?select=location_id,postal_code,city,state,chief_complaint&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}&order=postal_code.asc`),
   ]);
 
   // Reloading data (filter change, refresh) invalidates whatever cell was
@@ -3958,6 +4085,7 @@ async function loadClinicalGeo() {
     document.getElementById('value-heatmap').innerHTML = '';
     document.getElementById('volume-heatmap-insight').innerHTML = '';
     document.getElementById('value-heatmap-insight').innerHTML = '';
+    document.getElementById('geo-cannibalization-insight').innerHTML = '';
     return;
   }
   document.getElementById('clinical-empty').innerHTML = '';
@@ -3985,6 +4113,7 @@ async function loadClinicalGeo() {
   }
 
   renderChicagoMap(geoRows);
+  renderCannibalizationInsight(geoRows);
 }
 
 
