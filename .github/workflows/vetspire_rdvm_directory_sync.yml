@@ -1,0 +1,33 @@
+name: Vetspire rDVM Directory Sync
+
+# Syncs a complete, standalone directory of every Vetspire Rdvm (id, name,
+# address) -- fixes the Marketing tab's name/address resolution, which
+# previously depended on referral_relationships having a matching row (only
+# true for rDVMs linked to a client with a recent encounter). See
+# vetspire_rdvm_directory_sync.py.
+#
+# Runs daily -- this data changes rarely (new rDVM added, an existing one's
+# address/name updated), and rdvms(limit, offset) pagination was already
+# confirmed live and working before this workflow was written, unlike the
+# RDVM_ID salesReport breakdown (vetspire_rdvm_revenue_sync.yml), which
+# stayed workflow_dispatch-only until a human confirmed its first real run.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * *'  # once daily, off the hour to avoid piling onto other scheduled syncs
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Vetspire rDVM directory sync
+        env:
+          VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
+        run: python3 vetspire_rdvm_directory_sync.py

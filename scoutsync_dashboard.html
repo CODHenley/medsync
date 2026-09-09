@@ -4030,27 +4030,33 @@ function initReferralMap() {
   referralMarkersLayer = L.layerGroup().addTo(referralMap);
 }
 
-// caseRows: v_referral_case_volume rows (already range/location-filtered).
-// referralMeta: vetspire_referral_id -> {postal_code, city, referral_name},
-// or null if referral_relationships' new address columns couldn't be read
-// (migration not run yet) -- practice-location pins still render either way.
-function renderReferralMap(caseRows, referralMeta) {
+// caseRows: v_referral_case_volume rows (already range/location-filtered),
+// now including vetspire_rdvm_id. directoryByRdvmId: the COMPLETE,
+// standalone rdvm_directory lookup (vetspire_rdvm_id -> {postal_code,
+// city, name}) -- the primary address source, since it's independent of
+// whether the referring client has had a recent encounter. referralMeta
+// (vetspire_referral_id -> {postal_code, city, referral_name}) is only a
+// fallback for rows predating the directory sync; either being null (not
+// both) means the relevant migration hasn't been run yet.
+function renderReferralMap(caseRows, referralMeta, directoryByRdvmId) {
   initReferralMap();
   referralMarkersLayer.clearLayers();
   const note = document.getElementById('referral-map-note');
 
-  if (referralMeta === null) {
+  if (referralMeta === null && !directoryByRdvmId) {
     note.innerHTML = `Couldn't load rDVM address data — run <code>scoutsync_referral_marketing_analytics.sql</code>
-      in the Supabase SQL editor if you haven't yet.`;
+      and <code>scoutsync_rdvm_directory.sql</code> in the Supabase SQL editor if you haven't yet.`;
     return;
   }
 
   const byZip = {};
   caseRows.forEach(r => {
-    const meta = referralMeta[r.vetspire_referral_id];
-    const zip = ((meta && meta.postal_code) || '').trim();
+    const dir = directoryByRdvmId && directoryByRdvmId[r.vetspire_rdvm_id];
+    const fallbackMeta = referralMeta && referralMeta[r.vetspire_referral_id];
+    const zip = ((dir && dir.postal_code) || (fallbackMeta && fallbackMeta.postal_code) || '').trim();
     if (!zip) return;
-    const b = byZip[zip] = byZip[zip] || { count: 0, hospitals: {}, city: meta.city };
+    const city = (dir && dir.city) || (fallbackMeta && fallbackMeta.city);
+    const b = byZip[zip] = byZip[zip] || { count: 0, hospitals: {}, city };
     const n = Number(r.case_count) || 0;
     b.count += n;
     const name = r.referral_name || 'Unknown';
@@ -4098,10 +4104,11 @@ async function loadMarketing() {
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
 
-  const [caseRows, revenueRows, metaRows] = await Promise.all([
-    fetchAllRows(`${SUPA_URL}/rest/v1/v_referral_case_volume?select=location_id,case_date,vetspire_referral_id,referral_name,referral_type,case_count&case_date=gte.${from}&case_date=lte.${until}${locFilter}&order=case_date.asc`),
+  const [caseRows, revenueRows, metaRows, directoryRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_referral_case_volume?select=location_id,case_date,vetspire_referral_id,vetspire_rdvm_id,referral_name,referral_type,case_count&case_date=gte.${from}&case_date=lte.${until}${locFilter}&order=case_date.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/rdvm_revenue_daily?select=location_id,vetspire_rdvm_id,service_date,amount&service_date=gte.${from}&service_date=lte.${until}${locFilter}&order=service_date.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/referral_relationships?select=vetspire_referral_id,vetspire_rdvm_id,referral_name,postal_code,city,state&referral_type=eq.rdvm_primary_care&order=vetspire_referral_id.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/rdvm_directory?select=vetspire_rdvm_id,name,city,state,postal_code`),
   ]);
 
   document.getElementById('marketing-empty').innerHTML = '';
@@ -4111,6 +4118,15 @@ async function loadMarketing() {
     if (m.vetspire_rdvm_id) metaByRdvmId[m.vetspire_rdvm_id] = m;
     if (m.vetspire_referral_id) metaByReferralId[m.vetspire_referral_id] = m;
   });
+  // rdvm_directory is a COMPLETE, standalone listing of every rDVM Vetspire
+  // has on file (vetspire_rdvm_directory_sync.py), independent of whether
+  // any client referred by them has had a recent encounter -- unlike
+  // referral_relationships (metaByRdvmId/metaByReferralId above), which
+  // only has a row/populated address for rDVMs touched by the
+  // encounter-triggered clinical sync. This is the primary name/address
+  // source below; referral_relationships is only a fallback.
+  const directoryByRdvmId = {};
+  (directoryRows || []).forEach(d => { if (d.vetspire_rdvm_id) directoryByRdvmId[d.vetspire_rdvm_id] = d; });
 
   // ── Case Volume by Referring Vet ──
   const volNote = document.getElementById('referral-volume-note');
@@ -4166,9 +4182,11 @@ async function loadMarketing() {
       <code>vetspire_rdvm_revenue_sync.yml</code> (GitHub Actions → Run workflow) to backfill it from Vetspire.</div>`;
   } else {
     // vetspire_rdvm_id ('0' sentinel = no rDVM attributed on that row) is
-    // the real Vetspire Rdvm.id -- resolved to a name via
-    // referral_relationships.vetspire_rdvm_id, NOT vetspire_referral_id
-    // (the ClientRdvm join id) -- see scoutsync_referral_marketing_analytics.sql.
+    // the real Vetspire Rdvm.id -- resolved to a name via rdvm_directory
+    // (a complete, standalone listing of every rDVM, independent of client/
+    // encounter activity) first, falling back to referral_relationships
+    // (only populated for rDVMs the encounter-triggered clinical sync has
+    // touched) and finally the bare id if neither has a name on file.
     const byRdvm = {};
     revenueRows.forEach(r => {
       const id = r.vetspire_rdvm_id || '0';
@@ -4177,7 +4195,10 @@ async function loadMarketing() {
     const ranked = Object.entries(byRdvm)
       .map(([id, amount]) => ({
         key: id,
-        label: id === '0' ? 'Unattributed' : ((metaByRdvmId[id] && metaByRdvmId[id].referral_name) || `rDVM ${id}`),
+        label: id === '0' ? 'Unattributed' :
+          ((directoryByRdvmId[id] && directoryByRdvmId[id].name) ||
+           (metaByRdvmId[id] && metaByRdvmId[id].referral_name) ||
+           `rDVM ${id}`),
         value: amount,
         color: 'var(--c-marketing)',
       }))
@@ -4197,7 +4218,7 @@ async function loadMarketing() {
     document.getElementById('referral-map-note').innerHTML = `Couldn't load <code>v_referral_case_volume</code> — run
       <code>scoutsync_referral_marketing_analytics.sql</code> in the Supabase SQL editor if you haven't yet.`;
   } else {
-    renderReferralMap(caseRows, metaRows === null ? null : metaByReferralId);
+    renderReferralMap(caseRows, metaRows === null ? null : metaByReferralId, directoryRows === null ? null : directoryByRdvmId);
   }
 }
 
