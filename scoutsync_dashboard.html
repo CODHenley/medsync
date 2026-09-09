@@ -1261,6 +1261,13 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       </div>
     </div>
 
+    <div class="section-head"><div class="dot" style="background:var(--c-marketing)"></div>
+      <h2>Weekly Marketing Insights</h2>
+      <span class="sub">Most recent 7 days vs. the 7 days before, computed live from the charts above</span></div>
+    <div class="chart-card">
+      <div class="insight-list" id="marketing-insights-panel"></div>
+    </div>
+
     <div id="marketing-empty"></div>
   </section>
 
@@ -4094,6 +4101,136 @@ function renderReferralMap(caseRows, referralMeta, directoryByRdvmId) {
     : 'No rDVM postal codes on file yet for the referring hospitals in this range.';
 }
 
+// ── Weekly Marketing Insights ── compares the most recent 7 days of the
+// selected range against the 7 days before that, using the same caseRows/
+// revenueRows loadMarketing() already fetched (no extra queries). Needs a
+// range of at least 14 days for a real week-over-week comparison -- shorter
+// ranges (Today, Trailing 7 days) get a plain note instead of a false
+// comparison against a partial or empty prior window.
+function renderMarketingInsights(caseRows, revenueRows, from, until) {
+  const panel = document.getElementById('marketing-insights-panel');
+  const addDays = (iso, n) => {
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const curEnd = until, curStart = addDays(curEnd, -6);
+  const prevEnd = addDays(curStart, -1), prevStart = addDays(prevEnd, -6);
+  if (prevStart < from) {
+    panel.innerHTML = `<div class="chart-note">Select a range of at least 2 weeks (e.g. Trailing 30 days) to see week-over-week marketing insights.</div>`;
+    return;
+  }
+  const inWindow = (date, start, end) => date >= start && date <= end;
+
+  const items = [];
+
+  // 1. Referral case volume, week over week.
+  let curCases = 0, prevCases = 0;
+  caseRows.forEach(r => {
+    const n = Number(r.case_count) || 0;
+    if (inWindow(r.case_date, curStart, curEnd)) curCases += n;
+    else if (inWindow(r.case_date, prevStart, prevEnd)) prevCases += n;
+  });
+  const casePct = prevCases ? ((curCases - prevCases) / prevCases) * 100 : (curCases ? 100 : 0);
+  items.push({
+    cls: casePct >= 0 ? 'recommend' : 'risk', badge: casePct >= 0 ? '▲' : '▼',
+    title: 'Referral case volume — week over week',
+    body: `<b>${fmtN(curCases)}</b> referred case${curCases === 1 ? '' : 's'} in the week ending <b>${esc(fmtDate(curEnd))}</b>,
+      vs <b>${fmtN(prevCases)}</b> the week before — ${casePct >= 0 ? 'up' : 'down'} <b>${Math.abs(casePct).toFixed(0)}%</b>.
+      Referral volume is a leading indicator; revenue from these cases often lands with a short lag.`,
+  });
+
+  // 2. Referral revenue, week over week.
+  let curRev = 0, prevRev = 0;
+  revenueRows.forEach(r => {
+    const amt = Number(r.amount) || 0;
+    if (inWindow(r.service_date, curStart, curEnd)) curRev += amt;
+    else if (inWindow(r.service_date, prevStart, prevEnd)) prevRev += amt;
+  });
+  const revPct = prevRev ? ((curRev - prevRev) / prevRev) * 100 : (curRev ? 100 : 0);
+  items.push({
+    cls: revPct >= 0 ? 'recommend' : 'risk', badge: revPct >= 0 ? '▲' : '▼',
+    title: 'Referral revenue — week over week',
+    body: `<b>${esc(fmt$(curRev))}</b> in rDVM-attributed revenue this week vs <b>${esc(fmt$(prevRev))}</b> the week before —
+      ${revPct >= 0 ? 'up' : 'down'} <b>${Math.abs(revPct).toFixed(0)}%</b>.`,
+  });
+
+  // 3. New referring hospitals — sent their first case(s) in the current
+  // week, with no cases anywhere earlier in the selected range.
+  const curNames = {}, priorNames = new Set();
+  caseRows.forEach(r => {
+    const name = r.referral_name || 'Unknown';
+    const n = Number(r.case_count) || 0;
+    if (inWindow(r.case_date, curStart, curEnd)) curNames[name] = (curNames[name] || 0) + n;
+    else if (r.case_date < curStart) priorNames.add(name);
+  });
+  const newHospitals = Object.entries(curNames)
+    .filter(([name]) => !priorNames.has(name))
+    .sort((a, b) => b[1] - a[1]);
+  if (newHospitals.length) {
+    const top3 = newHospitals.slice(0, 3).map(([name, n]) => `<b>${esc(name)}</b> (${fmtN(n)})`).join(', ');
+    items.push({
+      cls: 'recommend', badge: '★',
+      title: `${newHospitals.length} new referring hospital${newHospitals.length === 1 ? '' : 's'} this week`,
+      body: `First case${newHospitals.length === 1 ? '' : 's'} in this range from ${top3}${newHospitals.length > 3 ? `, and ${newHospitals.length - 3} more` : ''} —
+        worth a welcome outreach while the relationship is fresh.`,
+    });
+  }
+
+  // 4. Lapsing referrer — one of the range's top-volume hospitals that had
+  // cases in the prior week but sent zero this week (a real drop-off, not
+  // just a naturally low-volume referrer having a quiet week).
+  const totalByName = {}, prevWeekByName = {};
+  caseRows.forEach(r => {
+    const name = r.referral_name || 'Unknown';
+    const n = Number(r.case_count) || 0;
+    totalByName[name] = (totalByName[name] || 0) + n;
+    if (inWindow(r.case_date, prevStart, prevEnd)) prevWeekByName[name] = (prevWeekByName[name] || 0) + n;
+  });
+  const lapsed = Object.entries(prevWeekByName)
+    .filter(([name]) => !curNames[name])
+    .sort((a, b) => (totalByName[b[0]] || 0) - (totalByName[a[0]] || 0));
+  if (lapsed.length) {
+    const [lapsedName, lapsedPrevCount] = lapsed[0];
+    items.push({
+      cls: 'risk', badge: '⚠',
+      title: 'Lapsing referrer',
+      body: `<b>${esc(lapsedName)}</b> sent <b>${fmtN(lapsedPrevCount)}</b> case${lapsedPrevCount === 1 ? '' : 's'} the week before but
+        none this week${totalByName[lapsedName] > lapsedPrevCount ? ` — one of the range's more active referral sources (${fmtN(totalByName[lapsedName])} cases total)` : ''}.
+        Worth a quick check-in before the relationship goes cold.`,
+    });
+  }
+
+  // 5. Recommendation — grounded in whichever finding above is most actionable.
+  let recBody;
+  if (lapsed.length) {
+    recBody = `Prioritize outreach to <b>${esc(lapsed[0][0])}</b> — a check-in call or visit (once rDVM visit logging is live) is
+      the highest-leverage action available this week.`;
+  } else if (newHospitals.length) {
+    recBody = `Send a welcome/thank-you to ${newHospitals.length === 1 ? 'the new referring hospital' : 'the new referring hospitals'}
+      above — early engagement is what turns a first case into a recurring referral relationship.`;
+  } else if (casePct <= -15) {
+    recBody = `Referral volume is down <b>${Math.abs(casePct).toFixed(0)}%</b> week over week with no single hospital driving it — worth
+      a broader check on referral-source engagement rather than one outreach call.`;
+  } else if (casePct >= 15) {
+    recBody = `Referral volume is up <b>${casePct.toFixed(0)}%</b> week over week — a good moment to confirm capacity can absorb the
+      extra case load without hurting turnaround time for these referring hospitals.`;
+  } else {
+    recBody = `Referral activity is steady week over week — no urgent action, but this is a good baseline week to reach out to a
+      mid-volume referrer you haven't heard from recently.`;
+  }
+  items.push({ cls: 'recommend', badge: '→', title: 'Recommendation', body: recBody });
+
+  panel.innerHTML = items.map(it => `
+    <div class="insight-item">
+      <div class="i-badge ${it.cls}">${it.badge}</div>
+      <div>
+        <div class="i-title">${esc(it.title)}</div>
+        <div class="i-body">${it.body}</div>
+      </div>
+    </div>`).join('');
+}
+
 // ── Marketing tab (referral/rDVM analytics) — stage 1 of 2. Read-only;
 // reuses the page's own date-range/location filters and runCached()
 // caching, same as every other tab. Stage 2 (rDVM visit-logging synced
@@ -4219,6 +4356,13 @@ async function loadMarketing() {
       <code>scoutsync_referral_marketing_analytics.sql</code> in the Supabase SQL editor if you haven't yet.`;
   } else {
     renderReferralMap(caseRows, metaRows === null ? null : metaByReferralId, directoryRows === null ? null : directoryByRdvmId);
+  }
+
+  // ── Weekly Marketing Insights ──
+  if (caseRows === null || revenueRows === null) {
+    document.getElementById('marketing-insights-panel').innerHTML = '';
+  } else {
+    renderMarketingInsights(caseRows, revenueRows, from, until);
   }
 }
 
