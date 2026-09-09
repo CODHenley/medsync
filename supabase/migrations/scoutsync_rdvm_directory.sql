@@ -51,21 +51,29 @@ create policy "anon_all" on public.rdvm_directory for all to anon using (true) w
 -- latter to join against rdvm_directory for a postal code, since
 -- referral_relationships.postal_code is itself only populated for rows
 -- touched by a sync run since that column was added (the same staleness
--- problem this whole migration exists to fix). Purely additive -- same
--- FROM/WHERE/GROUP BY, one more selected column.
+-- problem this whole migration exists to fix).
+--
+-- vetspire_rdvm_id is appended as the LAST selected column, after
+-- case_count, not inserted alongside the other rr.* columns -- Postgres's
+-- CREATE OR REPLACE VIEW only allows ADDING columns at the end of the
+-- list; inserting one in the middle shifts every later column's ordinal
+-- position, which Postgres treats as an attempt to RENAME that column
+-- (blocked with error 42P16 -- confirmed live when this migration was
+-- first attempted). Appending at the end is the only shape that's a pure
+-- addition.
 create or replace view public.v_referral_case_volume as
 select
   e.location_id,
   date(e.started_at)   as case_date,
   rr.vetspire_referral_id,
-  rr.vetspire_rdvm_id,
   rr.referral_name,
   rr.referral_type,
-  count(*) as case_count
+  count(*) as case_count,
+  rr.vetspire_rdvm_id
 from public.encounters e
 join public.clients c                 on c.id = e.client_id
 join public.referral_relationships rr on rr.client_id = c.id
 where e.had_exam
   and e.started_at is not null
   and rr.referral_type = 'rdvm_primary_care'
-group by e.location_id, date(e.started_at), rr.vetspire_referral_id, rr.vetspire_rdvm_id, rr.referral_name, rr.referral_type;
+group by e.location_id, date(e.started_at), rr.vetspire_referral_id, rr.referral_name, rr.referral_type, rr.vetspire_rdvm_id;
