@@ -288,9 +288,9 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 .heatmap-daylabels { display: grid; grid-auto-rows: 15px; gap: 2px; padding-top: 20px; width: 32px; flex-shrink: 0; }
 .heatmap-daylabels span { font-size: 9.5px; color: var(--ink-3); line-height: 15px; text-align: right; }
 .heatmap-grid-outer { flex: 1; overflow-x: auto; }
-.heatmap-hourlabels { display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px; height: 16px; margin-bottom: 4px; }
+.heatmap-hourlabels { display: grid; grid-template-columns: repeat(28, 1fr); gap: 2px; height: 16px; margin-bottom: 4px; }
 .heatmap-hourlabels span { font-size: 10.5px; color: var(--ink-3); text-align: center; font-weight: 600; }
-.heatmap-grid { display: grid; grid-template-columns: repeat(14, 1fr); grid-auto-rows: 15px; gap: 2px; min-width: 340px; }
+.heatmap-grid { display: grid; grid-template-columns: repeat(28, 1fr); grid-auto-rows: 15px; gap: 2px; min-width: 620px; }
 .heatmap-cell { border-radius: 2px; cursor: pointer; }
 .heatmap-cell:hover { outline: 1.5px solid var(--axis); outline-offset: -1.5px; }
 .heatmap-cell.selected { outline: 2px solid var(--text); outline-offset: -2px; }
@@ -564,8 +564,8 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Case Volume Heatmap</h2><span class="sub">"Case" = an encounter where an exam was performed</span></div>
     <div class="chart-card">
-      <div class="chart-title">Cases by day of week &amp; hour of day (9am–11pm, Central)</div>
-      <div class="chart-note">Darker = more cases started in that hour, selected range — click any cell for detail</div>
+      <div class="chart-title">Cases by day of week &amp; half hour (9am–11pm, Central)</div>
+      <div class="chart-note">Darker = more cases started in that half-hour slot, selected range — matches how appointments are actually scheduled, so it lines up directly against the schedule. Click any cell for detail</div>
       <div id="volume-heatmap"></div>
       <div class="insight-list" id="volume-heatmap-insight" style="margin-top:14px"></div>
       <div id="volume-cell-detail" class="cell-detail-panel"></div>
@@ -593,8 +593,8 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
       <h2>Average Case Value Heatmap</h2></div>
     <div class="chart-card">
-      <div class="chart-title">Average case value by day of week &amp; hour of day (9am–11pm, Central)</div>
-      <div class="chart-note">Darker = higher average invoice value per case started in that hour — not total revenue, so this is independent of how busy that hour is and highlights hours that draw disproportionately higher- or lower-value cases. Each case's full invoice total (Vetspire's own order total, not just the exam charge); voided/deleted invoices count as $0 — click any cell for detail</div>
+      <div class="chart-title">Average case value by day of week &amp; half hour (9am–11pm, Central)</div>
+      <div class="chart-note">Darker = higher average invoice value per case started in that half-hour slot — not total revenue, so this is independent of how busy that slot is and highlights slots that draw disproportionately higher- or lower-value cases. Each case's full invoice total (Vetspire's own order total, not just the exam charge); voided/deleted invoices count as $0 — click any cell for detail</div>
       <div id="value-heatmap"></div>
       <div class="insight-list" id="value-heatmap-insight" style="margin-top:14px"></div>
       <div id="value-cell-detail" class="cell-detail-panel"></div>
@@ -2935,11 +2935,6 @@ async function loadActPerProviderReport() {
 }
 
 // ── Case heatmaps (day-of-week x hour-of-day) ──
-function hourLabelShort(h) {
-  const period = h < 12 ? 'a' : 'p';
-  let hh = h % 12; if (hh === 0) hh = 12;
-  return hh + period;
-}
 function hourLabelFull(h) {
   const fmt = x => { const period = x < 12 ? 'AM' : 'PM'; let d = x % 12; if (d === 0) d = 12; return d + ':00 ' + period; };
   return `${fmt(h)}–${fmt((h + 1) % 24)}`;
@@ -2953,40 +2948,70 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 const HEATMAP_HOUR_START = 9;
 const HEATMAP_HOUR_END = 22;
 
+// Half-hour slots (0 = 12:00-12:29am ... 47 = 11:30-11:59pm) — appointments
+// are scheduled on the half hour, so the grid needs to match that
+// granularity rather than blending two scheduled slots into one hour-wide
+// cell. Derived client-side from hour_of_day/minute_of_hour
+// (scoutsync_case_heatmap_half_hour.sql) rather than adding yet another
+// pre-computed column to the view.
+const HEATMAP_SLOT_START = HEATMAP_HOUR_START * 2;
+const HEATMAP_SLOT_END = HEATMAP_HOUR_END * 2 + 1;
+function slotOf(row) {
+  const h = Number(row.hour_of_day), m = Number(row.minute_of_hour);
+  if (Number.isNaN(h) || Number.isNaN(m)) return NaN;
+  return h * 2 + (m >= 30 ? 1 : 0);
+}
+function slotLabelShort(s) {
+  const h = Math.floor(s / 2), half = s % 2;
+  const period = h < 12 ? 'a' : 'p';
+  let hh = h % 12; if (hh === 0) hh = 12;
+  return half === 0 ? `${hh}${period}` : `${hh}:30${period}`;
+}
+function slotLabelFull(s) {
+  const fmtSlot = x => {
+    const h = Math.floor(x / 2) % 24, half = x % 2;
+    const period = h < 12 ? 'AM' : 'PM';
+    let d = h % 12; if (d === 0) d = 12;
+    return `${d}:${half === 0 ? '00' : '30'} ${period}`;
+  };
+  return `${fmtSlot(s)}–${fmtSlot(s + 1)}`;
+}
+
 // rows: one per case (v_case_heatmap), each with day_of_week (0=Sun..6=Sat),
-// hour_of_day (0-23), case_value — aggregated here, not pre-aggregated in
-// SQL, so both the volume and dollar-value grids come from a single fetch.
+// hour_of_day/minute_of_hour (-> half-hour slot 0-47), case_value —
+// aggregated here, not pre-aggregated in SQL, so both the volume and
+// dollar-value grids come from a single fetch.
 function buildHeatmapMatrices(rows) {
-  const volume = Array.from({ length: 7 }, () => Array(24).fill(0));
-  const value = Array.from({ length: 7 }, () => Array(24).fill(0)); // running sum here, averaged below
+  const volume = Array.from({ length: 7 }, () => Array(48).fill(0));
+  const value = Array.from({ length: 7 }, () => Array(48).fill(0)); // running sum here, averaged below
   rows.forEach(r => {
-    const d = Number(r.day_of_week), h = Number(r.hour_of_day);
-    if (Number.isNaN(d) || Number.isNaN(h) || d < 0 || d > 6 || h < 0 || h > 23) return;
-    volume[d][h] += 1;
-    value[d][h] += Number(r.case_value || 0);
+    const d = Number(r.day_of_week), s = slotOf(r);
+    if (Number.isNaN(d) || Number.isNaN(s) || d < 0 || d > 6 || s < 0 || s > 47) return;
+    volume[d][s] += 1;
+    value[d][s] += Number(r.case_value || 0);
   });
   // Average invoice value per case, not the total -- total revenue tracks
   // case count almost by definition (more cases -> more total dollars),
   // which just makes this heatmap a recolored copy of the volume one. The
-  // average is independent of volume, so it actually shows whether an hour
+  // average is independent of volume, so it actually shows whether a slot
   // draws disproportionately higher- or lower-value cases.
   for (let d = 0; d < 7; d++) {
-    for (let h = 0; h < 24; h++) {
-      if (volume[d][h] > 0) value[d][h] = value[d][h] / volume[d][h];
+    for (let s = 0; s < 48; s++) {
+      if (volume[d][s] > 0) value[d][s] = value[d][s] / volume[d][s];
     }
   }
   return { volume, value };
 }
 
-// Same rows, indexed by [day][hour] instead of aggregated — backs the
+// Same rows, indexed by [day][slot] instead of aggregated — backs the
 // click-to-drill-down panel so a cell can list its actual cases instead of
 // just the number that got baked into the grid's color.
 function buildCellIndex(rows) {
-  const index = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => []));
+  const index = Array.from({ length: 7 }, () => Array.from({ length: 48 }, () => []));
   rows.forEach(r => {
-    const d = Number(r.day_of_week), h = Number(r.hour_of_day);
-    if (Number.isNaN(d) || Number.isNaN(h) || d < 0 || d > 6 || h < 0 || h > 23) return;
-    index[d][h].push(r);
+    const d = Number(r.day_of_week), s = slotOf(r);
+    if (Number.isNaN(d) || Number.isNaN(s) || d < 0 || d > 6 || s < 0 || s > 47) return;
+    index[d][s].push(r);
   });
   return index;
 }
@@ -3114,11 +3139,11 @@ function isSameDayReschedule(row, keptDays) {
 }
 
 // panelEl: the .cell-detail-panel next to the grid that was clicked.
-function showCellDetail(panelEl, day, hour) {
-  const rows = (heatmapCellIndex && heatmapCellIndex[day] && heatmapCellIndex[day][hour]) || [];
+function showCellDetail(panelEl, day, slot) {
+  const rows = (heatmapCellIndex && heatmapCellIndex[day] && heatmapCellIndex[day][slot]) || [];
   const count = rows.length;
   const closeBtn = () => `<button class="dd-close" title="Close">×</button>`;
-  const head = `<div class="dd-head"><div class="dd-title">${esc(DAY_NAMES[day])}, ${esc(hourLabelFull(hour))}</div>${closeBtn()}</div>`;
+  const head = `<div class="dd-head"><div class="dd-title">${esc(DAY_NAMES[day])}, ${esc(slotLabelFull(slot))}</div>${closeBtn()}</div>`;
 
   if (!count) {
     panelEl.innerHTML = `${head}<div class="chart-note">No cases in this slot, selected range.</div>`;
@@ -3203,8 +3228,8 @@ function renderHeatmapGrid(el, matrix, opts) {
   // per Scout's actual hours) shouldn't wash out the color scale for the
   // hours that are actually shown.
   let max = 0;
-  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
-    for (let d = 0; d < 7; d++) max = Math.max(max, matrix[d][h] || 0);
+  for (let s = HEATMAP_SLOT_START; s <= HEATMAP_SLOT_END; s++) {
+    for (let d = 0; d < 7; d++) max = Math.max(max, matrix[d][s] || 0);
   }
 
   const wrap = document.createElement('div');
@@ -3222,9 +3247,11 @@ function renderHeatmapGrid(el, matrix, opts) {
 
   const hourLabels = document.createElement('div');
   hourLabels.className = 'heatmap-hourlabels';
-  for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
+  for (let s = HEATMAP_SLOT_START; s <= HEATMAP_SLOT_END; s++) {
     const span = document.createElement('span');
-    if ((h - HEATMAP_HOUR_START) % 3 === 0) span.textContent = hourLabelShort(h);
+    // Label only on the hour (even slot) -- the half-hour column in between
+    // stays unlabeled, its position between two hour ticks is enough.
+    if (s % 2 === 0) span.textContent = slotLabelShort(s);
     hourLabels.appendChild(span);
   }
   outer.appendChild(hourLabels);
@@ -3232,18 +3259,18 @@ function renderHeatmapGrid(el, matrix, opts) {
   const grid = document.createElement('div');
   grid.className = 'heatmap-grid';
   for (let d = 0; d < 7; d++) {
-    for (let h = HEATMAP_HOUR_START; h <= HEATMAP_HOUR_END; h++) {
-      const v = matrix[d][h] || 0;
+    for (let s = HEATMAP_SLOT_START; s <= HEATMAP_SLOT_END; s++) {
+      const v = matrix[d][s] || 0;
       const cell = document.createElement('div');
       cell.className = 'heatmap-cell';
       const alpha = max > 0 && v > 0 ? heatAlpha(v / max) : 0.04;
       cell.style.background = `rgba(${opts.rgb}, ${alpha.toFixed(2)})`;
-      cell.title = `${DAY_NAMES[d]}, ${hourLabelFull(h)}: ${opts.formatValue(v)} — click for detail`;
+      cell.title = `${DAY_NAMES[d]}, ${slotLabelFull(s)}: ${opts.formatValue(v)} — click for detail`;
       if (opts.detailPanel) {
         cell.addEventListener('click', () => {
           grid.querySelectorAll('.heatmap-cell.selected').forEach(c => c.classList.remove('selected'));
           cell.classList.add('selected');
-          showCellDetail(opts.detailPanel, d, h);
+          showCellDetail(opts.detailPanel, d, s);
         });
       }
       grid.appendChild(cell);
@@ -3968,7 +3995,7 @@ async function loadClinicalGeo() {
   // silently truncated at PostgREST's server-side row cap (a `limit=` in
   // the query string does NOT override that cap -- see fetchAllRows).
   const [heatRows, geoRows] = await Promise.all([
-    fetchAllRows(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,case_value,started_at,location_id,chief_complaint&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&order=started_at.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,minute_of_hour,case_value,started_at,location_id,chief_complaint&started_at=gte.${from}&started_at=lte.${untilEndOfDay}${locFilter}&order=started_at.asc`),
     fetchAllRows(`${SUPA_URL}/rest/v1/v_case_geo?select=postal_code,city,state,chief_complaint&visit_date=gte.${from}&visit_date=lte.${until}${locFilter}&order=postal_code.asc`),
   ]);
 
