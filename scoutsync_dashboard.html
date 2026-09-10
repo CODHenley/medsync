@@ -1263,9 +1263,15 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <div id="denovo-revpc-chart"></div>
       </div>
 
+      <div class="empty-note" style="margin-bottom:14px">
+        <b>Heads up:</b> unlike the Ramp-Up charts above, these two heatmaps have no "all locations" or legacy-location view —
+        they're locked to whichever location is the currently active de novo target (see "Tracking …" above). To view or compare
+        a heatmap for a mature/legacy location, use the location filter on the Clinical Operations tab instead.
+      </div>
+
       <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
         <h2>Case Volume Heatmap</h2>
-        <span class="sub">Since opening day, this location only</span></div>
+        <span class="sub">Since opening day, active de novo location only — not selectable</span></div>
       <div class="chart-card">
         <div class="chart-title">Cases by day of week &amp; half hour (9am–11pm, Central)</div>
         <div class="chart-note">Darker = more cases started in that half-hour slot, since opening — click any cell for detail</div>
@@ -1275,7 +1281,8 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       </div>
 
       <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
-        <h2>Average Case Value Heatmap</h2></div>
+        <h2>Average Case Value Heatmap</h2>
+        <span class="sub">Since opening day, active de novo location only — not selectable</span></div>
       <div class="chart-card">
         <div class="chart-title">Average case value by day of week &amp; half hour (9am–11pm, Central)</div>
         <div class="chart-note">Darker = higher average invoice value per case in that half-hour slot, since opening — click any cell for detail</div>
