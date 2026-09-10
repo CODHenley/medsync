@@ -4316,12 +4316,12 @@ async function loadDenovoHeatmaps(targetUuid, targetOpenDate) {
     volEl.innerHTML = valEl.innerHTML = `<div class="chart-note">Couldn't load <code>v_case_heatmap</code> — run
       <code>scoutsync_case_maps_and_heatmaps.sql</code> in the Supabase SQL editor if you haven't yet.</div>`;
     volInsight.innerHTML = valInsight.innerHTML = '';
-    return;
+    return [];
   }
   if (!heatRows.length) {
     volEl.innerHTML = valEl.innerHTML = '<div class="chart-note">No cases yet since opening.</div>';
     volInsight.innerHTML = valInsight.innerHTML = '';
-    return;
+    return [];
   }
 
   const { volume, value } = buildHeatmapMatrices(heatRows);
@@ -4336,68 +4336,128 @@ async function loadDenovoHeatmaps(targetUuid, targetOpenDate) {
   });
   renderHeatmapDayInsight('denovo-volume-heatmap-insight', heatRows, 'volume');
   renderHeatmapDayInsight('denovo-value-heatmap-insight', heatRows, 'value');
+  return heatRows;
 }
 
-// Synthesis insights tying the ramp-up and revenue-per-case benchmarks
-// together -- same insight-list pattern as the Financial tab's Executive
-// Insights and the Marketing tab's Weekly Insights.
-function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult) {
+// pct = (actual-projected)/projected*100 for a metric vs. its cohort
+// benchmark, or null if there's not enough data to compute one.
+function vsCohortPct(result) {
+  if (result.latestActual == null || result.latestProjected == null || result.latestProjected <= 0) return null;
+  return ((result.latestActual - result.latestProjected) / result.latestProjected) * 100;
+}
+
+// Share of cases falling on Sat/Sun vs. Mon-Fri, from the same v_case_heatmap
+// rows the heatmaps already fetched (day_of_week: 0=Sun..6=Sat) -- urgent
+// care demand commonly skews weekend-heavy (primary vets are closed), so a
+// de novo location still under-indexed on weekends may have a weekend
+// awareness/staffing gap rather than a real demand ceiling. Purely an
+// internal comparison (this location's own mix), not benchmarked against
+// another location's numbers.
+function weekendSharePct(heatRows) {
+  if (!heatRows || !heatRows.length) return null;
+  const weekend = heatRows.filter(r => Number(r.day_of_week) === 0 || Number(r.day_of_week) === 6).length;
+  return (weekend / heatRows.length) * 100;
+}
+
+function insightItem(cls, badge, title, body) {
+  return `<div class="insight-item">
+      <div class="i-badge ${cls}">${badge}</div>
+      <div><div class="i-title">${esc(title)}</div><div class="i-body">${body}</div></div>
+    </div>`;
+}
+
+// Headline ramp-status verdict + three grouped, actionable buckets (Wins,
+// Opportunities, Immediate Pivots) synthesized from everything else on
+// this tab -- both cohort-benchmark comparisons and the heatmaps' own
+// case-mix shape. Mirrors how a human would triage a new-location review:
+// lead with the one-line verdict, then what's working, what's worth
+// improving, and what needs action now, in that order.
+function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, heatRows) {
   const el = document.getElementById('denovo-insights');
-  const items = [];
+  const volPct = vsCohortPct(volResult);
+  const revPct = vsCohortPct(revResult);
+  const weekendPct = weekendSharePct(heatRows);
 
-  if (volResult.latestActual != null && volResult.latestProjected != null && volResult.latestProjected > 0) {
-    const pct = ((volResult.latestActual - volResult.latestProjected) / volResult.latestProjected) * 100;
-    items.push({
-      cls: pct >= -10 ? 'recommend' : 'risk', badge: pct >= -10 ? '▲' : '▼',
-      title: 'Case volume vs. cohort benchmark',
-      body: `At month ${targetAgeMonths}, <b>${targetLoc.name}</b> is seeing <b>${fmtN(Math.round(volResult.latestActual))}</b> cases/month
-        against a cohort-projected <b>${fmtN(Math.round(volResult.latestProjected))}</b> — ${pct >= 0 ? 'ahead of' : 'behind'} pace by
-        <b>${Math.abs(pct).toFixed(0)}%</b>.`,
-    });
-  }
-
-  if (revResult.latestActual != null && revResult.latestProjected != null && revResult.latestProjected > 0) {
-    const pct = ((revResult.latestActual - revResult.latestProjected) / revResult.latestProjected) * 100;
-    items.push({
-      cls: pct >= -10 ? 'recommend' : 'risk', badge: pct >= -10 ? '▲' : '▼',
-      title: 'Revenue per case vs. cohort benchmark',
-      body: `At month ${targetAgeMonths}, <b>${targetLoc.name}</b> is averaging <b>${fmt$(revResult.latestActual)}</b> per case
-        against a cohort-projected <b>${fmt$(revResult.latestProjected)}</b> — ${pct >= 0 ? 'ahead of' : 'behind'} pace by
-        <b>${Math.abs(pct).toFixed(0)}%</b>.`,
-    });
-  }
-
-  if (!items.length) {
+  if (volPct === null && revPct === null) {
     el.innerHTML = `<div class="chart-note">Not enough history yet to compare ${esc(targetLoc.name)} against a cohort benchmark.</div>`;
     return;
   }
 
-  const volBehind = volResult.latestActual != null && volResult.latestProjected > 0 && (volResult.latestActual - volResult.latestProjected) / volResult.latestProjected < -0.1;
-  const revBehind = revResult.latestActual != null && revResult.latestProjected > 0 && (revResult.latestActual - revResult.latestProjected) / revResult.latestProjected < -0.1;
-  let recBody;
-  if (volBehind && revBehind) {
-    recBody = `Both case volume and revenue per case are trailing the cohort benchmark — worth a closer look at local demand generation
-      (referrals, marketing reach) and pricing/service mix together, not just one or the other.`;
-  } else if (volBehind) {
-    recBody = `Case volume is behind pace but revenue per case is holding — the location is monetizing the visits it gets;
-      the gap is in demand, not pricing or service mix.`;
-  } else if (revBehind) {
-    recBody = `Case volume is on pace but revenue per case is trailing — worth checking service mix (are higher-value cases being
-      captured?) and whether pricing matches this cohort's benchmark locations.`;
-  } else {
-    recBody = `${esc(targetLoc.name)} is tracking at or ahead of its cohort benchmark on both case volume and revenue per case —
-      no corrective action indicated at this stage.`;
-  }
-  items.push({ cls: 'recommend', badge: '→', title: 'Recommendation', body: recBody });
+  // ── Headline verdict — worst-of-the-two metrics decides the color, since
+  // one strong number shouldn't paper over the other lagging. ──
+  const worstPct = [volPct, revPct].filter(p => p !== null).reduce((a, b) => Math.min(a, b), Infinity);
+  let verdict, verdictColor;
+  if (worstPct >= 10) { verdict = 'AHEAD OF TARGET'; verdictColor = 'var(--s-good)'; }
+  else if (worstPct >= -5) { verdict = 'ON TARGET'; verdictColor = 'var(--s-good)'; }
+  else if (worstPct >= -20) { verdict = 'SLIGHTLY BEHIND TARGET'; verdictColor = 'var(--s-warn)'; }
+  else { verdict = 'BEHIND TARGET'; verdictColor = 'var(--s-critical)'; }
 
-  el.innerHTML = items.map(it => `
-    <div class="insight-item">
-      <div class="i-badge ${it.cls}">${it.badge}</div>
-      <div>
-        <div class="i-title">${esc(it.title)}</div>
-        <div class="i-body">${it.body}</div>
-      </div>
-    </div>`).join('');
+  const verdictDetail = [
+    volPct !== null ? `case volume ${volPct >= 0 ? '+' : ''}${volPct.toFixed(0)}% vs. cohort` : null,
+    revPct !== null ? `revenue/case ${revPct >= 0 ? '+' : ''}${revPct.toFixed(0)}% vs. cohort` : null,
+  ].filter(Boolean).join(', ');
+
+  const wins = [], opportunities = [], pivots = [];
+
+  if (volPct !== null) {
+    if (volPct >= 10) {
+      wins.push(insightItem('recommend', '✓', 'Case volume ahead of pace',
+        `<b>${fmtN(Math.round(volResult.latestActual))}</b> cases/month at month ${targetAgeMonths}, <b>${volPct.toFixed(0)}%</b> ahead of the cohort-projected <b>${fmtN(Math.round(volResult.latestProjected))}</b>.`));
+    } else if (volPct >= -10) {
+      // Close enough to pace that it's neither a win nor a problem worth a slot.
+    } else if (volPct >= -25) {
+      opportunities.push(insightItem('concentration', '◉', 'Case volume trailing cohort pace',
+        `<b>${Math.abs(volPct).toFixed(0)}%</b> behind the cohort-projected pace at month ${targetAgeMonths} — within a range that local referral/awareness efforts can realistically close before it becomes a bigger gap.`));
+    } else {
+      pivots.push(insightItem('risk', '⚠', 'Case volume significantly behind pace',
+        `<b>${Math.abs(volPct).toFixed(0)}%</b> behind the cohort-projected pace at month ${targetAgeMonths} — worth an immediate review of local demand generation (referral pipeline, marketing reach, hours/coverage) rather than waiting another month to see if it self-corrects.`));
+    }
+  }
+
+  if (revPct !== null) {
+    if (revPct >= 10) {
+      wins.push(insightItem('recommend', '✓', 'Revenue per case ahead of pace',
+        `Averaging <b>${fmt$(revResult.latestActual)}</b> per case, <b>${revPct.toFixed(0)}%</b> ahead of the cohort-projected <b>${fmt$(revResult.latestProjected)}</b>.`));
+    } else if (revPct >= -10) {
+      // Close enough to pace, no slot needed.
+    } else if (revPct >= -25) {
+      opportunities.push(insightItem('concentration', '◉', 'Revenue per case trailing cohort pace',
+        `<b>${Math.abs(revPct).toFixed(0)}%</b> behind the cohort-projected revenue per case — worth checking service mix (are higher-value cases being captured?) and whether pricing matches this cohort's benchmark locations.`));
+    } else {
+      pivots.push(insightItem('risk', '⚠', 'Revenue per case significantly behind pace',
+        `<b>${Math.abs(revPct).toFixed(0)}%</b> behind the cohort-projected revenue per case — a gap this size usually points to something specific (pricing, service mix, or a data issue) rather than normal ramp variance; worth investigating this month.`));
+    }
+  }
+
+  if (volPct !== null && revPct !== null && volPct < -10 && revPct >= 10) {
+    opportunities.push(insightItem('concentration', '◉', 'Demand gap, not a monetization gap',
+      `Case volume is behind pace but revenue per case is ahead — this location converts the visits it gets well. The gap is in getting more people in the door, not what happens once they're there.`));
+  }
+
+  if (weekendPct !== null) {
+    if (weekendPct < 15) {
+      opportunities.push(insightItem('concentration', '◉', 'Low weekend share',
+        `Only <b>${weekendPct.toFixed(0)}%</b> of cases since opening fell on a Saturday or Sunday — urgent care demand commonly skews weekend-heavy since primary vets are closed. Worth checking weekend hours, staffing, and local awareness specifically for weekend availability.`));
+    } else if (weekendPct >= 35) {
+      wins.push(insightItem('recommend', '✓', 'Strong weekend capture',
+        `<b>${weekendPct.toFixed(0)}%</b> of cases since opening fell on a Saturday or Sunday — a healthy sign the location is already capturing the weekend urgent-care demand that primary-care vets can't serve.`));
+    }
+  }
+
+  const groups = [['Wins', wins], ['Opportunities', opportunities], ['Immediate Pivots', pivots]]
+    .filter(([, list]) => list.length);
+
+  el.innerHTML = `
+    <div class="hero-tile" style="margin-bottom:14px">
+      <div class="l">Ramp Status</div>
+      <div class="v" style="color:${verdictColor};font-size:22px">${esc(verdict)}</div>
+      <div class="chart-note" style="margin-top:6px">${esc(verdictDetail)}, at month ${targetAgeMonths}.</div>
+    </div>
+    ${groups.map(([label, list]) => `
+      <div class="dd-subtitle" style="margin-top:10px">${esc(label)}</div>
+      <div class="insight-list">${list.join('')}</div>`).join('')}
+    ${!groups.length ? '<div class="chart-note">Tracking close to cohort pace on both metrics — nothing urgent to flag.</div>' : ''}
+  `;
 }
 
 // Local to this tab, not the global location filter -- null means
@@ -4412,6 +4472,7 @@ let selectedDenovoLocUuid = null;
 let lastDenovoCtx = null;
 let lastDenovoVolResult = null;
 let lastDenovoRevResult = null;
+let lastDenovoHeatRows = [];
 
 document.getElementById('rampup-view-tabs').addEventListener('click', e => {
   const btn = e.target.closest('.subtab');
@@ -4419,7 +4480,7 @@ document.getElementById('rampup-view-tabs').addEventListener('click', e => {
   document.querySelectorAll('#rampup-view-tabs .subtab').forEach(b => b.classList.toggle('active', b === btn));
   denovoViewMode.volume = btn.dataset.view;
   lastDenovoVolResult = renderDenovoRampUp(lastDenovoCtx);
-  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult);
+  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows);
 });
 document.getElementById('denovo-revpc-view-tabs').addEventListener('click', e => {
   const btn = e.target.closest('.subtab');
@@ -4427,7 +4488,7 @@ document.getElementById('denovo-revpc-view-tabs').addEventListener('click', e =>
   document.querySelectorAll('#denovo-revpc-view-tabs .subtab').forEach(b => b.classList.toggle('active', b === btn));
   denovoViewMode.revpc = btn.dataset.view;
   lastDenovoRevResult = renderDenovoRevenuePerCase(lastDenovoCtx);
-  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult);
+  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows);
 });
 
 async function loadDenovoTab() {
@@ -4502,9 +4563,13 @@ async function loadDenovoTab() {
   lastDenovoCtx = ctx;
   lastDenovoVolResult = renderDenovoRampUp(ctx);
   lastDenovoRevResult = renderDenovoRevenuePerCase(ctx);
-  renderDenovoInsights(targetLoc, targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult);
 
-  loadDenovoHeatmaps(targetUuid, targetOpenDate);
+  // Insights waits on the heatmap fetch (weekend-share signal needs it),
+  // but the heatmap grids themselves render as soon as their own fetch
+  // resolves, inside loadDenovoHeatmaps -- awaiting it here only delays
+  // the Insights panel, not the charts above it.
+  lastDenovoHeatRows = await loadDenovoHeatmaps(targetUuid, targetOpenDate);
+  renderDenovoInsights(targetLoc, targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows);
 }
 
 // ── Clinical Operations (heatmaps + geo map) data + rendering ──
