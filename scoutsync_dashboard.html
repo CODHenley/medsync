@@ -1234,6 +1234,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <h2>Ramp-Up: Case Volume</h2>
         <span class="sub">Case volume since opening day, vs. a demographic-weighted cohort benchmark</span></div>
       <div class="chart-card">
+        <div class="subtab-row" id="rampup-view-tabs">
+          <button class="subtab active" data-view="cohort">Cohort benchmark</button>
+          <button class="subtab" data-view="all">All locations</button>
+        </div>
         <div class="chart-title" id="rampup-title">Months since opening</div>
         <div class="chart-note" id="rampup-note"></div>
         <div class="hero-row" id="rampup-tiles"></div>
@@ -1244,6 +1248,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <h2>Ramp-Up: Revenue per Case</h2>
         <span class="sub">Average revenue per case since opening day, vs. the same cohort benchmark</span></div>
       <div class="chart-card">
+        <div class="subtab-row" id="denovo-revpc-view-tabs">
+          <button class="subtab active" data-view="cohort">Cohort benchmark</button>
+          <button class="subtab" data-view="all">All locations</button>
+        </div>
         <div class="chart-note" id="denovo-revpc-note"></div>
         <div class="hero-row" id="denovo-revpc-tiles"></div>
         <div id="denovo-revpc-chart"></div>
@@ -4025,23 +4033,28 @@ function computeCohortWeights(targetUuid, allLocUuids, openDateByLoc, profileByL
   return { matureUuids, weights, weighted, note };
 }
 
+// A location's own monthly series for any per-month metric extracted from
+// rowsByLoc via valueFn, re-anchored to "months since ITS OWN opening"
+// (month 0 = the month it opened) rather than calendar time -- the
+// re-anchoring every de novo comparison on this tab is built on.
+function seriesForLocation(uuid, openDateByLoc, rowsByLoc, valueFn) {
+  const openDate = openDateByLoc[uuid];
+  const out = {};
+  (rowsByLoc[uuid] || []).forEach(r => {
+    const v = valueFn(r);
+    if (v !== null && v !== undefined) out[monthsBetween(openDate, r.month_start)] = v;
+  });
+  return out;
+}
+
 // Builds an actual + cohort-projected monthly series for any per-month
 // metric extracted from rowsByLoc via valueFn (e.g. case_count, or
 // total_revenue/case_count) -- same "months since opening" re-anchoring
 // and weighted-average cohort projection for every de novo metric, not
 // just case volume.
 function buildCohortMonthlySeries(targetUuid, matureUuids, weights, openDateByLoc, rowsByLoc, valueFn, maxMonth) {
-  function seriesFor(uuid) {
-    const openDate = openDateByLoc[uuid];
-    const out = {};
-    (rowsByLoc[uuid] || []).forEach(r => {
-      const v = valueFn(r);
-      if (v !== null && v !== undefined) out[monthsBetween(openDate, r.month_start)] = v;
-    });
-    return out;
-  }
-  const targetSeries = seriesFor(targetUuid);
-  const matureSeries = Object.fromEntries(matureUuids.map(u => [u, seriesFor(u)]));
+  const targetSeries = seriesForLocation(targetUuid, openDateByLoc, rowsByLoc, valueFn);
+  const matureSeries = Object.fromEntries(matureUuids.map(u => [u, seriesForLocation(u, openDateByLoc, rowsByLoc, valueFn)]));
   const xLabels = [], projectedValues = [];
   for (let m = 0; m <= maxMonth; m++) {
     xLabels.push(`M${m}`);
@@ -4055,6 +4068,42 @@ function buildCohortMonthlySeries(targetUuid, matureUuids, weights, openDateByLo
   return { xLabels, targetSeries, projectedValues };
 }
 
+// Fixed per-location colors for the "All locations" comparison view --
+// reuses the dataviz skill's already-validated 8-hue categorical palette
+// (same one Revenue by Source uses; see that chart's CSS comment for the
+// validate_palette.js run), first 4 slots, one per Scout location in
+// LOCATIONS' own order. A new location beyond the 4th falls back to a
+// neutral gray rather than silently reusing another location's color.
+const LOCATION_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
+function colorForLocation(uuid) {
+  const idx = LOCATIONS.findIndex(l => l.uuid === uuid);
+  return LOCATION_COLORS[idx] || '#8892a0';
+}
+
+// How far into each location's own history the "All locations" comparison
+// view goes -- fixed at 24 months (matching RAMPUP_MATURE_MIN_MONTHS)
+// regardless of how old each location actually is, so every location is
+// compared on the same "first 2 years" footing rather than a long-lived
+// location's chart stretching out for years past what's relevant.
+const ALL_LOCATIONS_MAX_MONTH = 24;
+
+// Every location's own actual series, re-anchored to its own opening
+// month, for the "All locations" comparison view -- lets multiple de novo
+// locations (or any locations at all) be compared against each other
+// directly, not just the current target against a blended cohort.
+function buildAllLocationsSeries(allLocUuids, openDateByLoc, rowsByLoc, valueFn) {
+  const xLabels = [];
+  for (let m = 0; m <= ALL_LOCATIONS_MAX_MONTH; m++) xLabels.push(`M${m}`);
+  const series = allLocUuids.map(uuid => {
+    const loc = LOCATIONS.find(l => l.uuid === uuid);
+    const s = seriesForLocation(uuid, openDateByLoc, rowsByLoc, valueFn);
+    const values = [];
+    for (let m = 0; m <= ALL_LOCATIONS_MAX_MONTH; m++) values.push(s[m] ?? null);
+    return { uuid, name: loc ? loc.name : uuid, values };
+  });
+  return { xLabels, series };
+}
+
 function denovoTile(label, pct, caption) {
   return `
     <div class="hero-tile">
@@ -4064,9 +4113,34 @@ function denovoTile(label, pct, caption) {
     </div>`;
 }
 
+// 'cohort' = target actual vs. blended cohort projection (default);
+// 'all' = every location's own actual line, no blending -- lets multiple
+// de novo locations be compared against each other directly, not just
+// against a single blended number. Independent per chart since a user
+// may want one chart in each mode.
+let denovoViewMode = { volume: 'cohort', revpc: 'cohort' };
+
+// Shared "All locations" renderer for both ramp-up charts -- every
+// location with a known open_date gets its own color (colorForLocation)
+// and its own re-anchored line out to ALL_LOCATIONS_MAX_MONTH; the current
+// de novo target is drawn thicker so it stands out among comparators that
+// may include other, already-mature locations' own early months.
+function renderAllLocationsChart(chartEl, tilesEl, note, ctx, valueFn, formatValue) {
+  const { targetLoc, allLocUuids, openDateByLoc, monthsByLoc } = ctx;
+  const { xLabels, series } = buildAllLocationsSeries(allLocUuids, openDateByLoc, monthsByLoc, valueFn);
+  note.innerHTML = `Every location's own first ${ALL_LOCATIONS_MAX_MONTH} months, each re-anchored to its own opening day —
+    <b>${esc(targetLoc.name)}</b> is drawn thicker.`;
+  tilesEl.innerHTML = '';
+  renderMultiSeriesLineChart(chartEl, series.map(s => ({
+    label: s.name, color: colorForLocation(s.uuid), values: s.values,
+    strokeWidth: s.uuid === targetLoc.uuid ? 2.5 : 1.5,
+  })), xLabels, { formatValue });
+}
+
 // Renders the Ramp-Up: Case Volume section. Returns { latestActual,
 // latestProjected } so the insights panel can reference the same numbers
-// without recomputing them.
+// without recomputing them (null in 'all' mode -- there's no single
+// cohort number to report there).
 function renderDenovoRampUp(ctx) {
   const { targetLoc, targetOpenDate, targetAgeMonths, cohort, openDateByLoc, monthsByLoc, maxMonth } = ctx;
   const titleEl = document.getElementById('rampup-title');
@@ -4075,6 +4149,11 @@ function renderDenovoRampUp(ctx) {
   const chartEl = document.getElementById('rampup-chart');
 
   titleEl.textContent = `${targetLoc.name} — months since opening (${fmtDate(targetOpenDate)})`;
+
+  if (denovoViewMode.volume === 'all') {
+    renderAllLocationsChart(chartEl, tilesEl, note, ctx, r => r.case_count, v => fmtN(v) + (v === 1 ? ' case' : ' cases'));
+    return { latestActual: null, latestProjected: null };
+  }
 
   if (!cohort) {
     chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
@@ -4122,6 +4201,12 @@ function renderDenovoRevenuePerCase(ctx) {
   const note = document.getElementById('denovo-revpc-note');
   const tilesEl = document.getElementById('denovo-revpc-tiles');
   const chartEl = document.getElementById('denovo-revpc-chart');
+  const revPerCase = r => (r.case_count > 0 && r.total_revenue != null) ? r.total_revenue / r.case_count : null;
+
+  if (denovoViewMode.revpc === 'all') {
+    renderAllLocationsChart(chartEl, tilesEl, note, ctx, revPerCase, v => fmt$(v) + ' / case');
+    return { latestActual: null, latestProjected: null };
+  }
 
   if (!cohort) {
     chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
@@ -4129,7 +4214,6 @@ function renderDenovoRevenuePerCase(ctx) {
     return { latestActual: null, latestProjected: null };
   }
 
-  const revPerCase = r => (r.case_count > 0 && r.total_revenue != null) ? r.total_revenue / r.case_count : null;
   const { targetSeries, projectedValues } = buildCohortMonthlySeries(
     targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, revPerCase, maxMonth);
 
@@ -4273,6 +4357,31 @@ function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult) 
 // when 2+ locations are simultaneously within their ramp-up window.
 let selectedDenovoLocUuid = null;
 
+// The most recent ctx object loadDenovoTab() built, so the view-mode
+// toggle buttons can re-render just one chart without a full data refetch.
+// lastDenovoVolResult/RevResult let a single chart's toggle recompute the
+// shared Insights panel using the OTHER chart's still-current result.
+let lastDenovoCtx = null;
+let lastDenovoVolResult = null;
+let lastDenovoRevResult = null;
+
+document.getElementById('rampup-view-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.subtab');
+  if (!btn || !lastDenovoCtx) return;
+  document.querySelectorAll('#rampup-view-tabs .subtab').forEach(b => b.classList.toggle('active', b === btn));
+  denovoViewMode.volume = btn.dataset.view;
+  lastDenovoVolResult = renderDenovoRampUp(lastDenovoCtx);
+  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult);
+});
+document.getElementById('denovo-revpc-view-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.subtab');
+  if (!btn || !lastDenovoCtx) return;
+  document.querySelectorAll('#denovo-revpc-view-tabs .subtab').forEach(b => b.classList.toggle('active', b === btn));
+  denovoViewMode.revpc = btn.dataset.view;
+  lastDenovoRevResult = renderDenovoRevenuePerCase(lastDenovoCtx);
+  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult);
+});
+
 async function loadDenovoTab() {
   const emptyEl = document.getElementById('denovo-empty');
   const contentEl = document.getElementById('denovo-content');
@@ -4341,10 +4450,11 @@ async function loadDenovoTab() {
   // actually relevant to the target.
   const maxMonth = Math.min(Math.max(targetAgeMonths + 6, 23), 60);
 
-  const ctx = { targetLoc, targetOpenDate, targetAgeMonths, cohort, openDateByLoc, monthsByLoc, maxMonth };
-  const volResult = renderDenovoRampUp(ctx);
-  const revResult = renderDenovoRevenuePerCase(ctx);
-  renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult);
+  const ctx = { targetLoc, targetOpenDate, targetAgeMonths, cohort, openDateByLoc, monthsByLoc, maxMonth, allLocUuids };
+  lastDenovoCtx = ctx;
+  lastDenovoVolResult = renderDenovoRampUp(ctx);
+  lastDenovoRevResult = renderDenovoRevenuePerCase(ctx);
+  renderDenovoInsights(targetLoc, targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult);
 
   loadDenovoHeatmaps(targetUuid, targetOpenDate);
 }
