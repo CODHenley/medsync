@@ -309,6 +309,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   border-radius: 100px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
 }
 .subtab-row .subtab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.denovo-loc-filter { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 12px; }
+.denovo-loc-filter label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-2); cursor: pointer; }
+.denovo-loc-filter label.unavailable { color: var(--ink-3); cursor: default; }
+.denovo-loc-filter .swatch { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 .ia-btn {
   border: 1px solid var(--border); background: var(--card); color: var(--text);
   border-radius: 8px; padding: 6px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer;
@@ -1238,6 +1242,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
           <button class="subtab active" data-view="cohort">Cohort benchmark</button>
           <button class="subtab" data-view="all">All locations</button>
         </div>
+        <div class="denovo-loc-filter" id="rampup-loc-filter" hidden></div>
         <div class="chart-title" id="rampup-title">Months since opening</div>
         <div class="chart-note" id="rampup-note"></div>
         <div class="hero-row" id="rampup-tiles"></div>
@@ -1252,6 +1257,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
           <button class="subtab active" data-view="cohort">Cohort benchmark</button>
           <button class="subtab" data-view="all">All locations</button>
         </div>
+        <div class="denovo-loc-filter" id="denovo-revpc-loc-filter" hidden></div>
         <div class="chart-note" id="denovo-revpc-note"></div>
         <div class="hero-row" id="denovo-revpc-tiles"></div>
         <div id="denovo-revpc-chart"></div>
@@ -4125,10 +4131,48 @@ let denovoViewMode = { volume: 'cohort', revpc: 'cohort' };
 // and its own re-anchored line out to ALL_LOCATIONS_MAX_MONTH; the current
 // de novo target is drawn thicker so it stands out among comparators that
 // may include other, already-mature locations' own early months.
-function renderAllLocationsChart(chartEl, tilesEl, note, ctx, valueFn, formatValue) {
+//
+// Which locations are checked in the "All locations" filter, per chart --
+// defaults to every location that HAS a plottable open_date. A location
+// missing one (Vetspire never reports an opening date for some locations;
+// see scoutsync_wheaton_open_date_correction.sql for the same gap fixed
+// once already) shows as a disabled, unchecked entry instead of silently
+// not appearing, so it's obvious why it's missing rather than looking like
+// a bug.
+let denovoLocFilter = { volume: new Set(), revpc: new Set() };
+
+// Renders the location-picker checkboxes above an "All locations" chart.
+// allLocUuids: locations with a usable open_date (checkable). Every Scout
+// location is listed regardless, so a missing one reads as "no open date
+// on file" rather than just not existing.
+function renderLocationFilterUI(containerEl, allLocUuids, filterSet, onChange) {
+  if (filterSet.size === 0) allLocUuids.forEach(u => filterSet.add(u)); // first render: default to all checked
+  containerEl.hidden = false;
+  containerEl.innerHTML = LOCATIONS.map(l => {
+    const available = allLocUuids.includes(l.uuid);
+    const checked = available && filterSet.has(l.uuid);
+    return `<label class="${available ? '' : 'unavailable'}">
+      <input type="checkbox" data-uuid="${l.uuid}" ${checked ? 'checked' : ''} ${available ? '' : 'disabled'}>
+      <span class="swatch" style="background:${colorForLocation(l.uuid)}"></span>${esc(l.name)}${available ? '' : ' (no open date on file)'}
+    </label>`;
+  }).join('');
+  containerEl.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) filterSet.add(cb.dataset.uuid); else filterSet.delete(cb.dataset.uuid);
+      onChange();
+    });
+  });
+}
+
+function renderAllLocationsChart(chartEl, tilesEl, note, filterEl, ctx, valueFn, formatValue, chartKey) {
   const { targetLoc, allLocUuids, openDateByLoc, monthsByLoc } = ctx;
-  const { xLabels, series } = buildAllLocationsSeries(allLocUuids, openDateByLoc, monthsByLoc, valueFn);
-  note.innerHTML = `Every location's own first ${ALL_LOCATIONS_MAX_MONTH} months, each re-anchored to its own opening day —
+  const filterSet = denovoLocFilter[chartKey];
+  renderLocationFilterUI(filterEl, allLocUuids, filterSet,
+    () => renderAllLocationsChart(chartEl, tilesEl, note, filterEl, ctx, valueFn, formatValue, chartKey));
+
+  const visibleUuids = allLocUuids.filter(u => filterSet.has(u));
+  const { xLabels, series } = buildAllLocationsSeries(visibleUuids, openDateByLoc, monthsByLoc, valueFn);
+  note.innerHTML = `Every checked location's own first ${ALL_LOCATIONS_MAX_MONTH} months, each re-anchored to its own opening day —
     <b>${esc(targetLoc.name)}</b> is drawn thicker.`;
   tilesEl.innerHTML = '';
   renderMultiSeriesLineChart(chartEl, series.map(s => ({
@@ -4147,13 +4191,15 @@ function renderDenovoRampUp(ctx) {
   const note = document.getElementById('rampup-note');
   const tilesEl = document.getElementById('rampup-tiles');
   const chartEl = document.getElementById('rampup-chart');
+  const filterEl = document.getElementById('rampup-loc-filter');
 
   titleEl.textContent = `${targetLoc.name} — months since opening (${fmtDate(targetOpenDate)})`;
 
   if (denovoViewMode.volume === 'all') {
-    renderAllLocationsChart(chartEl, tilesEl, note, ctx, r => r.case_count, v => fmtN(v) + (v === 1 ? ' case' : ' cases'));
+    renderAllLocationsChart(chartEl, tilesEl, note, filterEl, ctx, r => r.case_count, v => fmtN(v) + (v === 1 ? ' case' : ' cases'), 'volume');
     return { latestActual: null, latestProjected: null };
   }
+  filterEl.hidden = true;
 
   if (!cohort) {
     chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
@@ -4201,12 +4247,14 @@ function renderDenovoRevenuePerCase(ctx) {
   const note = document.getElementById('denovo-revpc-note');
   const tilesEl = document.getElementById('denovo-revpc-tiles');
   const chartEl = document.getElementById('denovo-revpc-chart');
+  const filterEl = document.getElementById('denovo-revpc-loc-filter');
   const revPerCase = r => (r.case_count > 0 && r.total_revenue != null) ? r.total_revenue / r.case_count : null;
 
   if (denovoViewMode.revpc === 'all') {
-    renderAllLocationsChart(chartEl, tilesEl, note, ctx, revPerCase, v => fmt$(v) + ' / case');
+    renderAllLocationsChart(chartEl, tilesEl, note, filterEl, ctx, revPerCase, v => fmt$(v) + ' / case', 'revpc');
     return { latestActual: null, latestProjected: null };
   }
+  filterEl.hidden = true;
 
   if (!cohort) {
     chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
