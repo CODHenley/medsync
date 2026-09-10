@@ -464,6 +464,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   <button data-tab="inventory">Inventory</button>
   <button data-tab="procurement">Procurement</button>
   <button data-tab="reporting">Reporting</button>
+  <button data-tab="denovo">Scout De Novo</button>
   <button class="soon" disabled>Facilities Operations<span class="tag">Soon</span></button>
 </nav>
 </div>
@@ -570,16 +571,6 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div class="chart-title">Monthly case volume by year</div>
       <div class="chart-note" id="seasonal-note">Each line is one calendar year; compare the same month across years to spot seasonality</div>
       <div id="seasonal-chart"></div>
-    </div>
-
-    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
-      <h2>New Location Ramp-Up</h2>
-      <span class="sub">Case volume since opening day, vs. a cohort benchmark — use the location filter above to pick which one</span></div>
-    <div class="chart-card">
-      <div class="chart-title" id="rampup-title">Months since opening</div>
-      <div class="chart-note" id="rampup-note"></div>
-      <div class="hero-row" id="rampup-tiles"></div>
-      <div id="rampup-chart"></div>
     </div>
 
     <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
@@ -1215,6 +1206,77 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ══ Scout De Novo — everything on this tab is scoped to whichever
+       location is still within its own ramp-up window (< RAMPUP_MATURE_
+       MIN_MONTHS old), auto-picked (newest first) unless 2+ qualify, in
+       which case a local picker appears. Independent of the top-level
+       date-range/location filters -- always "since opening day" through
+       yesterday, same convention the Ramp-Up chart already used before
+       moving here. ══ -->
+  <section class="panel" id="panel-denovo">
+
+    <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+      <h2>Scout De Novo</h2>
+      <span class="sub" id="denovo-location-sub">Tracks whichever location is still within its first months of operation — independent of the location/date filters above</span></div>
+    <div class="chart-card" id="denovo-picker-card" style="display:none">
+      <div class="chart-title">Currently tracking</div>
+      <select id="denovo-location-select"></select>
+    </div>
+
+    <div id="denovo-empty"></div>
+
+    <div id="denovo-content" style="display:none">
+
+      <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+        <h2>Ramp-Up: Case Volume</h2>
+        <span class="sub">Case volume since opening day, vs. a demographic-weighted cohort benchmark</span></div>
+      <div class="chart-card">
+        <div class="chart-title" id="rampup-title">Months since opening</div>
+        <div class="chart-note" id="rampup-note"></div>
+        <div class="hero-row" id="rampup-tiles"></div>
+        <div id="rampup-chart"></div>
+      </div>
+
+      <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+        <h2>Ramp-Up: Revenue per Case</h2>
+        <span class="sub">Average revenue per case since opening day, vs. the same cohort benchmark</span></div>
+      <div class="chart-card">
+        <div class="chart-note" id="denovo-revpc-note"></div>
+        <div class="hero-row" id="denovo-revpc-tiles"></div>
+        <div id="denovo-revpc-chart"></div>
+      </div>
+
+      <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+        <h2>Case Volume Heatmap</h2>
+        <span class="sub">Since opening day, this location only</span></div>
+      <div class="chart-card">
+        <div class="chart-title">Cases by day of week &amp; half hour (9am–11pm, Central)</div>
+        <div class="chart-note">Darker = more cases started in that half-hour slot, since opening — click any cell for detail</div>
+        <div id="denovo-volume-heatmap"></div>
+        <div class="insight-list" id="denovo-volume-heatmap-insight" style="margin-top:14px"></div>
+        <div id="denovo-volume-cell-detail" class="cell-detail-panel"></div>
+      </div>
+
+      <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+        <h2>Average Case Value Heatmap</h2></div>
+      <div class="chart-card">
+        <div class="chart-title">Average case value by day of week &amp; half hour (9am–11pm, Central)</div>
+        <div class="chart-note">Darker = higher average invoice value per case in that half-hour slot, since opening — click any cell for detail</div>
+        <div id="denovo-value-heatmap"></div>
+        <div class="insight-list" id="denovo-value-heatmap-insight" style="margin-top:14px"></div>
+        <div id="denovo-value-cell-detail" class="cell-detail-panel"></div>
+      </div>
+
+      <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+        <h2>De Novo Insights</h2>
+        <span class="sub">Computed live from the reporting above</span></div>
+      <div class="chart-card">
+        <div class="insight-list" id="denovo-insights"></div>
+      </div>
+
     </div>
   </section>
 
@@ -3083,8 +3145,12 @@ function isSameDayReschedule(row, keptDays) {
 }
 
 // panelEl: the .cell-detail-panel next to the grid that was clicked.
-function showCellDetail(panelEl, day, slot) {
-  const rows = (heatmapCellIndex && heatmapCellIndex[day] && heatmapCellIndex[day][slot]) || [];
+// cellIndex: the [day][slot] -> rows[] index for THIS grid specifically --
+// passed explicitly rather than read off a shared global, since a second
+// heatmap instance (Scout De Novo tab) needs its own index without
+// clobbering Clinical Operations' whenever either tab last loaded.
+function showCellDetail(panelEl, day, slot, cellIndex) {
+  const rows = (cellIndex && cellIndex[day] && cellIndex[day][slot]) || [];
   const count = rows.length;
   const closeBtn = () => `<button class="dd-close" title="Close">×</button>`;
   const head = `<div class="dd-head"><div class="dd-title">${esc(DAY_NAMES[day])}, ${esc(slotLabelFull(slot))}</div>${closeBtn()}</div>`;
@@ -3214,7 +3280,7 @@ function renderHeatmapGrid(el, matrix, opts) {
         cell.addEventListener('click', () => {
           grid.querySelectorAll('.heatmap-cell.selected').forEach(c => c.classList.remove('selected'));
           cell.classList.add('selected');
-          showCellDetail(opts.detailPanel, d, s);
+          showCellDetail(opts.detailPanel, d, s, opts.cellIndex);
         });
       }
       grid.appendChild(cell);
@@ -3875,18 +3941,16 @@ async function loadSeasonalChart() {
   renderMultiSeriesLineChart(el, series, MONTH_NAMES, { formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases') });
 }
 
-// ── New Location Ramp-Up: case volume re-anchored to "months since
-// opening" instead of calendar time, so a de novo location's trajectory
-// can be compared against how mature locations ramped in their OWN early
-// months -- weighted by service-area demographic similarity
-// (v_location_demographic_profile) when that data is available, falling
-// back to an unweighted cohort average otherwise (the weighting upgrades
-// itself automatically once zip_demographics is populated -- no code
-// change needed). Independent of the top-level range filter (always all
-// history); DOES respect the location filter -- pick one to inspect it,
-// or leave "All Locations" to default to the youngest one, since "is our
-// de novo location on target" is the more likely question when no
-// specific location is chosen. ──
+// ── Scout De Novo tab: every report scoped to whichever location is still
+// within its own ramp-up window, re-anchored to "months since opening"
+// instead of calendar time so it can be compared against how mature
+// locations performed in their OWN early months -- weighted by
+// service-area demographic similarity (v_location_demographic_profile)
+// when that data is available, falling back to an unweighted cohort
+// average otherwise (the weighting upgrades itself automatically once
+// zip_demographics is populated -- no code change needed). Independent of
+// the top-level date-range/location filters -- always "since opening
+// day" through yesterday, for every metric on this tab. ──
 const RAMPUP_MATURE_MIN_MONTHS = 24; // a location needs at least this much of its own history to be a fair benchmark
 
 function monthsBetween(fromISO, toISO) {
@@ -3894,63 +3958,29 @@ function monthsBetween(fromISO, toISO) {
   return (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth());
 }
 
-async function loadRampUpChart() {
-  const titleEl = document.getElementById('rampup-title');
-  const note = document.getElementById('rampup-note');
-  const tilesEl = document.getElementById('rampup-tiles');
-  const chartEl = document.getElementById('rampup-chart');
+function pctChange(curr, prior) {
+  if (curr == null || prior == null || prior === 0) return null;
+  return ((curr - prior) / prior) * 100;
+}
 
-  const [locRows, volRows, profRows] = await Promise.all([
-    fetchAllRows(`${SUPA_URL}/rest/v1/locations?select=id,open_date&order=id.asc`),
-    fetchAllRows(`${SUPA_URL}/rest/v1/v_case_volume_monthly?select=location_id,month_start,case_count&order=month_start.asc`),
-    fetchAllRows(`${SUPA_URL}/rest/v1/v_location_demographic_profile?select=*`),
-  ]);
-  if (locRows === null || volRows === null || profRows === null) {
-    chartEl.innerHTML = '';
-    tilesEl.innerHTML = '';
-    note.innerHTML = `Couldn't load location/case-volume/demographic data — run
-      <code>scoutsync_case_volume_monthly.sql</code> and <code>scoutsync_location_demographic_profile.sql</code>
-      in the Supabase SQL editor if you haven't yet.`;
-    return;
-  }
+// Locations still inside their own ramp-up window (younger than the
+// maturity threshold) -- candidates for this tab's target, sorted
+// newest-first. A location with no known open_date is excluded rather
+// than assumed either way.
+function getYoungLocationUuids(openDateByLoc, todayISO) {
+  return LOCATIONS
+    .map(l => l.uuid)
+    .filter(u => openDateByLoc[u] && monthsBetween(openDateByLoc[u], todayISO) < RAMPUP_MATURE_MIN_MONTHS)
+    .sort((a, b) => openDateByLoc[b].localeCompare(openDateByLoc[a]));
+}
 
-  const openDateByLoc = Object.fromEntries(locRows.filter(l => l.open_date).map(l => [l.id, l.open_date]));
-  const profileByLoc = Object.fromEntries(profRows.map(p => [p.location_id, p]));
-  const monthsByLoc = {};
-  volRows.forEach(r => { (monthsByLoc[r.location_id] = monthsByLoc[r.location_id] || []).push(r); });
-
-  const todayISO = isoDaysAgo(0);
-  const allLocUuids = LOCATIONS.map(l => l.uuid).filter(u => openDateByLoc[u]);
-  if (!allLocUuids.length) {
-    chartEl.innerHTML = '<div class="chart-note">No location open dates on file.</div>';
-    tilesEl.innerHTML = ''; note.innerHTML = '';
-    return;
-  }
-
-  const selectedLoc = selectedLocation();
-  const targetUuid = selectedLoc
-    ? selectedLoc.uuid
-    : allLocUuids.slice().sort((a, b) => openDateByLoc[b].localeCompare(openDateByLoc[a]))[0];
-  const targetLoc = LOCATIONS.find(l => l.uuid === targetUuid);
-  const targetOpenDate = openDateByLoc[targetUuid];
-  if (!targetOpenDate) {
-    chartEl.innerHTML = '<div class="chart-note">No open date on file for this location.</div>';
-    tilesEl.innerHTML = ''; note.innerHTML = '';
-    return;
-  }
-  const targetAgeMonths = monthsBetween(targetOpenDate, todayISO);
-  titleEl.textContent = `${targetLoc ? targetLoc.name : 'Location'} — months since opening (${fmtDate(targetOpenDate)})`;
-
+// Demographic-similarity-weighted mature cohort for a given target
+// location. Returns null if no mature comparator exists at all.
+function computeCohortWeights(targetUuid, allLocUuids, openDateByLoc, profileByLoc, todayISO) {
   const matureUuids = allLocUuids.filter(u =>
     u !== targetUuid && monthsBetween(openDateByLoc[u], todayISO) >= RAMPUP_MATURE_MIN_MONTHS);
+  if (!matureUuids.length) return null;
 
-  if (!matureUuids.length) {
-    chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
-    tilesEl.innerHTML = ''; note.innerHTML = '';
-    return;
-  }
-
-  // Similarity weights from the service-area demographic profile.
   const DEMO_FIELDS = ['avg_median_household_income', 'avg_population', 'avg_median_age', 'avg_household_size'];
   const targetProfile = profileByLoc[targetUuid];
   const haveTargetDemo = targetProfile && DEMO_FIELDS.every(f => targetProfile[f] != null);
@@ -3959,7 +3989,7 @@ async function loadRampUpChart() {
     return p && DEMO_FIELDS.every(f => p[f] != null);
   });
 
-  let weights;
+  let weights, weighted, note;
   if (haveTargetDemo && usable.length) {
     const ranges = {};
     DEMO_FIELDS.forEach(f => {
@@ -3982,32 +4012,39 @@ async function loadRampUpChart() {
     matureUuids.forEach(u => { if (!(u in rawWeights)) rawWeights[u] = avgRaw; });
     const totalRaw = Object.values(rawWeights).reduce((a, v) => a + v, 0);
     weights = Object.fromEntries(matureUuids.map(u => [u, rawWeights[u] / totalRaw]));
-    note.innerHTML = `Benchmark = ${matureUuids.length} mature location(s), weighted by service-area similarity
+    weighted = true;
+    note = `Benchmark = ${matureUuids.length} mature location(s), weighted by service-area similarity
       (median household income, population, median age, household size — U.S. Census ACS by client ZIP).`;
   } else {
     weights = Object.fromEntries(matureUuids.map(u => [u, 1 / matureUuids.length]));
-    note.innerHTML = `Benchmark = an unweighted average of ${matureUuids.length} mature location(s) — demographic
+    weighted = false;
+    note = `Benchmark = an unweighted average of ${matureUuids.length} mature location(s) — demographic
       similarity weighting will apply automatically once <code>zip_demographics</code> is populated
       (see <code>census_zip_demographics_sync.py</code>).`;
   }
+  return { matureUuids, weights, weighted, note };
+}
 
-  function monthlySeriesFor(uuid) {
+// Builds an actual + cohort-projected monthly series for any per-month
+// metric extracted from rowsByLoc via valueFn (e.g. case_count, or
+// total_revenue/case_count) -- same "months since opening" re-anchoring
+// and weighted-average cohort projection for every de novo metric, not
+// just case volume.
+function buildCohortMonthlySeries(targetUuid, matureUuids, weights, openDateByLoc, rowsByLoc, valueFn, maxMonth) {
+  function seriesFor(uuid) {
     const openDate = openDateByLoc[uuid];
     const out = {};
-    (monthsByLoc[uuid] || []).forEach(r => { out[monthsBetween(openDate, r.month_start)] = r.case_count; });
+    (rowsByLoc[uuid] || []).forEach(r => {
+      const v = valueFn(r);
+      if (v !== null && v !== undefined) out[monthsBetween(openDate, r.month_start)] = v;
+    });
     return out;
   }
-  const targetSeries = monthlySeriesFor(targetUuid);
-  const matureSeries = Object.fromEntries(matureUuids.map(u => [u, monthlySeriesFor(u)]));
-
-  // A little past "today" for context, capped so one very long-lived
-  // mature comparator doesn't stretch the x-axis out years past what's
-  // actually relevant to the target.
-  const maxMonth = Math.min(Math.max(targetAgeMonths + 6, 23), 60);
-  const xLabels = [], actualValues = [], projectedValues = [];
+  const targetSeries = seriesFor(targetUuid);
+  const matureSeries = Object.fromEntries(matureUuids.map(u => [u, seriesFor(u)]));
+  const xLabels = [], projectedValues = [];
   for (let m = 0; m <= maxMonth; m++) {
     xLabels.push(`M${m}`);
-    actualValues.push(m <= targetAgeMonths ? (targetSeries[m] ?? 0) : null);
     let wSum = 0, vSum = 0;
     matureUuids.forEach(u => {
       const v = matureSeries[u][m];
@@ -4015,35 +4052,301 @@ async function loadRampUpChart() {
     });
     projectedValues.push(wSum > 0 ? vSum / wSum : null);
   }
+  return { xLabels, targetSeries, projectedValues };
+}
+
+function denovoTile(label, pct, caption) {
+  return `
+    <div class="hero-tile">
+      <div class="l">${esc(label)}</div>
+      <div class="v" style="${pct === null ? '' : `color:${pct >= 0 ? 'var(--s-good)' : 'var(--s-critical)'}`}">${pct === null ? '—' : (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%'}</div>
+      <div class="chart-note" style="margin-top:6px">${esc(pct === null ? 'Not enough history yet' : caption)}</div>
+    </div>`;
+}
+
+// Renders the Ramp-Up: Case Volume section. Returns { latestActual,
+// latestProjected } so the insights panel can reference the same numbers
+// without recomputing them.
+function renderDenovoRampUp(ctx) {
+  const { targetLoc, targetOpenDate, targetAgeMonths, cohort, openDateByLoc, monthsByLoc, maxMonth } = ctx;
+  const titleEl = document.getElementById('rampup-title');
+  const note = document.getElementById('rampup-note');
+  const tilesEl = document.getElementById('rampup-tiles');
+  const chartEl = document.getElementById('rampup-chart');
+
+  titleEl.textContent = `${targetLoc.name} — months since opening (${fmtDate(targetOpenDate)})`;
+
+  if (!cohort) {
+    chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
+    tilesEl.innerHTML = ''; note.innerHTML = '';
+    return { latestActual: null, latestProjected: null };
+  }
+  note.innerHTML = cohort.note;
+
+  const { targetSeries, projectedValues } = buildCohortMonthlySeries(
+    targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, r => r.case_count, maxMonth);
+
+  const xLabels = [], actualValues = [];
+  for (let m = 0; m <= maxMonth; m++) {
+    xLabels.push(`M${m}`);
+    actualValues.push(m <= targetAgeMonths ? (targetSeries[m] ?? 0) : null);
+  }
 
   renderMultiSeriesLineChart(chartEl, [
-    { label: `${targetLoc ? targetLoc.name : 'This location'} (actual)`, color: `rgba(${CLINICAL_RGB},1)`, values: actualValues, strokeWidth: 2.5 },
+    { label: `${targetLoc.name} (actual)`, color: `rgba(${CLINICAL_RGB},1)`, values: actualValues, strokeWidth: 2.5 },
     { label: 'Cohort benchmark (projected)', color: `rgba(${CLINICAL_RGB},0.55)`, values: projectedValues, dashed: true },
   ], xLabels, { formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases') });
 
-  // ── MoM / QoQ / YoY, computed from the target's own actual series --
-  // this needs no cohort at all, just its own history. ──
-  function pctChange(curr, prior) {
-    if (curr == null || prior == null || prior === 0) return null;
-    return ((curr - prior) / prior) * 100;
-  }
   const latestMonth = targetAgeMonths;
   const mom = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 1]);
   const qoq = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 3]);
   const yoy = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 12]);
   const vsProjected = pctChange(targetSeries[latestMonth], projectedValues[latestMonth]);
 
-  const tile = (label, pct, caption) => `
-    <div class="hero-tile">
-      <div class="l">${esc(label)}</div>
-      <div class="v" style="${pct === null ? '' : `color:${pct >= 0 ? 'var(--s-good)' : 'var(--s-critical)'}`}">${pct === null ? '—' : (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%'}</div>
-      <div class="chart-note" style="margin-top:6px">${esc(pct === null ? 'Not enough history yet' : caption)}</div>
-    </div>`;
   tilesEl.innerHTML =
-    tile('Month over month', mom, 'vs. previous month') +
-    tile('Quarter over quarter', qoq, 'vs. 3 months ago') +
-    tile('Year over year', yoy, 'vs. 12 months ago') +
-    tile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
+    denovoTile('Month over month', mom, 'vs. previous month') +
+    denovoTile('Quarter over quarter', qoq, 'vs. 3 months ago') +
+    denovoTile('Year over year', yoy, 'vs. 12 months ago') +
+    denovoTile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
+
+  return { latestActual: targetSeries[latestMonth] ?? null, latestProjected: projectedValues[latestMonth] ?? null };
+}
+
+// Renders the Ramp-Up: Revenue per Case section -- same shape as case
+// volume above, but the per-month value is total_revenue/case_count
+// (a ratio), computed per location per month before cohort-weighting, not
+// weighted-average(revenue)/weighted-average(cases) -- consistent with
+// how case volume treats each mature location's raw monthly value.
+function renderDenovoRevenuePerCase(ctx) {
+  const { targetLoc, targetAgeMonths, cohort, openDateByLoc, monthsByLoc, maxMonth } = ctx;
+  const note = document.getElementById('denovo-revpc-note');
+  const tilesEl = document.getElementById('denovo-revpc-tiles');
+  const chartEl = document.getElementById('denovo-revpc-chart');
+
+  if (!cohort) {
+    chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
+    tilesEl.innerHTML = ''; note.innerHTML = '';
+    return { latestActual: null, latestProjected: null };
+  }
+
+  const revPerCase = r => (r.case_count > 0 && r.total_revenue != null) ? r.total_revenue / r.case_count : null;
+  const { targetSeries, projectedValues } = buildCohortMonthlySeries(
+    targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, revPerCase, maxMonth);
+
+  const xLabels = [], actualValues = [];
+  for (let m = 0; m <= maxMonth; m++) {
+    xLabels.push(`M${m}`);
+    actualValues.push(m <= targetAgeMonths ? (targetSeries[m] ?? null) : null);
+  }
+  note.innerHTML = cohort.note;
+
+  renderMultiSeriesLineChart(chartEl, [
+    { label: `${targetLoc.name} (actual)`, color: `rgba(${FINANCIAL_RGB},1)`, values: actualValues, strokeWidth: 2.5 },
+    { label: 'Cohort benchmark (projected)', color: `rgba(${FINANCIAL_RGB},0.55)`, values: projectedValues, dashed: true },
+  ], xLabels, { formatValue: v => fmt$(v) + ' / case' });
+
+  const latestMonth = targetAgeMonths;
+  const mom = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 1]);
+  const qoq = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 3]);
+  const yoy = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 12]);
+  const vsProjected = pctChange(targetSeries[latestMonth], projectedValues[latestMonth]);
+
+  tilesEl.innerHTML =
+    denovoTile('Month over month', mom, 'vs. previous month') +
+    denovoTile('Quarter over quarter', qoq, 'vs. 3 months ago') +
+    denovoTile('Year over year', yoy, 'vs. 12 months ago') +
+    denovoTile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
+
+  return { latestActual: targetSeries[latestMonth] ?? null, latestProjected: projectedValues[latestMonth] ?? null };
+}
+
+// Case Volume / Case Value heatmaps, scoped to just the target location,
+// since its opening day through yesterday -- own fetch (heatmap rows are
+// per-encounter grain, not part of the monthly-aggregate fetch the other
+// two sections share) and own cell-index state, kept separate from
+// Clinical Operations' heatmapCellIndex so switching tabs can't clobber
+// either one's drill-down (see showCellDetail's cellIndex parameter).
+let denovoHeatmapCellIndex = null;
+
+async function loadDenovoHeatmaps(targetUuid, targetOpenDate) {
+  const volEl = document.getElementById('denovo-volume-heatmap');
+  const valEl = document.getElementById('denovo-value-heatmap');
+  const volInsight = document.getElementById('denovo-volume-heatmap-insight');
+  const valInsight = document.getElementById('denovo-value-heatmap-insight');
+  document.getElementById('denovo-volume-cell-detail').innerHTML = '';
+  document.getElementById('denovo-value-cell-detail').innerHTML = '';
+  denovoHeatmapCellIndex = null;
+
+  const yesterday = isoDaysAgo(1);
+  const heatRows = await fetchAllRows(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,minute_of_hour,case_value,started_at,location_id,chief_complaint&location_id=eq.${targetUuid}&started_at=gte.${targetOpenDate}&started_at=lte.${yesterday}T23:59:59&order=started_at.asc`);
+
+  if (heatRows === null) {
+    volEl.innerHTML = valEl.innerHTML = `<div class="chart-note">Couldn't load <code>v_case_heatmap</code> — run
+      <code>scoutsync_case_maps_and_heatmaps.sql</code> in the Supabase SQL editor if you haven't yet.</div>`;
+    volInsight.innerHTML = valInsight.innerHTML = '';
+    return;
+  }
+  if (!heatRows.length) {
+    volEl.innerHTML = valEl.innerHTML = '<div class="chart-note">No cases yet since opening.</div>';
+    volInsight.innerHTML = valInsight.innerHTML = '';
+    return;
+  }
+
+  const { volume, value } = buildHeatmapMatrices(heatRows);
+  denovoHeatmapCellIndex = buildCellIndex(heatRows);
+  renderHeatmapGrid(volEl, volume, {
+    rgb: SCOUT_GREEN_RGB, formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases'),
+    detailPanel: document.getElementById('denovo-volume-cell-detail'), cellIndex: denovoHeatmapCellIndex,
+  });
+  renderHeatmapGrid(valEl, value, {
+    rgb: FINANCIAL_RGB, formatValue: v => fmt$(v) + ' avg',
+    detailPanel: document.getElementById('denovo-value-cell-detail'), cellIndex: denovoHeatmapCellIndex,
+  });
+  renderHeatmapDayInsight('denovo-volume-heatmap-insight', heatRows, 'volume');
+  renderHeatmapDayInsight('denovo-value-heatmap-insight', heatRows, 'value');
+}
+
+// Synthesis insights tying the ramp-up and revenue-per-case benchmarks
+// together -- same insight-list pattern as the Financial tab's Executive
+// Insights and the Marketing tab's Weekly Insights.
+function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult) {
+  const el = document.getElementById('denovo-insights');
+  const items = [];
+
+  if (volResult.latestActual != null && volResult.latestProjected != null && volResult.latestProjected > 0) {
+    const pct = ((volResult.latestActual - volResult.latestProjected) / volResult.latestProjected) * 100;
+    items.push({
+      cls: pct >= -10 ? 'recommend' : 'risk', badge: pct >= -10 ? '▲' : '▼',
+      title: 'Case volume vs. cohort benchmark',
+      body: `At month ${targetAgeMonths}, <b>${targetLoc.name}</b> is seeing <b>${fmtN(Math.round(volResult.latestActual))}</b> cases/month
+        against a cohort-projected <b>${fmtN(Math.round(volResult.latestProjected))}</b> — ${pct >= 0 ? 'ahead of' : 'behind'} pace by
+        <b>${Math.abs(pct).toFixed(0)}%</b>.`,
+    });
+  }
+
+  if (revResult.latestActual != null && revResult.latestProjected != null && revResult.latestProjected > 0) {
+    const pct = ((revResult.latestActual - revResult.latestProjected) / revResult.latestProjected) * 100;
+    items.push({
+      cls: pct >= -10 ? 'recommend' : 'risk', badge: pct >= -10 ? '▲' : '▼',
+      title: 'Revenue per case vs. cohort benchmark',
+      body: `At month ${targetAgeMonths}, <b>${targetLoc.name}</b> is averaging <b>${fmt$(revResult.latestActual)}</b> per case
+        against a cohort-projected <b>${fmt$(revResult.latestProjected)}</b> — ${pct >= 0 ? 'ahead of' : 'behind'} pace by
+        <b>${Math.abs(pct).toFixed(0)}%</b>.`,
+    });
+  }
+
+  if (!items.length) {
+    el.innerHTML = `<div class="chart-note">Not enough history yet to compare ${esc(targetLoc.name)} against a cohort benchmark.</div>`;
+    return;
+  }
+
+  const volBehind = volResult.latestActual != null && volResult.latestProjected > 0 && (volResult.latestActual - volResult.latestProjected) / volResult.latestProjected < -0.1;
+  const revBehind = revResult.latestActual != null && revResult.latestProjected > 0 && (revResult.latestActual - revResult.latestProjected) / revResult.latestProjected < -0.1;
+  let recBody;
+  if (volBehind && revBehind) {
+    recBody = `Both case volume and revenue per case are trailing the cohort benchmark — worth a closer look at local demand generation
+      (referrals, marketing reach) and pricing/service mix together, not just one or the other.`;
+  } else if (volBehind) {
+    recBody = `Case volume is behind pace but revenue per case is holding — the location is monetizing the visits it gets;
+      the gap is in demand, not pricing or service mix.`;
+  } else if (revBehind) {
+    recBody = `Case volume is on pace but revenue per case is trailing — worth checking service mix (are higher-value cases being
+      captured?) and whether pricing matches this cohort's benchmark locations.`;
+  } else {
+    recBody = `${esc(targetLoc.name)} is tracking at or ahead of its cohort benchmark on both case volume and revenue per case —
+      no corrective action indicated at this stage.`;
+  }
+  items.push({ cls: 'recommend', badge: '→', title: 'Recommendation', body: recBody });
+
+  el.innerHTML = items.map(it => `
+    <div class="insight-item">
+      <div class="i-badge ${it.cls}">${it.badge}</div>
+      <div>
+        <div class="i-title">${esc(it.title)}</div>
+        <div class="i-body">${it.body}</div>
+      </div>
+    </div>`).join('');
+}
+
+// Local to this tab, not the global location filter -- null means
+// "auto-pick the newest young location." Set by the picker's onchange
+// when 2+ locations are simultaneously within their ramp-up window.
+let selectedDenovoLocUuid = null;
+
+async function loadDenovoTab() {
+  const emptyEl = document.getElementById('denovo-empty');
+  const contentEl = document.getElementById('denovo-content');
+  const pickerCard = document.getElementById('denovo-picker-card');
+  const pickerSelect = document.getElementById('denovo-location-select');
+
+  const [locRows, volRows, profRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/locations?select=id,open_date&order=id.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_case_volume_monthly?select=location_id,month_start,case_count,total_revenue&order=month_start.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/v_location_demographic_profile?select=*`),
+  ]);
+  if (locRows === null || volRows === null || profRows === null) {
+    contentEl.style.display = 'none';
+    pickerCard.style.display = 'none';
+    emptyEl.innerHTML = `<div class="empty-note">Couldn't load location/case-volume/demographic data — run
+      <code>scoutsync_case_volume_monthly_revenue.sql</code> and <code>scoutsync_location_demographic_profile.sql</code>
+      in the Supabase SQL editor if you haven't yet.</div>`;
+    return;
+  }
+
+  const openDateByLoc = Object.fromEntries(locRows.filter(l => l.open_date).map(l => [l.id, l.open_date]));
+  const profileByLoc = Object.fromEntries(profRows.map(p => [p.location_id, p]));
+  const monthsByLoc = {};
+  volRows.forEach(r => { (monthsByLoc[r.location_id] = monthsByLoc[r.location_id] || []).push(r); });
+
+  const todayISO = isoDaysAgo(0);
+  const youngUuids = getYoungLocationUuids(openDateByLoc, todayISO);
+
+  if (!youngUuids.length) {
+    contentEl.style.display = 'none';
+    pickerCard.style.display = 'none';
+    emptyEl.innerHTML = `<div class="empty-note">No location is currently within its first ${RAMPUP_MATURE_MIN_MONTHS} months of
+      operation — this tab activates automatically the next time Scout opens a new location.</div>`;
+    return;
+  }
+  emptyEl.innerHTML = '';
+  contentEl.style.display = '';
+
+  if (youngUuids.length > 1) {
+    pickerCard.style.display = '';
+    if (!selectedDenovoLocUuid || !youngUuids.includes(selectedDenovoLocUuid)) selectedDenovoLocUuid = youngUuids[0];
+    pickerSelect.innerHTML = youngUuids.map(u => {
+      const l = LOCATIONS.find(x => x.uuid === u);
+      return `<option value="${u}" ${u === selectedDenovoLocUuid ? 'selected' : ''}>${esc(l ? l.name : u)}</option>`;
+    }).join('');
+    pickerSelect.onchange = () => {
+      selectedDenovoLocUuid = pickerSelect.value;
+      runCached('denovo', 'static', loadDenovoTab, true);
+    };
+  } else {
+    pickerCard.style.display = 'none';
+    selectedDenovoLocUuid = youngUuids[0];
+  }
+
+  const targetUuid = selectedDenovoLocUuid;
+  const targetLoc = LOCATIONS.find(l => l.uuid === targetUuid);
+  const targetOpenDate = openDateByLoc[targetUuid];
+  const targetAgeMonths = monthsBetween(targetOpenDate, todayISO);
+  document.getElementById('denovo-location-sub').textContent =
+    `Tracking ${targetLoc.name} (opened ${fmtDate(targetOpenDate)}, month ${targetAgeMonths}) — independent of the location/date filters above`;
+
+  const allLocUuids = LOCATIONS.map(l => l.uuid).filter(u => openDateByLoc[u]);
+  const cohort = computeCohortWeights(targetUuid, allLocUuids, openDateByLoc, profileByLoc, todayISO);
+  // A little past "today" for context, capped so one very long-lived
+  // mature comparator doesn't stretch the x-axis out years past what's
+  // actually relevant to the target.
+  const maxMonth = Math.min(Math.max(targetAgeMonths + 6, 23), 60);
+
+  const ctx = { targetLoc, targetOpenDate, targetAgeMonths, cohort, openDateByLoc, monthsByLoc, maxMonth };
+  const volResult = renderDenovoRampUp(ctx);
+  const revResult = renderDenovoRevenuePerCase(ctx);
+  renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult);
+
+  loadDenovoHeatmaps(targetUuid, targetOpenDate);
 }
 
 // ── Clinical Operations (heatmaps + geo map) data + rendering ──
@@ -4053,7 +4356,6 @@ async function loadClinicalGeo() {
   loadCancellationsReport();
   loadBillingConsistency();
   loadSeasonalChart();
-  loadRampUpChart();
 
   const { from, until } = selectedDateRange();
   const loc = selectedLocation();
@@ -4102,11 +4404,11 @@ async function loadClinicalGeo() {
     heatmapCellIndex = buildCellIndex(heatRows);
     renderHeatmapGrid(document.getElementById('volume-heatmap'), volume, {
       rgb: SCOUT_GREEN_RGB, formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases'),
-      detailPanel: document.getElementById('volume-cell-detail'),
+      detailPanel: document.getElementById('volume-cell-detail'), cellIndex: heatmapCellIndex,
     });
     renderHeatmapGrid(document.getElementById('value-heatmap'), value, {
       rgb: FINANCIAL_RGB, formatValue: v => fmt$(v) + ' avg',
-      detailPanel: document.getElementById('value-cell-detail'),
+      detailPanel: document.getElementById('value-cell-detail'), cellIndex: heatmapCellIndex,
     });
     renderHeatmapDayInsight('volume-heatmap-insight', heatRows, 'volume');
     renderHeatmapDayInsight('value-heatmap-insight', heatRows, 'value');
@@ -6731,6 +7033,11 @@ function loadActiveTab(force) {
   if (activeTab === 'inventory') return runCached('inventory', filterSnapshot(), loadInventory, force);
   if (activeTab === 'procurement') return runCached('procurement', filterSnapshot(), loadProcurement, force);
   if (activeTab === 'reporting') return loadReporting(force);
+  // Independent of location/date filters (always "since opening day") --
+  // a fixed snapshot so switching those global filters elsewhere doesn't
+  // trigger a pointless refetch of this tab; only the Refresh button
+  // (force=true) or this tab's own local location picker update it.
+  if (activeTab === 'denovo') return runCached('denovo', 'static', loadDenovoTab, force);
   return runCached('financial', filterSnapshot(), loadFinancial, force);
 }
 
