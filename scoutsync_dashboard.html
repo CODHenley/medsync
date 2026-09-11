@@ -4437,18 +4437,32 @@ function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, 
     return;
   }
 
-  // ── Headline verdict — worst-of-the-two metrics decides the color, since
-  // one strong number shouldn't paper over the other lagging. ──
-  const worstPct = [volPct, revPct].filter(p => p !== null).reduce((a, b) => Math.min(a, b), Infinity);
+  // ── Headline verdict — driven by total revenue (case volume × revenue/case),
+  // not the worse of the two taken independently. Volume and revenue/case can
+  // each look fine or rough in isolation while one offsets the other in the
+  // number that actually answers "ahead or behind on dollars" -- e.g. well
+  // ahead on volume, a bit behind on revenue/case, but still ahead overall.
+  // Falls back to whichever single metric is available when only one is.
+  const totalActual = (volResult.latestActual != null && revResult.latestActual != null)
+    ? volResult.latestActual * revResult.latestActual : null;
+  const totalProjected = (volResult.latestProjected != null && revResult.latestProjected != null)
+    ? volResult.latestProjected * revResult.latestProjected : null;
+  const totalRevPct = (totalActual != null && totalProjected != null && totalProjected > 0)
+    ? ((totalActual - totalProjected) / totalProjected) * 100 : null;
+  const verdictPct = totalRevPct !== null
+    ? totalRevPct
+    : [volPct, revPct].filter(p => p !== null).reduce((a, b) => Math.min(a, b), Infinity);
+
   let verdict, verdictColor;
-  if (worstPct >= 10) { verdict = 'AHEAD OF TARGET'; verdictColor = 'var(--s-good)'; }
-  else if (worstPct >= -5) { verdict = 'ON TARGET'; verdictColor = 'var(--s-good)'; }
-  else if (worstPct >= -20) { verdict = 'SLIGHTLY BEHIND TARGET'; verdictColor = 'var(--s-warn)'; }
+  if (verdictPct >= 10) { verdict = 'AHEAD OF TARGET'; verdictColor = 'var(--s-good)'; }
+  else if (verdictPct >= -5) { verdict = 'ON TARGET'; verdictColor = 'var(--s-good)'; }
+  else if (verdictPct >= -20) { verdict = 'SLIGHTLY BEHIND TARGET'; verdictColor = 'var(--s-warn)'; }
   else { verdict = 'BEHIND TARGET'; verdictColor = 'var(--s-critical)'; }
 
   const verdictDetail = [
-    volPct !== null ? `case volume ${volPct >= 0 ? '+' : ''}${volPct.toFixed(0)}% vs. cohort` : null,
-    revPct !== null ? `revenue/case ${revPct >= 0 ? '+' : ''}${revPct.toFixed(0)}% vs. cohort` : null,
+    totalRevPct !== null ? `total revenue ${totalRevPct >= 0 ? '+' : ''}${totalRevPct.toFixed(0)}% vs. cohort` : null,
+    volPct !== null ? `case volume ${volPct >= 0 ? '+' : ''}${volPct.toFixed(0)}%` : null,
+    revPct !== null ? `revenue/case ${revPct >= 0 ? '+' : ''}${revPct.toFixed(0)}%` : null,
   ].filter(Boolean).join(', ');
 
   const wins = [], opportunities = [], pivots = [];
@@ -4486,6 +4500,9 @@ function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, 
   if (volPct !== null && revPct !== null && volPct < -10 && revPct >= 10) {
     opportunities.push(insightItem('concentration', '◉', 'Demand gap, not a monetization gap',
       `Case volume is behind pace but revenue per case is ahead — this location converts the visits it gets well. The gap is in getting more people in the door, not what happens once they're there.`));
+  } else if (volPct !== null && revPct !== null && volPct >= 10 && revPct < -10) {
+    opportunities.push(insightItem('concentration', '◉', 'Monetization gap, not a demand gap',
+      `Case volume is ahead of pace but revenue per case is behind — this location is filling the schedule well; the gap is in what's captured per visit (pricing, service mix, add-on utilization), not in getting people in the door.`));
   }
 
   if (weekendPct !== null) {
@@ -7333,6 +7350,13 @@ document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn => {
     document.querySelectorAll('main > .panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
     activeTab = btn.dataset.tab;
+    // The De Novo tab is always "since opening day" through yesterday,
+    // independent of these -- showing them here implies they do something
+    // on this tab when they don't, which is just confusing.
+    const hideGlobalFilters = activeTab === 'denovo';
+    document.querySelector('.loc-filter').style.display = hideGlobalFilters ? 'none' : '';
+    document.querySelector('.range-filter').style.display = hideGlobalFilters ? 'none' : '';
+    if (hideGlobalFilters) document.getElementById('custom-range').hidden = true;
     loadActiveTab(); // unforced: serves the cache when this tab's filters haven't moved
     // Leaflet sizes itself off the container's layout at init time — if that
     // happened while the panel was still display:none this recovers it.
