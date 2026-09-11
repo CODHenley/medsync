@@ -4210,7 +4210,18 @@ function renderDenovoRampUp(ctx) {
   // blanks out the Insights panel.
   const cohortSeries = cohort ? buildCohortMonthlySeries(
     targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, r => r.case_count, maxMonth) : null;
-  const latestMonth = targetAgeMonths;
+  // targetAgeMonths is the CURRENT, still-in-progress calendar month
+  // (monthsBetween diffs year/month only, ignoring day-of-month -- the
+  // instant the calendar flips to a new month, that month counts as
+  // "elapsed" even on day 1). Comparing a few days of this month against a
+  // full month of cohort/history data manufactures a fake collapse right
+  // at "today" -- same class of bug this dashboard already guards against
+  // elsewhere (Financial Insights, Days Closed) by excluding the
+  // still-accumulating current period. latestMonth here is the last FULLY
+  // completed month since opening; a location open less than one full
+  // calendar month has latestMonth = -1, which every lookup below already
+  // treats as "no data" via its own null-guards.
+  const latestMonth = targetAgeMonths - 1;
   const result = cohortSeries
     ? { latestActual: cohortSeries.targetSeries[latestMonth] ?? null, latestProjected: cohortSeries.projectedValues[latestMonth] ?? null }
     : { latestActual: null, latestProjected: null };
@@ -4232,7 +4243,10 @@ function renderDenovoRampUp(ctx) {
   const xLabels = [], actualValues = [];
   for (let m = 0; m <= maxMonth; m++) {
     xLabels.push(`M${m}`);
-    actualValues.push(m <= targetAgeMonths ? (targetSeries[m] ?? 0) : null);
+    // Stops at the last COMPLETE month, not targetAgeMonths itself -- the
+    // current in-progress month is left unplotted rather than shown as a
+    // misleading partial-data cliff.
+    actualValues.push(m <= latestMonth ? (targetSeries[m] ?? 0) : null);
   }
 
   renderMultiSeriesLineChart(chartEl, [
@@ -4249,7 +4263,7 @@ function renderDenovoRampUp(ctx) {
     denovoTile('Month over month', mom, 'vs. previous month') +
     denovoTile('Quarter over quarter', qoq, 'vs. 3 months ago') +
     denovoTile('Year over year', yoy, 'vs. 12 months ago') +
-    denovoTile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
+    denovoTile('vs. cohort benchmark', vsProjected, 'actual vs. projected, latest complete month');
 
   return result;
 }
@@ -4273,7 +4287,11 @@ function renderDenovoRevenuePerCase(ctx) {
   // toggle is set to "All locations."
   const cohortSeries = cohort ? buildCohortMonthlySeries(
     targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, revPerCase, maxMonth) : null;
-  const latestMonth = targetAgeMonths;
+  // See renderDenovoRampUp for why this is targetAgeMonths - 1: the current
+  // calendar month is always still in progress, regardless of which day of
+  // the month "today" is, and comparing it against a full month elsewhere
+  // manufactures a fake collapse right at "today."
+  const latestMonth = targetAgeMonths - 1;
   const result = cohortSeries
     ? { latestActual: cohortSeries.targetSeries[latestMonth] ?? null, latestProjected: cohortSeries.projectedValues[latestMonth] ?? null }
     : { latestActual: null, latestProjected: null };
@@ -4294,7 +4312,7 @@ function renderDenovoRevenuePerCase(ctx) {
   const xLabels = [], actualValues = [];
   for (let m = 0; m <= maxMonth; m++) {
     xLabels.push(`M${m}`);
-    actualValues.push(m <= targetAgeMonths ? (targetSeries[m] ?? null) : null);
+    actualValues.push(m <= latestMonth ? (targetSeries[m] ?? null) : null);
   }
   note.innerHTML = cohort.note;
 
@@ -4312,7 +4330,7 @@ function renderDenovoRevenuePerCase(ctx) {
     denovoTile('Month over month', mom, 'vs. previous month') +
     denovoTile('Quarter over quarter', qoq, 'vs. 3 months ago') +
     denovoTile('Year over year', yoy, 'vs. 12 months ago') +
-    denovoTile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
+    denovoTile('vs. cohort benchmark', vsProjected, 'actual vs. projected, latest complete month');
 
   return result;
 }
@@ -4399,6 +4417,11 @@ function insightItem(cls, badge, title, body) {
 // improving, and what needs action now, in that order.
 function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, heatRows) {
   const el = document.getElementById('denovo-insights');
+  // volResult/revResult are computed at the last FULLY complete month (see
+  // renderDenovoRampUp) -- reference that month here too, not
+  // targetAgeMonths itself (the current, still-in-progress month), so the
+  // insight text matches the number it's actually describing.
+  const latestMonth = targetAgeMonths - 1;
   const volPct = vsCohortPct(volResult);
   const revPct = vsCohortPct(revResult);
   const weekendPct = weekendSharePct(heatRows);
@@ -4427,15 +4450,15 @@ function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, 
   if (volPct !== null) {
     if (volPct >= 10) {
       wins.push(insightItem('recommend', '✓', 'Case volume ahead of pace',
-        `<b>${fmtN(Math.round(volResult.latestActual))}</b> cases/month at month ${targetAgeMonths}, <b>${volPct.toFixed(0)}%</b> ahead of the cohort-projected <b>${fmtN(Math.round(volResult.latestProjected))}</b>.`));
+        `<b>${fmtN(Math.round(volResult.latestActual))}</b> cases/month at month ${latestMonth}, <b>${volPct.toFixed(0)}%</b> ahead of the cohort-projected <b>${fmtN(Math.round(volResult.latestProjected))}</b>.`));
     } else if (volPct >= -10) {
       // Close enough to pace that it's neither a win nor a problem worth a slot.
     } else if (volPct >= -25) {
       opportunities.push(insightItem('concentration', '◉', 'Case volume trailing cohort pace',
-        `<b>${Math.abs(volPct).toFixed(0)}%</b> behind the cohort-projected pace at month ${targetAgeMonths} — within a range that local referral/awareness efforts can realistically close before it becomes a bigger gap.`));
+        `<b>${Math.abs(volPct).toFixed(0)}%</b> behind the cohort-projected pace at month ${latestMonth} — within a range that local referral/awareness efforts can realistically close before it becomes a bigger gap.`));
     } else {
       pivots.push(insightItem('risk', '⚠', 'Case volume significantly behind pace',
-        `<b>${Math.abs(volPct).toFixed(0)}%</b> behind the cohort-projected pace at month ${targetAgeMonths} — worth an immediate review of local demand generation (referral pipeline, marketing reach, hours/coverage) rather than waiting another month to see if it self-corrects.`));
+        `<b>${Math.abs(volPct).toFixed(0)}%</b> behind the cohort-projected pace at month ${latestMonth} — worth an immediate review of local demand generation (referral pipeline, marketing reach, hours/coverage) rather than waiting another month to see if it self-corrects.`));
     }
   }
 
@@ -4476,7 +4499,7 @@ function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, 
     <div class="hero-tile" style="margin-bottom:14px">
       <div class="l">Ramp Status</div>
       <div class="v" style="color:${verdictColor};font-size:22px">${esc(verdict)}</div>
-      <div class="chart-note" style="margin-top:6px">${esc(verdictDetail)}, at month ${targetAgeMonths}.</div>
+      <div class="chart-note" style="margin-top:6px">${esc(verdictDetail)}, at month ${latestMonth}.</div>
     </div>
     ${groups.map(([label, list]) => `
       <div class="dd-subtitle" style="margin-top:10px">${esc(label)}</div>
