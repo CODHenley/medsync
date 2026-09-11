@@ -4202,22 +4202,33 @@ function renderDenovoRampUp(ctx) {
 
   titleEl.textContent = `${targetLoc.name} — months since opening (${fmtDate(targetOpenDate)})`;
 
+  // Cohort comparison numbers are computed whenever a cohort exists at
+  // all, independent of which view mode the CHART is currently drawn in --
+  // Insights (renderDenovoInsights) needs these regardless of whether the
+  // user is looking at "Cohort benchmark" or "All locations" right now.
+  // Switching the toggle only changes what's drawn below, never silently
+  // blanks out the Insights panel.
+  const cohortSeries = cohort ? buildCohortMonthlySeries(
+    targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, r => r.case_count, maxMonth) : null;
+  const latestMonth = targetAgeMonths;
+  const result = cohortSeries
+    ? { latestActual: cohortSeries.targetSeries[latestMonth] ?? null, latestProjected: cohortSeries.projectedValues[latestMonth] ?? null }
+    : { latestActual: null, latestProjected: null };
+
   if (denovoViewMode.volume === 'all') {
     renderAllLocationsChart(chartEl, tilesEl, note, filterEl, ctx, r => r.case_count, v => fmtN(v) + (v === 1 ? ' case' : ' cases'), 'volume');
-    return { latestActual: null, latestProjected: null };
+    return result;
   }
   filterEl.hidden = true;
 
   if (!cohort) {
     chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
     tilesEl.innerHTML = ''; note.innerHTML = '';
-    return { latestActual: null, latestProjected: null };
+    return result;
   }
   note.innerHTML = cohort.note;
 
-  const { targetSeries, projectedValues } = buildCohortMonthlySeries(
-    targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, r => r.case_count, maxMonth);
-
+  const { targetSeries, projectedValues } = cohortSeries;
   const xLabels = [], actualValues = [];
   for (let m = 0; m <= maxMonth; m++) {
     xLabels.push(`M${m}`);
@@ -4229,7 +4240,6 @@ function renderDenovoRampUp(ctx) {
     { label: 'Cohort benchmark (projected)', color: `rgba(${CLINICAL_RGB},0.55)`, values: projectedValues, dashed: true },
   ], xLabels, { formatValue: v => fmtN(v) + (v === 1 ? ' case' : ' cases') });
 
-  const latestMonth = targetAgeMonths;
   const mom = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 1]);
   const qoq = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 3]);
   const yoy = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 12]);
@@ -4241,7 +4251,7 @@ function renderDenovoRampUp(ctx) {
     denovoTile('Year over year', yoy, 'vs. 12 months ago') +
     denovoTile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
 
-  return { latestActual: targetSeries[latestMonth] ?? null, latestProjected: projectedValues[latestMonth] ?? null };
+  return result;
 }
 
 // Renders the Ramp-Up: Revenue per Case section -- same shape as case
@@ -4257,21 +4267,30 @@ function renderDenovoRevenuePerCase(ctx) {
   const filterEl = document.getElementById('denovo-revpc-loc-filter');
   const revPerCase = r => (r.case_count > 0 && r.total_revenue != null) ? r.total_revenue / r.case_count : null;
 
+  // Same decoupling as renderDenovoRampUp: compute the cohort comparison
+  // whenever a cohort exists, independent of which view mode the chart
+  // itself is drawn in, so Insights never goes blank just because the
+  // toggle is set to "All locations."
+  const cohortSeries = cohort ? buildCohortMonthlySeries(
+    targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, revPerCase, maxMonth) : null;
+  const latestMonth = targetAgeMonths;
+  const result = cohortSeries
+    ? { latestActual: cohortSeries.targetSeries[latestMonth] ?? null, latestProjected: cohortSeries.projectedValues[latestMonth] ?? null }
+    : { latestActual: null, latestProjected: null };
+
   if (denovoViewMode.revpc === 'all') {
     renderAllLocationsChart(chartEl, tilesEl, note, filterEl, ctx, revPerCase, v => fmt$(v) + ' / case', 'revpc');
-    return { latestActual: null, latestProjected: null };
+    return result;
   }
   filterEl.hidden = true;
 
   if (!cohort) {
     chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a ramp-up benchmark.</div>';
     tilesEl.innerHTML = ''; note.innerHTML = '';
-    return { latestActual: null, latestProjected: null };
+    return result;
   }
 
-  const { targetSeries, projectedValues } = buildCohortMonthlySeries(
-    targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, monthsByLoc, revPerCase, maxMonth);
-
+  const { targetSeries, projectedValues } = cohortSeries;
   const xLabels = [], actualValues = [];
   for (let m = 0; m <= maxMonth; m++) {
     xLabels.push(`M${m}`);
@@ -4284,7 +4303,6 @@ function renderDenovoRevenuePerCase(ctx) {
     { label: 'Cohort benchmark (projected)', color: `rgba(${FINANCIAL_RGB},0.55)`, values: projectedValues, dashed: true },
   ], xLabels, { formatValue: v => fmt$(v) + ' / case' });
 
-  const latestMonth = targetAgeMonths;
   const mom = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 1]);
   const qoq = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 3]);
   const yoy = pctChange(targetSeries[latestMonth], targetSeries[latestMonth - 12]);
@@ -4296,7 +4314,7 @@ function renderDenovoRevenuePerCase(ctx) {
     denovoTile('Year over year', yoy, 'vs. 12 months ago') +
     denovoTile('vs. cohort benchmark (today)', vsProjected, 'actual vs. projected at same age');
 
-  return { latestActual: targetSeries[latestMonth] ?? null, latestProjected: projectedValues[latestMonth] ?? null };
+  return result;
 }
 
 // Case Volume / Case Value heatmaps, scoped to just the target location,
