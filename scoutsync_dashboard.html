@@ -1277,7 +1277,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       </div>
 
       <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
-        <h2>Case Volume Heatmap</h2>
+        <h2>Case Volume Heatmap — <span id="denovo-volume-heatmap-loc">…</span></h2>
         <span class="sub">Since opening day, active de novo location only — not selectable</span></div>
       <div class="chart-card">
         <div class="chart-title">Cases by day of week &amp; half hour (9am–11pm, Central)</div>
@@ -1288,7 +1288,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       </div>
 
       <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
-        <h2>Average Case Value Heatmap</h2>
+        <h2>Average Case Value Heatmap — <span id="denovo-value-heatmap-loc">…</span></h2>
         <span class="sub">Since opening day, active de novo location only — not selectable</span></div>
       <div class="chart-card">
         <div class="chart-title">Average case value by day of week &amp; half hour (9am–11pm, Central)</div>
@@ -4343,7 +4343,7 @@ function renderDenovoRevenuePerCase(ctx) {
 // either one's drill-down (see showCellDetail's cellIndex parameter).
 let denovoHeatmapCellIndex = null;
 
-async function loadDenovoHeatmaps(targetUuid, targetOpenDate) {
+async function loadDenovoHeatmaps(targetUuid, targetOpenDate, targetLoc) {
   const volEl = document.getElementById('denovo-volume-heatmap');
   const valEl = document.getElementById('denovo-value-heatmap');
   const volInsight = document.getElementById('denovo-volume-heatmap-insight');
@@ -4351,6 +4351,12 @@ async function loadDenovoHeatmaps(targetUuid, targetOpenDate) {
   document.getElementById('denovo-volume-cell-detail').innerHTML = '';
   document.getElementById('denovo-value-cell-detail').innerHTML = '';
   denovoHeatmapCellIndex = null;
+
+  // Set before the fetch even resolves -- which location these two
+  // heatmaps belong to shouldn't be ambiguous even while loading, or in
+  // the couldn't-load/no-cases-yet states below.
+  document.getElementById('denovo-volume-heatmap-loc').textContent = targetLoc.name;
+  document.getElementById('denovo-value-heatmap-loc').textContent = targetLoc.name;
 
   const yesterday = isoDaysAgo(1);
   const heatRows = await fetchAllRows(`${SUPA_URL}/rest/v1/v_case_heatmap?select=day_of_week,hour_of_day,minute_of_hour,case_value,started_at,location_id,chief_complaint&location_id=eq.${targetUuid}&started_at=gte.${targetOpenDate}&started_at=lte.${yesterday}T23:59:59&order=started_at.asc`);
@@ -4616,7 +4622,7 @@ async function loadDenovoTab() {
   // but the heatmap grids themselves render as soon as their own fetch
   // resolves, inside loadDenovoHeatmaps -- awaiting it here only delays
   // the Insights panel, not the charts above it.
-  lastDenovoHeatRows = await loadDenovoHeatmaps(targetUuid, targetOpenDate);
+  lastDenovoHeatRows = await loadDenovoHeatmaps(targetUuid, targetOpenDate, targetLoc);
   renderDenovoInsights(targetLoc, targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows);
 }
 
