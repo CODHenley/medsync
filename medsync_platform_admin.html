@@ -1408,7 +1408,7 @@ async function doLogin() {
     // Verify superadmin role — look up by email (avoids auth UUID vs public.users UUID mismatch)
     const userRes = await fetch(
       SUPA_URL + `/rest/v1/users?select=id,full_name,role,email&email=eq.${encodeURIComponent(email)}`,
-      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token } }
     );
     const users = await userRes.json();
     console.log('Users lookup:', JSON.stringify(users));
@@ -1417,7 +1417,10 @@ async function doLogin() {
     }
 
     SESSION = data;
-    H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+    // Use the just-verified superadmin's own token, not the anon key -- H
+    // previously stayed on the anon key even after a real, role-checked
+    // login, so every request past this point ran as `anon` regardless.
+    H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + data.access_token, 'Content-Type': 'application/json' };
     document.getElementById('tb-user').textContent = users[0].full_name || email;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
@@ -1880,10 +1883,12 @@ async function provNext() {
     btn.textContent = 'Creating…';
 
     try {
-      // 1. Create org — use anon key so RLS write policy applies correctly
+      // 1. Create org — authenticated_all now covers organizations writes too
+      // (see 20260820_add_authenticated_rls_policies.sql), so this uses the
+      // signed-in superadmin's own token rather than the anon key.
       const orgRes = await fetch(SUPA_URL + '/rest/v1/organizations', {
         method: 'POST',
-        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SESSION.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify({
           name:           document.getElementById('prov-org-name').value.trim(),
           tier:           provTier.tier,
@@ -1965,7 +1970,7 @@ async function provNext() {
       };
       await fetch(SUPA_URL + '/rest/v1/organizations?id=eq.' + provOrgId, {
         method: 'PATCH',
-        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SESSION.access_token, 'Content-Type': 'application/json' },
         body: JSON.stringify(billingPatch)
       });
     } catch(e) { /* non-fatal */ }
@@ -2057,9 +2062,8 @@ const MOCK_BILLING = [
 ];
 
 async function loadBillingChanges() {
-  const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
-  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-  const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
+  if (!SESSION?.access_token) return; // not logged in yet -- nothing to load
+  const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SESSION.access_token,'Content-Type':'application/json'};
   try {
     const res = await fetch(SUPA_URL+'/rest/v1/billing_change_log?select=*&order=changed_at.desc&limit=50', {headers:H});
     if (!res.ok) throw new Error(await res.text());
@@ -2107,9 +2111,8 @@ async function loadBillingChanges() {
 }
 
 async function markBillingChangeReviewed(id) {
-  const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
-  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-  const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  if (!SESSION?.access_token) return; // not logged in yet
+  const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SESSION.access_token,'Content-Type':'application/json','Prefer':'return=minimal'};
   // Get current admin email from session
   const reviewedBy = SESSION?.user?.email || document.getElementById('tb-user')?.textContent || '';
   const patchRes = await fetch(SUPA_URL+'/rest/v1/billing_change_log?id=eq.'+id, {

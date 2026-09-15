@@ -512,16 +512,34 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radi
 // ── Config ──────────────────────────────────────────────
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+
+// ── Auth gate -- require a real, unexpired MedSync login. Previously this
+// page fell back to the public anon key whenever no session was found, so
+// reaching it directly (not through the already-gated app shell) required
+// no credentials at all. See scoutsync_dashboard.html for the original fix.
+const AUTH_SESSION = (function requireAuthOrRedirect() {
+  try {
+    const raw = localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session');
+    const session = raw ? JSON.parse(raw) : null;
+    if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
+  } catch (e) {}
+  window.location.replace('medsync_login.html');
+  throw new Error('This page requires a login — redirecting.');
+})();
+
 const _sess = (() => { try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
 
-// Return a valid bearer token — check JWT expiry, fall back to anon key if expired
+// Return a valid bearer token — check JWT expiry, force re-login if expired
+// rather than silently falling back to the anon key.
 function _getToken() {
   const tok = _sess.access_token;
-  if (!tok) return SUPA_KEY;
+  if (!tok) { window.location.replace('medsync_login.html'); throw new Error('Session missing — redirecting.'); }
+  let expired = false;
   try {
     const exp = JSON.parse(atob(tok.split('.')[1])).exp;
-    if (exp && exp < Date.now() / 1000 + 10) return SUPA_KEY; // expired or expiring in 10s
-  } catch(e) { /* ignore decode errors */ }
+    if (exp && exp < Date.now() / 1000 + 10) expired = true; // expired or expiring in 10s
+  } catch(e) { /* ignore decode errors -- treat as not expired, let the request itself fail if the token is actually bad */ }
+  if (expired) { window.location.replace('medsync_login.html'); throw new Error('Session expired — redirecting.'); }
   return tok;
 }
 
