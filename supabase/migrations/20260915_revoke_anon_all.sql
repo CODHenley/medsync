@@ -98,28 +98,22 @@ END $$;
 
 -- ── 1c. Differently-named PUBLIC policies (no "to <role>" clause -- applies
 --       to every role, anon included) on three tables that also happen to
---       carry the ordinary anon_all from step 1a. Both sets have to go. ──
+--       carry the ordinary anon_all from step 1a. These three tables are
+--       also in step 1a's array, so their "anon_all" is already gone and
+--       each already has "authenticated_all" from
+--       20260820_add_authenticated_rls_policies.sql -- nothing to add here,
+--       just the extra PUBLIC policies to remove. ──
 DROP POLICY IF EXISTS "anon select price_review_flags" ON public.price_review_flags;
 DROP POLICY IF EXISTS "anon insert price_review_flags" ON public.price_review_flags;
 DROP POLICY IF EXISTS "anon update price_review_flags" ON public.price_review_flags;
-CREATE POLICY "authenticated_all" ON public.price_review_flags FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "anon select ndc_product_map" ON public.ndc_product_map;
 DROP POLICY IF EXISTS "anon insert ndc_product_map" ON public.ndc_product_map;
 DROP POLICY IF EXISTS "anon update ndc_product_map" ON public.ndc_product_map;
-CREATE POLICY "authenticated_all" ON public.ndc_product_map FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "anon select received_invoices" ON public.received_invoices;
 DROP POLICY IF EXISTS "anon insert received_invoices" ON public.received_invoices;
 DROP POLICY IF EXISTS "anon update received_invoices" ON public.received_invoices;
-CREATE POLICY "authenticated_all" ON public.received_invoices FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
--- Note: price_review_flags, ndc_product_map, and received_invoices are also
--- in the array in step 1a, so their plain "anon_all" is already gone, and
--- each already has "authenticated_all" from 20260820_add_authenticated_rls_policies.sql --
--- the CREATE POLICY lines above would only matter if that one somehow
--- didn't apply to these three; DROP...IF EXISTS above keeps this safe to
--- re-run either way.
 
 -- ── 2. The "invoices" Storage bucket -- was created fully public, serving
 --       files over a plain public URL with no auth check of any kind. ──
