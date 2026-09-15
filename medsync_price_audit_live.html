@@ -523,7 +523,7 @@ const AUTH_SESSION = (function requireAuthOrRedirect() {
     const session = raw ? JSON.parse(raw) : null;
     if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
   } catch (e) {}
-  window.location.replace('medsync_login.html');
+  window.location.replace('medsync_login.html?return=medsync_price_audit_live.html');
   throw new Error('This page requires a login — redirecting.');
 })();
 
@@ -533,13 +533,13 @@ const _sess = (() => { try { return JSON.parse(localStorage.getItem('medsync_ses
 // rather than silently falling back to the anon key.
 function _getToken() {
   const tok = _sess.access_token;
-  if (!tok) { window.location.replace('medsync_login.html'); throw new Error('Session missing — redirecting.'); }
+  if (!tok) { window.location.replace('medsync_login.html?return=medsync_price_audit_live.html'); throw new Error('Session missing — redirecting.'); }
   let expired = false;
   try {
     const exp = JSON.parse(atob(tok.split('.')[1])).exp;
     if (exp && exp < Date.now() / 1000 + 10) expired = true; // expired or expiring in 10s
   } catch(e) { /* ignore decode errors -- treat as not expired, let the request itself fail if the token is actually bad */ }
-  if (expired) { window.location.replace('medsync_login.html'); throw new Error('Session expired — redirecting.'); }
+  if (expired) { window.location.replace('medsync_login.html?return=medsync_price_audit_live.html'); throw new Error('Session expired — redirecting.'); }
   return tok;
 }
 
