@@ -1270,6 +1270,24 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
         <div id="denovo-revpc-chart"></div>
       </div>
 
+      <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+        <h2>Operational Health: Appointment Reliability</h2>
+        <span class="sub">Net cancelled/no-show rate since opening day, vs. the same cohort benchmark</span></div>
+      <div class="chart-card">
+        <div class="chart-note" id="denovo-reliability-note"></div>
+        <div class="hero-row" id="denovo-reliability-tiles"></div>
+        <div id="denovo-reliability-chart"></div>
+      </div>
+
+      <div class="section-head"><div class="dot" style="background:var(--c-clinical)"></div>
+        <h2>Operational Health: Uptime</h2>
+        <span class="sub">Share of days with no scheduled provider shift ("closed") since opening day, vs. the same cohort benchmark</span></div>
+      <div class="chart-card">
+        <div class="chart-note" id="denovo-uptime-note"></div>
+        <div class="hero-row" id="denovo-uptime-tiles"></div>
+        <div id="denovo-uptime-chart"></div>
+      </div>
+
       <div class="empty-note" style="margin-bottom:14px">
         <b>Heads up:</b> unlike the Ramp-Up charts above, these two heatmaps have no "all locations" or legacy-location view —
         they're locked to whichever location is the currently active de novo target (see "Tracking …" above). To view or compare
@@ -4335,6 +4353,185 @@ function renderDenovoRevenuePerCase(ctx) {
   return result;
 }
 
+// ── De Novo tab — Operational Health (appointment reliability + uptime) ──
+// Foundational clinical-ops signals for the ramp window, distinct from the
+// revenue/volume story above and from staffing/labor metrics (Scout's
+// People team owns those separately, once this foundation is in place --
+// deliberately out of scope here for now). Reuses the exact same
+// appointment_events/provider_shifts data and cancelled/no-show/deleted +
+// same-day-reschedule logic as the Reporting tab's Cancellations and Days
+// Closed reports -- just re-bucketed by months-since-THIS-location's-
+// opening and benchmarked against the same cohort the Ramp-Up charts use,
+// instead of a fixed date range.
+
+// Per-location, per-calendar-month net cancelled/no-show/deleted rate
+// (netted for same-day reschedules, same as the Cancellations report) --
+// shaped like monthsByLoc (location_id -> rows with month_start) so it
+// plugs directly into seriesForLocation/buildCohortMonthlySeries.
+function buildMonthlyReliabilityRows(eventRows, yesterday) {
+  const keptDays = buildKeptAppointmentDays(eventRows);
+  const byLocMonth = new Map();
+  eventRows.forEach(r => {
+    if (!r.scheduled_start) return;
+    const day = centralDateKey(r.scheduled_start);
+    if (day > yesterday) return;
+    const monthStart = day.slice(0, 7) + '-01';
+    const months = byLocMonth.get(r.location_id) || new Map();
+    byLocMonth.set(r.location_id, months);
+    const prev = months.get(monthStart) || { total: 0, netAffected: 0 };
+    const affected = isAffectedEvent(r) && !isSameDayReschedule(r, keptDays);
+    months.set(monthStart, { total: prev.total + 1, netAffected: prev.netAffected + (affected ? 1 : 0) });
+  });
+  const rows = [];
+  byLocMonth.forEach((months, uuid) => months.forEach((v, monthStart) => {
+    if (v.total < 1) return;
+    rows.push({ location_id: uuid, month_start: monthStart, netAffectedRate: (v.netAffected / v.total) * 100 });
+  }));
+  return rows;
+}
+
+// Per-location, per-calendar-month share of days with no scheduled provider
+// shift ("closed," same definition as the Days Closed & Financial Impact
+// report), floored at each location's own open_date and capped at
+// yesterday -- so a mature cohort location's early history counts too, not
+// just its current state.
+function buildMonthlyUptimeRows(allLocUuids, openDateByLoc, scheduledByLoc, yesterday) {
+  const rows = [];
+  allLocUuids.forEach(uuid => {
+    const openDate = openDateByLoc[uuid];
+    if (!openDate || openDate > yesterday) return;
+    const scheduledDays = scheduledByLoc[uuid] || new Set();
+    const byMonth = new Map();
+    daysBetweenInclusive(openDate, yesterday).forEach(d => {
+      const monthStart = d.slice(0, 7) + '-01';
+      const prev = byMonth.get(monthStart) || { closed: 0, total: 0 };
+      byMonth.set(monthStart, { closed: prev.closed + (scheduledDays.has(d) ? 0 : 1), total: prev.total + 1 });
+    });
+    byMonth.forEach((v, monthStart) => {
+      rows.push({ location_id: uuid, month_start: monthStart, closedDaysRate: (v.closed / v.total) * 100 });
+    });
+  });
+  return rows;
+}
+
+// Tile for an ops-health rate metric where LOWER is better (cancellation
+// rate, days-closed rate) -- the inverse of denovoTile's higher-is-better
+// coloring, since these track something going wrong, not growth.
+function opsHealthTile(label, valueText, deltaPoints, caption) {
+  const color = deltaPoints === null ? '' : `color:${deltaPoints <= 0 ? 'var(--s-good)' : 'var(--s-critical)'}`;
+  return `
+    <div class="hero-tile">
+      <div class="l">${esc(label)}</div>
+      <div class="v">${esc(valueText)}</div>
+      <div class="chart-note" style="margin-top:6px;${color}">${esc(caption)}</div>
+    </div>`;
+}
+
+// Shared renderer for both Operational Health charts -- target's actual
+// monthly rate vs. the same demographic-weighted cohort the Ramp-Up charts
+// use, single line each (no "All locations" toggle -- that view helps
+// compare absolute growth trajectories, less so for a rate metric like
+// these). Returns {latestActual, latestCohortAvg} for the Insights panel.
+function renderOpsHealthChart(opts) {
+  const { chartEl, tilesEl, noteEl, targetLoc, cohort, openDateByLoc, rowsByLoc, valueFn, maxMonth, latestMonth, formatValue, metricLabel } = opts;
+  const empty = { latestActual: null, latestCohortAvg: null };
+
+  if (!cohort) {
+    chartEl.innerHTML = '<div class="chart-note">No other location has enough history yet to serve as a benchmark.</div>';
+    tilesEl.innerHTML = ''; noteEl.innerHTML = '';
+    return empty;
+  }
+  noteEl.innerHTML = cohort.note;
+
+  const { targetSeries, projectedValues } = buildCohortMonthlySeries(
+    targetLoc.uuid, cohort.matureUuids, cohort.weights, openDateByLoc, rowsByLoc, valueFn, maxMonth);
+
+  const xLabels = [], actualValues = [];
+  for (let m = 0; m <= maxMonth; m++) {
+    xLabels.push(`M${m}`);
+    actualValues.push(m <= latestMonth ? (targetSeries[m] ?? null) : null);
+  }
+
+  renderMultiSeriesLineChart(chartEl, [
+    { label: `${targetLoc.name} (actual)`, color: `rgba(${CLINICAL_RGB},1)`, values: actualValues, strokeWidth: 2.5 },
+    { label: 'Cohort benchmark', color: `rgba(${CLINICAL_RGB},0.55)`, values: projectedValues, dashed: true },
+  ], xLabels, { formatValue });
+
+  const latestActual = targetSeries[latestMonth] ?? null;
+  const latestCohortAvg = projectedValues[latestMonth] ?? null;
+  const priorActual = targetSeries[latestMonth - 1] ?? null;
+  const momPoints = (latestActual != null && priorActual != null) ? latestActual - priorActual : null;
+  const vsCohortPoints = (latestActual != null && latestCohortAvg != null) ? latestActual - latestCohortAvg : null;
+
+  tilesEl.innerHTML =
+    opsHealthTile(`${metricLabel}, month ${latestMonth}`, latestActual != null ? formatValue(latestActual) : '—',
+      null, latestActual != null ? `${targetLoc.name}'s rate for its latest complete month` : 'Not enough history yet') +
+    opsHealthTile('Month over month', momPoints != null ? `${momPoints >= 0 ? '+' : ''}${momPoints.toFixed(1)} pts` : '—',
+      momPoints, momPoints != null ? 'vs. previous month' : 'Not enough history yet') +
+    opsHealthTile('vs. cohort benchmark', vsCohortPoints != null ? `${vsCohortPoints >= 0 ? '+' : ''}${vsCohortPoints.toFixed(1)} pts` : '—',
+      vsCohortPoints, vsCohortPoints != null ? 'percentage points, latest complete month' : 'Not enough history yet');
+
+  return { latestActual, latestCohortAvg };
+}
+
+// Fetches appointment_events + provider_shifts (all locations, all-time --
+// needed so mature cohort members' own early months are available for the
+// benchmark, same reasoning as the case-volume/revenue fetches) and renders
+// both Operational Health charts. Returns {reliability, uptime}, each
+// {latestActual, latestCohortAvg}, for the Insights panel.
+async function loadDenovoOpsHealth(ctx) {
+  const { targetLoc, cohort, openDateByLoc, allLocUuids, maxMonth, targetAgeMonths } = ctx;
+  const relChartEl = document.getElementById('denovo-reliability-chart');
+  const relTilesEl = document.getElementById('denovo-reliability-tiles');
+  const relNoteEl = document.getElementById('denovo-reliability-note');
+  const upChartEl = document.getElementById('denovo-uptime-chart');
+  const upTilesEl = document.getElementById('denovo-uptime-tiles');
+  const upNoteEl = document.getElementById('denovo-uptime-note');
+  const empty = { latestActual: null, latestCohortAvg: null };
+
+  const [eventRows, shiftRows] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/appointment_events?select=location_id,vetspire_patient_id,scheduled_start,status,deleted&order=scheduled_start.asc`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/provider_shifts?select=location_id,shift_start,shift_end&order=shift_start.asc`),
+  ]);
+  if (eventRows === null || shiftRows === null) {
+    relChartEl.innerHTML = upChartEl.innerHTML = `<div class="chart-note">Couldn't load appointment/shift data for operational
+      health — run scoutsync_provider_shifts.sql and vetspire_provider_shifts_sync.py if you haven't yet.</div>`;
+    relTilesEl.innerHTML = upTilesEl.innerHTML = ''; relNoteEl.innerHTML = upNoteEl.innerHTML = '';
+    return { reliability: empty, uptime: empty };
+  }
+
+  const yesterday = isoDaysAgo(1); // exclude today -- it's still in progress
+  const latestMonth = targetAgeMonths - 1; // last fully complete month, same convention as the Ramp-Up charts
+
+  const scheduledByLoc = {};
+  allLocUuids.forEach(u => scheduledByLoc[u] = new Set());
+  shiftRows.forEach(r => {
+    const days = scheduledByLoc[r.location_id];
+    if (!days || !r.shift_start) return;
+    daysBetweenInclusive(r.shift_start, r.shift_end || r.shift_start).forEach(d => { if (d <= yesterday) days.add(d); });
+  });
+
+  const reliabilityRowsByLoc = {};
+  buildMonthlyReliabilityRows(eventRows, yesterday).forEach(r =>
+    (reliabilityRowsByLoc[r.location_id] = reliabilityRowsByLoc[r.location_id] || []).push(r));
+  const uptimeRowsByLoc = {};
+  buildMonthlyUptimeRows(allLocUuids, openDateByLoc, scheduledByLoc, yesterday).forEach(r =>
+    (uptimeRowsByLoc[r.location_id] = uptimeRowsByLoc[r.location_id] || []).push(r));
+
+  const reliability = renderOpsHealthChart({
+    chartEl: relChartEl, tilesEl: relTilesEl, noteEl: relNoteEl, targetLoc, cohort, openDateByLoc,
+    rowsByLoc: reliabilityRowsByLoc, valueFn: r => r.netAffectedRate, maxMonth, latestMonth,
+    formatValue: v => v.toFixed(1) + '%', metricLabel: 'Net cancelled/no-show rate',
+  });
+  const uptime = renderOpsHealthChart({
+    chartEl: upChartEl, tilesEl: upTilesEl, noteEl: upNoteEl, targetLoc, cohort, openDateByLoc,
+    rowsByLoc: uptimeRowsByLoc, valueFn: r => r.closedDaysRate, maxMonth, latestMonth,
+    formatValue: v => v.toFixed(1) + '%', metricLabel: 'Days closed rate',
+  });
+
+  return { reliability, uptime };
+}
+
 // Case Volume / Case Value heatmaps, scoped to just the target location,
 // since its opening day through yesterday -- own fetch (heatmap rows are
 // per-encounter grain, not part of the monthly-aggregate fetch the other
@@ -4421,7 +4618,7 @@ function insightItem(cls, badge, title, body) {
 // case-mix shape. Mirrors how a human would triage a new-location review:
 // lead with the one-line verdict, then what's working, what's worth
 // improving, and what needs action now, in that order.
-function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, heatRows) {
+function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, heatRows, opsResult = {}) {
   const el = document.getElementById('denovo-insights');
   // volResult/revResult are computed at the last FULLY complete month (see
   // renderDenovoRampUp) -- reference that month here too, not
@@ -4515,6 +4712,42 @@ function renderDenovoInsights(targetLoc, targetAgeMonths, volResult, revResult, 
     }
   }
 
+  // ── Operational Health -- appointment reliability & uptime, vs. the same
+  // cohort. Deliberately independent of the revenue-driven Ramp Status
+  // verdict above: a location can be ahead on dollars while still masking
+  // an operational problem underneath (or vice versa), so these surface as
+  // their own wins/opportunities/pivots rather than folding into that
+  // headline number. ──
+  const rel = opsResult.reliability;
+  if (rel && rel.latestActual != null && rel.latestCohortAvg != null) {
+    const gap = rel.latestActual - rel.latestCohortAvg; // percentage points; positive = worse
+    if (gap >= 15) {
+      pivots.push(insightItem('risk', '⚠', 'Appointment reliability well below cohort',
+        `Net cancelled/no-show rate is <b>${rel.latestActual.toFixed(1)}%</b> at month ${latestMonth}, <b>${gap.toFixed(1)} points</b> above the cohort average of <b>${rel.latestCohortAvg.toFixed(1)}%</b> — worth a direct look at scheduling/reminder workflows before it becomes the norm for this location.`));
+    } else if (gap >= 5) {
+      opportunities.push(insightItem('concentration', '◉', 'Appointment reliability trailing cohort',
+        `Net cancelled/no-show rate is <b>${rel.latestActual.toFixed(1)}%</b>, <b>${gap.toFixed(1)} points</b> above the cohort average of <b>${rel.latestCohortAvg.toFixed(1)}%</b> at month ${latestMonth}.`));
+    } else if (gap <= -5) {
+      wins.push(insightItem('recommend', '✓', 'Strong appointment reliability',
+        `Net cancelled/no-show rate is <b>${rel.latestActual.toFixed(1)}%</b>, <b>${Math.abs(gap).toFixed(1)} points</b> below the cohort average of <b>${rel.latestCohortAvg.toFixed(1)}%</b> at month ${latestMonth}.`));
+    }
+  }
+
+  const up = opsResult.uptime;
+  if (up && up.latestActual != null && up.latestCohortAvg != null) {
+    const gap = up.latestActual - up.latestCohortAvg; // percentage points; positive = worse
+    if (gap >= 5) {
+      pivots.push(insightItem('risk', '⚠', 'Closed more than the cohort at this stage',
+        `Closed <b>${up.latestActual.toFixed(1)}%</b> of days at month ${latestMonth}, <b>${gap.toFixed(1)} points</b> above the cohort average of <b>${up.latestCohortAvg.toFixed(1)}%</b> — closures this early can flatten the whole ramp curve, not just that month's numbers.`));
+    } else if (gap >= 2) {
+      opportunities.push(insightItem('concentration', '◉', 'Slightly more closed days than cohort',
+        `Closed <b>${up.latestActual.toFixed(1)}%</b> of days at month ${latestMonth}, <b>${gap.toFixed(1)} points</b> above the cohort average of <b>${up.latestCohortAvg.toFixed(1)}%</b>.`));
+    } else if (up.latestActual === 0) {
+      wins.push(insightItem('recommend', '✓', 'No closed days this month',
+        `Fully staffed and open every day at month ${latestMonth} — no unscheduled closures dragging on the ramp.`));
+    }
+  }
+
   const groups = [['Wins', wins], ['Opportunities', opportunities], ['Immediate Pivots', pivots]]
     .filter(([, list]) => list.length);
 
@@ -4544,6 +4777,7 @@ let lastDenovoCtx = null;
 let lastDenovoVolResult = null;
 let lastDenovoRevResult = null;
 let lastDenovoHeatRows = [];
+let lastDenovoOpsResult = {};
 
 document.getElementById('rampup-view-tabs').addEventListener('click', e => {
   const btn = e.target.closest('.subtab');
@@ -4551,7 +4785,7 @@ document.getElementById('rampup-view-tabs').addEventListener('click', e => {
   document.querySelectorAll('#rampup-view-tabs .subtab').forEach(b => b.classList.toggle('active', b === btn));
   denovoViewMode.volume = btn.dataset.view;
   lastDenovoVolResult = renderDenovoRampUp(lastDenovoCtx);
-  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows);
+  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows, lastDenovoOpsResult);
 });
 document.getElementById('denovo-revpc-view-tabs').addEventListener('click', e => {
   const btn = e.target.closest('.subtab');
@@ -4559,7 +4793,7 @@ document.getElementById('denovo-revpc-view-tabs').addEventListener('click', e =>
   document.querySelectorAll('#denovo-revpc-view-tabs .subtab').forEach(b => b.classList.toggle('active', b === btn));
   denovoViewMode.revpc = btn.dataset.view;
   lastDenovoRevResult = renderDenovoRevenuePerCase(lastDenovoCtx);
-  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows);
+  renderDenovoInsights(lastDenovoCtx.targetLoc, lastDenovoCtx.targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows, lastDenovoOpsResult);
 });
 
 async function loadDenovoTab() {
@@ -4635,12 +4869,17 @@ async function loadDenovoTab() {
   lastDenovoVolResult = renderDenovoRampUp(ctx);
   lastDenovoRevResult = renderDenovoRevenuePerCase(ctx);
 
-  // Insights waits on the heatmap fetch (weekend-share signal needs it),
-  // but the heatmap grids themselves render as soon as their own fetch
-  // resolves, inside loadDenovoHeatmaps -- awaiting it here only delays
-  // the Insights panel, not the charts above it.
-  lastDenovoHeatRows = await loadDenovoHeatmaps(targetUuid, targetOpenDate, targetLoc);
-  renderDenovoInsights(targetLoc, targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows);
+  // Insights waits on both the heatmap fetch (weekend-share signal needs
+  // it) and the ops-health fetch (reliability/uptime signals), fired
+  // together since neither depends on the other -- the heatmap grids and
+  // ops-health charts themselves each render as soon as their own fetch
+  // resolves, inside their own functions, so this only delays the Insights
+  // panel, not the charts above it.
+  [lastDenovoHeatRows, lastDenovoOpsResult] = await Promise.all([
+    loadDenovoHeatmaps(targetUuid, targetOpenDate, targetLoc),
+    loadDenovoOpsHealth(ctx),
+  ]);
+  renderDenovoInsights(targetLoc, targetAgeMonths, lastDenovoVolResult, lastDenovoRevResult, lastDenovoHeatRows, lastDenovoOpsResult);
 }
 
 // ── Clinical Operations (heatmaps + geo map) data + rendering ──
