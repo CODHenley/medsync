@@ -357,6 +357,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
 
+// ── Auth gate -- require a real, unexpired MedSync login. Previously this
+// page fell back to the public anon key whenever no session was found, so
+// reaching it directly (not through the already-gated app shell) required
+// no credentials at all. See scoutsync_dashboard.html for the original fix.
+const AUTH_SESSION = (function requireAuthOrRedirect() {
+  try {
+    const raw = localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session');
+    const session = raw ? JSON.parse(raw) : null;
+    if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
+  } catch (e) {}
+  window.location.replace('medsync_login.html');
+  throw new Error('This page requires a login — redirecting.');
+})();
+
+
 // ── State ────────────────────────────────────────────────────────────────────
 let currentTab = 'A';
 let timerInterval = null;
@@ -373,7 +388,7 @@ const _sess = JSON.parse(localStorage.getItem('medsync_session') || sessionStora
 const _user = JSON.parse(localStorage.getItem('medsync_user')   || '{}');
 const H = {
   'apikey': SUPA_KEY,
-  'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY),
+  'Authorization': 'Bearer ' + (_sess.access_token),
   'Content-Type': 'application/json'
 };
 
@@ -863,7 +878,7 @@ async function submitCount() {
           : [{ quantity: p.actual, lot_number: null, expiration_date: null }];
         const wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'apikey': SUPA_KEY },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_sess.access_token), 'apikey': SUPA_KEY },
           body: JSON.stringify({ vetspire_location_id: locationId, vetspire_product_id: p.vetspireProductId, product_name: p.name, location_name: currentLocation, lot_entries: lotEntries })
         });
         const wbJson = await wbRes.json();
@@ -1520,7 +1535,7 @@ async function pcSubmitItem() {
     if (pcState.locationName === 'Wheaton' && cp.vetspireProductId) {
       var wbRes = await fetch('https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1/writeback-queue', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY, 'apikey': SUPA_KEY },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AUTH_SESSION.access_token, 'apikey': SUPA_KEY },
         body: JSON.stringify({
           vetspire_location_id: pcState.locationId,
           vetspire_product_id: cp.vetspireProductId,

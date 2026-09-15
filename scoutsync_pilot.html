@@ -258,7 +258,22 @@ table.qa tr:hover td { background: #FAFBFD; }
 // ── Supabase config (same project + anon key as the rest of MedSync — RLS-scoped) ──
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const HEADERS = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+
+// ── Auth gate -- require a real, unexpired MedSync login. Previously this
+// page fell back to the public anon key whenever no session was found, so
+// reaching it directly required no credentials at all. See
+// scoutsync_dashboard.html for the original fix.
+const AUTH_SESSION = (function requireAuthOrRedirect() {
+  try {
+    const raw = localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session');
+    const session = raw ? JSON.parse(raw) : null;
+    if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
+  } catch (e) {}
+  window.location.replace('medsync_login.html');
+  throw new Error('This page requires a login — redirecting.');
+})();
+
+const HEADERS = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + AUTH_SESSION.access_token, 'Content-Type': 'application/json' };
 
 const LOCATIONS = [
   { key: 'lp', name: 'Lincoln Park', uuid: '11111111-0000-0000-0000-000000000001', vid: '23083' },

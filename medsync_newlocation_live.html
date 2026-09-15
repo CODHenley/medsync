@@ -158,6 +158,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+
+// ── Auth gate -- require a real, unexpired MedSync login. Previously this
+// page fell back to the public anon key whenever no session was found, so
+// reaching it directly (not through the already-gated app shell) required
+// no credentials at all. See scoutsync_dashboard.html for the original fix.
+const AUTH_SESSION = (function requireAuthOrRedirect() {
+  try {
+    const raw = localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session');
+    const session = raw ? JSON.parse(raw) : null;
+    if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
+  } catch (e) {}
+  window.location.replace('medsync_login.html');
+  throw new Error('This page requires a login — redirecting.');
+})();
+
 // TODO: Replace with live Stripe publishable key before enabling payments in production
 const STRIPE_PK = 'pk_test_51TmKRLIjmNR61KaqAVxjESmM4Y0hxPJWQQHuKCAnY81kwrogKEjloVG3wipL1La1JhGxCQXaYmckQARdozsXrXHG00yfUfcLDk';
 const EDGE_URL  = 'https://aemkdummdrmxtwrkggjw.supabase.co/functions/v1';
@@ -168,7 +183,7 @@ const UPGRADE_TIERS = [
   { key:'enterprise',  label:'Enterprise',  limit:999, monthly:499, priceId:'price_1TmKYSIjmNR61KaqhprY7zkC' },
 ];
 const _sess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
-const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token||SUPA_KEY),'Content-Type':'application/json'};
+const H = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_sess.access_token),'Content-Type':'application/json'};
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let planInfo = null; // set by checkLocationLimit, read by render()
@@ -1443,10 +1458,11 @@ async function checkLocationLimit() {
     }
     userEmail = (userEmail || '').trim().toLowerCase();
 
-    const accessToken = _sess.access_token || SUPA_KEY;
+    const accessToken = _sess.access_token;
+    // Single set of real-user headers -- authenticated_all now covers orgs/users
+    // (see 20260820_add_authenticated_rls_policies.sql), so there's no need to
+    // retry with the anon key anymore.
     const Hauth = {'apikey':SUPA_KEY,'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'};
-    // Anon headers: orgs table only has anon_all RLS — user JWT returns [] without authenticated role policy
-    const Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
 
     // 0. Fast path: @scoutcare.com — skip network lookups, go straight to known org
     let orgId = null;
@@ -1457,9 +1473,9 @@ async function checkLocationLimit() {
     // 1. Stored at login
     if (!orgId) orgId = _mu2.organization_id || null;
 
-    // 2. Lookup by contact_email (anon first — works with anon_all policy)
+    // 2. Lookup by contact_email
     if (!orgId && userEmail) {
-      for (const hdrs of [Hanon, Hauth]) {
+      for (const hdrs of [Hauth]) {
         const r = await fetch(SUPA_URL + `/rest/v1/organizations?select=id&contact_email=eq.${encodeURIComponent(userEmail)}`, { headers: hdrs });
         const d = await r.json();
         orgId = Array.isArray(d) && d[0] ? d[0].id : null;
@@ -1470,7 +1486,7 @@ async function checkLocationLimit() {
     // 3. Users table by id or email
     if (!orgId) {
       const userId = _sess.user?.id || _sess.user_id || _jwtSub(_sess.access_token);
-      for (const hdrs of [Hanon, Hauth]) {
+      for (const hdrs of [Hauth]) {
         if (!orgId && userId) {
           const r = await fetch(SUPA_URL + `/rest/v1/users?select=organization_id&id=eq.${userId}`, { headers: hdrs });
           const d = await r.json();
@@ -1488,10 +1504,9 @@ async function checkLocationLimit() {
     if (!orgId) { planInfo = { tier: 'internal', count: 0, limit: 999, label: 'Internal' }; render(); return; }
     _orgIdCache = orgId;
 
-    // Use anon headers for final fetch — orgs table has anon_all policy, not authenticated policy
     const [orgRes, locRes] = await Promise.all([
-      fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit,contact_email,contact_name&id=eq.${orgId}`, { headers: Hanon }),
-      fetch(SUPA_URL + `/rest/v1/locations?select=id&organization_id=eq.${orgId}`, { headers: Hanon }),
+      fetch(SUPA_URL + `/rest/v1/organizations?select=name,tier,location_limit,contact_email,contact_name&id=eq.${orgId}`, { headers: Hauth }),
+      fetch(SUPA_URL + `/rest/v1/locations?select=id&organization_id=eq.${orgId}`, { headers: Hauth }),
     ]);
     const orgs = await orgRes.json();
     const locs = await locRes.json();

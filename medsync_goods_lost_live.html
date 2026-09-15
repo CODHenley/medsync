@@ -406,8 +406,23 @@ body { height: 100%; overflow: hidden; min-height: 0 !important; }
 <script>
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+
+// ── Auth gate -- require a real, unexpired MedSync login. Previously this
+// page fell back to the public anon key whenever no session was found, so
+// reaching it directly (not through the already-gated app shell) required
+// no credentials at all. See scoutsync_dashboard.html for the original fix.
+const AUTH_SESSION = (function requireAuthOrRedirect() {
+  try {
+    const raw = localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session');
+    const session = raw ? JSON.parse(raw) : null;
+    if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
+  } catch (e) {}
+  window.location.replace('medsync_login.html');
+  throw new Error('This page requires a login — redirecting.');
+})();
+
 const _sess = (function(){ try { return JSON.parse(localStorage.getItem('medsync_session') || '{}'); } catch(e) { return {}; } })();
-const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token || SUPA_KEY), 'Content-Type': 'application/json' };
+const H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (_sess.access_token), 'Content-Type': 'application/json' };
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 let state = {

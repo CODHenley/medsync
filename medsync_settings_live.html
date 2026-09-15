@@ -678,8 +678,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
+
+// ── Auth gate -- require a real, unexpired MedSync login. Previously this
+// page fell back to the public anon key whenever no session was found, so
+// reaching it directly (not through the already-gated app shell) required
+// no credentials at all. See scoutsync_dashboard.html for the original fix.
+const AUTH_SESSION = (function requireAuthOrRedirect() {
+  try {
+    const raw = localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session');
+    const session = raw ? JSON.parse(raw) : null;
+    if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
+  } catch (e) {}
+  window.location.replace('medsync_login.html');
+  throw new Error('This page requires a login — redirecting.');
+})();
+
 const _settSess = (function(){ try{return JSON.parse(localStorage.getItem('medsync_session')||sessionStorage.getItem('medsync_session')||'{}');}catch(e){return{};} })();
-const _settH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_settSess.access_token||SUPA_KEY),'Content-Type':'application/json'};
+const _settH = {'apikey':SUPA_KEY,'Authorization':'Bearer '+(_settSess.access_token),'Content-Type':'application/json'};
 let _settOrgId = null;
 
 function _sGetMu(){ try{return JSON.parse(localStorage.getItem('medsync_user')||sessionStorage.getItem('medsync_user')||'{}');}catch(e){return{};} }
@@ -695,9 +710,11 @@ async function loadBillingBranding() {
     }
     userEmail = (userEmail || '').trim().toLowerCase();
 
-    const settAccessToken = _settSess.access_token || SUPA_KEY;
+    const settAccessToken = _settSess.access_token;
+    // Single set of real-user headers -- authenticated_all now covers orgs/users
+    // (see 20260820_add_authenticated_rls_policies.sql), so there's no need to
+    // retry with the anon key anymore.
     const Sett_Hauth = {'apikey':SUPA_KEY,'Authorization':'Bearer '+settAccessToken,'Content-Type':'application/json'};
-    const Sett_Hanon = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'};
 
     // 0. Fast path: @scoutcare.com — skip network lookups
     let orgId = null;
@@ -708,9 +725,9 @@ async function loadBillingBranding() {
     // 1. Stored at login
     if (!orgId) orgId = _mu.organization_id || null;
 
-    // 2. contact_email lookup (anon first — works with anon_all policy)
+    // 2. contact_email lookup
     if (!orgId && userEmail) {
-      for (const hdrs of [Sett_Hanon, Sett_Hauth]) {
+      for (const hdrs of [Sett_Hauth]) {
         const ro = await fetch(SUPA_URL+'/rest/v1/organizations?select=id&contact_email=eq.'+encodeURIComponent(userEmail), {headers:hdrs});
         const orgsE = await ro.json();
         orgId = (Array.isArray(orgsE) && orgsE[0]) ? orgsE[0].id : null;
@@ -721,7 +738,7 @@ async function loadBillingBranding() {
     // 3. Users table lookup
     if (!orgId) {
       const userId = _settSess.user?.id || _settSess.user_id || _sJwtSub(_settSess.access_token);
-      for (const hdrs of [Sett_Hanon, Sett_Hauth]) {
+      for (const hdrs of [Sett_Hauth]) {
         if (!orgId && userId) {
           const ur = await fetch(SUPA_URL+'/rest/v1/users?select=organization_id&id=eq.'+userId, {headers:hdrs});
           const u = await ur.json();
@@ -741,9 +758,8 @@ async function loadBillingBranding() {
       return;
     }
     _settOrgId = orgId;
-    // Try anon headers first (organizations table uses anon_all RLS policy)
     let orgs = null;
-    for (const hdrs of [Sett_Hanon, _settH]) {
+    for (const hdrs of [_settH]) {
       const or = await fetch(SUPA_URL+'/rest/v1/organizations?select=name,tier,location_limit,logo_url,billing_contact_name,billing_email,billing_phone,payment_terms,ach_bank_name,ach_account_holder,ach_routing_number,ach_account_number,ach_account_type,cc_holder_name,cc_last4,cc_brand,cc_exp&id=eq.'+_settOrgId, {headers:hdrs});
       const d = await or.json();
       if (Array.isArray(d) && d[0]) { orgs = d; break; }
@@ -751,7 +767,7 @@ async function loadBillingBranding() {
     // Hardcoded Scout fallback if both fetches fail
     if (!orgs || !orgs[0]) {
       if (_settOrgId === 'ce27c4f4-7352-4128-86ff-b1891b50933c') {
-        const lc2 = await fetch(SUPA_URL+'/rest/v1/locations?select=id&organization_id=eq.'+_settOrgId, {headers:Sett_Hanon});
+        const lc2 = await fetch(SUPA_URL+'/rest/v1/locations?select=id&organization_id=eq.'+_settOrgId, {headers:Sett_Hauth});
         const locs2 = await lc2.json();
         const count2 = Array.isArray(locs2) ? locs2.length : 4;
         document.getElementById('bb-plan-display').innerHTML = '<strong>Mid Group</strong> &nbsp;<span style="color:var(--mist);font-size:11px;">$349/mo · up to 6 locations</span><br><span style="font-size:11px;color:var(--mist);">'+count2+' of 6 locations used</span>';
