@@ -15,5 +15,6 @@ jobs:
 
       - name: Run verification
         env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
           VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
         run: python3 verify_full_backfill.py

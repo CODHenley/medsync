@@ -32,6 +32,7 @@ jobs:
 
       - name: Run duplication diagnostic
         env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
           VETSPIRE_API_TOKEN: ${{ secrets.VETSPIRE_API_TOKEN }}
         run: |
           python3 diagnose_dispensed_duplication.py \

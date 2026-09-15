@@ -27,6 +27,8 @@ jobs:
           python-version: "3.11"
 
       - name: Run check
+        env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
         run: |
           python3 check_duplicate_order_items.py \
             --location "${{ inputs.location }}" \

@@ -19,6 +19,8 @@ jobs:
           python-version: "3.11"
 
       - name: Run
+        env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
         run: |
           if [ "${{ inputs.delete }}" = "yes" ]; then
             python3 delete_legacy_rows.py --delete

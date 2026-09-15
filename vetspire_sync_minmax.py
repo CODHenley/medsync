@@ -24,7 +24,7 @@ import urllib.parse
 # ── Config ────────────────────────────────────────────────────────────────────
 VETSPIRE_URL  = 'https://api.vetspire.com/graphql'
 SUPA_URL      = 'https://aemkdummdrmxtwrkggjw.supabase.co'
-SUPA_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s'
+SUPA_KEY = os.environ.get("SUPA_SERVICE_KEY") or 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s'
 SPREADSHEET   = '/Users/meganhenley/Downloads/medsync_deploy/Demand_Forecasting_Spreadsheet_2026_v4 (2).xlsx'
 
 # Vetspire product name → Supabase/MedSync name mapping

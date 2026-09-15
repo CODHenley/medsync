@@ -27,6 +27,7 @@ jobs:
 
       - name: Run Census ZIP demographics sync
         env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
           ACS_VINTAGE_YEAR: ${{ inputs.acs_vintage_year || '2022' }}
           CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
         run: python3 census_zip_demographics_sync.py

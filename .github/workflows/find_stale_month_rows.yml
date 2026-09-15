@@ -23,6 +23,8 @@ jobs:
           python-version: "3.11"
 
       - name: Run stale-row scan
+        env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
         run: |
           if [ "${{ inputs.delete }}" = "true" ]; then
             python3 find_stale_month_rows.py --delete
