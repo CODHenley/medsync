@@ -258,6 +258,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 #refresh-btn .spin { display: inline-block; transition: transform .5s ease; }
 #refresh-btn.loading .spin { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.user-info { display: flex; align-items: center; gap: 10px; margin-left: 14px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.2); }
+.user-info .name { font-size: 12px; color: rgba(255,255,255,.75); white-space: nowrap; }
+.user-info button { background: none; border: none; color: rgba(255,255,255,.55); font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
+.user-info button:hover { color: #fff; }
 
 /* ── Panel switching ── */
 .panel { display: none; }
@@ -459,6 +463,10 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     <button id="refresh-btn" title="Pull fresh data and recompute everything now">
       <span class="spin">↻</span> Refresh
     </button>
+  </div>
+  <div class="user-info">
+    <span class="name" id="user-info-name"></span>
+    <button id="logout-btn" title="Log out">Log out</button>
   </div>
 </header>
 
@@ -1381,11 +1389,61 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 </div>
 
 <script>
-// ── Supabase config (same project + anon key as the rest of MedSync — RLS-scoped) ──
+// ── Auth gate — require a real, unexpired MedSync login before this
+// dashboard loads or fetches anything. Previously every request here ran
+// as the `anon` Postgres role via the hardcoded key below, which (per
+// 20260812_enable_rls.sql's anon_all policy) has full read/write access to
+// nearly the whole database -- effectively public, since that key ships in
+// this page's own source. This gate doesn't change that policy (a separate,
+// larger fix), but it does mean requests from this page now always carry
+// the signed-in user's own token and run as `authenticated`, so reaching
+// this dashboard -- and the data it fetches -- first requires a real
+// MedSync account. Any active login is enough for now, no per-role
+// restriction (see medsync_users_live.html for the role model this can
+// layer on later if that's wanted).
+function readStoredSession() {
+  try {
+    const raw = localStorage.getItem('medsync_session') || sessionStorage.getItem('medsync_session');
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    // expires_at is the absolute unix timestamp (seconds) Supabase issued
+    // this token with -- treat a missing one as already expired rather than
+    // trusting a token with no known lifetime.
+    if (!session.access_token || !session.expires_at || session.expires_at * 1000 <= Date.now()) return null;
+    return session;
+  } catch (e) { return null; }
+}
+const AUTH_SESSION = readStoredSession();
+if (!AUTH_SESSION) {
+  window.location.replace('medsync_login.html');
+  throw new Error('ScoutSync dashboard requires a login — redirecting.');
+}
+
+// ── Supabase config (same project as the rest of MedSync) ──
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
+// Only used for the required `apikey` header Supabase's API expects on every
+// request (routing/rate-limiting, not itself an access grant) -- actual
+// authorization comes from AUTH_SESSION.access_token below, sent as the
+// Authorization bearer, which is what determines the `authenticated` role
+// these requests run as.
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s';
-const HEADERS = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+const HEADERS = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + AUTH_SESSION.access_token, 'Content-Type': 'application/json' };
 const UNATTRIBUTED_PROVIDER = '00000000-0000-0000-0000-000000000000';
+
+// Show who's logged in and let them log out -- this dashboard now requires
+// a real session (see the auth gate above), so unlike before there's an
+// actual person, not just a public URL, that data is being fetched on
+// behalf of.
+(function initUserInfo() {
+  let user = {};
+  try { user = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch (e) {}
+  document.getElementById('user-info-name').textContent = user.full_name || user.email || '';
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('medsync_session'); localStorage.removeItem('medsync_user');
+    sessionStorage.removeItem('medsync_session'); sessionStorage.removeItem('medsync_user');
+    window.location.replace('medsync_login.html');
+  });
+})();
 
 const LOCATIONS = [
   { key: 'lp', name: 'Lincoln Park', uuid: '11111111-0000-0000-0000-000000000001', vid: '23083' },
