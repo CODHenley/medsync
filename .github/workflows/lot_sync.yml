@@ -24,7 +24,11 @@ jobs:
           echo "${{ secrets.VETSPIRE_API_TOKEN }}" > vetspire_token.txt
 
       - name: Run lot sync
+        env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
         run: python3 wheaton_lot_sync.py
 
       - name: Run Wheaton snapshot refresh
+        env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
         run: python3 wheaton_snapshot_refresh.py

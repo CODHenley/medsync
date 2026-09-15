@@ -12,7 +12,7 @@ TOKEN_FILE        = os.path.expanduser("~/.vetspire_token")
 VETSPIRE_ENDPOINT = "https://api.vetspire.com/graphql"
 VETSPIRE_ORIGIN   = "https://scoutcare.vetspire.com"
 SUPA_URL          = "https://aemkdummdrmxtwrkggjw.supabase.co"
-SUPA_KEY          = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
+SUPA_KEY = os.environ.get("SUPA_SERVICE_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlbWtkdW1tZHJteHR3cmtnZ2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTQwNjEsImV4cCI6MjA5NTY3MDA2MX0.JzUojqfs9K6wOtrhjDnQ_knVU1wDvqR0MFH9z_r4G4s"
 WHEATON_ID        = "28253"
 BACKFILL_DAYS     = 90  # change to 180 for 6 months
 

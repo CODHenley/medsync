@@ -18,4 +18,6 @@ jobs:
           python-version: "3.11"
 
       - name: Run diagnostic
+        env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
         run: python3 diagnose_portfolio_cogs_limit.py

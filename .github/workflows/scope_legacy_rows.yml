@@ -14,4 +14,6 @@ jobs:
           python-version: "3.11"
 
       - name: Run scope scan
+        env:
+          SUPA_SERVICE_KEY: ${{ secrets.SUPA_SERVICE_KEY }}
         run: python3 scope_legacy_rows.py
