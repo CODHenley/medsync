@@ -7698,9 +7698,32 @@ async function loadUsersTab() {
     return;
   }
   listEl.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
-    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
-    <tbody>${rows.map(u => `<tr><td>${esc(u.full_name || '—')}</td><td>${esc(u.email || '—')}</td><td>${esc(SCOUTSYNC_ROLE_LABELS[u.role] || u.role || '—')}</td><td>${u.is_active === false ? 'Inactive' : 'Active'}</td></tr>`).join('')}</tbody>
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows.map(u => `<tr><td>${esc(u.full_name || '—')}</td><td>${esc(u.email || '—')}</td><td>${esc(SCOUTSYNC_ROLE_LABELS[u.role] || u.role || '—')}</td><td>${u.is_active === false ? 'Inactive' : 'Active'}</td><td>${u.email ? `<button class="us-reset-btn" data-email="${esc(u.email)}" style="padding:5px 12px;background:transparent;color:var(--c-financial);border:1px solid var(--c-financial);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Reset password</button>` : ''}</td></tr>`).join('')}</tbody>
   </table></div>`;
+  listEl.querySelectorAll('.us-reset-btn').forEach(btn => btn.addEventListener('click', () => resetScoutSyncUserPassword(btn)));
+}
+
+// Sends the same Supabase password-recovery email a user gets from "Forgot
+// password?" on the login page -- an admin never sees or sets the actual
+// password, just triggers the reset-link email to the account's own inbox.
+// Uses the anon-key-safe /auth/v1/recover endpoint (no service_role needed).
+async function resetScoutSyncUserPassword(btn) {
+  const email = btn.dataset.email;
+  if (!email) return;
+  if (!confirm(`Send a password reset email to ${email}?`)) return;
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    await fetch(`${SUPA_URL}/auth/v1/recover`, {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirectTo: 'https://medsync.vet/medsync_login.html' }),
+    });
+  } catch (e) {}
+  btn.textContent = 'Email sent ✓';
+  setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 4000);
 }
 
 async function createScoutSyncUser() {
