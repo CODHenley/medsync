@@ -180,10 +180,14 @@ function getSafeReturnUrl() {
   if (!getSafeReturnUrl().startsWith('scoutsync_')) return;
   document.title = 'ScoutSync — Sign In';
   document.getElementById('topbar-logo-text').innerHTML = 'Scout<span>Sync</span>';
-  document.getElementById('topbar-logo-img').src = 'Scout Logo.png';
-  document.getElementById('topbar-logo-img').alt = 'ScoutSync';
-  document.getElementById('hero-logo-img').src = 'Scout Logo.png';
-  document.getElementById('hero-logo-img').alt = 'ScoutSync';
+  // No image swap here -- "Scout Logo.png" is a wide wordmark banner
+  // (SCOUT VETERINARY URGENT CARE), not a square/circular icon, and
+  // forcing it into MedSync's circular photo slot just crops it into an
+  // illegible fragment. The live ScoutSync dashboard itself has no logo
+  // image, only styled text -- matching that here instead.
+  document.getElementById('topbar-logo-img').style.display = 'none';
+  document.querySelector('#topbar-logo-img + .logo-fallback').style.display = 'none';
+  document.getElementById('hero-logo-img').style.display = 'none';
   document.getElementById('hero-word').innerHTML = 'Scout<span style="color:#C83803;">Sync</span>';
   document.getElementById('hero-tagline').textContent = 'Executive Dashboard';
   document.getElementById('card-title').textContent = 'Sign in to ScoutSync';
