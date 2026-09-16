@@ -227,6 +227,10 @@ function getSafeReturnUrl() {
 
 // ── Password recovery detection ──────────────────────────────────────────────
 let _recoveryToken = null;
+// Captured before the ?return= param is stripped below, so a ScoutSync user
+// who resets their password lands back at the ScoutSync-branded sign-in
+// instead of defaulting to the MedSync portfolio.
+let _recoveryReturnUrl = 'medsync_portfolio_live.html';
 (function detectRecovery() {
   try {
     const hash = window.location.hash.substring(1);
@@ -238,6 +242,7 @@ let _recoveryToken = null;
     });
     if (params.type === 'recovery' && params.access_token) {
       _recoveryToken = params.access_token;
+      _recoveryReturnUrl = getSafeReturnUrl();
       document.getElementById('login-card').style.display = 'none';
       document.getElementById('reset-card').style.display = 'block';
       history.replaceState(null, '', window.location.pathname);
@@ -439,7 +444,7 @@ async function forgotPassword() {
     await fetch(SUPA_URL + '/auth/v1/recover', {
       method: 'POST',
       headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, redirectTo: window.location.href.split('?')[0].split('#')[0] })
+      body: JSON.stringify({ email, redirectTo: window.location.href.split('#')[0] })
     });
   } catch(e) {}
   // Always show the same message (prevents email enumeration)
@@ -496,7 +501,8 @@ async function setNewPassword() {
       _recoveryToken = null;
       okBox.textContent = 'Password updated! Redirecting to sign in…';
       okBox.classList.add('show');
-      setTimeout(() => window.location.replace('medsync_login.html'), 2000);
+      const backTo = 'medsync_login.html' + (_recoveryReturnUrl !== 'medsync_portfolio_live.html' ? '?return=' + encodeURIComponent(_recoveryReturnUrl) : '');
+      setTimeout(() => window.location.replace(backTo), 2000);
     }
   } catch(e) {
     errBox.textContent = 'Connection error. Please try again.';
