@@ -1335,7 +1335,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
 
     <div class="chart-card">
       <div class="chart-title">Create a new user</div>
-      <div class="chart-note" style="margin-bottom:14px">Creates a real login (shared with MedSync) and gives it full ScoutSync data access, same as every other account today. Share the email/temporary password below with them directly — no welcome email is sent from here.</div>
+      <div class="chart-note" style="margin-bottom:14px">Creates a real login (shared with MedSync) and gives it full ScoutSync data access, same as every other account today. A welcome email is sent automatically so they can set their own password and sign in for the first time.</div>
       <div id="users-create-msg" class="chart-note" style="display:none;margin-bottom:14px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:640px">
         <div>
@@ -7779,7 +7779,22 @@ async function createScoutSyncUser() {
       return;
     }
 
-    showMsg(`${fullName} created. Share these credentials directly: ${email} / ${pass}`, true);
+    // Send a welcome/set-password email immediately so the new user never
+    // needs to be told the temporary password out of band -- same safe,
+    // anon-key /auth/v1/recover call the Reset Password button uses.
+    let emailSent = true;
+    try {
+      const recoverRes = await fetch(`${SUPA_URL}/auth/v1/recover`, {
+        method: 'POST',
+        headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, redirectTo: 'https://medsync.vet/medsync_login.html' }),
+      });
+      emailSent = recoverRes.ok;
+    } catch (e) { emailSent = false; }
+
+    showMsg(emailSent
+      ? `${fullName} created. A welcome email was sent to ${email} to set their password and sign in.`
+      : `${fullName} created, but the welcome email failed to send. Share these credentials directly: ${email} / ${pass}`, true);
     document.getElementById('uc-first').value = '';
     document.getElementById('uc-last').value = '';
     document.getElementById('uc-email').value = '';
