@@ -74,16 +74,16 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 <body>
 <div class="topbar">
   <div class="logo">
-    <img src="medsync_logo.png" width="36" height="36" alt="MedSync" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <img id="topbar-logo-img" src="medsync_logo.png" width="36" height="36" alt="MedSync" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
     <div class="logo-fallback" style="display:none;">M</div>
-    <div class="logo-text">Med<span>Sync</span></div>
+    <div class="logo-text" id="topbar-logo-text">Med<span>Sync</span></div>
   </div>
 </div>
 <div class="main">
-  <img src="medsync_logo.png" alt="MedSync" style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 6px rgba(200,56,3,0.6),0 16px 48px rgba(0,0,0,0.45);max-width:40vw;" onerror="this.style.display='none'">
+  <img id="hero-logo-img" src="medsync_logo.png" alt="MedSync" style="width:160px;height:160px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 6px rgba(200,56,3,0.6),0 16px 48px rgba(0,0,0,0.45);max-width:40vw;" onerror="this.style.display='none'">
   <div style="text-align:center;">
-    <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.4px;">Med<span style="color:#C83803;">Sync</span></div>
-    <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.1em;text-transform:uppercase;margin-top:4px;">Scout Care · Internal Platform</div>
+    <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.4px;" id="hero-word">Med<span style="color:#C83803;">Sync</span></div>
+    <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.1em;text-transform:uppercase;margin-top:4px;" id="hero-tagline">Scout Care · Internal Platform</div>
   </div>
 
   <!-- Login card -->
@@ -171,6 +171,26 @@ function getSafeReturnUrl() {
   } catch (e) {}
   return 'medsync_portfolio_live.html';
 }
+
+// Same login, same account, same session (see getSafeReturnUrl above) --
+// but a scoutsync_*.html page sent you here, so the page should say
+// ScoutSync, not MedSync, while you're signing in. Purely cosmetic; the
+// auth call and stored session are identical either way.
+(function applyScoutSyncBranding() {
+  if (!getSafeReturnUrl().startsWith('scoutsync_')) return;
+  document.title = 'ScoutSync — Sign In';
+  document.getElementById('topbar-logo-text').innerHTML = 'Scout<span>Sync</span>';
+  document.getElementById('topbar-logo-img').src = 'Scout Logo.png';
+  document.getElementById('topbar-logo-img').alt = 'ScoutSync';
+  document.getElementById('hero-logo-img').src = 'Scout Logo.png';
+  document.getElementById('hero-logo-img').alt = 'ScoutSync';
+  document.getElementById('hero-word').innerHTML = 'Scout<span style="color:#C83803;">Sync</span>';
+  document.getElementById('hero-tagline').textContent = 'Executive Dashboard';
+  document.getElementById('card-title').textContent = 'Sign in to ScoutSync';
+  document.querySelectorAll('.card-footer').forEach(el => {
+    el.textContent = 'ScoutSync · Scout Veterinary Urgent Care';
+  });
+})();
 
 // ── Session check on load ────────────────────────────────────────────────────
 (function checkSession() {
