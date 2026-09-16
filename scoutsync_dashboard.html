@@ -1415,7 +1415,7 @@ function readStoredSession() {
 }
 const AUTH_SESSION = readStoredSession();
 if (!AUTH_SESSION) {
-  window.location.replace('medsync_login.html');
+  window.location.replace('medsync_login.html?return=scoutsync_dashboard.html');
   throw new Error('ScoutSync dashboard requires a login — redirecting.');
 }
 

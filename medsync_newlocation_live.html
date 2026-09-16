@@ -169,7 +169,7 @@ const AUTH_SESSION = (function requireAuthOrRedirect() {
     const session = raw ? JSON.parse(raw) : null;
     if (session && session.access_token && session.expires_at && session.expires_at * 1000 > Date.now()) return session;
   } catch (e) {}
-  window.location.replace('medsync_login.html');
+  window.location.replace('medsync_login.html?return=medsync_newlocation_live.html');
   throw new Error('This page requires a login — redirecting.');
 })();
 
