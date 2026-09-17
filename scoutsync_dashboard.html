@@ -1656,18 +1656,65 @@ function isoDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); retur
 // list) on any page's fetch failing, so callers can't mistake a failed
 // fetch for a genuinely empty result.
 const SUPA_PAGE_SIZE = 1000;
+// A large, unfiltered table (tens of thousands of rows) paged strictly one
+// request at a time -- each page waiting on the last -- was the real reason
+// a full pull could take the better part of a minute on its own, even with
+// no duplicate fetches left. The first page also asks PostgREST for the
+// exact total row count (via the Content-Range response header), so every
+// remaining page's offset is already known and they can be requested
+// together in small parallel batches instead of strictly sequentially.
+// Batched (not all at once) so a very large table can't fire off dozens of
+// simultaneous requests and trip Supabase's rate limits.
+const PARALLEL_PAGE_BATCH = 8;
 async function fetchAllRowsUncached(url) {
-  const out = [];
-  let offset = 0;
-  while (true) {
-    const sep = url.includes('?') ? '&' : '?';
-    const res = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=${offset}`, { headers: HEADERS });
-    if (!res.ok) return null;
-    const page = await res.json();
-    out.push(...page);
-    if (page.length < SUPA_PAGE_SIZE) return out;
-    offset += SUPA_PAGE_SIZE;
+  const sep = url.includes('?') ? '&' : '?';
+  const firstRes = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=0`, {
+    headers: { ...HEADERS, 'Prefer': 'count=exact' },
+  });
+  if (!firstRes.ok) return null;
+  const firstPage = await firstRes.json();
+
+  // "0-999/12345" -> 12345. Missing/unparsable (e.g. a view that doesn't
+  // support exact counts) just means we can't parallelize -- fall back to
+  // treating the first page as the only one already in hand and let the
+  // caller's own "page.length < SUPA_PAGE_SIZE" convention decide from here
+  // via the sequential path below.
+  const range = firstRes.headers.get('content-range');
+  const total = range ? parseInt(range.split('/')[1], 10) : NaN;
+
+  if (!Number.isFinite(total)) {
+    // Count unavailable -- same sequential loop as before, just starting
+    // from the page already fetched above instead of re-fetching offset 0.
+    const out = firstPage.slice();
+    let offset = SUPA_PAGE_SIZE;
+    while (firstPage.length === SUPA_PAGE_SIZE) {
+      const res = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=${offset}`, { headers: HEADERS });
+      if (!res.ok) return null;
+      const page = await res.json();
+      out.push(...page);
+      if (page.length < SUPA_PAGE_SIZE) return out;
+      offset += SUPA_PAGE_SIZE;
+    }
+    return out;
   }
+
+  if (total <= firstPage.length) return firstPage;
+
+  const offsets = [];
+  for (let offset = SUPA_PAGE_SIZE; offset < total; offset += SUPA_PAGE_SIZE) offsets.push(offset);
+
+  const restPages = [];
+  for (let i = 0; i < offsets.length; i += PARALLEL_PAGE_BATCH) {
+    const batch = offsets.slice(i, i + PARALLEL_PAGE_BATCH);
+    const results = await Promise.all(batch.map(offset =>
+      fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=${offset}`, { headers: HEADERS })
+        .then(res => (res.ok ? res.json() : null))
+    ));
+    if (results.some(p => p === null)) return null;
+    restPages.push(...results);
+  }
+
+  return firstPage.concat(...restPages);
 }
 
 // Session-wide, keyed by the exact request URL (which already encodes every
