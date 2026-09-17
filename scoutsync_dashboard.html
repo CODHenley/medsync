@@ -1659,73 +1659,44 @@ const SUPA_PAGE_SIZE = 1000;
 // A large, unfiltered table (tens of thousands of rows) paged strictly one
 // request at a time -- each page waiting on the last -- was the real reason
 // a full pull could take the better part of a minute on its own, even with
-// no duplicate fetches left. The first page also asks PostgREST for the
-// exact total row count (via the Content-Range response header), so every
-// remaining page's offset is already known and they can be requested
-// together in small parallel batches instead of strictly sequentially.
-// Batched (not all at once) so a very large table can't fire off dozens of
-// simultaneous requests and trip Supabase's rate limits.
+// no duplicate fetches left.
+//
+// An earlier version of this asked PostgREST for the exact total row count
+// up front (via Prefer: count=exact) so every page's offset would be known
+// ahead of time. That turned out to be its own trap: some views reject an
+// exact-count request outright (a v_*_profile view 500'd), and on tables
+// carrying the region-scoping RLS policy, an exact COUNT(*) has to evaluate
+// that policy across the *whole* table -- unlike a plain LIMIT-bound SELECT,
+// which can stop as soon as it finds enough matching rows, COUNT can't stop
+// early, so it turned into a full scan that blew past Supabase's statement
+// timeout (~8-9s) on every RLS-scoped table.
+//
+// So: no count, exact or estimated, ever. Pages are fetched in rounds of
+// PARALLEL_PAGE_BATCH offsets at a time, run concurrently -- and since rows
+// come back in a fixed order, the moment any page in a round is shorter
+// than a full page, that's the unambiguous end of the table, no total
+// needed to know it.
 const PARALLEL_PAGE_BATCH = 8;
 async function fetchAllRowsUncached(url) {
   const sep = url.includes('?') ? '&' : '?';
-  let firstRes = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=0`, {
-    headers: { ...HEADERS, 'Prefer': 'count=exact' },
-  });
-  // Asking for an exact count can itself fail on some views (a v_*_profile
-  // view broke this way -- exact-count planning over its own joins/aggregates
-  // apparently isn't something PostgREST can always do), even though the
-  // exact same request without that header works fine. Retry once without
-  // it before giving up entirely -- this just means that one fetch can't be
-  // parallelized, not that its data is unavailable.
-  let countHeaderUnsupported = false;
-  if (!firstRes.ok) {
-    firstRes = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=0`, { headers: HEADERS });
-    countHeaderUnsupported = true;
-    if (!firstRes.ok) return null;
-  }
-  const firstPage = await firstRes.json();
-
-  // "0-999/12345" -> 12345. Missing/unparsable (e.g. a view that doesn't
-  // support exact counts) just means we can't parallelize -- fall back to
-  // treating the first page as the only one already in hand and let the
-  // caller's own "page.length < SUPA_PAGE_SIZE" convention decide from here
-  // via the sequential path below.
-  const range = countHeaderUnsupported ? null : firstRes.headers.get('content-range');
-  const total = range ? parseInt(range.split('/')[1], 10) : NaN;
-
-  if (!Number.isFinite(total)) {
-    // Count unavailable -- same sequential loop as before, just starting
-    // from the page already fetched above instead of re-fetching offset 0.
-    const out = firstPage.slice();
-    let offset = SUPA_PAGE_SIZE;
-    while (firstPage.length === SUPA_PAGE_SIZE) {
-      const res = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=${offset}`, { headers: HEADERS });
-      if (!res.ok) return null;
-      const page = await res.json();
-      out.push(...page);
-      if (page.length < SUPA_PAGE_SIZE) return out;
-      offset += SUPA_PAGE_SIZE;
-    }
-    return out;
-  }
-
-  if (total <= firstPage.length) return firstPage;
-
-  const offsets = [];
-  for (let offset = SUPA_PAGE_SIZE; offset < total; offset += SUPA_PAGE_SIZE) offsets.push(offset);
-
-  const restPages = [];
-  for (let i = 0; i < offsets.length; i += PARALLEL_PAGE_BATCH) {
-    const batch = offsets.slice(i, i + PARALLEL_PAGE_BATCH);
-    const results = await Promise.all(batch.map(offset =>
-      fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=${offset}`, { headers: HEADERS })
+  const out = [];
+  let offset = 0;
+  while (true) {
+    const batchOffsets = Array.from({ length: PARALLEL_PAGE_BATCH }, (_, i) => offset + i * SUPA_PAGE_SIZE);
+    const results = await Promise.all(batchOffsets.map(o =>
+      fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=${o}`, { headers: HEADERS })
         .then(res => (res.ok ? res.json() : null))
     ));
     if (results.some(p => p === null)) return null;
-    restPages.push(...results);
-  }
 
-  return firstPage.concat(...restPages);
+    let reachedEnd = false;
+    for (const page of results) {
+      out.push(...page);
+      if (page.length < SUPA_PAGE_SIZE) { reachedEnd = true; break; }
+    }
+    if (reachedEnd) return out;
+    offset += PARALLEL_PAGE_BATCH * SUPA_PAGE_SIZE;
+  }
 }
 
 // Session-wide, keyed by the exact request URL (which already encodes every
