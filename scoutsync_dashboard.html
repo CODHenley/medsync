@@ -1671,16 +1671,43 @@ const SUPA_PAGE_SIZE = 1000;
 // early, so it turned into a full scan that blew past Supabase's statement
 // timeout (~8-9s) on every RLS-scoped table.
 //
-// So: no count, exact or estimated, ever. Pages are fetched in rounds of
-// PARALLEL_PAGE_BATCH offsets at a time, run concurrently -- and since rows
-// come back in a fixed order, the moment any page in a round is shorter
-// than a full page, that's the unambiguous end of the table, no total
+// So: no count, exact or estimated, ever. But firing PARALLEL_PAGE_BATCH
+// offsets speculatively from the very first request (an earlier version of
+// this) has its own failure mode: for a small table/view (most of them --
+// this is the common case, not the exception), that fires 7 wasted
+// speculative requests alongside the one real one. For a view whose
+// underlying query is itself expensive regardless of the requested range
+// (e.g. a per-location demographic join), 8 concurrent copies of that same
+// expensive query overwhelmed Supabase and ALL of them 500'd, including the
+// one request that would have just returned the real, small result.
+//
+// So pages 0 and 1 are always fetched alone, one at a time, first -- a
+// SINGLE full page isn't quite enough proof (a table sitting at exactly
+// one page's worth of rows would otherwise still trigger one wasted
+// speculative batch just to confirm there's no more). Only TWO consecutive
+// full pages (provably at least 2000 rows) trigger any parallel batching
+// at all, starting from offset=2000 -- a small table/view never fires a
+// single speculative request beyond the ones it actually needs, while a
+// genuinely large table still gets the full parallelization benefit for
+// its remaining pages, in rounds of PARALLEL_PAGE_BATCH at a time. Rows
+// come back in a fixed order, so the moment any page in a round is shorter
+// than a full page, that's the unambiguous end of the table -- no total
 // needed to know it.
 const PARALLEL_PAGE_BATCH = 8;
 async function fetchAllRowsUncached(url) {
   const sep = url.includes('?') ? '&' : '?';
-  const out = [];
-  let offset = 0;
+  const page0Res = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=0`, { headers: HEADERS });
+  if (!page0Res.ok) return null;
+  const page0 = await page0Res.json();
+  if (page0.length < SUPA_PAGE_SIZE) return page0;
+
+  const page1Res = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=${SUPA_PAGE_SIZE}`, { headers: HEADERS });
+  if (!page1Res.ok) return null;
+  const page1 = await page1Res.json();
+  const out = page0.concat(page1);
+  if (page1.length < SUPA_PAGE_SIZE) return out;
+
+  let offset = SUPA_PAGE_SIZE * 2;
   while (true) {
     const batchOffsets = Array.from({ length: PARALLEL_PAGE_BATCH }, (_, i) => offset + i * SUPA_PAGE_SIZE);
     const results = await Promise.all(batchOffsets.map(o =>
