@@ -2317,9 +2317,17 @@ function renderComparisonChart(el, seriesA, seriesB, opts) {
     tt.style.left = (xAt(idx) * rectScale) + 'px';
     tt.style.top = (Math.min(yAt(pa.y), yAt(pb.y)) * (rect.height / H)) + 'px';
     tt.style.opacity = '1';
+    // When the plotted values are an index (e.g. "110" with no unit of its
+    // own), that number alone is ambiguous -- show the real underlying
+    // figure (dollars, visit count, etc.) alongside it if the caller
+    // supplied one, instead of just the bare index.
+    const rawA = opts.rawA && opts.rawA[idx];
+    const rawB = opts.rawB && opts.rawB[idx];
+    const suffixA = rawA && opts.fmtRawA ? ` (${esc(opts.fmtRawA(rawA.y))})` : '';
+    const suffixB = rawB && opts.fmtRawB ? ` (${esc(opts.fmtRawB(rawB.y))})` : '';
     tt.innerHTML = `<div class="tt-label">${esc(fmtDate(pa.x))}</div>
-      <div class="tt-value">${esc(opts.labelA)}: ${Math.round(pa.y)}</div>
-      <div class="tt-value">${esc(opts.labelB)}: ${Math.round(pb.y)}</div>`;
+      <div class="tt-value">${esc(opts.labelA)}: ${Math.round(pa.y)}${suffixA}</div>
+      <div class="tt-value">${esc(opts.labelB)}: ${Math.round(pb.y)}${suffixB}</div>`;
   });
   hitRect.addEventListener('mouseleave', () => {
     crosshair.style.opacity = '0'; dotA.style.opacity = '0'; dotB.style.opacity = '0'; tt.style.opacity = '0';
@@ -2409,6 +2417,11 @@ function renderTrendSection() {
     renderComparisonChart(el, indexToAverage(currentRevenueSeries), indexToAverage(currentVolumeSeries), {
       colorA: financialColor, labelA: 'Revenue (indexed)',
       colorB: clinicalColor, labelB: 'Case volume (indexed)',
+      // The plotted "110" etc. is an index, not a dollar figure or a visit
+      // count -- show the real underlying number alongside it so it's
+      // never mistaken for one.
+      rawA: currentRevenueSeries, fmtRawA: v => fmt$(v),
+      rawB: currentVolumeSeries, fmtRawB: v => fmtN(v) + ' visits',
     });
   } else {
     note.textContent = 'Daily revenue, selected range';
