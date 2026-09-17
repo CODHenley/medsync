@@ -1668,10 +1668,21 @@ const SUPA_PAGE_SIZE = 1000;
 const PARALLEL_PAGE_BATCH = 8;
 async function fetchAllRowsUncached(url) {
   const sep = url.includes('?') ? '&' : '?';
-  const firstRes = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=0`, {
+  let firstRes = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=0`, {
     headers: { ...HEADERS, 'Prefer': 'count=exact' },
   });
-  if (!firstRes.ok) return null;
+  // Asking for an exact count can itself fail on some views (a v_*_profile
+  // view broke this way -- exact-count planning over its own joins/aggregates
+  // apparently isn't something PostgREST can always do), even though the
+  // exact same request without that header works fine. Retry once without
+  // it before giving up entirely -- this just means that one fetch can't be
+  // parallelized, not that its data is unavailable.
+  let countHeaderUnsupported = false;
+  if (!firstRes.ok) {
+    firstRes = await fetch(`${url}${sep}limit=${SUPA_PAGE_SIZE}&offset=0`, { headers: HEADERS });
+    countHeaderUnsupported = true;
+    if (!firstRes.ok) return null;
+  }
   const firstPage = await firstRes.json();
 
   // "0-999/12345" -> 12345. Missing/unparsable (e.g. a view that doesn't
@@ -1679,7 +1690,7 @@ async function fetchAllRowsUncached(url) {
   // treating the first page as the only one already in hand and let the
   // caller's own "page.length < SUPA_PAGE_SIZE" convention decide from here
   // via the sequential path below.
-  const range = firstRes.headers.get('content-range');
+  const range = countHeaderUnsupported ? null : firstRes.headers.get('content-range');
   const total = range ? parseInt(range.split('/')[1], 10) : NaN;
 
   if (!Number.isFinite(total)) {
