@@ -1331,11 +1331,11 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
   <section class="panel" id="panel-users">
     <div class="section-head"><div class="dot" style="background:var(--c-financial)"></div>
       <h2>Manage Users</h2>
-      <span class="sub">Any active MedSync/ScoutSync login can see all ScoutSync data for now — this just creates the account</span></div>
+      <span class="sub">Superadmins see every hospital; Admins are scoped to a region or specific hospitals, set below</span></div>
 
     <div class="chart-card">
       <div class="chart-title">Create a new user</div>
-      <div class="chart-note" style="margin-bottom:14px">Creates a real login (shared with MedSync) and gives it full ScoutSync data access, same as every other account today. A welcome email is sent automatically so they can set their own password and sign in for the first time.</div>
+      <div class="chart-note" style="margin-bottom:14px">Creates a real login (shared with MedSync). A welcome email is sent automatically so they can set their own password and sign in for the first time.</div>
       <div id="users-create-msg" class="chart-note" style="display:none;margin-bottom:14px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:640px">
         <div>
@@ -1358,9 +1358,31 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
           <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Role</label>
           <select id="uc-role" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit"></select>
         </div>
-        <div id="uc-loc-field" style="display:none">
-          <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Location</label>
-          <select id="uc-loc" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit"></select>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Title <span style="text-transform:none;font-weight:400">(optional)</span></label>
+          <select id="uc-title" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+            <option value="">—</option>
+            <option>Hospital Director</option>
+            <option>Lead Doctor</option>
+            <option>Regional Medical Director</option>
+            <option>Regional Hospital Director</option>
+          </select>
+        </div>
+        <div id="uc-scope-field" style="display:none">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">ScoutSync access</label>
+          <select id="uc-scope" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit">
+            <option value="all">All hospitals</option>
+            <option value="region">A specific region</option>
+            <option value="locations">Specific hospitals</option>
+          </select>
+        </div>
+        <div id="uc-region-field" style="display:none;grid-column:1 / -1">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Region</label>
+          <select id="uc-region" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit"></select>
+        </div>
+        <div id="uc-hospitals-field" style="display:none;grid-column:1 / -1">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Hospitals</label>
+          <div id="uc-hospitals-checks" style="display:flex;flex-wrap:wrap;gap:6px 18px"></div>
         </div>
       </div>
       <button id="uc-submit-btn" style="margin-top:16px;padding:10px 22px;background:var(--c-financial);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Create user →</button>
@@ -1465,6 +1487,30 @@ if (!AUTH_SESSION) {
   throw new Error('ScoutSync dashboard requires a login — redirecting.');
 }
 
+// ScoutSync is limited to Superadmin/Admin accounts -- other real MedSync
+// logins (managers, receivers, inventory leads, clinical staff) exist but
+// this product isn't for them. This is a product-scoping gate, not the
+// security boundary -- actual row-level data access is enforced server-side
+// via RLS (see scoutsync_allowed_locations()) regardless of which page a
+// browser tab happens to load. Not redirecting to medsync_login.html here:
+// that page auto-skips a signed-in session straight back to this same
+// return url, which would just loop.
+const CURRENT_USER = (() => {
+  try { return JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); }
+  catch (e) { return {}; }
+})();
+if (!['medsync_superadmin', 'admin'].includes(CURRENT_USER.role)) {
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;background:#1C2B4A;color:#fff;text-align:center;padding:24px">
+      <div>
+        <div style="font-size:20px;font-weight:800;margin-bottom:8px">ScoutSync access is limited</div>
+        <div style="font-size:14px;opacity:.65;margin-bottom:20px">This dashboard is available to Superadmin and Admin accounts only.</div>
+        <a href="medsync_portfolio_live.html" style="color:#C83803;font-weight:700;text-decoration:none">← Return to MedSync</a>
+      </div>
+    </div>`;
+  throw new Error('ScoutSync dashboard requires Superadmin or Admin role — access denied.');
+}
+
 // ── Supabase config (same project as the rest of MedSync) ──
 const SUPA_URL = 'https://aemkdummdrmxtwrkggjw.supabase.co';
 // Only used for the required `apikey` header Supabase's API expects on every
@@ -1481,8 +1527,7 @@ const UNATTRIBUTED_PROVIDER = '00000000-0000-0000-0000-000000000000';
 // actual person, not just a public URL, that data is being fetched on
 // behalf of.
 (function initUserInfo() {
-  let user = {};
-  try { user = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch (e) {}
+  const user = CURRENT_USER;
   document.getElementById('user-info-name').textContent = user.full_name || user.email || '';
   document.getElementById('logout-btn').addEventListener('click', () => {
     localStorage.removeItem('medsync_session'); localStorage.removeItem('medsync_user');
@@ -7671,35 +7716,62 @@ document.querySelectorAll('#report-picker .report-item').forEach(btn => {
 // service_role key that must never reach a browser -- see
 // medsync_platform_admin.html's /auth/v1/admin/users calls for why that
 // one couldn't just be "fixed" the same way).
-const SCOUTSYNC_ROLE_LABELS = {
-  medsync_superadmin: 'Superadmin', admin: 'Admin', hospital_manager: 'Hospital Director',
-  manager: 'Hospital Director', receiver: 'Receiver', inventory_lead: 'Inventory Lead', clinical: 'Vet / Tech',
-};
-const SCOUTSYNC_ROLE_NEEDS_LOCATION = ['manager', 'hospital_manager', 'receiver', 'inventory_lead', 'clinical'];
+// ScoutSync itself is limited to these two roles (see the auth gate above) --
+// this is the only role picker that matters for ScoutSync access. The
+// broader MedSync roles (manager, receiver, inventory_lead, clinical) are
+// managed elsewhere (medsync_users_live.html), not through this tab.
+const SCOUTSYNC_ROLE_LABELS = { medsync_superadmin: 'Superadmin', admin: 'Admin' };
+let SCOUTSYNC_REGIONS = null;
+
+function uc_updateScopeFields() {
+  const role = document.getElementById('uc-role').value;
+  const scope = document.getElementById('uc-scope').value;
+  // Superadmins always get full access -- the scope picker only applies to
+  // Admins, whose ScoutSync visibility can be narrowed to one region or a
+  // specific set of hospitals.
+  document.getElementById('uc-scope-field').style.display = role === 'admin' ? '' : 'none';
+  document.getElementById('uc-region-field').style.display = (role === 'admin' && scope === 'region') ? '' : 'none';
+  document.getElementById('uc-hospitals-field').style.display = (role === 'admin' && scope === 'locations') ? '' : 'none';
+}
 
 async function loadUsersTab() {
   const roleSel = document.getElementById('uc-role');
   if (!roleSel.options.length) {
     roleSel.innerHTML = Object.keys(SCOUTSYNC_ROLE_LABELS).map(r => `<option value="${r}">${esc(SCOUTSYNC_ROLE_LABELS[r])}</option>`).join('');
-    roleSel.addEventListener('change', () => {
-      document.getElementById('uc-loc-field').style.display = SCOUTSYNC_ROLE_NEEDS_LOCATION.includes(roleSel.value) ? '' : 'none';
-    });
+    roleSel.addEventListener('change', uc_updateScopeFields);
+    document.getElementById('uc-scope').addEventListener('change', uc_updateScopeFields);
   }
-  const locSel = document.getElementById('uc-loc');
-  if (!locSel.options.length) {
-    locSel.innerHTML = LOCATIONS.map(l => `<option value="${l.uuid}">${esc(l.name)}</option>`).join('');
+  const hospEl = document.getElementById('uc-hospitals-checks');
+  if (!hospEl.children.length) {
+    hospEl.innerHTML = LOCATIONS.map(l => `
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+        <input type="checkbox" class="uc-hosp-check" value="${l.uuid}"> ${esc(l.name)}
+      </label>`).join('');
   }
-  document.getElementById('uc-loc-field').style.display = SCOUTSYNC_ROLE_NEEDS_LOCATION.includes(roleSel.value) ? '' : 'none';
+  const regionSel = document.getElementById('uc-region');
+  if (SCOUTSYNC_REGIONS === null) {
+    SCOUTSYNC_REGIONS = await fetchAllRows(`${SUPA_URL}/rest/v1/regions?select=id,name&order=name`) || [];
+    regionSel.innerHTML = SCOUTSYNC_REGIONS.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('');
+  }
+  uc_updateScopeFields();
 
   const listEl = document.getElementById('users-list');
-  const rows = await fetchAllRows(`${SUPA_URL}/rest/v1/users?select=id,full_name,email,role,is_active,created_at&order=created_at.desc`);
+  const rows = await fetchAllRows(`${SUPA_URL}/rest/v1/users?select=id,full_name,email,role,title,is_active,created_at,access_scope,access_region_id,access_location_ids&order=created_at.desc`);
   if (rows === null) {
     listEl.innerHTML = '<div class="chart-note">Couldn\'t load the user list.</div>';
     return;
   }
+  const regionName = (id) => (SCOUTSYNC_REGIONS.find(r => r.id === id) || {}).name || 'Region';
+  const locName = (id) => (LOCATIONS.find(l => l.uuid === id) || {}).name || id;
+  const accessLabel = (u) => {
+    if (u.role === 'medsync_superadmin' || u.access_scope === 'all' || !u.access_scope) return 'All hospitals';
+    if (u.access_scope === 'region') return u.access_region_id ? regionName(u.access_region_id) : 'Region (unset)';
+    if (u.access_scope === 'locations') return (u.access_location_ids || []).map(locName).join(', ') || 'No hospitals selected';
+    return '—';
+  };
   listEl.innerHTML = `<div style="overflow-x:auto"><table class="dd-table">
-    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
-    <tbody>${rows.map(u => `<tr><td>${esc(u.full_name || '—')}</td><td>${esc(u.email || '—')}</td><td>${esc(SCOUTSYNC_ROLE_LABELS[u.role] || u.role || '—')}</td><td>${u.is_active === false ? 'Inactive' : 'Active'}</td><td>${u.email ? `<button class="us-reset-btn" data-email="${esc(u.email)}" style="padding:5px 12px;background:transparent;color:var(--c-financial);border:1px solid var(--c-financial);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Reset password</button>` : ''}</td></tr>`).join('')}</tbody>
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Title</th><th>Access</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows.map(u => `<tr><td>${esc(u.full_name || '—')}</td><td>${esc(u.email || '—')}</td><td>${esc(SCOUTSYNC_ROLE_LABELS[u.role] || u.role || '—')}</td><td>${esc(u.title || '—')}</td><td>${esc(accessLabel(u))}</td><td>${u.is_active === false ? 'Inactive' : 'Active'}</td><td>${u.email ? `<button class="us-reset-btn" data-email="${esc(u.email)}" style="padding:5px 12px;background:transparent;color:var(--c-financial);border:1px solid var(--c-financial);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Reset password</button>` : ''}</td></tr>`).join('')}</tbody>
   </table></div>`;
   listEl.querySelectorAll('.us-reset-btn').forEach(btn => btn.addEventListener('click', () => resetScoutSyncUserPassword(btn)));
 }
@@ -7740,11 +7812,29 @@ async function createScoutSyncUser() {
   const email = document.getElementById('uc-email').value.trim();
   const pass = document.getElementById('uc-pass').value.trim();
   const role = document.getElementById('uc-role').value;
-  const locationId = document.getElementById('uc-loc').value;
+  const title = document.getElementById('uc-title').value || null;
+  const scope = document.getElementById('uc-scope').value;
+  const regionId = document.getElementById('uc-region').value;
+  const hospitalIds = Array.from(document.querySelectorAll('.uc-hosp-check:checked')).map(c => c.value);
 
   if (!firstName || !lastName || !email || !pass) {
     showMsg('Please fill in first name, last name, email, and a temporary password.', false);
     return;
+  }
+
+  // Superadmins always get full access; Admins get whatever scope was
+  // picked above -- enforced server-side by scoutsync_allowed_locations(),
+  // this just has to set the columns it reads correctly.
+  let accessScope = 'all', accessRegionId = null, accessLocationIds = null;
+  if (role === 'admin') {
+    accessScope = scope;
+    if (scope === 'region') {
+      if (!regionId) { showMsg('Please select a region for this Admin.', false); return; }
+      accessRegionId = regionId;
+    } else if (scope === 'locations') {
+      if (!hospitalIds.length) { showMsg('Please select at least one hospital for this Admin.', false); return; }
+      accessLocationIds = hospitalIds;
+    }
   }
 
   btn.disabled = true; btn.textContent = 'Creating…';
@@ -7767,11 +7857,8 @@ async function createScoutSyncUser() {
       method: 'POST',
       headers: { ...HEADERS, 'Prefer': 'return=minimal' },
       body: JSON.stringify({
-        id: userId, email, full_name: fullName, role, is_active: true,
-        location_id: SCOUTSYNC_ROLE_NEEDS_LOCATION.includes(role) ? (locationId || null) : null,
-        // Everyone sees all ScoutSync data for now -- no per-user scoping
-        // built for this tab yet, so every account gets the same 'all' scope.
-        access_scope: 'all', access_region_id: null, access_location_ids: null,
+        id: userId, email, full_name: fullName, role, title, is_active: true,
+        access_scope: accessScope, access_region_id: accessRegionId, access_location_ids: accessLocationIds,
       }),
     });
     if (!profileRes.ok) {
@@ -7799,6 +7886,10 @@ async function createScoutSyncUser() {
     document.getElementById('uc-last').value = '';
     document.getElementById('uc-email').value = '';
     document.getElementById('uc-pass').value = 'ScoutSync2026!';
+    document.getElementById('uc-title').value = '';
+    document.getElementById('uc-scope').value = 'all';
+    document.querySelectorAll('.uc-hosp-check').forEach(c => c.checked = false);
+    uc_updateScopeFields();
     await loadUsersTab();
   } catch (e) {
     showMsg('Error: ' + e.message, false);
