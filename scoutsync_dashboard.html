@@ -1656,7 +1656,7 @@ function isoDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); retur
 // list) on any page's fetch failing, so callers can't mistake a failed
 // fetch for a genuinely empty result.
 const SUPA_PAGE_SIZE = 1000;
-async function fetchAllRows(url) {
+async function fetchAllRowsUncached(url) {
   const out = [];
   let offset = 0;
   while (true) {
@@ -1668,6 +1668,28 @@ async function fetchAllRows(url) {
     if (page.length < SUPA_PAGE_SIZE) return out;
     offset += SUPA_PAGE_SIZE;
   }
+}
+
+// Session-wide, keyed by the exact request URL (which already encodes every
+// filter/select/order a caller applied) -- several sections independently
+// need the very same unfiltered table (e.g. the full appointment_events or
+// provider_shifts history, pulled separately by the Financial tab's
+// closed-days report and De Novo's ops-health section) and were each
+// re-fetching it from scratch. This makes every tab benefit transparently
+// from work another tab already did, without any of them needing to know
+// about each other. Cleared by clearDashCache() -- on a filter change, an
+// explicit Refresh, or the 12h auto-refresh -- so it never serves data
+// older than the user's last real refresh. Concurrent callers share the
+// same in-flight promise too, not just already-resolved ones.
+let rawFetchCache = new Map();
+async function fetchAllRows(url) {
+  if (rawFetchCache.has(url)) return rawFetchCache.get(url);
+  const promise = fetchAllRowsUncached(url).then(result => {
+    if (result === null) rawFetchCache.delete(url); // don't let a transient failure poison the rest of the session
+    return result;
+  });
+  rawFetchCache.set(url, promise);
+  return promise;
 }
 
 function selectedLocation() {
@@ -1741,7 +1763,7 @@ function filterSnapshot(extra) {
 // Changing the location or date-range filter can affect every tab/report,
 // not just the one on screen -- simplest correct move is to drop the whole
 // cache rather than try to reason about which entries are still valid.
-function clearDashCache() { dashCache = {}; }
+function clearDashCache() { dashCache = {}; rawFetchCache.clear(); }
 
 // Shows/hides the top-of-content loading indicator. A counter (not a flag)
 // so overlapping real loads -- e.g. a filter change firing a new load
@@ -7855,7 +7877,10 @@ function loadActiveTab(force) {
 async function refreshNow() {
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true; btn.classList.add('loading');
-  try { await loadActiveTab(true); } // force: Refresh always pulls fresh data, cache or no cache
+  try {
+    clearDashCache(); // Refresh always pulls fresh data -- clears the raw-fetch cache too, not just the per-tab one
+    await loadActiveTab(true);
+  }
   finally { btn.disabled = false; btn.classList.remove('loading'); }
 }
 
@@ -7909,9 +7934,9 @@ document.getElementById('refresh-btn').addEventListener('click', refreshNow);
 // Auto-refresh twice a day (every 12h) so insights stay current on a tab left
 // open on a screen — the underlying Vetspire syncs run every 4 hours, this is
 // just how often this open page re-polls and recomputes against them. Forced
-// so the skip-refetch cache (whose whole point is skipping fetches when
-// nothing's actually changed) can't quietly turn this into a no-op.
-setInterval(() => loadActiveTab(true), 12 * 60 * 60 * 1000);
+// (and the raw-fetch cache cleared) so neither cache layer can quietly turn
+// this into a no-op.
+setInterval(() => { clearDashCache(); loadActiveTab(true); }, 12 * 60 * 60 * 1000);
 
 document.getElementById('custom-from').max = document.getElementById('custom-to').max = isoDaysAgo(0);
 
