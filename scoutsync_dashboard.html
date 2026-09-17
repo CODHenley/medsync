@@ -139,18 +139,6 @@ main { padding: 22px 24px 60px; max-width: 1280px; margin: 0 auto; }
 .cogs-target-form button:hover { opacity: .9; }
 .cogs-target-form #cogs-target-status { margin: 0; align-self: flex-end; padding-bottom: 8px; }
 
-.act-period-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.act-period-row select {
-  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
-  font-size: 13px; font-family: inherit; color: var(--text); background: var(--card);
-}
-.act-period-row .custom-range { gap: 6px; }
-.act-period-row .custom-range span { color: var(--muted); font-size: 12px; }
-.act-period-row .custom-range input[type="date"] {
-  padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px;
-  font-size: 12.5px; font-family: inherit; color: var(--text); background: var(--card); color-scheme: light;
-}
-
 .variance-flag {
   display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 100px;
   font-size: 10.5px; font-weight: 700; background: #FFF4E5; color: var(--s-warn);
@@ -516,27 +504,8 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
     </div>
 
     <div class="section-head"><div class="dot"></div><h2>Avg Cost per Transaction by Provider</h2>
-      <span class="sub">Its own period selector — independent of the range filter above. "Transactions" = cases (exam performed), not every Vetspire encounter row — a retail-only pickup (no exam) never counts as one.</span></div>
+      <span class="sub">"Transactions" = cases (exam performed), not every Vetspire encounter row — a retail-only pickup (no exam) never counts as one.</span></div>
     <div class="chart-card">
-      <div class="act-period-row">
-        <select id="act-period-select">
-          <option value="t7">Trailing 7 days</option>
-          <option value="t30" selected>Trailing 30 days</option>
-          <option value="t60">Trailing 60 days</option>
-          <option value="t90">Trailing 90 days</option>
-          <option value="mtd">Month to date</option>
-          <option value="ytd">Year to date</option>
-          <option value="mom">Month over month (last full month)</option>
-          <option value="yoy">Year over year (trailing 365 days)</option>
-          <option value="py">Previous calendar year</option>
-          <option value="custom">Custom range</option>
-        </select>
-        <div class="custom-range" id="act-custom-range" hidden>
-          <input type="date" id="act-custom-from">
-          <span>–</span>
-          <input type="date" id="act-custom-to">
-        </div>
-      </div>
       <div class="chart-title">Ranked by revenue</div>
       <div class="chart-note" id="act-provider-note"></div>
       <div id="act-provider-table"></div>
@@ -1716,8 +1685,8 @@ function isCustomRange() { return document.getElementById('range-select').value 
 // range is selected but incomplete, so every caller always gets a usable
 // range rather than having to special-case "not set yet". Mirrors the
 // Vetspire invoices date-range picker's calendar presets alongside the
-// existing trailing-day ones (see getActPeriod() below for the same
-// month/quarter math reused here).
+// existing trailing-day ones (see the month/quarter helpers further down
+// this file, reused here).
 function selectedDateRange() {
   const today = isoDaysAgo(0);
   if (isCustomRange()) {
@@ -2317,9 +2286,17 @@ function renderComparisonChart(el, seriesA, seriesB, opts) {
     tt.style.left = (xAt(idx) * rectScale) + 'px';
     tt.style.top = (Math.min(yAt(pa.y), yAt(pb.y)) * (rect.height / H)) + 'px';
     tt.style.opacity = '1';
+    // When the plotted values are an index (e.g. "110" with no unit of its
+    // own), that number alone is ambiguous -- show the real underlying
+    // figure (dollars, visit count, etc.) alongside it if the caller
+    // supplied one, instead of just the bare index.
+    const rawA = opts.rawA && opts.rawA[idx];
+    const rawB = opts.rawB && opts.rawB[idx];
+    const suffixA = rawA && opts.fmtRawA ? ` (${esc(opts.fmtRawA(rawA.y))})` : '';
+    const suffixB = rawB && opts.fmtRawB ? ` (${esc(opts.fmtRawB(rawB.y))})` : '';
     tt.innerHTML = `<div class="tt-label">${esc(fmtDate(pa.x))}</div>
-      <div class="tt-value">${esc(opts.labelA)}: ${Math.round(pa.y)}</div>
-      <div class="tt-value">${esc(opts.labelB)}: ${Math.round(pb.y)}</div>`;
+      <div class="tt-value">${esc(opts.labelA)}: ${Math.round(pa.y)}${suffixA}</div>
+      <div class="tt-value">${esc(opts.labelB)}: ${Math.round(pb.y)}${suffixB}</div>`;
   });
   hitRect.addEventListener('mouseleave', () => {
     crosshair.style.opacity = '0'; dotA.style.opacity = '0'; dotB.style.opacity = '0'; tt.style.opacity = '0';
@@ -2409,6 +2386,11 @@ function renderTrendSection() {
     renderComparisonChart(el, indexToAverage(currentRevenueSeries), indexToAverage(currentVolumeSeries), {
       colorA: financialColor, labelA: 'Revenue (indexed)',
       colorB: clinicalColor, labelB: 'Case volume (indexed)',
+      // The plotted "110" etc. is an index, not a dollar figure or a visit
+      // count -- show the real underlying number alongside it so it's
+      // never mistaken for one.
+      rawA: currentRevenueSeries, fmtRawA: v => fmt$(v),
+      rawB: currentVolumeSeries, fmtRawB: v => fmtN(v) + ' visits',
     });
   } else {
     note.textContent = 'Daily revenue, selected range';
@@ -2810,8 +2792,8 @@ async function loadFinancial() {
   // loadClosedDaysReport itself) -- fired without awaiting so it doesn't
   // block the rest of this tab's load.
   loadClosedDaysReport();
-  // Independent section with its own period selector (not selectedDateRange())
-  // -- fired without awaiting for the same reason.
+  // Reads the same shared filters too -- fired without awaiting for the
+  // same reason.
   loadActPerProviderReport();
 
   const { from, until, days } = selectedDateRange();
@@ -2987,14 +2969,11 @@ async function loadFinancial() {
     'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-// ── Avg Cost per Transaction by Provider: many period cuts (trailing N
-// days / MTD / YTD / MoM / YoY / previous year / custom range), all on an
-// independent selector -- the top-level #range-select has calendar +
-// trailing-day presets but no comparison-window shapes (MoM/YoY), so this
-// section still needs its own richer selector.
+// ── Avg Cost per Transaction by Provider: same shared loc/date-range filter
+// as the rest of the Financial tab (see loadActPerProviderReport() below).
 // v_act_per_provider_daily exposes provider+day revenue and encounter_count
-// (see scoutsync_act_per_provider.sql); each cut below is just a from/until
-// window (plus a comparison window) summed client-side over that view. ──
+// (see scoutsync_act_per_provider.sql); the current and comparison windows
+// are each just a from/until range summed client-side over that view. ──
 function ymd(d) { return d.toISOString().slice(0, 10); }
 function shiftDays(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); }
 function startOfMonth(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), d.getMonth(), 1)); }
@@ -3005,62 +2984,20 @@ function shiftYears(dateStr, n) { const d = new Date(dateStr + 'T00:00:00'); ret
 // Used by the top-level #range-select's "This quarter" preset.
 function startOfQuarter(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return ymd(new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1)); }
 
-// { from, until, compareFrom, compareUntil, compareLabel } -- the comparison
-// window is always a real, distinct period so a Δ can be shown for every cut.
-function getActPeriod(key) {
-  const today = ymd(new Date());
-  if (key === 't7' || key === 't30' || key === 't60' || key === 't90') {
-    const n = parseInt(key.slice(1), 10);
-    const from = shiftDays(today, -(n - 1)), until = today;
-    return { from, until, compareFrom: shiftDays(from, -n), compareUntil: shiftDays(from, -1), compareLabel: `the previous ${n} days` };
-  }
-  if (key === 'mtd') {
-    const from = startOfMonth(today), until = today;
-    const dayOfMonth = new Date(today + 'T00:00:00').getDate();
-    const prevStart = shiftMonths(from, -1);
-    const prevEnd = endOfMonth(prevStart);
-    const cappedDay = Math.min(dayOfMonth, new Date(prevEnd + 'T00:00:00').getDate());
-    const pd = new Date(prevStart + 'T00:00:00');
-    return { from, until, compareFrom: prevStart, compareUntil: ymd(new Date(pd.getFullYear(), pd.getMonth(), cappedDay)), compareLabel: 'the same days last month' };
-  }
-  if (key === 'ytd') {
-    const from = startOfYear(today), until = today;
-    return { from, until, compareFrom: shiftYears(from, -1), compareUntil: shiftYears(until, -1), compareLabel: 'the same year-to-date last year' };
-  }
-  if (key === 'mom') {
-    // Last full completed calendar month vs. the one before it -- a partial
-    // current month would otherwise skew a month-over-month trend read.
-    const lastMonthEnd = shiftDays(startOfMonth(today), -1);
-    const from = startOfMonth(lastMonthEnd), until = lastMonthEnd;
-    const compareUntil = shiftDays(from, -1), compareFrom = startOfMonth(compareUntil);
-    return { from, until, compareFrom, compareUntil, compareLabel: 'the month before' };
-  }
-  if (key === 'yoy') {
-    const from = shiftDays(today, -364), until = today;
-    return { from, until, compareFrom: shiftDays(from, -365), compareUntil: shiftDays(from, -1), compareLabel: 'the prior 365-day period' };
-  }
-  if (key === 'py') {
-    const thisYear = new Date(today + 'T00:00:00').getFullYear();
-    return { from: `${thisYear - 1}-01-01`, until: `${thisYear - 1}-12-31`, compareFrom: `${thisYear - 2}-01-01`, compareUntil: `${thisYear - 2}-12-31`, compareLabel: 'the year before that' };
-  }
-  // custom
-  const from = document.getElementById('act-custom-from').value || shiftDays(today, -29);
-  const until = document.getElementById('act-custom-to').value || today;
-  const days = Math.round((new Date(until) - new Date(from)) / 86400000) + 1;
-  return { from, until, compareFrom: shiftDays(from, -days), compareUntil: shiftDays(from, -1), compareLabel: 'the previous period' };
-}
-
 async function loadActPerProviderReport() {
   const note = document.getElementById('act-provider-note');
   const tableEl = document.getElementById('act-provider-table');
-  const key = document.getElementById('act-period-select').value;
-  document.getElementById('act-custom-range').hidden = key !== 'custom';
-  if (key === 'custom') {
-    const f = document.getElementById('act-custom-from').value, t = document.getElementById('act-custom-to').value;
-    if (!f || !t || f > t) { tableEl.innerHTML = ''; note.textContent = 'Pick a valid custom range.'; return; }
-  }
 
-  const period = getActPeriod(key);
+  // Same current/comparison-window shape as the rest of the Financial tab
+  // (see loadFinancial() above): "previous period" = the same number of
+  // days immediately before `from`, so a Δ stays meaningful for any preset,
+  // including a custom range.
+  const { from, until, days } = selectedDateRange();
+  const compareUntil = shiftDays(from, -1);
+  const compareFromDate = new Date(from + 'T00:00:00');
+  compareFromDate.setDate(compareFromDate.getDate() - days);
+  const period = { from, until, compareFrom: ymd(compareFromDate), compareUntil, compareLabel: 'the previous period' };
+
   const loc = selectedLocation();
   const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
 
@@ -7967,19 +7904,6 @@ document.getElementById('custom-from').addEventListener('change', () => { if (is
 document.getElementById('custom-to').addEventListener('change', () => { if (isCustomRange()) { clearDashCache(); loadActiveTab(); } });
 document.getElementById('overlay-toggle').addEventListener('change', renderTrendSection);
 
-document.getElementById('act-period-select').addEventListener('change', () => {
-  const custom = document.getElementById('act-period-select').value === 'custom';
-  document.getElementById('act-custom-range').hidden = !custom;
-  const fromInput = document.getElementById('act-custom-from'), toInput = document.getElementById('act-custom-to');
-  if (custom && !fromInput.value && !toInput.value) {
-    toInput.value = isoDaysAgo(0);
-    fromInput.value = isoDaysAgo(30);
-  }
-  if (!custom || (fromInput.value && toInput.value)) loadActPerProviderReport();
-});
-document.getElementById('act-custom-from').addEventListener('change', loadActPerProviderReport);
-document.getElementById('act-custom-to').addEventListener('change', loadActPerProviderReport);
-document.getElementById('act-custom-from').max = document.getElementById('act-custom-to').max = isoDaysAgo(0);
 document.getElementById('refresh-btn').addEventListener('click', refreshNow);
 
 // Auto-refresh twice a day (every 12h) so insights stay current on a tab left
