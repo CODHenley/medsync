@@ -4290,11 +4290,16 @@ function renderTrainingStaffCards(rows) {
     });
     showScreen('receiver');
   } else if (user.role === 'inventory_lead') {
-    // Inventory Lead: Daily Work + Reports & Analytics (location-scoped). No admin section.
-    ['mnb-portfolio','mnb-actlog'].forEach(function(id){
+    // Inventory Lead: Daily Work + Analytics (location-scoped). No admin
+    // section. Procurement and Price Audit are ScoutSync's job now --
+    // Procurement's own reorder-approval is redundant with ScoutSync's
+    // (both just write queued po_items rows that already flow into Weekly
+    // Order), and Price Audit's pricing decisions are admin-level, not
+    // something an inventory lead sets.
+    ['mnb-portfolio','mnb-procurement','mnb-actlog'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    ['asb-portfolio','asb-hr-admin','asb-sec-admin',
+    ['asb-portfolio','asb-hr-admin','asb-sec-admin','asb-procurement','asb-priceaudit',
      'asb-users','asb-newlocation','asb-regions','asb-settings'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
