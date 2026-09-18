@@ -750,6 +750,8 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <!-- torso / scrub top — boxy, straight-sided build -->
         <rect x="429" y="182" width="60" height="90" rx="8" fill="#A8D4E8" stroke="#7DB8D4" stroke-width="2"/>
         <path d="M 449,182 L 459,202 L 469,182" fill="none" stroke="#7DB8D4" stroke-width="2" stroke-linejoin="round"/>
+        <rect x="436" y="222" width="18" height="20" rx="2" fill="none" stroke="#7DB8D4" stroke-width="1.6"/>
+        <line x1="436" y1="228" x2="454" y2="228" stroke="#7DB8D4" stroke-width="1.6"/>
 
         <!-- left arm, relaxed -->
         <path d="M 433,190 C 425,203 423,218 425,232" stroke="#A8D4E8" stroke-width="16" fill="none" stroke-linecap="round"/>
@@ -769,24 +771,28 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <!-- neck -->
         <rect x="450" y="157" width="18" height="27" fill="#FDE0C8"/>
 
-        <!-- head, lowered onto the neck so less of it shows -->
-        <ellipse cx="459" cy="151.4" rx="24" ry="27.6" fill="#FDE0C8" stroke="#E0B888" stroke-width="2"/>
+        <!-- head, 5% larger, scaled about the chin so it still sits on the neck -->
+        <ellipse cx="459" cy="150.02" rx="25.2" ry="28.98" fill="#FDE0C8" stroke="#E0B888" stroke-width="2"/>
 
         <!-- eyes -->
-        <ellipse cx="450.6" cy="152.6" rx="4.08" ry="3.6" fill="#2A1E10"/>
-        <ellipse cx="467.4" cy="152.6" rx="4.08" ry="3.6" fill="#2A1E10"/>
-        <circle cx="451.8" cy="151.4" r="1.2" fill="white"/>
-        <circle cx="468.6" cy="151.4" r="1.2" fill="white"/>
-        <path d="M 444.6,145.4 Q 450.6,141.8 456.6,144.2" stroke="#B8935A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-        <path d="M 461.4,144.2 Q 467.4,141.8 473.4,145.4" stroke="#B8935A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="450.18" cy="151.28" rx="4.284" ry="3.78" fill="#2A1E10"/>
+        <ellipse cx="467.82" cy="151.28" rx="4.284" ry="3.78" fill="#2A1E10"/>
+        <circle cx="451.44" cy="150.02" r="1.26" fill="white"/>
+        <circle cx="468.03" cy="150.02" r="1.26" fill="white"/>
+        <path d="M 443.88,143.72 Q 450.18,139.94 456.48,142.46" stroke="#B8935A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <path d="M 461.52,142.46 Q 467.82,139.94 474.12,143.72" stroke="#B8935A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
 
-        <!-- nose + smile -->
-        <path d="M 459,153.8 L 457.8,161 Q 459,163.4 461.4,162.2" stroke="#E0B888" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-        <path d="M 449.4,165.8 Q 459,173 468.6,165.8" stroke="#B8624A" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <!-- nose -->
+        <path d="M 459,152.54 L 457.74,160.1 Q 459,162.62 461.52,161.36" stroke="#E0B888" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+
+        <!-- mouth, open-smile shape matching Dr. Henley's -->
+        <path d="M 451.65,160.1 C 453.75,166.4 464.25,166.4 466.35,160.1 C 464.25,168.5 453.75,168.5 451.65,160.1 Z" fill="#5A2418"/>
+        <path d="M 452.175,161.15 C 454.275,165.875 463.725,165.875 465.825,161.15" fill="#FDF4EC"/>
+        <path d="M 450.6,159.05 Q 459,156.425 467.4,159.05" stroke="#B8624A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
 
         <!-- short blonde hair -->
-        <path d="M 433.8,144.2 C 430.2,127.4 442.2,115.4 459,115.4 C 475.8,115.4 487.8,127.4 484.2,144.2 C 483,134.6 475.8,128.6 466.2,127.4 C 460.2,134.6 450.6,135.8 443.4,129.8 C 438.6,133.4 435,138.2 433.8,144.2 Z" fill="#E8C468" stroke="#C9A048" stroke-width="1.5"/>
-        <path d="M 436.2,137 L 431.4,145.4 M 481.8,137 L 486.6,145.4" stroke="#C9A048" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M 432.54,142.46 C 428.76,124.82 441.36,112.22 459,112.22 C 476.64,112.22 489.24,124.82 485.46,142.46 C 484.2,132.38 476.64,125.87 466.56,124.82 C 460.26,132.38 450.18,133.64 442.62,127.34 C 437.58,131.12 433.8,136.16 432.54,142.46 Z" fill="#E8C468" stroke="#C9A048" stroke-width="1.5"/>
+        <path d="M 435.06,134.9 L 430.02,143.72 M 482.94,134.9 L 487.98,143.72" stroke="#C9A048" stroke-width="1.5" stroke-linecap="round" fill="none"/>
       </g>
       </g>
       </g>
