@@ -227,6 +227,8 @@ function getSafeReturnUrl() {
 
 // ── Password recovery detection ──────────────────────────────────────────────
 let _recoveryToken = null;
+let _recoveryRefreshToken = null;
+let _recoveryExpiresAt = null;
 // Captured before the ?return= param is stripped below, so a ScoutSync user
 // who resets their password lands back at the ScoutSync-branded sign-in
 // instead of defaulting to the MedSync portfolio.
@@ -242,6 +244,12 @@ let _recoveryReturnUrl = 'medsync_portfolio_live.html';
     });
     if (params.type === 'recovery' && params.access_token) {
       _recoveryToken = params.access_token;
+      _recoveryRefreshToken = params.refresh_token || null;
+      // The recovery link's own access token is a real, already-authenticated
+      // session -- expires_in is seconds-from-now, converted here to the same
+      // absolute unix-timestamp shape a normal sign-in's session carries, so
+      // it can be stored and read back identically once the password is set.
+      _recoveryExpiresAt = Math.floor(Date.now() / 1000) + Number(params.expires_in || 3600);
       _recoveryReturnUrl = getSafeReturnUrl();
       document.getElementById('login-card').style.display = 'none';
       document.getElementById('reset-card').style.display = 'block';
@@ -477,12 +485,19 @@ async function setNewPassword() {
   const btn = document.getElementById('reset-btn');
   btn.classList.add('loading'); btn.disabled = true;
 
+  // Captured before any of the branches below null out the module-level
+  // vars, since the recovery access token doubles as the session used to
+  // sign them in automatically once the password is saved.
+  const sessionAccessToken = _recoveryToken;
+  const sessionRefreshToken = _recoveryRefreshToken;
+  const sessionExpiresAt = _recoveryExpiresAt;
+
   try {
     const res = await fetch(SUPA_URL + '/auth/v1/user', {
       method: 'PUT',
       headers: {
         'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + _recoveryToken,
+        'Authorization': 'Bearer ' + sessionAccessToken,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ password: np })
@@ -497,13 +512,63 @@ async function setNewPassword() {
       }
       errBox.classList.add('show');
       _recoveryToken = null;
-    } else {
-      _recoveryToken = null;
+      return;
+    }
+
+    _recoveryToken = null;
+
+    // The recovery link's access token is already a fully authenticated
+    // session -- rather than sending them back to sign in again with the
+    // password they just set, build the same session/profile storage a
+    // normal sign-in creates and drop them straight into the dashboard.
+    const uid = data.id || null;
+    let users = null;
+    if (uid) {
+      try {
+        const uRes = await fetch(
+          SUPA_URL + '/rest/v1/users?select=id,full_name,role,email,is_active,organization_id,locations(name)&id=eq.' + uid,
+          { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + sessionAccessToken } }
+        );
+        if (uRes.ok) users = await uRes.json();
+      } catch(e) {}
+    }
+
+    if (!users || !Array.isArray(users) || !users[0] || users[0].is_active === false) {
+      // Password did save successfully at this point -- just can't build a
+      // session to skip the sign-in step, so fall back to the old behavior
+      // instead of leaving them on a broken page.
       okBox.textContent = 'Password updated! Redirecting to sign in…';
       okBox.classList.add('show');
       const backTo = 'medsync_login.html' + (_recoveryReturnUrl !== 'medsync_portfolio_live.html' ? '?return=' + encodeURIComponent(_recoveryReturnUrl) : '');
       setTimeout(() => window.location.replace(backTo), 2000);
+      return;
     }
+
+    const sessionData = {
+      access_token: sessionAccessToken,
+      refresh_token: sessionRefreshToken,
+      expires_at: sessionExpiresAt,
+      token_type: 'bearer',
+    };
+    localStorage.setItem('medsync_remember', '1');
+    localStorage.setItem('medsync_session', JSON.stringify(sessionData));
+
+    const u = users[0];
+    const stored = {
+      id:              u.id              || '',
+      full_name:       u.full_name       || '',
+      role:            u.role            || '',
+      email:           u.email           || '',
+      organization_id: u.organization_id || null,
+      location_name:   u.locations       ? u.locations.name : '',
+      locations:       u.locations       ? [{name: u.locations.name}] : []
+    };
+    localStorage.setItem('medsync_user', JSON.stringify(stored));
+    saveRecentLogin(stored.email, stored.full_name, stored.role);
+
+    okBox.textContent = 'Password updated! Taking you in…';
+    okBox.classList.add('show');
+    setTimeout(() => { window.location.replace(_recoveryReturnUrl); }, 600);
   } catch(e) {
     errBox.textContent = 'Connection error. Please try again.';
     errBox.classList.add('show');
