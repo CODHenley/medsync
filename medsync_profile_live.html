@@ -40,7 +40,7 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 /* ── Page layout ── */
 .pf-page { max-width: 900px; margin: 0 auto; padding: 28px 20px 48px; }
 .pf-page-title { font-size: 22px; font-weight: 700; color: #1C2B4A; margin-bottom: 6px; }
-.pf-page-sub { font-size: 13px; color: #8A93A8; margin-bottom: 24px; }
+.pf-page-sub { font-size: 13px; color: #6B7A99; margin-bottom: 24px; }
 
 /* ── Two-column layout ── */
 .pf-cols {
@@ -56,8 +56,8 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
 /* ── Card ── */
 .pf-card {
   background: #fff;
-  border: 1px solid #DCD4EC;
-  border-radius: 16px;
+  border: 1px solid #C5CDD8;
+  border-radius: 12px;
   overflow: hidden;
 }
 .pf-card-header {
@@ -65,7 +65,7 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
   border-bottom: 1px solid #F4F4F4;
 }
 .pf-card-header h3 { font-size: 14px; font-weight: 700; color: #1C2B4A; }
-.pf-card-header p { font-size: 11px; color: #8A93A8; margin-top: 2px; }
+.pf-card-header p { font-size: 11px; color: #6B7A99; margin-top: 2px; }
 .pf-card-body { padding: 20px; }
 
 /* ── Avatar card (left) ── */
@@ -88,19 +88,19 @@ body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; ba
   font-weight: 700;
   color: #fff;
   overflow: hidden;
-  border: 3px solid #DCD4EC;
+  border: 3px solid #C5CDD8;
   flex-shrink: 0;
 }
 .pf-avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
 .pf-avatar-name { font-size: 15px; font-weight: 700; color: #1C2B4A; text-align: center; }
-.pf-avatar-role { font-size: 11px; color: #8A93A8; text-align: center; }
+.pf-avatar-role { font-size: 11px; color: #6B7A99; text-align: center; }
 
 .pf-upload-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: #F0EEFA;
-  border: 1px solid #DDD9EC;
+  border: 1px solid #C5CDD8;
   border-radius: 8px;
   padding: 7px 14px;
   font-size: 12px;
@@ -116,7 +116,7 @@ input[type="file"] { display: none; }
 /* ── Animal avatar picker ── */
 .pf-animal-label {
   font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
-  text-transform: uppercase; color: #8A93A8;
+  text-transform: uppercase; color: #6B7A99;
   margin: 4px 0 8px; display: block; text-align: left; width: 100%;
 }
 .pf-animal-grid {
@@ -137,7 +137,7 @@ input[type="file"] { display: none; }
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #8A93A8;
+  color: #6B7A99;
   margin-bottom: 6px;
   display: block;
   text-align: left;
@@ -145,7 +145,7 @@ input[type="file"] { display: none; }
 }
 .pf-bio-textarea {
   width: 100%;
-  border: 1px solid #DCD4EC;
+  border: 1px solid #C5CDD8;
   border-radius: 10px;
   padding: 10px 12px;
   font-family: inherit;
@@ -157,7 +157,7 @@ input[type="file"] { display: none; }
   transition: border-color 0.15s;
 }
 .pf-bio-textarea:focus { outline: none; border-color: #C83803; box-shadow: 0 0 0 3px rgba(200,146,42,0.12); }
-.pf-char-count { font-size: 10px; color: #8A93A8; text-align: right; margin-top: 4px; }
+.pf-char-count { font-size: 10px; color: #6B7A99; text-align: right; margin-top: 4px; }
 
 .pf-save-bio-btn {
   display: inline-flex;
@@ -183,9 +183,9 @@ input[type="file"] { display: none; }
 @media (max-width: 480px) { .pf-row { grid-template-columns: 1fr; } }
 
 .pf-field { display: flex; flex-direction: column; gap: 5px; }
-.pf-field label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8A93A8; }
+.pf-field label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #6B7A99; }
 .pf-field input, .pf-field select {
-  border: 1px solid #DCD4EC;
+  border: 1px solid #C5CDD8;
   border-radius: 10px;
   padding: 9px 12px;
   font-family: inherit;
@@ -197,15 +197,15 @@ input[type="file"] { display: none; }
 .pf-field input:focus { outline: none; border-color: #C83803; box-shadow: 0 0 0 3px rgba(200,146,42,0.12); }
 .pf-field input[readonly], .pf-field input.readonly {
   background: #F8F7FC;
-  color: #8A93A8;
+  color: #6B7A99;
   cursor: default;
 }
-.pf-field input[readonly]:focus { border-color: #DCD4EC; box-shadow: none; }
+.pf-field input[readonly]:focus { border-color: #C5CDD8; box-shadow: none; }
 .pf-role-badge {
   display: inline-flex;
   align-items: center;
   background: #F4F4F4;
-  border: 1px solid #DCD4EC;
+  border: 1px solid #C5CDD8;
   border-radius: 20px;
   padding: 5px 12px;
   font-size: 12px;
@@ -236,7 +236,7 @@ input[type="file"] { display: none; }
 /* ── Password card ── */
 .pf-pw-note {
   background: #F0EEFA;
-  border: 1px solid #DCD4EC;
+  border: 1px solid #C5CDD8;
   border-radius: 10px;
   padding: 14px 16px;
   font-size: 13px;
@@ -555,7 +555,7 @@ input[type="file"] { display: none; }
           <div class="pf-row">
             <div class="pf-field">
               <label>Role</label>
-              <input type="text" id="pf-role-select" readonly class="readonly" style="width:100%;padding:8px 10px;border:1px solid #DDD9EC;border-radius:8px;font-size:14px;color:#1C2B4A;background:#F7F6FB;" title="Role is assigned by an administrator and cannot be changed here.">
+              <input type="text" id="pf-role-select" readonly class="readonly" style="width:100%;padding:8px 10px;border:1px solid #C5CDD8;border-radius:8px;font-size:14px;color:#1C2B4A;background:#F7F6FB;" title="Role is assigned by an administrator and cannot be changed here.">
             </div>
             <div class="pf-field">
               <label>Location</label>
