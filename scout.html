@@ -151,6 +151,8 @@ nav {
 }
 .vet-eye-l, .vet-eye-r { transform-box:fill-box; transform-origin:50% 50%; animation:vet-blink 5.5s ease-in-out infinite; }
 .tech-eye-l, .tech-eye-r { transform-box:fill-box; transform-origin:50% 50%; animation:vet-blink 5.5s ease-in-out infinite; animation-delay:-2.75s; }
+.med-eye-l, .med-eye-r { transform-box:fill-box; transform-origin:50% 50%; animation:vet-blink 5.5s ease-in-out infinite; animation-delay:-1.4s; }
+.sync-eye-l, .sync-eye-r { transform-box:fill-box; transform-origin:50% 50%; animation:vet-blink 5.5s ease-in-out infinite; animation-delay:-4.1s; }
 .vet-bag-bob { animation:bag-bob 5.5s ease-in-out infinite; }
 /* vet tech's waving hand now rotates via an SVG-native <animateTransform> around the
    elbow (496,179), in the arm's own local coordinates — see the hero SVG markup. */
@@ -551,14 +553,18 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <path d="M 56,238 L 56,229" stroke="#B84E10" stroke-width="1.5" opacity="0.65"/>
         <path d="M 66,238 L 66,231" stroke="#B84E10" stroke-width="1.5" opacity="0.65"/>
         <ellipse cx="56" cy="242" rx="20" ry="10" fill="#F5C880" opacity="0.35"/>
-        <ellipse cx="43" cy="249" rx="11" ry="12" fill="white" stroke="#B84E10" stroke-width="1.5"/>
-        <ellipse cx="69" cy="249" rx="11" ry="12" fill="white" stroke="#B84E10" stroke-width="1.5"/>
-        <ellipse cx="43" cy="249" rx="9" ry="10" fill="#C8A020"/>
-        <ellipse cx="69" cy="249" rx="9" ry="10" fill="#C8A020"/>
-        <ellipse cx="43" cy="249" rx="3" ry="8" fill="#1A1008"/>
-        <ellipse cx="69" cy="249" rx="3" ry="8" fill="#1A1008"/>
-        <circle cx="47" cy="243" r="2.5" fill="white"/>
-        <circle cx="73" cy="243" r="2.5" fill="white"/>
+        <g class="med-eye-l">
+          <ellipse cx="43" cy="249" rx="11" ry="12" fill="white" stroke="#B84E10" stroke-width="1.5"/>
+          <ellipse cx="43" cy="249" rx="9" ry="10" fill="#C8A020"/>
+          <ellipse cx="43" cy="249" rx="3" ry="8" fill="#1A1008"/>
+          <circle cx="47" cy="243" r="2.5" fill="white"/>
+        </g>
+        <g class="med-eye-r">
+          <ellipse cx="69" cy="249" rx="11" ry="12" fill="white" stroke="#B84E10" stroke-width="1.5"/>
+          <ellipse cx="69" cy="249" rx="9" ry="10" fill="#C8A020"/>
+          <ellipse cx="69" cy="249" rx="3" ry="8" fill="#1A1008"/>
+          <circle cx="73" cy="243" r="2.5" fill="white"/>
+        </g>
         <ellipse cx="56" cy="264" rx="14" ry="10" fill="#F5C880"/>
         <path d="M 53,258 C 53,255 56,254 56,257 C 56,255 59,255 59,258 C 59,262 56,264 56,264 Z" fill="#D06878"/>
         <path d="M 50,263 Q 56,270 62,263" stroke="#B84E10" stroke-width="1.5" fill="none"/>
@@ -717,14 +723,18 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
           <path d="M 368,112 C 350,112 338,102 338,90 C 338,78 348,68 362,68 C 360,56 368,46 382,44 C 388,40 395,38 402,38 C 409,38 416,40 422,44 C 436,46 444,56 442,68 C 456,68 466,78 466,90 C 466,102 454,112 436,112 Z" fill="#EED8B0" stroke="#C4A268" stroke-width="1.5"/>
           <ellipse cx="402" cy="134" rx="44" ry="42" fill="#EED8B0" stroke="#C4A268" stroke-width="2.5"/>
           <ellipse cx="402" cy="150" rx="26" ry="20" fill="#FFF4E0" stroke="#C4A268" stroke-width="1.8"/>
-          <circle cx="383" cy="126" r="12" fill="white" stroke="#C4A268" stroke-width="1.5"/>
-          <circle cx="421" cy="126" r="12" fill="white" stroke="#C4A268" stroke-width="1.5"/>
-          <circle cx="383" cy="126" r="9" fill="#2A1408"/>
-          <circle cx="421" cy="126" r="9" fill="#2A1408"/>
-          <circle cx="383" cy="125" r="5" fill="#0A0404"/>
-          <circle cx="421" cy="125" r="5" fill="#0A0404"/>
-          <circle cx="379" cy="120" r="3" fill="white"/>
-          <circle cx="417" cy="120" r="3" fill="white"/>
+          <g class="sync-eye-l">
+            <circle cx="383" cy="126" r="12" fill="white" stroke="#C4A268" stroke-width="1.5"/>
+            <circle cx="383" cy="126" r="9" fill="#2A1408"/>
+            <circle cx="383" cy="125" r="5" fill="#0A0404"/>
+            <circle cx="379" cy="120" r="3" fill="white"/>
+          </g>
+          <g class="sync-eye-r">
+            <circle cx="421" cy="126" r="12" fill="white" stroke="#C4A268" stroke-width="1.5"/>
+            <circle cx="421" cy="126" r="9" fill="#2A1408"/>
+            <circle cx="421" cy="125" r="5" fill="#0A0404"/>
+            <circle cx="417" cy="120" r="3" fill="white"/>
+          </g>
           <path d="M 374,116 Q 383,110 392,116" stroke="#C4A268" stroke-width="2.2" fill="none" stroke-linecap="round"/>
           <path d="M 412,116 Q 421,110 430,116" stroke="#C4A268" stroke-width="2.2" fill="none" stroke-linecap="round"/>
           <ellipse cx="402" cy="143" rx="9" ry="6" fill="#2A1808"/>
@@ -804,15 +814,9 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <path d="M 451.65,165.1 C 453.75,171.4 464.25,171.4 466.35,165.1 C 464.25,173.5 453.75,173.5 451.65,165.1 Z" fill="#5A2418"/>
         <path d="M 452.175,166.15 C 454.275,170.875 463.725,170.875 465.825,166.15" fill="#FDF4EC"/>
 
-        <!-- short blonde hair, curly and compact, hairline set well inside the scalp so it's fully attached -->
-        <path d="M 436,148 C 434,130 440,118 459,118 C 478,118 484,130 482,148 Q 459,143 436,148 Z" fill="#E8C468" stroke="#C9A048" stroke-width="1.5"/>
-        <circle cx="436" cy="132" r="6.5" fill="#E8C468" stroke="#C9A048" stroke-width="1.3"/>
-        <circle cx="444" cy="114" r="6.5" fill="#E8C468" stroke="#C9A048" stroke-width="1.3"/>
-        <circle cx="452" cy="122" r="5.5" fill="#E8C468" stroke="#C9A048" stroke-width="1.3"/>
-        <circle cx="459" cy="107" r="7" fill="#E8C468" stroke="#C9A048" stroke-width="1.3"/>
-        <circle cx="466" cy="122" r="5.5" fill="#E8C468" stroke="#C9A048" stroke-width="1.3"/>
-        <circle cx="474" cy="114" r="6.5" fill="#E8C468" stroke="#C9A048" stroke-width="1.3"/>
-        <circle cx="482" cy="132" r="6.5" fill="#E8C468" stroke="#C9A048" stroke-width="1.3"/>
+        <!-- short blonde hair, back to the original swept style, sized 10% larger than proportional and re-fit to the current (larger) head -->
+        <path d="M 429.9,141.7 C 425.74,122.3 439.6,108.44 459,108.44 C 478.4,108.44 492.26,122.3 488.1,141.7 C 486.72,130.62 478.4,123.69 467.32,122.3 C 460.39,130.62 449.3,132 440.98,125.07 C 435.44,129.23 431.28,134.77 429.9,141.7 Z" fill="#E8C468" stroke="#C9A048" stroke-width="1.5"/>
+        <path d="M 432.67,133.39 L 427.12,143.09 M 485.33,133.39 L 490.88,143.09" stroke="#C9A048" stroke-width="1.5" stroke-linecap="round" fill="none"/>
       </g>
       </g>
       </g>
