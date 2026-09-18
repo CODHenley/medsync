@@ -1626,6 +1626,16 @@ function deepDiveLoc(locCode) {
       localStorage.removeItem('medsync_session');
       localStorage.removeItem('medsync_user');
       window.location.replace('medsync_login.html');
+      return;
+    }
+    // MedSync is the Inventory Lead / Receiver day-to-day app now -- admin and
+    // medsync_superadmin (and anyone folded into 'admin' from the retired
+    // hospital_manager/manager/clinical roles) belong in ScoutSync's executive
+    // dashboard instead. Mirrors the equivalent role gate at the top of
+    // scoutsync_dashboard.html.
+    var mu = {}; try { mu = JSON.parse(localStorage.getItem('medsync_user') || sessionStorage.getItem('medsync_user') || '{}'); } catch(e) {}
+    if (['medsync_superadmin', 'admin'].includes(mu.role)) {
+      window.location.replace('scoutsync_dashboard.html');
     }
   } catch(e) {
     window.location.replace('medsync_login.html');
