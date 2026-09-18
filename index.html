@@ -2,11 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=scout.html">
 <title>MedSync</title>
 </head>
 <body>
-<script>window.location.replace('scout.html');</script>
+<script>
+  // A password-recovery (or magic-link) redirect can land here at the bare
+  // domain root instead of a specific page -- forward it to the login page
+  // with the recovery token intact instead of losing it on the marketing
+  // page below, which has no idea what to do with it. No meta-refresh
+  // fallback here anymore -- it can't check the hash, and racing it against
+  // this script is exactly how a recovery token used to get dropped.
+  var hash = window.location.hash;
+  if (hash.indexOf('type=recovery') !== -1 || hash.indexOf('access_token') !== -1) {
+    window.location.replace('medsync_login.html' + hash);
+  } else {
+    window.location.replace('scout.html');
+  }
+</script>
 <!-- MANAGED-INSIGHTS-START -->
 <!-- MANAGED-INSIGHTS-END -->
 </body>
