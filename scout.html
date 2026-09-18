@@ -138,9 +138,9 @@ nav {
 /* ── Mascot animations ── */
 @keyframes cat-sway  { 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)} }
 @keyframes dog-wag   { 0%,100%{transform:rotate(-14deg)} 50%{transform:rotate(14deg)} }
-/* cat tail anchor: local cx=96,cy=300 + translate(32,0) = scene (128,300) */
-.med-tail  { transform-origin:128px 300px; animation:cat-sway 2.2s ease-in-out infinite; }
-.sync-tail { transform-origin:405px 232px; animation:dog-wag 2.6s ease-in-out infinite; }
+/* cat tail anchor: local cx=96,cy=300 + translate(32,0) + trio shift(-30,0) = scene (98,300) */
+.med-tail  { transform-origin:98px 300px; animation:cat-sway 2.2s ease-in-out infinite; }
+.sync-tail { transform-origin:375px 232px; animation:dog-wag 2.6s ease-in-out infinite; }
 @keyframes vet-blink {
   0%, 88%, 100% { transform:scaleY(1); }
   91%, 95%      { transform:scaleY(0.05); }
@@ -149,8 +149,15 @@ nav {
   0%, 86%, 100% { transform:translateY(0); }
   91%, 95%      { transform:translateY(-5px); }
 }
+@keyframes hand-wave {
+  0%, 100% { transform:rotate(0deg); }
+  20%, 60% { transform:rotate(18deg); }
+  40%, 80% { transform:rotate(-6deg); }
+}
 .vet-eye-l, .vet-eye-r { transform-box:fill-box; transform-origin:50% 50%; animation:vet-blink 5.5s ease-in-out infinite; }
 .vet-bag-bob { animation:bag-bob 5.5s ease-in-out infinite; }
+/* right shoulder anchor: local (480,192) -> vet-tech transforms = scene (477.6,172) */
+.vet-wave { transform-origin:477.6px 172px; animation:hand-wave 2.4s ease-in-out infinite; }
 
 /* ── Hero right panel ── */
 .hero-card {
@@ -503,6 +510,9 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
          style="position:absolute;bottom:340px;left:52px;right:4px;
                 width:auto;height:auto;z-index:3;pointer-events:none;">
 
+      <!-- MED, DR. HENLEY, SYNC — shifted left to make room for the vet tech -->
+      <g transform="translate(-30,0)">
+
       <!-- MED — orange tabby cat -->
       <g transform="translate(32,0)">
         <circle cx="96" cy="300" r="7" fill="#E07428"/>
@@ -730,14 +740,12 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         </g>
       </g>
       </g>
+      </g>
 
-      <!-- VET TECH — standing beside Sync, holding the leash -->
-      <g transform="translate(0,25)">
-      <g transform="translate(454,220.5) scale(0.85) translate(-454,-220.5)">
+      <!-- VET TECH — standing beside Sync, waving to the viewer -->
+      <g transform="translate(-7.6,-14.3)">
+      <g transform="translate(454,220.5) scale(1.2) translate(-454,-220.5)">
       <g id="vet-tech">
-        <!-- leash: hand to Sync's collar -->
-        <path d="M 419,168 C 400,182 375,200 357,225" stroke="#8C4C28" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-
         <!-- legs -->
         <rect x="441" y="266" width="15" height="58" rx="6" fill="#A8D4E8" stroke="#7DB8D4" stroke-width="1.8"/>
         <rect x="462" y="266" width="15" height="58" rx="6" fill="#A8D4E8" stroke="#7DB8D4" stroke-width="1.8"/>
@@ -749,15 +757,17 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <ellipse cx="459" cy="200" rx="26" ry="24" fill="#A8D4E8" stroke="#7DB8D4" stroke-width="2"/>
         <path d="M 449,182 L 459,202 L 469,182" fill="none" stroke="#7DB8D4" stroke-width="2" stroke-linejoin="round"/>
 
-        <!-- right arm, relaxed -->
-        <path d="M 480,192 C 490,204 493,220 489,236" stroke="#A8D4E8" stroke-width="15" fill="none" stroke-linecap="round"/>
-        <path d="M 480,192 C 490,204 493,220 489,236" stroke="#7DB8D4" stroke-width="1.5" fill="none"/>
-        <circle cx="489" cy="240" r="7" fill="#FDE0C8" stroke="#E0B888" stroke-width="1.3"/>
+        <!-- left arm, relaxed -->
+        <path d="M 438,192 C 430,205 428,220 430,234" stroke="#A8D4E8" stroke-width="15" fill="none" stroke-linecap="round"/>
+        <path d="M 438,192 C 430,205 428,220 430,234" stroke="#7DB8D4" stroke-width="1.5" fill="none"/>
+        <circle cx="430" cy="234" r="7" fill="#FDE0C8" stroke="#E0B888" stroke-width="1.3"/>
 
-        <!-- left arm, extended toward the leash -->
-        <path d="M 438,192 C 426,202 420,214 419,226" stroke="#A8D4E8" stroke-width="15" fill="none" stroke-linecap="round"/>
-        <path d="M 438,192 C 426,202 420,214 419,226" stroke="#7DB8D4" stroke-width="1.5" fill="none"/>
-        <circle cx="419" cy="168" r="7" fill="#FDE0C8" stroke="#E0B888" stroke-width="1.3"/>
+        <!-- right arm, waving -->
+        <g class="vet-wave">
+          <path d="M 480,192 C 496,178 502,158 497,140" stroke="#A8D4E8" stroke-width="15" fill="none" stroke-linecap="round"/>
+          <path d="M 480,192 C 496,178 502,158 497,140" stroke="#7DB8D4" stroke-width="1.5" fill="none"/>
+          <circle cx="497" cy="140" r="7" fill="#FDE0C8" stroke="#E0B888" stroke-width="1.3"/>
+        </g>
 
         <!-- neck -->
         <rect x="452" y="157" width="14" height="14" fill="#FDE0C8"/>
