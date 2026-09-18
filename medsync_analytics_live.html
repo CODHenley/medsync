@@ -2163,5 +2163,37 @@ window.addEventListener('message', function(e) {
   };
 })();
 </script>
+
+<!-- Inventory Lead location lock -- portfolio_live.html passes ?lockLoc=<name>
+     for inventory_lead sessions. Previously this was a one-time postMessage
+     default (easy to miss, trivially reselected back to "All locations" or
+     any other hospital) rather than an enforced restriction, and even that
+     default silently failed since it set the select's value to a full
+     location name ("Lincoln Park") when the option values are short codes
+     ("lp") -- so it never actually matched anything. Read from the URL
+     instead (present from the very first render, no postMessage race) and
+     disable everything but their own location outright. -->
+<script>
+(function enforceLocationLock() {
+  var lockName = new URLSearchParams(window.location.search).get('lockLoc');
+  if (!lockName) return;
+  var NAME_TO_CODE = { 'Lincoln Park': 'lp', 'Old Orchard': 'oo', 'West Loop': 'wl', 'Wheaton': 'wh' };
+  var code = NAME_TO_CODE[lockName];
+  if (!code) return;
+  var sel = document.getElementById('loc');
+  if (sel) {
+    Array.prototype.forEach.call(sel.options, function(opt) { opt.disabled = opt.value !== code; });
+    sel.value = code;
+    sel.disabled = true;
+    sel.title = 'Locked to your assigned location';
+  }
+  var regionSel = document.getElementById('region-filter');
+  if (regionSel) { regionSel.value = 'all'; regionSel.disabled = true; }
+  // Whatever triggered the page's own initial load may have already fired
+  // with the pre-lock "all locations" default -- refresh explicitly so the
+  // first thing rendered reflects the lock, not a flash of everyone's data.
+  if (typeof refresh === 'function') refresh();
+})();
+</script>
 </body>
 </html>

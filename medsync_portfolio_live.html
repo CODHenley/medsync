@@ -4303,18 +4303,27 @@ function renderTrainingStaffCards(rows) {
      'asb-users','asb-newlocation','asb-regions','asb-settings'].forEach(function(id){
       var el = document.getElementById(id); if (el) el.style.display = 'none';
     });
-    // Scope analytics to their location
+    // Lock Analytics to their own location -- passed via the iframe's URL
+    // (read by medsync_analytics_live.html's own lock script) instead of a
+    // postMessage sent after the page has already loaded, which was both a
+    // race and, since it set the location select's value to a full name
+    // ("Lincoln Park") against options keyed by short code ("lp"), silently
+    // never actually applied.
     var _mu2 = user;
     if (_mu2.locations) {
       var _loc2 = Array.isArray(_mu2.locations) ? (_mu2.locations[0] && _mu2.locations[0].name) : _mu2.locations.name;
       if (_loc2) {
         localStorage.setItem('medsync_analytics_loc', _loc2);
         var _aIframe = document.querySelector('#ms-analytics iframe');
-        if (_aIframe && _aIframe.contentWindow) {
-          setTimeout(function(){ _aIframe.contentWindow.postMessage({ type: 'setLocation', loc: _loc2 }, window.location.origin); }, 800);
+        if (_aIframe) {
+          _aIframe.src = 'medsync_analytics_live.html?v=20260729d&lockLoc=' + encodeURIComponent(_loc2);
         }
       }
     }
+    // Reports (cross-hospital rollups) is ScoutSync's job now, same reasoning
+    // as Procurement/Price Audit above.
+    var _atabReports = document.getElementById('atab-reports');
+    if (_atabReports) _atabReports.style.display = 'none';
     showScreen('analytics');
   } else if (user.role === 'manager') {
     // Manager: Daily Work only — no portfolio, no reports, no admin
