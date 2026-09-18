@@ -268,8 +268,11 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
         <label>Location</label>
         <select id="new-loc"></select>
       </div>
-      <!-- Data Access Scope -->
-      <div class="scope-section">
+      <!-- Data Access Scope -- hidden for single-location roles (see onRoleChange):
+           their access is always exactly their one assigned location, not a
+           choice, so there's nothing here for an admin to accidentally leave
+           on the "All locations" default. -->
+      <div class="scope-section" id="scope-section">
         <label>Data Access</label>
         <div class="scope-radios" id="scope-radios">
           <label class="scope-radio selected">
@@ -334,21 +337,23 @@ input:focus,select:focus{outline:none;border-color:var(--navy);}
       <label>Role</label>
       <select id="edit-role"></select>
     </div>
-    <div class="field">
-      <label>Access</label>
-      <select id="edit-access-scope">
-        <option value="all">All locations</option>
-        <option value="region">By region</option>
-        <option value="locations">Specific locations</option>
-      </select>
-    </div>
-    <div class="field" id="edit-region-field" style="display:none;">
-      <label>Region</label>
-      <select id="edit-region"></select>
-    </div>
-    <div class="field" id="edit-locs-field" style="display:none;">
-      <label>Locations</label>
-      <div id="edit-loc-checkboxes" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;padding:4px 0;"></div>
+    <div id="edit-scope-section">
+      <div class="field">
+        <label>Access</label>
+        <select id="edit-access-scope">
+          <option value="all">All locations</option>
+          <option value="region">By region</option>
+          <option value="locations">Specific locations</option>
+        </select>
+      </div>
+      <div class="field" id="edit-region-field" style="display:none;">
+        <label>Region</label>
+        <select id="edit-region"></select>
+      </div>
+      <div class="field" id="edit-locs-field" style="display:none;">
+        <label>Locations</label>
+        <div id="edit-loc-checkboxes" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;padding:4px 0;"></div>
+      </div>
     </div>
     <div id="edit-modal-actions">
       <button class="btn-modal-cancel" onclick="closeEditUser()">Cancel</button>
@@ -493,10 +498,17 @@ async function boot() {
   } catch(e) { console.error(e); }
 }
 
+// Single-location roles: hide the Data Access picker entirely rather than
+// leave it sitting on its "All locations" default (that default, unnoticed,
+// is exactly how a receiver/inventory_lead account can end up with real
+// cross-hospital RLS access instead of just their own hospital).
+const SINGLE_LOCATION_ROLES = ['manager', 'receiver', 'inventory_lead'];
+
 function onRoleChange() {
   const role = document.getElementById('new-role').value;
-  document.getElementById('loc-field').style.display =
-    ['manager','receiver','inventory_lead'].includes(role) ? 'block' : 'none';
+  const isSingleLoc = SINGLE_LOCATION_ROLES.includes(role);
+  document.getElementById('loc-field').style.display = isSingleLoc ? 'block' : 'none';
+  document.getElementById('scope-section').style.display = isSingleLoc ? 'none' : 'block';
 }
 
 function toggleRoleGuide() {
@@ -609,6 +621,8 @@ function openEditUser(id) {
   const roleSel = document.getElementById('edit-role');
   roleSel.innerHTML = allowed.map(r => `<option value="${r}"${r === u.role ? ' selected' : ''}>${ROLE_LABELS[r] || r}</option>`).join('');
 
+  onEditRoleChange();
+
   // Access scope
   const scope = u.access_scope || 'all';
   document.getElementById('edit-access-scope').value = scope;
@@ -628,6 +642,19 @@ function openEditUser(id) {
 
   document.getElementById('edit-user-overlay').classList.add('open');
 }
+
+function onEditRoleChange() {
+  const role = document.getElementById('edit-role').value;
+  const isSingleLoc = SINGLE_LOCATION_ROLES.includes(role);
+  document.getElementById('edit-scope-section').style.display = isSingleLoc ? 'none' : 'block';
+  if (isSingleLoc) {
+    // Same reasoning as onRoleChange in the create form -- a single-location
+    // role's access is always exactly its location(s), never "all"/"region".
+    document.getElementById('edit-access-scope').value = 'locations';
+    onEditScopeChange();
+  }
+}
+document.getElementById('edit-role').addEventListener('change', onEditRoleChange);
 
 function onEditScopeChange() {
   const val = document.getElementById('edit-access-scope').value;
@@ -657,7 +684,7 @@ function closeEditUser() {
 async function saveEditUser() {
   if (!_editUserId) return;
   const role  = document.getElementById('edit-role').value;
-  const scope = document.getElementById('edit-access-scope').value;
+  const scope = SINGLE_LOCATION_ROLES.includes(role) ? 'locations' : document.getElementById('edit-access-scope').value;
   let region_id = null, location_ids = null;
   if (scope === 'region') {
     region_id = document.getElementById('edit-region').value || null;
@@ -798,7 +825,10 @@ async function createUser() {
   const email = document.getElementById('new-email').value.trim();
   const pass  = document.getElementById('new-pass').value.trim();
   const role  = document.getElementById('new-role').value;
-  const scopeData = getSelectedScope();
+  const newLoc = document.getElementById('new-loc').value || null;
+  const scopeData = SINGLE_LOCATION_ROLES.includes(role)
+    ? { scope: 'locations', region_id: null, location_ids: newLoc ? [newLoc] : null }
+    : getSelectedScope();
 
   if (!firstName || !lastName || !email || !pass) { showMsg('Please fill in all fields.', 'error'); return; }
 
