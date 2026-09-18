@@ -754,10 +754,9 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
       <g transform="translate(463.5,220.5) scale(1.5) translate(-463.5,-220.5)">
       <g id="vet-tech">
         <!-- long black hair, drawn first so the torso/arms paint over the middle and only the sides show past the body.
-             Built from simple, generously-overlapping ellipses (same technique as Dr. Henley's hair) instead of
-             hand-fit path seams, so there's no precise tangent point that can leave a gap or visible join. -->
-        <ellipse cx="434" cy="180" rx="18" ry="47" fill="#1E1815"/>
-        <ellipse cx="484" cy="180" rx="18" ry="47" fill="#1E1815"/>
+             One single wide oval (not two separate lobes) so there's no seam anywhere across the back; it extends
+             slightly above the bangs' own peak (top 98 vs. bangs' 103) for a bit of visible volume there too. -->
+        <ellipse cx="459" cy="162.5" rx="50" ry="64.5" fill="#1E1815"/>
 
         <!-- legs, set wider apart for a squarer stance -->
         <rect x="440" y="266" width="18" height="58" rx="5" fill="#A8D4E8" stroke="#7DB8D4" stroke-width="1.8"/>
@@ -827,9 +826,9 @@ a:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-
         <path d="M 451.65,165.1 C 453.75,171.4 464.25,171.4 466.35,165.1 C 464.25,173.5 453.75,173.5 451.65,165.1 Z" fill="#5A2418"/>
         <path d="M 452.175,166.15 C 454.275,170.875 463.725,170.875 465.825,166.15" fill="#FDF4EC"/>
 
-        <!-- black hair, blunt-cut bangs straight across the forehead, ending well below the curtain ellipses' top
-             (152 vs. 133) so there's a generous overlap band rather than a single tangent point -->
-        <path d="M 433,152 C 433,125 440,105 459,103 C 478,105 485,125 485,152 L 433,152 Z" fill="#1E1815" stroke="#0D0906" stroke-width="1.5"/>
+        <!-- black hair, blunt-cut bangs straight across the forehead, ending above the eyebrows (138) instead of
+             at eye height (152), and well within the back oval's huge coverage so there's no gap either way -->
+        <path d="M 433,138 C 433,120 440,105 459,103 C 478,105 485,120 485,138 L 433,138 Z" fill="#1E1815" stroke="#0D0906" stroke-width="1.5"/>
       </g>
       </g>
       </g>
