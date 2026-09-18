@@ -176,8 +176,7 @@ function getSafeReturnUrl() {
 // but a scoutsync_*.html page sent you here, so the page should say
 // ScoutSync, not MedSync, while you're signing in. Purely cosmetic; the
 // auth call and stored session are identical either way.
-(function applyScoutSyncBranding() {
-  if (!getSafeReturnUrl().startsWith('scoutsync_')) return;
+function switchToScoutSyncBranding() {
   document.title = 'ScoutSync — Sign In';
   document.getElementById('topbar-logo-text').innerHTML = 'Scout<span>Sync</span>';
   // No image swap here -- "Scout Logo.png" is a wide wordmark banner
@@ -190,10 +189,17 @@ function getSafeReturnUrl() {
   document.getElementById('hero-logo-img').style.display = 'none';
   document.getElementById('hero-word').innerHTML = 'Scout<span style="color:#C83803;">Sync</span>';
   document.getElementById('hero-tagline').textContent = 'Executive Dashboard';
-  document.getElementById('card-title').textContent = 'Sign in to ScoutSync';
+  if (document.getElementById('card-title')) {
+    document.getElementById('card-title').textContent = 'Sign in to ScoutSync';
+  }
   document.querySelectorAll('.card-footer').forEach(el => {
     el.textContent = 'ScoutSync · Scout Veterinary Urgent Care';
   });
+}
+
+(function applyScoutSyncBranding() {
+  if (!getSafeReturnUrl().startsWith('scoutsync_')) return;
+  switchToScoutSyncBranding();
 })();
 
 // ── Session check on load ────────────────────────────────────────────────────
@@ -254,9 +260,39 @@ let _recoveryReturnUrl = 'medsync_portfolio_live.html';
       document.getElementById('login-card').style.display = 'none';
       document.getElementById('reset-card').style.display = 'block';
       history.replaceState(null, '', window.location.pathname);
+      // ?return= is normally how this page knows to brand itself as
+      // ScoutSync (see applyScoutSyncBranding above), but Supabase drops it
+      // from the recovery link's redirect_to for this project, so a
+      // ScoutSync admin lands here still looking like plain MedSync. Look
+      // the account's role up directly so the reset screen itself -- not
+      // just the post-save destination below -- shows the right brand.
+      applyRecoveryBranding(params.access_token);
     }
   } catch(e) {}
 })();
+
+async function applyRecoveryBranding(accessToken) {
+  if (getSafeReturnUrl().startsWith('scoutsync_')) return; // already branded above
+  try {
+    const uRes = await fetch(SUPA_URL + '/auth/v1/user', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + accessToken }
+    });
+    if (!uRes.ok) return;
+    const authUser = await uRes.json();
+    if (!authUser.id) return;
+    const pRes = await fetch(
+      SUPA_URL + '/rest/v1/users?select=role&id=eq.' + authUser.id,
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + accessToken } }
+    );
+    if (!pRes.ok) return;
+    const rows = await pRes.json();
+    const role = rows && rows[0] && rows[0].role;
+    if (['medsync_superadmin', 'admin'].includes(role)) {
+      switchToScoutSyncBranding();
+      document.getElementById('reset-card').querySelector('.card-title').textContent = 'Set new ScoutSync password';
+    }
+  } catch(e) {}
+}
 
 // ── Sign in ──────────────────────────────────────────────────────────────────
 let busy = false;
@@ -536,13 +572,29 @@ async function setNewPassword() {
     if (!users || !Array.isArray(users) || !users[0] || users[0].is_active === false) {
       // Password did save successfully at this point -- just can't build a
       // session to skip the sign-in step, so fall back to the old behavior
-      // instead of leaving them on a broken page.
+      // instead of leaving them on a broken page. No role on hand here, so
+      // this can only go on _recoveryReturnUrl (see the comment below on why
+      // that's normally NOT trustworthy) -- an edge case, not the common path.
       okBox.textContent = 'Password updated! Redirecting to sign in…';
       okBox.classList.add('show');
       const backTo = 'medsync_login.html' + (_recoveryReturnUrl !== 'medsync_portfolio_live.html' ? '?return=' + encodeURIComponent(_recoveryReturnUrl) : '');
       setTimeout(() => window.location.replace(backTo), 2000);
       return;
     }
+
+    // Which dashboard this account belongs in is decided by its role, NOT by
+    // _recoveryReturnUrl/?return= -- Supabase's recover email truncates
+    // redirect_to down to the bare origin for this project (confirmed by
+    // copying a raw recovery link and seeing redirect_to=https://medsync.vet/
+    // with no path or query survives at all), so index.html only ever gets a
+    // hash to forward and ?return= is already gone before medsync_login.html
+    // ever loads. Roles medsync_superadmin/admin are exactly the roles
+    // ScoutSync's own dashboard gate (scoutsync_dashboard.html) requires --
+    // matching that here means this is correct regardless of what Supabase
+    // does with redirect_to.
+    const u = users[0];
+    const isScoutSyncAccount = ['medsync_superadmin', 'admin'].includes(u.role);
+    const destination = isScoutSyncAccount ? 'scoutsync_dashboard.html' : _recoveryReturnUrl;
 
     const sessionData = {
       access_token: sessionAccessToken,
@@ -553,7 +605,6 @@ async function setNewPassword() {
     localStorage.setItem('medsync_remember', '1');
     localStorage.setItem('medsync_session', JSON.stringify(sessionData));
 
-    const u = users[0];
     const stored = {
       id:              u.id              || '',
       full_name:       u.full_name       || '',
@@ -568,7 +619,7 @@ async function setNewPassword() {
 
     okBox.textContent = 'Password updated! Taking you in…';
     okBox.classList.add('show');
-    setTimeout(() => { window.location.replace(_recoveryReturnUrl); }, 600);
+    setTimeout(() => { window.location.replace(destination); }, 600);
   } catch(e) {
     errBox.textContent = 'Connection error. Please try again.';
     errBox.classList.add('show');
