@@ -9,7 +9,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --navy:#1C2B4A;--gold:#C83803;--gold-light:#E86535;
-  --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
+  --slate:#4A5568;--mist:#6B7A99;--border:#C5CDD8;
   --bg:#ffffff;--surface:#F4F4F4;
   --green:#0F6E56;--green-bg:#E1F5EE;
   --amber:#B86D00;--amber-bg:#FFF3CC;--amber-border:#F5A000;
@@ -25,22 +25,22 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .header-sub{font-size:13px;color:var(--mist);margin-top:4px;}
 
 /* Cards */
-.card{background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px;}
 .card-label{font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
 
 /* Name entry */
-.name-input{padding:12px 14px;border:0.5px solid var(--border);border-radius:10px;font-size:16px;font-family:'DM Sans',sans-serif;color:var(--navy);outline:none;width:100%;}
+.name-input{padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:16px;font-family:'DM Sans',sans-serif;color:var(--navy);outline:none;width:100%;}
 .name-input:focus{border-color:var(--navy);}
 
 /* Task buttons */
-.task-btn{padding:16px;border:0.5px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .12s;text-align:left;width:100%;font-family:'DM Sans',sans-serif;}
+.task-btn{padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .12s;text-align:left;width:100%;font-family:'DM Sans',sans-serif;}
 .task-btn:hover{background:#F4F4F4;border-color:var(--navy);}
 .task-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .task-title{font-size:14px;font-weight:600;color:var(--navy);}
 .task-sub{font-size:11px;color:var(--mist);margin-top:2px;}
 
 /* Scan area */
-.scan-card{background:var(--surface);border:0.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.scan-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
 .scan-head{background:var(--navy);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
 .scan-head-title{font-size:13px;font-weight:500;color:#fff;}
 .scan-head-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
@@ -50,7 +50,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .scan-last.ok{background:var(--green-bg);color:var(--green);}
 .scan-last.warn{background:var(--amber-bg);color:var(--amber);}
 .scan-input-wrap{display:flex;gap:8px;}
-.scan-input{flex:1;padding:11px 14px;border:0.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Mono',monospace;outline:none;}
+.scan-input{flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Mono',monospace;outline:none;}
 .scan-input:focus{border-color:var(--navy);}
 .btn-scan{padding:11px 18px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .scan-items{margin-top:12px;display:flex;flex-direction:column;gap:4px;}
@@ -66,7 +66,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .btn-primary{padding:13px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;transition:background .12s;}
 .btn-primary:hover{background:#243459;}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
-.btn-secondary{padding:11px;background:var(--surface);color:var(--navy);border:0.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;}
+.btn-secondary{padding:11px;background:var(--surface);color:var(--navy);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;}
 .b-warn{background:#FEF3E2;color:#C07830;border-color:#E0C080;}
 .loss-btn{background:none;border:0.5px solid #C83803;color:#C83803;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .loss-opts{display:flex;gap:6px;padding:8px 0 2px;}
@@ -77,13 +77,13 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .btn-secondary:hover{background:#F4F4F4;}
 
 /* Success */
-.success-card{background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:32px 22px;text-align:center;}
+.success-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 22px;text-align:center;}
 .success-icon{font-size:52px;margin-bottom:12px;}
 .success-title{font-size:20px;font-weight:600;margin-bottom:6px;}
 .success-sub{font-size:13px;color:var(--mist);margin-bottom:20px;line-height:1.6;}
 
 /* Location select */
-select.loc-sel{padding:11px 14px;border:0.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);outline:none;width:100%;}
+select.loc-sel{padding:11px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);outline:none;width:100%;}
 select.loc-sel:focus{border-color:var(--navy);}
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;z-index:300;}
@@ -367,7 +367,7 @@ function renderReceive() {
               </div>
               ${state.activeGoodsLine === i ? `
                 <div class="loss-opts" style="flex-direction:column;gap:8px;">
-                  <input id="loss-note-${i}" type="text" placeholder="Optional note (e.g. lot #, condition)…" style="font-size:14px;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;width:100%;box-sizing:border-box;font-family:'DM Sans',sans-serif;">
+                  <input id="loss-note-${i}" type="text" placeholder="Optional note (e.g. lot #, condition)…" style="font-size:14px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;width:100%;box-sizing:border-box;font-family:'DM Sans',sans-serif;">
                   <div style="display:flex;gap:6px;">
                     <button class="loss-opt loss-opt-exp" onclick="hrLogGoodsLine(${i},'Expired product')">⏰ Expired</button>
                     <button class="loss-opt loss-opt-dmg" onclick="hrLogGoodsLine(${i},'Damaged / Spilled')">💧 Damaged</button>
@@ -514,11 +514,11 @@ function renderGoods() {
     <div class="card" style="gap:14px;">
       <div class="card-label">Which product?</div>
       ${hasLines
-        ? `<select id="gr-product" onchange="state.goodsProductName=this.value" style="font-size:15px;padding:10px 12px;border:0.5px solid var(--border);border-radius:10px;width:100%;background:#fff;">
+        ? `<select id="gr-product" onchange="state.goodsProductName=this.value" style="font-size:15px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;width:100%;background:#fff;">
              <option value="">Select product…</option>
              ${lineOptions}
            </select>`
-        : `<input id="gr-product" type="text" placeholder="Product name…" oninput="state.goodsProductName=this.value" style="font-size:15px;padding:10px 12px;border:0.5px solid var(--border);border-radius:10px;width:100%;box-sizing:border-box;">`
+        : `<input id="gr-product" type="text" placeholder="Product name…" oninput="state.goodsProductName=this.value" style="font-size:15px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;width:100%;box-sizing:border-box;">`
       }
       <div class="card-label" style="margin-top:4px;">What happened?</div>
       <button class="task-btn" onclick="hrLogGoods('Expired product')">

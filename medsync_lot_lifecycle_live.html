@@ -10,7 +10,7 @@
 :root{
   --navy:#1C2B4A;--navy-mid:#243459;
   --gold:#C83803;--gold-light:#E86535;--gold-pale:#FEF0EB;
-  --slate:#4A5568;--mist:#8899AA;--border:#B8B0D0;
+  --slate:#4A5568;--mist:#6B7A99;--border:#C5CDD8;
   --bg:#ffffff;--surface:#F4F4F4;
   --green:#0F6E56;--green-bg:#E1F5EE;
   --amber:#B86D00;--amber-bg:#FFF3CC;--amber-border:#F5A000;
@@ -38,7 +38,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);font-siz
 .outer{display:grid;grid-template-columns:200px 1fr;min-height:100%;margin:0;}
 
 /* LEFT SIDEBAR */
-.sidebar{background:#F4F4F4;border-right:0.5px solid var(--border);}
+.sidebar{background:#F4F4F4;border-right:1px solid var(--border);}
 .sb-role{padding:10px 14px 8px;border-bottom:0.5px solid #D8D0EC;margin-bottom:4px;}
 .sb-role-name{font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;}
 .sb-role-loc{font-size:10px;color:var(--slate);margin-top:1px;}
@@ -60,15 +60,15 @@ hr.sb-div{border:none;border-top:0.5px solid #D8D0EC;margin:6px 0;}
 .tb-left{display:flex;align-items:center;gap:10px;}
 .tb-title{font-size:15px;font-weight:500;color:#fff;}
 .search-wrap{position:relative;display:flex;align-items:center;}
-.search-wrap input{padding:5px 10px 5px 32px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;color:var(--navy);background:var(--surface);outline:none;width:220px;height:30px;letter-spacing:.03em;}
+.search-wrap input{padding:5px 10px 5px 32px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;color:var(--navy);background:var(--surface);outline:none;width:220px;height:30px;letter-spacing:.03em;}
 .search-wrap input:focus{border-color:var(--navy);}
 .search-wrap input::placeholder{font-family:'DM Sans',sans-serif;letter-spacing:0;color:var(--mist);}
 .search-icon{position:absolute;left:9px;font-size:14px;color:var(--mist);pointer-events:none;}
 .tb-filters{display:flex;gap:6px;}
-select{padding:5px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);cursor:pointer;outline:none;height:30px;}
+select{padding:5px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--navy);background:var(--surface);cursor:pointer;outline:none;height:30px;}
 select:focus{border-color:var(--navy);}
 .tb-right{display:flex;gap:6px;}
-.btn{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .12s;height:30px;}
+.btn{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--navy);font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .12s;height:30px;}
 .btn:hover{background:#F4F4F4;}
 .btn-primary{background:var(--navy);color:#fff;border-color:var(--navy);}
 .btn-primary:hover{background:var(--navy-mid);}
@@ -78,7 +78,7 @@ select:focus{border-color:var(--navy);}
 
 /* KPI ROW */
 .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
-.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
 .kpi.kpi-alert{border-color:var(--red-border);background:#FFF8F8;}
 .kpi.kpi-warn{border-color:var(--amber-border);background:#FFFBF0;}
 .kpi-l{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
@@ -92,7 +92,7 @@ select:focus{border-color:var(--navy);}
 
 /* EXPIRY ALERT STRIP */
 .alert-strip{display:flex;flex-direction:column;gap:6px;}
-.alert-row{background:var(--surface);border:0.5px solid var(--border);border-radius:9px;padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .12s;}
+.alert-row{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .12s;}
 .alert-row:hover{background:#FAFAF8;border-color:#ccc;}
 .alert-row.ar-red{border-left:3px solid var(--red);background:#FFF9F9;}
 .alert-row.ar-amber{border-left:3px solid var(--amber);background:#FFFBF2;}
@@ -110,15 +110,15 @@ select:focus{border-color:var(--navy);}
 .sec-title{font-size:12px;font-weight:600;color:var(--navy);}
 .sec-sub{font-size:11px;color:var(--mist);}
 .filter-tabs{display:flex;gap:4px;}
-.ftab{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--slate);transition:all .12s;}
+.ftab{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--slate);transition:all .12s;}
 .ftab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
 .ftab:hover:not(.active){background:#F4F4F4;}
 
 /* LOT TABLE */
-.table-wrap{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 thead{background:#F4F4F4;}
-th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;text-align:left;border-bottom:0.5px solid var(--border);font-weight:500;white-space:nowrap;}
+th{font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;}
 td{padding:10px 12px;border-bottom:0.5px solid #F4F4F4;vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 .lot-row{cursor:pointer;transition:background .08s;}
@@ -147,7 +147,7 @@ tr:last-child td{border-bottom:none;}
 .modal-bg{position:fixed;inset:0;background:rgba(28,43,74,.45);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s;}
 .modal-bg.open{opacity:1;pointer-events:all;}
 .modal{background:var(--surface);border-radius:14px;width:620px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(28,43,74,.22);}
-.modal-head{padding:18px 22px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:0;background:var(--surface);z-index:2;}
+.modal-head{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:0;background:var(--surface);z-index:2;}
 .mh-left{flex:1;}
 .mh-lot{font-family:'DM Mono',monospace;font-size:11px;color:var(--mist);margin-bottom:3px;}
 .mh-name{font-size:16px;font-weight:600;}
@@ -191,7 +191,7 @@ tr:last-child td{border-bottom:none;}
 .disposal-title{font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
 .disposal-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(163,48,48,.1);font-size:11px;}
 .disposal-row:last-child{border-bottom:none;}
-.modal-actions{padding:14px 22px 18px;border-top:0.5px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+.modal-actions{padding:14px 22px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
 
 /* VACCINE RETURN PANEL */
 .vax-panel{background:#F0F8F5;border:0.5px solid #A0D4C0;border-radius:9px;padding:12px 14px;}
@@ -217,7 +217,7 @@ tr:last-child td{border-bottom:none;}
 .scan-box-icon{font-size:32px;margin-bottom:8px;}
 .scan-box-text{font-size:12px;color:var(--mist);}
 .scan-input-wrap{display:flex;gap:8px;}
-.scan-input{flex:1;padding:8px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none;letter-spacing:.05em;}
+.scan-input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Mono',monospace;outline:none;letter-spacing:.05em;}
 .scan-input:focus{border-color:var(--navy);}
 
 /* TOAST */
@@ -246,10 +246,10 @@ tr:last-child td{border-bottom:none;}
   /* Analytics body split: stack vertically */
   .body-split { grid-template-columns: 1fr !important; display: flex !important; flex-direction: column !important; height: auto !important; }
   .main-col { overflow-y: visible !important; padding: 14px !important; height: auto !important; }
-  .side-col { width: 100% !important; border-left: none !important; border-top: 0.5px solid var(--border) !important; height: auto !important; }
-  .panel-tabs { flex-direction: row !important; overflow-x: auto !important; border-right: none !important; border-bottom: 0.5px solid var(--border) !important; }
+  .side-col { width: 100% !important; border-left: none !important; border-top: 1px solid var(--border) !important; height: auto !important; }
+  .panel-tabs { flex-direction: row !important; overflow-x: auto !important; border-right: none !important; border-bottom: 1px solid var(--border) !important; }
   .panel-tab { flex-shrink: 0 !important; border-left: none !important; border-bottom: 2px solid transparent !important; }
-  .panel-tab.active { border-bottom-color: var(--navy) !important; }
+  .panel-tab.active { border-bottom-color: var(--gold) !important; }
 
   /* KPI cards: 2 columns */
   .kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
@@ -397,7 +397,7 @@ if (window.self !== window.top) {
           <input type="text" id="lot-search" placeholder="Search lot, product, NDC…" oninput="filterTable()">
         </div>
         <div class="tb-filters">
-          <select id="region-filter-lt" onchange="onRegionFilterLt(this.value)" style="padding:7px 10px;border:0.5px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);">
+          <select id="region-filter-lt" onchange="onRegionFilterLt(this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);">
             <option value="all">All regions</option>
             <option value="Chicagoland">Chicagoland</option>
             <option value="Chicagoland South">Chicagoland South</option>
@@ -626,12 +626,12 @@ if (window.self !== window.top) {
       </div>
     </div>
     <!-- Manual entry fallback -->
-    <div style="padding:14px 18px;border-top:0.5px solid var(--border);">
+    <div style="padding:14px 18px;border-top:1px solid var(--border);">
       <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">Or enter NDC manually</div>
       <div style="display:flex;gap:8px;">
         <input id="sku-manual-input" type="text" placeholder="e.g. 61703-0322-63" autocomplete="off"
           onkeydown="if(event.key==='Enter'){event.preventDefault();alSkuLookupVal(this.value);}"
-          style="flex:1;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+          style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
         <button type="button" class="btn btn-primary" onclick="alSkuLookupVal(document.getElementById('sku-manual-input').value)">Look up</button>
       </div>
       <div id="sku-scanner-status" style="margin-top:8px;font-size:12px;display:none;"></div>
@@ -664,28 +664,28 @@ if (window.self !== window.top) {
         <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Product name <span style="color:var(--red);">*</span></div>
         <input id="al-product" type="text" placeholder="e.g. Atropine Sulfate" autocomplete="off"
           oninput="alProductSuggest(this.value)"
-          style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
-        <div id="al-product-suggestions" style="display:none;position:absolute;left:0;right:0;background:#fff;border:0.5px solid var(--border);border-top:none;border-radius:0 0 7px 7px;box-shadow:0 4px 12px rgba(28,43,74,.12);z-index:200;overflow:hidden;"></div>
+          style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        <div id="al-product-suggestions" style="display:none;position:absolute;left:0;right:0;background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;box-shadow:0 4px 12px rgba(28,43,74,.12);z-index:200;overflow:hidden;"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Lot number <span style="color:var(--red);">*</span></div>
-          <input id="al-lotnum" type="text" placeholder="e.g. A12345B" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+          <input id="al-lotnum" type="text" placeholder="e.g. A12345B" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
         </div>
         <div>
           <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Expiration (MM/YYYY) <span style="color:var(--red);">*</span></div>
-          <input id="al-exp" type="text" placeholder="06/2027" maxlength="7" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+          <input id="al-exp" type="text" placeholder="06/2027" maxlength="7" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Qty in this lot <span style="color:var(--red);">*</span></div>
-          <input id="al-qty" type="number" min="0" placeholder="0" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+          <input id="al-qty" type="number" min="0" placeholder="0" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
           <div style="font-size:10px;color:var(--mist);margin-top:4px;">Adds to existing on-hand total</div>
         </div>
         <div>
           <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Location <span style="color:var(--red);">*</span></div>
-          <select id="al-loc" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;height:auto;">
+          <select id="al-loc" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;height:auto;">
             <option value="">Select…</option>
             <option value="11111111-0000-0000-0000-000000000001">Lincoln Park</option>
             <option value="11111111-0000-0000-0000-000000000002">Old Orchard</option>
@@ -696,11 +696,11 @@ if (window.self !== window.top) {
       </div>
       <div>
         <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Vendor (optional)</div>
-        <input id="al-vendor" type="text" placeholder="e.g. Zoetis, Covetrus" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
+        <input id="al-vendor" type="text" placeholder="e.g. Zoetis, Covetrus" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;">
       </div>
       <div>
         <div style="font-size:11px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Source <span style="color:var(--red);">*</span></div>
-        <select id="al-source" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;height:auto;">
+        <select id="al-source" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:'DM Sans',sans-serif;height:auto;">
           <option value="">Select a reason…</option>
           <option value="Manual entry — existing inventory">Existing inventory (pre-MedSync)</option>
           <option value="Manual entry — cycle count">Cycle count</option>

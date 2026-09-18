@@ -8,7 +8,7 @@
 <style>
 :root{
   --navy:#1C2B4A;--gold:#C83803;--green:#2E8B57;--red:#C0392B;
-  --amber:#b45309;--mist:#8A93A8;--border:#B8B0D0;--bg:#F4F4F4;
+  --amber:#b45309;--mist:#6B7A99;--border:#C5CDD8;--bg:#F4F4F4;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
@@ -30,8 +30,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .step-line{flex:1;height:1px;background:var(--border);margin:0 10px;}
 
 /* Cards */
-.card{background:#fff;border:0.5px solid var(--border);border-radius:14px;overflow:hidden;}
-.card-head{padding:16px 20px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.card-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .card-title{font-size:14px;font-weight:600;}
 .card-sub{font-size:11px;color:var(--mist);margin-top:3px;}
 .card-body{padding:20px;}
@@ -61,7 +61,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* Summary tiles */
 .tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
-.tile{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;}
+.tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
 .tile-v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
 .tile-l{font-size:10px;color:var(--mist);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
 .tile-v.green{color:var(--green);}
@@ -71,7 +71,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* Budget vs Spend table */
 .bvs-table{width:100%;border-collapse:collapse;font-size:11px;}
-.bvs-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;background:#FAFAFA;border-bottom:0.5px solid var(--border);white-space:nowrap;}
+.bvs-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;background:#FAFAFA;border-bottom:1px solid var(--border);white-space:nowrap;}
 .bvs-table td{padding:8px 10px;border-bottom:0.5px solid #F4F4F4;vertical-align:middle;font-variant-numeric:tabular-nums;}
 .bvs-table tr:last-child td{border-bottom:none;}
 .bvs-table tr.bvs-cur{background:#F0F9FF;}
@@ -83,10 +83,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .bar-wrap{width:80px;height:6px;background:#E8E8EC;border-radius:3px;display:inline-block;vertical-align:middle;}
 .bar-fill{height:100%;border-radius:3px;transition:width .3s;}
 
-.cogs-pct-note{font-size:11px;color:var(--mist);padding:8px 10px;border-top:0.5px solid var(--border);background:#FAFAFA;display:flex;align-items:center;justify-content:space-between;}
+.cogs-pct-note{font-size:11px;color:var(--mist);padding:8px 10px;border-top:1px solid var(--border);background:#FAFAFA;display:flex;align-items:center;justify-content:space-between;}
 
 /* Order detail panel (expandable per week) */
-.week-orders{display:none;background:#FAFAFA;border-top:0.5px solid var(--border);}
+.week-orders{display:none;background:#FAFAFA;border-top:1px solid var(--border);}
 .week-orders.open{display:block;}
 .order-mini-table{width:100%;border-collapse:collapse;font-size:11px;}
 .order-mini-table td{padding:6px 10px 6px 28px;border-bottom:0.5px solid #F0F0F4;color:var(--mist);}
@@ -97,7 +97,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .skip-toggle:hover{color:var(--red);}
 
 /* Summary bar */
-.summary-bar{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.summary-bar{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .sum-stats{display:flex;gap:20px;}
 .ss{text-align:center;}
 .ss-v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;}
@@ -107,10 +107,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .btn-primary{padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .btn-primary:hover{opacity:.9;}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
-.btn-secondary{padding:9px 18px;background:#fff;color:var(--navy);border:0.5px solid var(--border);border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-secondary{padding:9px 18px;background:#fff;color:var(--navy);border:1px solid var(--border);border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
 /* Result */
-.result-card{border:0.5px solid var(--border);border-radius:12px;padding:16px 20px;background:#fff;display:flex;align-items:center;gap:14px;}
+.result-card{border:1px solid var(--border);border-radius:12px;padding:16px 20px;background:#fff;display:flex;align-items:center;gap:14px;}
 .result-icon{font-size:28px;flex-shrink:0;}
 .result-title{font-size:15px;font-weight:600;}
 .result-sub{font-size:12px;color:var(--mist);margin-top:3px;}
@@ -123,7 +123,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
 .field{display:flex;flex-direction:column;gap:5px;}
 .field label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
-.field select,.field input{padding:9px 11px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
+.field select,.field input{padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
 
 @media(max-width:900px){
   .tiles{grid-template-columns:repeat(3,1fr);}
