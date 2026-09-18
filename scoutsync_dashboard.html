@@ -1501,7 +1501,9 @@ const UNATTRIBUTED_PROVIDER = '00000000-0000-0000-0000-000000000000';
   document.getElementById('logout-btn').addEventListener('click', () => {
     localStorage.removeItem('medsync_session'); localStorage.removeItem('medsync_user');
     sessionStorage.removeItem('medsync_session'); sessionStorage.removeItem('medsync_user');
-    window.location.replace('medsync_login.html');
+    // Same ?return= as the no-session redirect above -- without it the sign-in
+    // page falls back to plain MedSync branding instead of ScoutSync.
+    window.location.replace('medsync_login.html?return=scoutsync_dashboard.html');
   });
 })();
 
