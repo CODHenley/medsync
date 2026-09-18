@@ -716,6 +716,7 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
           <option value="product">By product</option>
           <option value="regional">Regional roll-up</option>
           <option value="reorder">Reorder Suggestions</option>
+          <option value="health">Inventory Health</option>
         </select>
         <span style="flex:1"></span>
         <button class="ia-btn" onclick="ipPrintReport()">🖨 Print report</button>
@@ -772,6 +773,14 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
           <tbody id="ip-reorder-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Select this view to load suggestions.</td></tr></tbody>
         </table></div>
       </div>
+
+      <!-- Ported from medsync_lot_lifecycle_live.html's Inventory Health panel
+           (velocity vs. expiration tiering) -- MedSync's copy is being retired
+           now that this is the canonical, cross-hospital version. Data comes
+           from ipLoadHealthRisk, which already runs as part of the normal
+           Procurement load (it also drives the Depreciation Risk KPI tile
+           above), so this view just renders what's already been computed. -->
+      <div id="ip-view-health" hidden></div>
 
     </div>
   </section>
@@ -6435,15 +6444,23 @@ async function ipUpdateKpis(start, end, locVid, locUuid, loc) {
 
 // Depreciation Risk — lots on pace to expire before they'll be used up,
 // given each product's dispensing velocity over the trailing 60 days.
+// Also computes the "slow/no movement" tier and keeps the full item-level
+// breakdown in IP_HEALTH_DATA so the Inventory Health view (below) can
+// render its drill-down tables without a second round of fetches. Ported
+// from medsync_lot_lifecycle_live.html's Inventory Health panel, which this
+// replaces -- same tiering logic (at-risk / slow-moving / healthy).
+let IP_HEALTH_DATA = { atRisk: [], slowMoving: [], healthyCount: 0 };
+
 async function ipLoadHealthRisk(locVid, locUuid) {
   try {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const from60 = isoDaysAgo(60);
 
     const lots = await ipQuery('lots',
-      `select=notes,qty_remaining,received_date,expiration_date,products(name,unit_cost)&status=not.eq.Disposed` +
+      `select=notes,qty_remaining,received_date,expiration_date,products(name,unit_cost),locations(name)&status=not.eq.Disposed` +
       (locUuid ? `&location_id=eq.${locUuid}` : '') + `&limit=500`);
     const riskTile = document.getElementById('ip-kv-risk')?.closest('.hero-tile');
+    IP_HEALTH_DATA = { atRisk: [], slowMoving: [], healthyCount: 0 };
     if (!Array.isArray(lots) || !lots.length) {
       document.getElementById('ip-kv-risk').textContent = '0';
       document.getElementById('ip-ks-risk').textContent = 'no active lots';
@@ -6461,20 +6478,31 @@ async function ipLoadHealthRisk(locVid, locUuid) {
       velocity[r.product_name].cost = parseFloat(r.unit_cost) || velocity[r.product_name].cost;
     }
 
-    let atRisk = 0, exposure = 0;
+    let exposure = 0;
     for (const lot of lots) {
       const name = lot.products?.name || (lot.notes || '').replace(/^Vetspire inventory:\s*/, '').trim();
       const qtyRem = parseFloat(lot.qty_remaining) || 0;
+      const daysOnShelf = lot.received_date ? Math.round((today - new Date(lot.received_date)) / 864e5) : null;
       const daysToExp = lot.expiration_date ? Math.round((new Date(lot.expiration_date) - today) / 864e5) : null;
       const vel = velocity[name];
       const dailyRate = vel ? vel.qty / 60 : 0;
       const daysToDeplete = dailyRate > 0 ? Math.round(qtyRem / dailyRate) : null;
       const unitCost = vel?.cost || parseFloat(lot.products?.unit_cost) || 0;
+      const item = { name, loc: lot.locations?.name || '—', qtyRem, daysOnShelf, daysToExp, daysToDeplete, dailyRate, unitCost, exposure: qtyRem * unitCost };
+
       if (daysToExp !== null && daysToDeplete !== null && daysToExp < daysToDeplete && qtyRem > 0) {
-        atRisk++; exposure += qtyRem * unitCost;
+        IP_HEALTH_DATA.atRisk.push(item);
+        exposure += item.exposure;
+      } else if (daysOnShelf !== null && daysOnShelf > 45 && dailyRate === 0 && qtyRem > 0) {
+        IP_HEALTH_DATA.slowMoving.push(item);
+      } else {
+        IP_HEALTH_DATA.healthyCount++;
       }
     }
+    IP_HEALTH_DATA.atRisk.sort((a, b) => (a.daysToExp ?? 999) - (b.daysToExp ?? 999));
+    IP_HEALTH_DATA.slowMoving.sort((a, b) => (b.daysOnShelf ?? 0) - (a.daysOnShelf ?? 0));
 
+    const atRisk = IP_HEALTH_DATA.atRisk.length;
     document.getElementById('ip-kv-risk').textContent = atRisk;
     document.getElementById('ip-ks-risk').textContent = atRisk > 0
       ? '$' + Number(exposure).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' exposure'
@@ -6484,7 +6512,55 @@ async function ipLoadHealthRisk(locVid, locUuid) {
       document.getElementById('ip-kv-risk').style.color = 'var(--s-good)';
       document.getElementById('ip-ks-risk').style.color = 'var(--s-good)';
     }
+    if (ipCurrentView === 'health') ipRenderHealthDetail();
   } catch (e) { console.warn('Depreciation risk badge error', e); }
+}
+
+// Drill-down for the Inventory Health view -- renders from IP_HEALTH_DATA,
+// computed by ipLoadHealthRisk above as part of the normal Procurement load.
+function ipRenderHealthTier(title, desc, items, color, showExposure) {
+  if (!items.length) return '';
+  const borderColor = color === 'red' ? 'var(--s-critical)' : color === 'amber' ? 'var(--c-financial)' : '#B8E8C8';
+  const textColor   = color === 'red' ? 'var(--s-critical)' : color === 'amber' ? 'var(--c-financial)' : 'var(--s-good)';
+  const fmtCost = v => v > 0 ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+  const rows = items.map(it => {
+    const rateStr = it.dailyRate > 0 ? (it.dailyRate < 1 ? '<1/day' : it.dailyRate.toFixed(1) + '/day') : 'No data';
+    const depletStr = it.daysToDeplete !== null ? it.daysToDeplete + 'd' : '—';
+    const recommendation = color === 'red'
+      ? (it.daysToExp !== null && it.daysToExp < 14 ? 'Urgent — redistribute or return' : 'Reduce next order qty')
+      : 'Do not reorder until movement resumes';
+    return `<tr>
+      <td>${esc(it.name)}</td>
+      <td style="color:var(--muted)">${esc(it.loc)}</td>
+      <td style="text-align:right">${it.qtyRem}</td>
+      <td style="text-align:right">${it.daysOnShelf !== null ? it.daysOnShelf + 'd' : '—'}</td>
+      <td style="text-align:right">${rateStr}</td>
+      <td style="text-align:right">${depletStr}</td>
+      <td style="text-align:right">${it.daysToExp !== null ? it.daysToExp + 'd' : '—'}</td>
+      ${showExposure ? `<td style="text-align:right;color:${textColor};font-weight:600">${fmtCost(it.exposure)}</td>` : ''}
+      <td style="color:${textColor}">${recommendation}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="chart-card" style="border-color:${borderColor}">
+    <div class="chart-title">${title} <span style="font-weight:400;color:${textColor}">(${items.length})</span></div>
+    <div class="chart-note">${desc}</div>
+    <div style="overflow-x:auto"><table class="dd-table">
+      <thead><tr><th>Product</th><th>Location</th><th style="text-align:right">Qty Rem.</th><th style="text-align:right">Days on Shelf</th><th style="text-align:right">Burn Rate</th><th style="text-align:right">Days to Deplete</th><th style="text-align:right">Expires</th>${showExposure ? '<th style="text-align:right">$ Exposure</th>' : ''}<th>Recommendation</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function ipRenderHealthDetail() {
+  const el = document.getElementById('ip-view-health');
+  if (!el) return;
+  const { atRisk, slowMoving, healthyCount } = IP_HEALTH_DATA;
+  el.innerHTML = `
+    <div class="chart-note" style="margin-bottom:10px">${atRisk.length + slowMoving.length + healthyCount} active lots · 60-day velocity window</div>
+    ${ipRenderHealthTier('🔴 At Depreciation Risk', 'Projected to expire before inventory is fully dispensed — order less next cycle or redistribute to other locations.', atRisk, 'red', true)}
+    ${ipRenderHealthTier('🟡 Slow / No Movement', 'Remaining inventory with no dispensing activity in the last 60 days — review demand before reordering.', slowMoving, 'amber', false)}
+    ${!atRisk.length && !slowMoving.length ? `<div class="chart-card"><div class="chart-note">All ${healthyCount} active lots are on pace — no action needed.</div></div>` : ''}
+  `;
 }
 
 // ── Cost Drift & Pricing Alerts ──
@@ -6731,7 +6807,9 @@ function ipSwitchView(view) {
   document.getElementById('ip-view-product').hidden = view !== 'product';
   document.getElementById('ip-view-regional').hidden = view !== 'regional';
   document.getElementById('ip-view-reorder').hidden = view !== 'reorder';
+  document.getElementById('ip-view-health').hidden = view !== 'health';
   if (view === 'reorder') ipRenderReorderSuggestions();
+  if (view === 'health') ipRenderHealthDetail();
 }
 
 // ── Reorder Suggestions ──
