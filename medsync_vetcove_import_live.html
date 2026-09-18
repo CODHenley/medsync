@@ -6,7 +6,7 @@
 <title>MedSync · Vetcove Import</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1C2B4A;--gold:#C83803;--green:#2E8B57;--red:#C0392B;--mist:#8A93A8;--border:#B8B0D0;--bg:#F4F4F4;--amber:#C83803;--purple:#5B3FA8;}
+:root{--navy:#1C2B4A;--gold:#C83803;--green:#2E8B57;--red:#C0392B;--mist:#6B7A99;--border:#C5CDD8;--bg:#F4F4F4;--amber:#C83803;--purple:#5B3FA8;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);font-size:13px;min-height:100vh;}
 .topbar{background:var(--navy);padding:0 24px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -28,8 +28,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .step-line{flex:1;height:1px;background:var(--border);margin:0 10px;}
 
 /* Cards */
-.card{background:#fff;border:0.5px solid var(--border);border-radius:14px;overflow:hidden;}
-.card-head{padding:16px 20px;border-bottom:0.5px solid var(--border);}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.card-head{padding:16px 20px;border-bottom:1px solid var(--border);}
 .card-title{font-size:14px;font-weight:600;}
 .card-sub{font-size:11px;color:var(--mist);margin-top:3px;}
 .card-body{padding:20px;}
@@ -48,10 +48,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
 .field{display:flex;flex-direction:column;gap:5px;}
 .field label{font-size:11px;font-weight:600;color:var(--mist);text-transform:uppercase;letter-spacing:.04em;}
-.field select,.field input{padding:9px 11px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
+.field select,.field input{padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--navy);}
 
 /* Template banner */
-.template-banner{background:#F4F4F4;border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-top:16px;}
+.template-banner{background:#F4F4F4;border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-top:16px;}
 .tb-icon{font-size:20px;}
 .tb-body{flex:1;}
 .tb-title2{font-size:12px;font-weight:600;}
@@ -60,7 +60,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 
 /* Preview table */
 .preview-table{width:100%;border-collapse:collapse;font-size:12px;}
-.preview-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;border-bottom:0.5px solid var(--border);background:#FAFAFA;}
+.preview-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:#FAFAFA;}
 .preview-table td{padding:9px 10px;border-bottom:0.5px solid #F4F4F4;vertical-align:middle;}
 .preview-table tr:last-child td{border-bottom:none;}
 .preview-table tr.skip td{opacity:.4;}
@@ -70,12 +70,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .match-none{background:#FEF2F2;color:var(--red);}
 .skip-toggle{background:none;border:none;cursor:pointer;font-size:18px;line-height:1;color:var(--mist);padding:0;}
 .skip-toggle:hover{color:var(--red);}
-.cat-select{padding:4px 7px;border:0.5px solid var(--border);border-radius:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:#fff;}
+.cat-select{padding:4px 7px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:'DM Sans',sans-serif;background:#fff;}
 .prod-name{font-weight:500;}
 .prod-matched{font-size:10px;color:var(--mist);margin-top:1px;}
 
 /* Summary bar */
-.summary-bar{background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.summary-bar{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .summary-stats{display:flex;gap:20px;}
 .stat{text-align:center;}
 .stat-v{font-size:16px;font-weight:700;}
@@ -83,10 +83,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);fon
 .btn-primary{padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .btn-primary:hover{opacity:.9;}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
-.btn-secondary{padding:9px 18px;background:#fff;color:var(--navy);border:0.5px solid var(--border);border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-secondary{padding:9px 18px;background:#fff;color:var(--navy);border:1px solid var(--border);border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
 /* Results */
-.result-card{border:0.5px solid var(--border);border-radius:12px;padding:16px 20px;background:#fff;display:flex;align-items:center;gap:14px;}
+.result-card{border:1px solid var(--border);border-radius:12px;padding:16px 20px;background:#fff;display:flex;align-items:center;gap:14px;}
 .result-icon{font-size:28px;flex-shrink:0;}
 .result-title{font-size:15px;font-weight:600;}
 .result-sub{font-size:12px;color:var(--mist);margin-top:3px;}
