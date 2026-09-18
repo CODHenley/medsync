@@ -7806,7 +7806,10 @@ async function resetScoutSyncUserPassword(btn) {
     await fetch(`${SUPA_URL}/auth/v1/recover`, {
       method: 'POST',
       headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, redirectTo: 'https://medsync.vet/medsync_login.html' }),
+      // ?return=scoutsync_dashboard.html both applies the ScoutSync-branded
+      // login (not plain MedSync) on the reset-password screen and lands
+      // them back on the ScoutSync dashboard once they sign in.
+      body: JSON.stringify({ email, redirectTo: 'https://medsync.vet/medsync_login.html?return=scoutsync_dashboard.html' }),
     });
   } catch (e) {}
   btn.textContent = 'Email sent ✓';
@@ -7889,7 +7892,8 @@ async function createScoutSyncUser() {
       const recoverRes = await fetch(`${SUPA_URL}/auth/v1/recover`, {
         method: 'POST',
         headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, redirectTo: 'https://medsync.vet/medsync_login.html' }),
+        // Same ScoutSync-branded return path as the Reset Password button.
+        body: JSON.stringify({ email, redirectTo: 'https://medsync.vet/medsync_login.html?return=scoutsync_dashboard.html' }),
       });
       emailSent = recoverRes.ok;
     } catch (e) { emailSent = false; }
