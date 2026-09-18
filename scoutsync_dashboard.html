@@ -670,6 +670,29 @@ table.dd-table td:first-child { color: var(--text); font-weight: 600; font-varia
       <div class="hero-row" id="reconciliation-tiles"></div>
     </div>
 
+    <div class="section-head"><div class="dot" style="background:var(--c-facilities)"></div>
+      <h2>Team Engagement</h2>
+      <span class="sub">Cycle counts, receiving, and platform activity by Inventory Lead/Receiver, selected range</span></div>
+    <div class="chart-card">
+      <div class="chart-note" id="te-note"></div>
+      <div class="hero-row" id="te-tiles"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">By location</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Location</th><th style="text-align:right">Cycle counts</th><th>Last count</th><th style="text-align:right">Receiving sessions</th><th>Last received</th><th style="text-align:right">Active team members</th></tr></thead>
+        <tbody id="te-loc-tbody"></tbody>
+      </table></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">By person</div>
+      <div class="chart-note">"Last activity" is the most recent logged action of any kind (cycle count, receiving, etc.) — there's no separate login/session tracking today, so this reflects platform use, not literal sign-ins.</div>
+      <div style="overflow-x:auto"><table class="dd-table">
+        <thead><tr><th>Name</th><th>Location</th><th>Role</th><th style="text-align:right">Cycle counts</th><th style="text-align:right">Receiving sessions</th><th>Last activity</th></tr></thead>
+        <tbody id="te-user-tbody"></tbody>
+      </table></div>
+    </div>
+
     <div id="inventory-empty"></div>
   </section>
 
@@ -5397,6 +5420,108 @@ async function loadInventory() {
       </div>`;
   }
 
+  loadTeamEngagement(from, untilEndOfDay, loc);
+}
+
+// ── Team Engagement ── cycle counts, receiving, and platform activity by
+// Inventory Lead/Receiver. Cycle-count events only carry user_id going
+// forward (added alongside this feature, in medsync_cycle_count_live.html's
+// submitCount()) -- older rows have no attributable person, so they're
+// grouped under a location's total but never mis-attributed to a person.
+// "Last activity" is the closest available engagement signal in the
+// absence of any real login/session tracking -- it's the most recent
+// activity_log row of ANY type for that user, not a literal sign-in.
+function teFmtAgo(iso) {
+  const d = new Date(iso);
+  const days = Math.round((Date.now() - d.getTime()) / 864e5);
+  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 30) return dateStr + ' (' + days + 'd ago)';
+  return dateStr;
+}
+
+async function loadTeamEngagement(from, untilEndOfDay, loc) {
+  const locFilter = loc ? `&location_id=eq.${loc.uuid}` : '';
+  const note = document.getElementById('te-note');
+  const tiles = document.getElementById('te-tiles');
+  const locTbody = document.getElementById('te-loc-tbody');
+  const userTbody = document.getElementById('te-user-tbody');
+
+  const [countEvents, receivingEvents, allActivity, roster] = await Promise.all([
+    fetchAllRows(`${SUPA_URL}/rest/v1/activity_log?select=user_id,location_id,created_at&event_type=eq.count&created_at=gte.${isoDaysAgo(180)}&order=created_at.desc${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/receiving_sessions?select=received_by,location_id,completed_at&completed_at=gte.${isoDaysAgo(180)}&order=completed_at.desc${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/activity_log?select=user_id,created_at&created_at=gte.${isoDaysAgo(60)}&order=created_at.desc${locFilter}`),
+    fetchAllRows(`${SUPA_URL}/rest/v1/users?select=id,full_name,email,role,location_id,locations(name)&role=in.(inventory_lead,receiver)&is_active=eq.true${locFilter}`),
+  ]);
+
+  if (countEvents === null || receivingEvents === null || allActivity === null || roster === null) {
+    note.textContent = "Couldn't load team engagement data for this report.";
+    tiles.innerHTML = ''; locTbody.innerHTML = ''; userTbody.innerHTML = '';
+    return;
+  }
+  note.textContent = 'Cycle-count attribution (who logged it) only exists for counts submitted after this feature shipped — older counts still count toward a location’s total but not a specific person.';
+
+  const inPeriod = ts => ts >= from && ts <= untilEndOfDay;
+  const periodCounts = countEvents.filter(r => inPeriod(r.created_at));
+  const periodReceiving = receivingEvents.filter(r => inPeriod(r.completed_at));
+  const activeUserIds = new Set(allActivity.filter(r => inPeriod(r.created_at) && r.user_id).map(r => r.user_id));
+
+  // ── By location ── countEvents/receivingEvents are already order=desc, so
+  // the first match per location is its most recent regardless of period.
+  const targetLocs = loc ? [loc] : LOCATIONS;
+  const rosterByLoc = {};
+  roster.forEach(u => { if (u.location_id) (rosterByLoc[u.location_id] = rosterByLoc[u.location_id] || []).push(u); });
+
+  locTbody.innerHTML = targetLocs.map(l => {
+    const lCounts = periodCounts.filter(r => r.location_id === l.uuid).length;
+    const lReceiving = periodReceiving.filter(r => r.location_id === l.uuid).length;
+    const lastCount = countEvents.find(r => r.location_id === l.uuid);
+    const lastReceiving = receivingEvents.find(r => r.location_id === l.uuid);
+    const teamIds = (rosterByLoc[l.uuid] || []).map(u => u.id);
+    const activeCount = teamIds.filter(id => activeUserIds.has(id)).length;
+    return `<tr>
+      <td>${esc(l.name)}</td>
+      <td style="text-align:right">${lCounts}</td>
+      <td>${lastCount ? teFmtAgo(lastCount.created_at) : '—'}</td>
+      <td style="text-align:right">${lReceiving}</td>
+      <td>${lastReceiving ? teFmtAgo(lastReceiving.completed_at) : '—'}</td>
+      <td style="text-align:right;color:${teamIds.length && activeCount < teamIds.length ? 'var(--s-warn)' : 'var(--text)'}">${activeCount} of ${teamIds.length}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">No locations.</td></tr>';
+
+  // ── Tiles ──
+  const totalActive = roster.filter(u => activeUserIds.has(u.id)).length;
+  tiles.innerHTML = `
+    <div class="hero-tile"><div class="l">Cycle counts logged</div><div class="v">${periodCounts.length}</div><div class="chart-note" style="margin-top:4px">selected range</div></div>
+    <div class="hero-tile"><div class="l">Receiving sessions</div><div class="v">${periodReceiving.length}</div><div class="chart-note" style="margin-top:4px">selected range</div></div>
+    <div class="hero-tile"><div class="l">Team members active</div><div class="v" style="color:${roster.length && totalActive < roster.length ? 'var(--s-warn)' : 'var(--s-good)'}">${totalActive} of ${roster.length}</div><div class="chart-note" style="margin-top:4px">logged any action, selected range</div></div>
+  `;
+
+  // ── By person ── receiving is matched by email (received_by is a free-text
+  // email, not a user_id FK); cycle counts by user_id where available.
+  const receivingByEmail = {};
+  periodReceiving.forEach(r => { const e = (r.received_by || '').toLowerCase(); if (e) receivingByEmail[e] = (receivingByEmail[e] || 0) + 1; });
+  const countsByUser = {};
+  periodCounts.forEach(r => { if (r.user_id) countsByUser[r.user_id] = (countsByUser[r.user_id] || 0) + 1; });
+  const lastActivityByUser = {};
+  allActivity.forEach(r => { if (r.user_id && !lastActivityByUser[r.user_id]) lastActivityByUser[r.user_id] = r.created_at; });
+
+  const roleLabel = r => r === 'inventory_lead' ? 'Inventory Lead' : r === 'receiver' ? 'Receiver' : r;
+  userTbody.innerHTML = roster.map(u => {
+    const email = (u.email || '').toLowerCase();
+    const cCount = countsByUser[u.id] || 0;
+    const rCount = receivingByEmail[email] || 0;
+    const last = lastActivityByUser[u.id];
+    return `<tr>
+      <td>${esc(u.full_name || u.email)}</td>
+      <td style="color:var(--muted)">${esc(u.locations?.name || '—')}</td>
+      <td>${roleLabel(u.role)}</td>
+      <td style="text-align:right">${cCount}</td>
+      <td style="text-align:right">${rCount}</td>
+      <td style="color:${last ? 'var(--text)' : 'var(--s-warn)'}">${last ? teFmtAgo(last) : 'No activity in 60d'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">No Inventory Lead/Receiver accounts found.</td></tr>';
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -5618,12 +5743,18 @@ async function loadInventoryAnalytics() {
     }
   }
 
-  // ── Cycle count compliance (Overview sub-panel) ──
-  const ccRows = await fetchAllRows(`${SUPA_URL}/rest/v1/cycle_counts?select=location_id,status&created_at=gte.${from}&created_at=lte.${untilEndOfDay}${locUuidFilter}`);
+  // ── Cycle count compliance (Overview sub-panel) ── the weekly A/B/C/D
+  // cycle-count flow (medsync_cycle_count_live.html) only ever writes to
+  // activity_log (event_type='count') -- cycle_counts is read by legacy
+  // dashboard code but nothing in this app inserts into it, so this was
+  // silently showing "—" regardless of how much counting was actually
+  // happening. Same "at least one submission in the period" shape as Order
+  // compliance above, applied to the table that's actually populated.
+  const ccRows = await fetchAllRows(`${SUPA_URL}/rest/v1/activity_log?select=location_id&event_type=eq.count&created_at=gte.${from}&created_at=lte.${untilEndOfDay}${locUuidFilter}`);
   let ccText = '—', ccColor = 'var(--muted)';
-  if (Array.isArray(ccRows) && ccRows.length > 0) {
-    const done = new Set(ccRows.filter(r => r.status === 'completed' || r.status === 'submitted').map(r => r.location_id)).size;
-    const total = new Set(ccRows.map(r => r.location_id)).size || 4;
+  if (Array.isArray(ccRows)) {
+    const done = new Set(ccRows.map(r => r.location_id)).size;
+    const total = loc ? 1 : LOCATIONS.length;
     ccText = done + ' of ' + total + ' ✓';
     ccColor = done >= total ? 'var(--s-good)' : done > 0 ? 'var(--s-warn)' : 'var(--s-critical)';
   }

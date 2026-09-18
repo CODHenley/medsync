@@ -842,6 +842,7 @@ async function submitCount() {
 
   const payload = {
     location_id: currentLocationId,
+    user_id: _user.id || null,
     event_type: 'count',
     description: desc,
     reference_id: `CC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${cat}-${currentLocation.replace(/\s/g,'').toUpperCase().slice(0,3)}`,
