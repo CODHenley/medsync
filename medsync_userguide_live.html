@@ -441,22 +441,6 @@
       <a class="toc-link" href="#staff-goods">Goods Lost</a>
       <a class="toc-link" href="#staff-tips">Tips & Best Practices</a>
     </div>
-    <div class="toc-section" id="toc-admin-section">
-      <div class="toc-label">Admin Guide</div>
-      <a class="toc-link" href="#admin-overview">Overview</a>
-      <a class="toc-link" href="#admin-portfolio">Portfolio Dashboard</a>
-      <a class="toc-link" href="#admin-analytics">Analytics & Reports</a>
-      <a class="toc-link" href="#admin-lifecycle">Lot Lifecycle</a>
-      <a class="toc-link" href="#admin-procurement">Procurement</a>
-      <a class="toc-link" href="#admin-actlog">Activity Log</a>
-      <a class="toc-link" href="#admin-ops">Operations Screens</a>
-      <a class="toc-link" href="#admin-invoices">Invoice Reconciliation</a>
-      <a class="toc-link" href="#admin-users">Managing Users</a>
-      <a class="toc-link" href="#admin-locations">New Location Setup</a>
-      <a class="toc-link" href="#admin-regions">Manage Regions</a>
-      <a class="toc-link" href="#admin-settings">Settings</a>
-      <a class="toc-link" href="#admin-training">Training Log</a>
-    </div>
     <div class="toc-section" id="toc-medsync-section">
       <div class="toc-label">MedSync Platform</div>
       <a class="toc-link" href="#ms-overview">Overview</a>
@@ -510,16 +494,11 @@
                   <td style="padding:10px 14px;">Cycle Count</td>
                 </tr>
                 <tr style="background:var(--bg);border-bottom:1px solid var(--border);">
-                  <td style="padding:10px 14px;font-weight:600;">Hospital Director<br><span style="font-size:11px;font-weight:400;color:var(--muted);">or Hospital Manager</span></td>
-                  <td style="padding:10px 14px;color:var(--muted);">Weekly Order, Receiving, Cycle Count, Goods Lost, Vetcove Import, Invoice Reconciliation, Manage Users</td>
-                  <td style="padding:10px 14px;">Weekly Order</td>
-                </tr>
-                <tr style="background:#fff;border-bottom:1px solid var(--border);">
                   <td style="padding:10px 14px;font-weight:600;">Inventory Lead</td>
                   <td style="padding:10px 14px;color:var(--muted);">Analytics (location), Lot Lifecycle, Weekly Order, Receiving, Cycle Count, Goods Lost, Vetcove Import, Invoice Reconciliation, Manage Users (receivers only)</td>
                   <td style="padding:10px 14px;">Analytics</td>
                 </tr>
-                <tr style="background:var(--bg);">
+                <tr style="background:#fff;">
                   <td style="padding:10px 14px;font-weight:600;">Receiver</td>
                   <td style="padding:10px 14px;color:var(--muted);">Receiving, Goods Lost only</td>
                   <td style="padding:10px 14px;">Receiving</td>
@@ -750,454 +729,6 @@
         <button class="quiz-btn sandbox-btn" onclick="openSandbox('staff')" style="background:transparent;border:1.5px solid var(--border);color:var(--navy);">🖥️ Practice in Sandbox</button>
         <button class="quiz-btn" id="quiz-btn-staff" onclick="openQuiz('staff')">📝 Take Quiz</button>
         <button class="quiz-btn view-cert" id="cert-btn-staff" onclick="openCertificate('staff')" style="display:none;">🏅 View Certificate</button>
-      </div>
-    </div>
-
-    <!-- ════════════════════════════════
-         SOP 2 — ADMIN
-    ════════════════════════════════ -->
-    <div class="sop-card section-anchor" id="admin-overview">
-      <div class="sop-header">
-        <img src="medsync_logo.png" width="48" height="48" style="display:block;flex-shrink:0;border-radius:50%;object-fit:cover;" alt="MedSync logo">
-        <div class="sop-header-text">
-          <div class="sop-tag">SOP · Admin</div>
-          <div class="sop-title">Practice Admin Guide — Full Platform Reference</div>
-        </div>
-        <span class="cert-badge" id="cert-badge-admin" style="display:none;">✓ Certified</span>
-      </div>
-      <div class="sop-body">
-
-        <p class="sop-intro">
-          As a Practice Admin, you have full access to all MedSync screens. This guide covers every screen available to your role — from daily operations to billing and team management.
-        </p>
-
-        <div class="feature-row">
-          <div class="feature-chip"><div class="feature-chip-icon">🏠</div><div class="feature-chip-name">Portfolio</div><div class="feature-chip-desc">Org-wide snapshot</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">📊</div><div class="feature-chip-name">Analytics</div><div class="feature-chip-desc">Spend &amp; budget reporting</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">📋</div><div class="feature-chip-name">Quarterly</div><div class="feature-chip-desc">PDF-ready reports</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">🔬</div><div class="feature-chip-name">Lot Lifecycle</div><div class="feature-chip-desc">Expiry &amp; recall tracking</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">🛍️</div><div class="feature-chip-name">Procurement</div><div class="feature-chip-desc">Supplier &amp; PO management</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">🕐</div><div class="feature-chip-name">Activity Log</div><div class="feature-chip-desc">Full audit trail</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">🛒</div><div class="feature-chip-name">Weekly Order</div><div class="feature-chip-desc">Reorder management</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">📦</div><div class="feature-chip-name">Receiving</div><div class="feature-chip-desc">Inbound shipments</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">🔄</div><div class="feature-chip-name">Cycle Count</div><div class="feature-chip-desc">Physical audits</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">🧾</div><div class="feature-chip-name">Invoices</div><div class="feature-chip-desc">Invoice reconciliation</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">👥</div><div class="feature-chip-name">Users</div><div class="feature-chip-desc">Invite &amp; manage staff</div></div>
-          <div class="feature-chip"><div class="feature-chip-icon">🏗️</div><div class="feature-chip-name">New Location</div><div class="feature-chip-desc">Add clinic locations</div></div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-portfolio">
-          <div class="step-group-title">🏠 Portfolio Dashboard</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Your landing screen after login. The Portfolio gives you an organization-wide snapshot — inventory health, recent activity, and alerts across all locations at a glance.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Overview cards</div>
-                <div class="step-desc">The top row shows: total active locations, pending cycle counts, items below par, and expiring lots within 60 days. Red indicators mean action is needed. Tap any card to drill into that view.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Location filter</div>
-                <div class="step-desc">Use the <strong>Region / Location</strong> dropdown at the top to scope the portfolio to a specific region or clinic. "All Locations" is the default. Saved filter preferences persist between sessions.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Priority chips — today's action items</div>
-                <div class="step-desc">Below the overview cards, <strong>priority chips</strong> surface the most urgent items right now: lots expiring within 30 days and POs that are pending for today. Tap a chip to jump directly to that screen. If everything is clear, you'll see an "All clear" chip — no action needed.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">4</div>
-              <div class="step-content">
-                <div class="step-title">Live activity feed</div>
-                <div class="step-desc">The portfolio's activity widget streams the last 20 actions taken across your organization in real time — cycle counts, receiving events, goods lost reports, and user changes. This is a <em>live snapshot</em>; for a filterable, exportable full audit trail, go to <strong>Activity Log</strong> in the sidebar instead.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">5</div>
-              <div class="step-content">
-                <div class="step-title">Recognition & compliance scores</div>
-                <div class="step-desc">The bottom of the portfolio shows staff recognition data and cycle count compliance rates by location. Locations with low compliance are highlighted so you can follow up with managers directly.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-analytics">
-          <div class="step-group-title">📊 Analytics & Quarterly Reports</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Analytics shows spend trends, inventory value, and supplier breakdowns across your organization. Quarterly Report generates a printable one-page summary for ownership or board review.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Select Analytics from the sidebar</div>
-                <div class="step-desc">Choose a date range (month-to-date, last quarter, custom) and filter by location or aggregate across all. The spend chart shows drug vs. supply costs month-over-month.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Supplier Breakdown tab</div>
-                <div class="step-desc">Shows what percentage of spend goes to each distributor (MWI, Covetrus, Vetcove, etc.). Use this to identify consolidation opportunities and negotiate volume pricing.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Top Items by Cost</div>
-                <div class="step-desc">Ranks your highest-cost items by total spend in the period. Flag items where cost has increased significantly and use the Procurement screen to source alternatives.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">4</div>
-              <div class="step-content">
-                <div class="step-title">GPO Savings KPI — how it's calculated</div>
-                <div class="step-desc">The <strong>GPO Savings</strong> figure on the Portfolio and Analytics screens shows the actual dollar difference between the list price (<code>unit_price</code>) and the GPO contract price (<code>gpo_price</code>) across all submitted and received PO items in the period. It is <em>not</em> an estimate — it reflects the exact price captured on each purchase order. If GPO savings show $0, it means <code>gpo_price</code> has not yet been populated on your PO items; contact your admin or MedSync support to confirm contract pricing is being recorded.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">5</div>
-              <div class="step-content">
-                <div class="step-title">Quarterly Report</div>
-                <div class="step-desc">Open <strong>Quarterly Report</strong> from the sidebar. Select the quarter and locations. The report includes: total inventory value, spend by category, goods lost totals, cycle count compliance, GPO savings, and month-over-month comparison. Tap <strong>Export PDF</strong> to download.</div>
-                <div class="step-note">📥 PDF exports are formatted for printing — A4/letter size with MedSync branding</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-lifecycle">
-          <div class="step-group-title">🔬 Lot Lifecycle Screen</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Lot Lifecycle tracks every product lot from receiving through depletion, expiration, or recall. Critical for regulatory compliance and managing drug recalls.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Expiring lots view</div>
-                <div class="step-desc">The default view shows lots expiring within 60 days, sorted by soonest expiry. Red = expiring within 30 days, yellow = 31–60 days. Tap a lot to see which locations are holding it and how much remains.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Search a specific lot number</div>
-                <div class="step-desc">Use the search bar to find a specific lot number or NDC. This is the primary tool for handling manufacturer recalls — search the recalled lot and see instantly which locations received it and how much was used vs. remains.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Initiating a recall flag</div>
-                <div class="step-desc">If a recalled lot is found, tap <strong>Flag for Recall</strong>. This sends an immediate notification to the location manager and marks the remaining stock as quarantined. A Goods Lost report is auto-generated for the quarantined quantity.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-procurement">
-          <div class="step-group-title">🛍️ Procurement Screen</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Procurement manages your supplier catalog, purchase order history, and pricing. Use it to approve orders, set par levels, and review supplier performance.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Pending approvals</div>
-                <div class="step-desc">Orders submitted by managers and staff appear here for admin approval. Review the items and quantities, then tap <strong>Approve</strong> to send to the supplier or <strong>Reject</strong> with a note to return it for revision.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Supplier management</div>
-                <div class="step-desc">The <strong>Suppliers</strong> tab lists your active distributors with contact info, account numbers, and order minimums. Add a new supplier with <strong>+ Add Supplier</strong>. Inactive suppliers can be archived (not deleted) to preserve PO history.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Setting and updating par levels</div>
-                <div class="step-desc">Open the <strong>Par Levels</strong> tab. Search by item and location to see current pars. Tap any row to edit. Changes take effect immediately — the next weekly order will use the new par. Setting pars to zero removes the item from suggested orders.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">4</div>
-              <div class="step-content">
-                <div class="step-title">PO history</div>
-                <div class="step-desc">The <strong>Order History</strong> tab shows all purchase orders by status: Draft, Pending, Approved, Received, or Flagged. Use the date and location filters to narrow results. Export to CSV for accounting reconciliation.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-actlog">
-          <div class="step-group-title">🕐 Activity Log</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">The Activity Log is a complete, immutable audit trail of every action taken in MedSync — counts submitted, stock received, users added, goods lost, etc.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Filter by type, user, or location</div>
-                <div class="step-desc">Use the filters at the top to narrow to a specific action type (Cycle Count, Receiving, Goods Lost, User Change, etc.), user, location, or date range. Combine filters for precise lookups.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Investigate a discrepancy</div>
-                <div class="step-desc">If a cycle count shows unexpected variances, filter the Activity Log by that location and the relevant date range. You can see every count, receiving event, and goods lost report that touched the item's quantity.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Export for auditing</div>
-                <div class="step-desc">Tap <strong>Export CSV</strong> to download the filtered log. Useful for DEA audits (controlled substances), insurance claims, or internal investigations. Records cannot be deleted or modified.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-ops">
-          <div class="step-group-title">🛒📦🔄 Operations Screens (Order, Receiving, Cycle Count, Goods Lost)</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Admins have full access to all operational screens across every location. These work identically to the Staff guide above, with the addition of cross-location visibility.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">★</div>
-              <div class="step-content">
-                <div class="step-title">Admin difference: cross-location view</div>
-                <div class="step-desc">As an admin, each operations screen shows a <strong>Location</strong> selector at the top. You can view and submit on behalf of any location — useful when a manager is unavailable or when performing a surprise audit count.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">★</div>
-              <div class="step-content">
-                <div class="step-title">Vetcove Import (↑ in sidebar)</div>
-                <div class="step-desc">The <strong>Vetcove Import</strong> sub-item under Weekly Order accepts a Vetcove-exported CSV. MedSync maps line items to inventory records automatically. Use this for locations that order through Vetcove to save manual entry time.</div>
-              </div>
-            </div>
-          </div>
-          <div class="callout callout-info">
-            <span class="callout-icon">💡</span>
-            <span class="callout-text">See the <strong>Staff Guide</strong> above for step-by-step instructions for Cycle Count, Receiving, Weekly Order, and Goods Lost — the workflow is identical for admins, just with extra location controls.</span>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-invoices">
-          <div class="step-group-title">🧾 Invoice Reconciliation</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Match supplier invoices to purchase orders. Identifies billing discrepancies before you pay — overcharges, missed credits, and price changes.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Upload or link an invoice</div>
-                <div class="step-desc">Tap <strong>+ New Reconciliation</strong>. Select the supplier and upload the invoice PDF or enter totals manually. MedSync matches it to the corresponding PO automatically if one exists.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Review line-by-line matches</div>
-                <div class="step-desc">Green rows = invoice matches the PO. Yellow = minor difference (usually rounding). Red = significant mismatch — you ordered 10 units at $12 each but were billed for 10 at $14. Tap any red row to annotate and flag for follow-up.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Approve or dispute</div>
-                <div class="step-desc">Once reviewed, mark the reconciliation as <strong>Approved</strong> (send to accounts payable) or <strong>Disputed</strong> (flag the specific lines for your distributor rep). Disputed invoices stay in the queue until resolved.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-users">
-          <div class="step-group-title">👥 Managing Users</div>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Open Manage Users from the sidebar</div>
-                <div class="step-desc">You'll see all users in your organization with their role, assigned location(s), and last active date. Use the search bar to find a specific person quickly.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Invite a new user</div>
-                <div class="step-desc">Tap <strong>+ New User</strong>. Enter their full name, work email, and role. Assign one or more locations. Tap <strong>Send Invite</strong> — they receive a welcome email with a temporary password and a link to set their own.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Role guide</div>
-                <div class="step-desc">
-                  <strong>Staff</strong> — Cycle Count, Receiving, Weekly Order, Goods Lost, Activity Log (view).<br>
-                  <strong>Manager</strong> — All staff screens + Invoice Reconciliation + limited Manage Users.<br>
-                  <strong>Inventory Lead</strong> — Manager screens + Analytics (location) + Lot Lifecycle.<br>
-                  <strong>Receiver</strong> — Receiving and Goods Lost only.<br>
-                  <strong>Admin</strong> — Full access, including billing and New Location.
-                </div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">4</div>
-              <div class="step-content">
-                <div class="step-title">Edit, reset, or deactivate</div>
-                <div class="step-desc">Click a user's name to open their profile. You can change their role, reassign locations, send a password reset email, or deactivate their account. <em>Deactivation is immediate — their session is revoked instantly.</em> Historical data is preserved.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-locations">
-          <div class="step-group-title">🏗️ New Location Setup</div>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Check your plan's location limit</div>
-                <div class="step-desc">Open <strong>New Location Setup</strong> from the sidebar. Your current plan and remaining location slots are shown at the top. If you're at 0 remaining, you'll see an upgrade prompt before continuing.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Fill in location details</div>
-                <div class="step-desc">Enter: location name, physical address, primary contact name and email, and Vetspire location ID (found in Vetspire under Settings → Locations). Assign to an existing region or create a new one.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Submit the request</div>
-                <div class="step-desc">Tap <strong>Submit Setup Request</strong>. MedSync provisions the new location within one business day, sets up its inventory schema, and sends a confirmation email to the primary contact. The location appears in your portfolio immediately as "Pending."</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">4</div>
-              <div class="step-content">
-                <div class="step-title">Upgrading your plan to add more locations</div>
-                <div class="step-desc">When you're near your limit, an <strong>Upgrade Package</strong> button appears. This launches a secure Stripe checkout. Select your new tier — the updated location limit is active the moment payment completes. No manual approval needed.</div>
-                <div class="step-note">💳 Plan upgrades are instant — new slots available immediately after checkout</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-regions">
-          <div class="step-group-title">🗺️ Manage Regions</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Regions let you group locations for easier filtering in Analytics and the Portfolio. For example: "Northeast Clinics", "Texas Locations", "Emergency Hospitals."</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Create a region</div>
-                <div class="step-desc">Open <strong>Manage Regions</strong> → tap <strong>+ New Region</strong>. Give it a name. Once created, you can assign any location to it from either the New Location Setup screen or by editing an existing location.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Reassign locations</div>
-                <div class="step-desc">Click an existing region to expand it. Drag locations between regions or use the location's dropdown to reassign. Changes take effect immediately and update the region filter in Analytics and Portfolio.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-settings">
-          <div class="step-group-title">⚙️ Settings</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Organization-wide preferences: notification thresholds, Vetspire API token management, cycle count frequency, and display preferences.</p>
-          <div class="callout callout-warn" style="margin-bottom:16px;">
-            <span class="callout-icon">⚠️</span>
-            <span class="callout-text"><strong>Settings sync instantly across all devices and users.</strong> When you save a threshold change, it takes effect organization-wide immediately — not just on your browser. There is no per-device or per-user threshold override.</span>
-          </div>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Notification thresholds — applied org-wide</div>
-                <div class="step-desc">Set the thresholds that trigger admin email alerts: items below par (default: below 20% of par), expiring lots (default: within 45 days), cycle count overdue (default: 3 days past schedule), and goods lost above a dollar threshold. Changes are saved to Supabase and apply to every admin and location immediately.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Vetspire integration</div>
-                <div class="step-desc">The <strong>Integrations</strong> tab shows your Vetspire API connection status. If the sync is showing errors, you can re-enter the API token here. Changes take effect on the next sync cycle (runs every 15 minutes).</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Cycle count schedule</div>
-                <div class="step-desc">Set how frequently each item category must be counted: daily (controlled substances), weekly (vaccines), monthly (general supplies), or quarterly (capital equipment). Staff are notified when a count is due for their location.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sop-divider"></div>
-
-        <div class="step-group" id="admin-training">
-          <div class="step-group-title">📋 Training Log</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">The Training Log (in the sidebar under User Guide) shows which staff members have completed their onboarding quiz and earned certification. Admin view shows all staff across all locations.</p>
-          <div class="step-list">
-            <div class="step-row">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Open Training Log from the sidebar</div>
-                <div class="step-desc">The admin view shows a table of all quiz completions: staff name, location, quiz section, score, and completion date. Filter by location, section, or date range using the controls at the top.</div>
-              </div>
-            </div>
-            <div class="step-row">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Following up on incomplete training</div>
-                <div class="step-desc">Staff not appearing in the Training Log haven't completed their quiz yet. Use the Manage Users screen to resend the welcome email with a reminder to complete the User Guide quiz within 30 days of account creation.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-      <!-- Quiz footer -->
-      <div class="quiz-footer" id="quiz-footer-admin">
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px;">Knowledge Check</div>
-          <div style="font-size:12px;color:var(--muted);">5 questions · Pass with 4/5 to earn your Admin certification</div>
-        </div>
-        <button class="quiz-btn sandbox-btn" onclick="openSandbox('admin')" style="background:transparent;border:1.5px solid var(--border);color:var(--navy);">🖥️ Practice in Sandbox</button>
-        <button class="quiz-btn" id="quiz-btn-admin" onclick="openQuiz('admin')">📝 Take Quiz</button>
-        <button class="quiz-btn view-cert" id="cert-btn-admin" onclick="openCertificate('admin')" style="display:none;">🏅 View Certificate</button>
       </div>
     </div>
 
@@ -1554,17 +1085,19 @@ const QUIZ_QUESTIONS = {
 
 const SECTION_LABELS = {
   staff: 'Staff Operations',
-  admin: 'Admin & Location Management',
   medsync: 'MedSync Platform Admin',
 };
 
 // ── Session & state ────────────────────────────────────────────────
+// hospital_director/clinical_operations_director were never real, assignable
+// roles (nothing in Manage Users could create them) -- dropped along with
+// the Admin Guide they gated, not just left as dead map entries. MedSync is
+// Inventory Lead/Receiver only now; admin/superadmin use ScoutSync instead
+// and never land on this guide's Staff/Admin split at all.
 const ROLE_SECTIONS = {
   receiver:                     ['toc-staff-section'],
-  inventory_lead:               ['toc-staff-section', 'toc-admin-section'],
-  hospital_director:            ['toc-staff-section', 'toc-admin-section'],
-  clinical_operations_director: ['toc-staff-section', 'toc-admin-section'],
-  medsync_superadmin:           ['toc-staff-section', 'toc-admin-section', 'toc-medsync-section'],
+  inventory_lead:               ['toc-staff-section'],
+  medsync_superadmin:           ['toc-staff-section', 'toc-medsync-section'],
 };
 
 let _session = null;
@@ -1647,7 +1180,7 @@ async function loadCompletions() {
 }
 
 function applyCompletionBadges() {
-  ['staff', 'admin', 'medsync'].forEach(section => {
+  ['staff', 'medsync'].forEach(section => {
     if (_completions[section]) {
       showCertBadge(section);
     }
@@ -1905,8 +1438,6 @@ function init() {
   const labels = {
     receiver: 'Receiver',
     inventory_lead: 'Inventory Lead',
-    hospital_director: 'Hospital Director',
-    clinical_operations_director: 'Clinical Operations Director',
     medsync_superadmin: 'MedSync Admin',
   };
   document.getElementById('ug-role-badge').textContent = labels[role] || 'Staff';
@@ -1921,15 +1452,9 @@ function init() {
   if (role !== 'medsync_superadmin') {
     document.getElementById('ms-overview')?.closest('.sop-card')?.style.setProperty('display','none');
   }
-  if (role === 'receiver') {
-    document.getElementById('admin-overview')?.closest('.sop-card')?.style.setProperty('display','none');
-  }
 
-  // Hide quiz footers for sections the user can't see
-  if (role === 'receiver') {
-    document.getElementById('quiz-footer-admin')?.style.setProperty('display','none');
-    document.getElementById('quiz-footer-medsync')?.style.setProperty('display','none');
-  } else if (role !== 'medsync_superadmin') {
+  // Hide quiz footer for the section the user can't see
+  if (role !== 'medsync_superadmin') {
     document.getElementById('quiz-footer-medsync')?.style.setProperty('display','none');
   }
 
@@ -2001,19 +1526,6 @@ const SECTION_PAGE_MAP = {
   'staff-order':     'medsync_weekly_order_live.html',
   'staff-goods':     'medsync_goods_lost_live.html',
   'staff-tips':      'medsync_cycle_count_live.html',
-  'admin-overview':  'medsync_portfolio_live.html',
-  'admin-portfolio': 'medsync_portfolio_live.html',
-  'admin-analytics': 'medsync_analytics_live.html',
-  'admin-lifecycle': 'medsync_lot_lifecycle_live.html',
-  'admin-procurement':'medsync_weekly_order_live.html',
-  'admin-actlog':    'medsync_activity_log_live.html',
-  'admin-ops':       'medsync_weekly_order_live.html',
-  'admin-invoices':  'medsync_invoice_reconcile_live.html',
-  'admin-users':     'medsync_users_live.html',
-  'admin-locations': 'medsync_newlocation_live.html',
-  'admin-regions':   'medsync_regions_live.html',
-  'admin-settings':  'medsync_settings_live.html',
-  'admin-training':  'medsync_portfolio_live.html',
   'ms-overview':     'medsync_platform_admin.html',
   'ms-provision':    'medsync_platform_admin.html',
   'ms-support':      'medsync_platform_admin.html',
@@ -2022,7 +1534,6 @@ const SECTION_PAGE_MAP = {
 
 const SANDBOX_LABELS = {
   staff:   'Staff Operations',
-  admin:   'Practice Admin',
   medsync: 'MedSync Platform',
 };
 
@@ -2051,22 +1562,6 @@ function buildSandboxToc(role) {
       ]
     },
     {
-      id: 'toc-admin-section', label: 'Admin Guide',
-      links: [
-        { anchor: 'admin-portfolio',  label: 'Portfolio Dashboard' },
-        { anchor: 'admin-analytics',  label: 'Analytics & Reports' },
-        { anchor: 'admin-lifecycle',  label: 'Lot Lifecycle' },
-        { anchor: 'admin-procurement',label: 'Procurement' },
-        { anchor: 'admin-actlog',     label: 'Activity Log' },
-        { anchor: 'admin-invoices',   label: 'Invoice Reconciliation' },
-        { anchor: 'admin-users',      label: 'Managing Users' },
-        { anchor: 'admin-locations',  label: 'New Location Setup' },
-        { anchor: 'admin-regions',    label: 'Manage Regions' },
-        { anchor: 'admin-settings',   label: 'Settings' },
-        { anchor: 'admin-training',   label: 'Training Log' },
-      ]
-    },
-    {
       id: 'toc-medsync-section', label: 'MedSync Platform',
       links: [
         { anchor: 'ms-overview', label: 'Platform Admin' },
@@ -2090,7 +1585,7 @@ function buildSandboxToc(role) {
 }
 
 function openSandbox(section) {
-  const firstAnchor = section === 'admin' ? 'admin-portfolio' : section === 'medsync' ? 'ms-overview' : 'staff-cycle';
+  const firstAnchor = section === 'medsync' ? 'ms-overview' : 'staff-cycle';
   const page  = SECTION_PAGE_MAP[firstAnchor] || 'medsync_portfolio_live.html';
   const label = SANDBOX_LABELS[section] || 'MedSync';
   const role  = getUserInfo().role;
